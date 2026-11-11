@@ -1,0 +1,18 @@
+:root {
+  /* Vidalys — produto Fideliza: conceito 0.1 */
+  --vf-graphite: #0B1120;
+  --vf-primary: #1263FF;
+  --vf-cyan: #00D1E6;
+  --vf-white: #FFFFFF;
+  --vf-surface: #F3F5F9;
+  --vf-border: #D8DEE9;
+  --vf-muted: #526071;
+  --vf-success: #16A36A;
+  --vf-warning: #D97706;
+  --vf-danger: #D92D20;
+  --vf-radius-sm: 10px;
+  --vf-radius-md: 16px;
+  --vf-radius-lg: 24px;
+  --vf-shadow-card: 0 12px 30px rgba(11,17,32,.10);
+  --vf-font: Manrope, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
