@@ -442,13 +442,21 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         receipt=self._privacy_report_request(request_id=997)
         file=self._post_report(receipt,**self._report_auth())
         self.assertEqual(file.status_code,200,file.content)
+        self.assertEqual(file["X-Fideliza-Report-Complete"],"false")
         report=json.loads(file.content)
+        self.assertTrue(report["cobertura"]["exclusao_anterior_exige_revisao"])
         self.assertEqual(len(report["participacoes"]),1)
         self.assertEqual(report["participacoes"][0]["situacao"],"withdrawn")
         self.assertEqual(report["participacoes"][0]["nome"],"")
         self.assertTrue(report["participacoes"][0]["cliente_referencia"].startswith("anon:"))
         self.assertEqual(report["movimentos_financeiros_internos"][0]["valor_centavos"],450)
         self.assertEqual(len(report["aceites"]),1)
+        self.assertEqual(self._post_report(
+            receipt,action="confirm",data={
+                "confirm":True,"digest":file["X-Fideliza-Report-Digest"]
+            },**self._report_auth()).status_code,409)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.state,"pending")
 
     def test_changed_report_and_wrong_checksum_cannot_be_confirmed(self):
         submission,_,_=self._make_submission()
