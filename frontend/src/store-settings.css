@@ -114,3 +114,14 @@
 .ss-privacy-list small{color:#688092;font-size:11px}
 @media(max-width:420px){.ss-privacy-summary{grid-template-columns:1fr 1fr}
   .ss-privacy-summary>div:first-child{grid-column:1/-1}}
+
+.ss-privacy-list li{align-items:flex-start;gap:12px}
+.ss-privacy-entry{display:grid;gap:4px;min-width:175px;flex:1}
+.ss-privacy-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ss-privacy-actions .ss-secondary{font-size:11px;white-space:nowrap;padding:9px 12px}
+.ss-privacy-actions .ss-report-confirm{background:#e3f5ef;border-color:#a8dace;color:#096d63}
+.ss-privacy-actions button:disabled{opacity:.55;cursor:wait}
+@media(max-width:700px){
+  .ss-privacy-actions{width:100%}
+  .ss-privacy-actions .ss-secondary{flex:1;justify-content:center}
+}
