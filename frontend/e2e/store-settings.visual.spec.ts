@@ -29,6 +29,16 @@ async function setup(page:Page,role:"owner"|"analyst"="owner"){
       }
     })
   }));
+  await page.route("**/api/v1/tenants/**/privacy/requests/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      pending_total:1,access_requests:1,deletion_requests:0,
+      items:[{
+        id:"a9d97a5e-4840-4f68-b65a-90f0623a5f12",
+        type:"data_access",received_at:"2026-11-11T10:00:00Z",status:"em_analise",
+      }],
+      note:"Solicitação em análise",
+    }),
+  }));
   await page.route("**/api/v1/tenants/**/settings/",async route=>{
     const url=route.request().url();
     expect(url).toContain(tenant.id);
@@ -88,6 +98,9 @@ for(const width of [390,768,1440]){
     await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Regras do clube"})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Página do clube"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Privacidade dos participantes"})).toBeVisible();
+    await expect(page.getByText("Solicitações em análise")).toBeVisible();
+    await expect(page.getByText("Pedido de acesso aos dados")).toBeVisible();
     await expect(page.getByText("Clube Exemplo",{exact:true})).toBeVisible();
     await expect(page.getByText("Nuvemshop",{exact:true})).toBeVisible();
     await expect(page.getByText("Conectada",{exact:true})).toBeVisible();
