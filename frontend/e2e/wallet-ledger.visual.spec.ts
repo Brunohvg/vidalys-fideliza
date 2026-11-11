@@ -9,7 +9,7 @@ async function mockPortal(page:Page){
     body:JSON.stringify({authenticated:true,user:{username:"qa",display_name:"QA"},
       tenants:[{id:tenantId,name:"Loja de teste",slug:"loja-test",status:"draft",role:"owner"}]})
   }));
-  await page.route("**/api/v1/tenants/**/participants/?*",r=>r.fulfill({
+  await page.route("**/api/v1/tenants/**/participants/**",r=>r.fulfill({
     contentType:"application/json",
     body:JSON.stringify({
       source:"verified_opt_in_only",data_status:"no_enrollment_channel",
