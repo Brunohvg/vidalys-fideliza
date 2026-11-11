@@ -1,0 +1,56 @@
+/* Fideliza v2: preparação de adesão sem alterar o tema original. */
+.enroll-manager {background:#fff;border:1px solid #DEE8F0;border-radius:18px;
+  padding:24px;margin:22px 0;box-shadow:0 8px 30px rgba(16,37,62,.035)}
+.enroll-head {display:flex;align-items:flex-start;gap:15px;margin-bottom:19px}
+.enroll-symbol {display:grid;place-items:center;background:#E4F9F2;color:#087F79;
+  width:48px;height:48px;border-radius:13px;flex-shrink:0}
+.enroll-head h2 {color:#10253E;font-size:22px;margin:7px 0}
+.enroll-head p,.enroll-step p {color:#587084;line-height:1.6;font-size:13px;margin:0}
+.enroll-step {border-top:1px solid #E7EDF2;display:flex;align-items:center;gap:15px;
+  padding:17px 0;min-height:77px}
+.enroll-step>div {flex:1;min-width:0}
+.enroll-step strong {color:#10253E;display:block;font-size:14px;margin-bottom:4px}
+.enroll-step-number {display:grid;place-items:center;width:34px;height:34px;
+  background:#EDF9F6;color:#087F79;border-radius:10px;font-size:12px;font-weight:800;flex-shrink:0}
+.enroll-secondary {display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:#F4FAF8;border:1px solid #BEDDD6;color:#087F79;
+  border-radius:11px;font-weight:700;font-size:12px;padding:10px 13px;min-height:44px;
+  cursor:pointer}
+.enroll-secondary:disabled {opacity:.45;cursor:not-allowed}
+.enroll-form {padding:18px;background:#F6F8FB;border:1px solid #E0EAF1;
+  border-radius:14px;display:grid;gap:12px}
+.enroll-form p {font-size:12.5px;color:#526A7C;line-height:1.6;margin:0}
+.enroll-form label,.enroll-share label {display:grid;gap:8px;font-size:12px;font-weight:750;color:#10253E;min-width:0}
+.enroll-form input,.enroll-form textarea,.enroll-share input {background:white;color:#10253E;
+  border:1px solid #CBD9E3;padding:12px;border-radius:10px;font:inherit;
+  font-size:13px;width:100%;min-height:44px}
+.enroll-form textarea {resize:vertical;line-height:1.6}
+.enroll-field-row {display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,2fr);gap:12px}
+.enroll-actions,.enroll-share {display:flex;align-items:end;justify-content:flex-end;gap:10px}
+.enroll-share {padding:15px;background:#E9F9F3;border:1px solid #A8D9CC;
+  border-radius:12px;margin-bottom:10px}
+.enroll-share label {flex:1}
+.enroll-muted,.enroll-footnote {font-size:12px;color:#587084;line-height:1.7}
+.enroll-footnote {display:flex;align-items:flex-start;gap:8px;margin:13px 0 0}
+.enroll-footnote svg {flex-shrink:0;margin-top:3px}
+.enroll-error,.enroll-success {border-radius:10px;padding:11px 13px;margin:12px 0;font-size:12.5px}
+.enroll-error {background:#FFF0F2;color:#AE364D;border:1px solid #F4CFD4}
+.enroll-success {background:#EDF9F2;color:#176D50;border:1px solid #CEE6D6;display:flex;gap:9px}
+.enroll-pending-list {display:grid;gap:8px}
+.enroll-pending-list>div {display:grid;grid-template-columns:1fr 1.3fr 1.2fr;gap:10px;
+  border:1px solid #E0E9EE;border-radius:10px;padding:11px 13px;font-size:12px}
+.enroll-pending-list strong {color:#10253E}
+.enroll-pending-list span,.enroll-pending-list small {color:#587084;overflow-wrap:anywhere}
+.enroll-quiet {display:flex;gap:9px;color:#587084;background:#F6F8FB;
+  border-radius:12px;margin:16px 0;padding:15px;font-size:13px}
+@media (max-width:650px) {
+ .enroll-manager {padding:17px}
+ .enroll-head h2 {font-size:19px}
+ .enroll-step {flex-wrap:wrap;gap:10px}
+ .enroll-step>div {flex-basis:calc(100% - 55px)}
+ .enroll-step .enroll-secondary {margin-left:44px}
+ .enroll-field-row {grid-template-columns:1fr}
+ .enroll-actions,.enroll-share {flex-wrap:wrap;align-items:stretch;flex-direction:column}
+ .enroll-share .enroll-secondary {width:100%}
+ .enroll-pending-list>div {grid-template-columns:1fr;gap:5px}
+}
