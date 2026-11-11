@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.tenants.models import Tenant
-from .email_proof import consume_challenge, digest, email_delivery_ready, enqueue_confirmation
+from .email_proof import consume_challenge, digest, email_delivery_ready, enqueue_confirmation, make_token
 from .enrollment_models import (
     EnrollmentEmailChallenge, EnrollmentInvite, EnrollmentSubmission, ProgramTerms,
 )
@@ -54,8 +54,9 @@ class EmailProofTests(TestCase):
             self.assertTrue(result)
             self.assertEqual(delayed.call_count, 1)
             challenge = EnrollmentEmailChallenge.objects.get(purpose=purpose)
-            cid, token = delayed.call_args.args
+            (cid,) = delayed.call_args.args
             self.assertEqual(cid, str(challenge.pk))
+            token = make_token(challenge.pk, purpose)
             self.assertEqual(challenge.token_digest, digest(token))
             self.assertNotEqual(token, challenge.token_digest)
         return challenge, token
@@ -160,7 +161,7 @@ class EmailProofTests(TestCase):
         self.assertFalse(email_delivery_ready())  # locmem não pode ser habilitado em produção
         with patch("apps.participants.tasks.email_delivery_ready", return_value=True):
             result = send_enrollment_email.apply(
-                args=(str(challenge.pk), token), throw=True,
+                args=(str(challenge.pk),), throw=True,
             ).get()
         self.assertEqual(result, "sent")
         self.assertEqual(len(mail.outbox), 1)
