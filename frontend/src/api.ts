@@ -139,8 +139,47 @@ export type CostHistoryEntry = {
   after: Record<string, unknown>;
 };
 
+export type CatalogDecision = "matched" | "review_required" | "unmapped";
+export type CatalogPreviewItem = {
+  product_id: string;
+  product_name: string;
+  variant_id: string;
+  sku: string;
+  barcode: string;
+  price_cents: number | null;
+  promotional_price_cents: number | null;
+  api_cost_cents: number | null;
+  decision: CatalogDecision;
+  match_type: "variant_id" | "sku_candidate" | "none";
+  local_item_id: string | null;
+  local_reference: string | null;
+  local_cost_cents: number | null;
+  local_verified: boolean;
+  issues: string[];
+  will_modify_cost: false;
+  will_modify_product: false;
+};
+export type CatalogPreview = {
+  mode: "read_only_snapshot_preview";
+  source: "operator_supplied_json";
+  automatically_approved: false;
+  writes_performed: 0;
+  summary: {
+    products: number; variants: number; matched: number;
+    review_required: number; unmapped: number;
+    missing_api_cost: number; missing_sku: number;
+  };
+  items: CatalogPreviewItem[];
+  warnings: string[];
+};
+
 export const merchantApi = {
   getSession: () => getJson<SessionInfo>("/api/v1/auth/session/"),
+  reconcileCatalog: (tenantId: string, products: unknown[]) =>
+    postJson<CatalogPreview>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/catalog/reconcile-preview/",
+      { products }
+    ),
   listCosts: (tenantId: string, opts?: { q?: string; status?: CostReviewStatus | ""; offset?: number }) => {
     const path = "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/cost-items/";
     const params = new URLSearchParams();
