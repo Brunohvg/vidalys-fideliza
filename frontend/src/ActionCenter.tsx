@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {
-  ArrowRight, BadgeCheck, BarChart3, CircleHelp, Gift, HeartHandshake,
+  ArrowRight, BarChart3, CircleHelp, Gift, HeartHandshake,
   LockKeyhole, PlugZap, ShieldCheck, Sparkles, UsersRound
 } from "lucide-react";
 import {merchantApi, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus} from "./api";
