@@ -73,10 +73,17 @@ class TokenSecurityTests(SimpleTestCase):
         self.assertEqual(posted["grant_type"], "authorization_code")
         self.assertEqual(posted["client_id"], "12345")
         self.assertEqual(posted["code"], "synthetic-code-123")
-        for scopes in ("read_products,write_products", "read_orders", ""):
+        # Scopes extras do app não devem bloquear as leituras que ele usa.
+        for scopes in ("read_products,write_products", "read_products,read_customers,read_orders",
+                       "write_products,write_customers,write_orders"):
+            with self.subTest(scope=scopes):
+                result=exchange_code("synthetic-code-123", "12345", "synthetic-secret",
+                    opener=FakeOpener({**good, "scope": scopes}))
+                self.assertEqual(set(result["scope"].split(",")), set(scopes.split(",")))
+        for scopes in ("read_orders", "", "read_customers"):
             with self.subTest(scope=scopes), self.assertRaises(OAuthExchangeError):
                 exchange_code("synthetic-code-123", "12345", "synthetic-secret",
-                              opener=FakeOpener({**good, "scope": scopes}))
+                    opener=FakeOpener({**good, "scope": scopes}))
 
     def test_provider_rejects_bad_store_ids(self):
         for user_id in (None, 0, "-10", "https://invalid.example", True):
