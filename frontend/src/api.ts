@@ -203,7 +203,8 @@ export type CashbackWalletView = {
 };
 
 export type ProgramTerms = {
-  id: string; version: string; title: string; body: string; approved_at: string;
+  id: string; version: string; title: string; body: string;
+  privacy_notice: string; approved_at: string;
 };
 export type ProgramTermsStatus = {
   mode: "approval_required";
@@ -226,6 +227,15 @@ export type PublicInvitationPreview = {
   mode: "explicit_consent_only"; store_name: string;
   terms: ProgramTerms; expires_at: string;
   identity_verified: false; benefits_active: false;
+};
+export type PublicStoreProgram = {
+  mode: "public_pre_enrollment";
+  store_name: string; store_slug: string; terms: ProgramTerms;
+  identity_verification_required: true; benefits_active: false; note: string;
+};
+export type PublicStoreJoinResult = {
+  status: "pending_verification"; participant_created: false;
+  cashback_enabled: false; terms_version: string; message: string;
 };
 export type PublicConsentResult = {
   status: "pending_verification"; receipt_id: string; terms_version: string;
@@ -304,7 +314,7 @@ export const merchantApi = {
   },
   currentProgramTerms: (tenantId: string) =>
     getJson<ProgramTermsStatus>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/program-terms/"),
-  approveProgramTerms: (tenantId: string, input: {version:string;title:string;body:string}) =>
+  approveProgramTerms: (tenantId: string, input: {version:string;title:string;body:string;privacy_notice:string}) =>
     postJson<ProgramTermsStatus>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/program-terms/",input),
   createEnrollmentInvitation: (tenantId: string) =>
     postJson<InvitationCreated>("/api/v1/tenants/" + encodeURIComponent(tenantId) +
@@ -378,6 +388,13 @@ export const merchantApi = {
 };
 
 export const publicEnrollmentApi = {
+  store: (slug:string) =>
+    getJson<PublicStoreProgram>("/api/v1/public/programs/"+encodeURIComponent(slug)+"/"),
+  joinStore: (slug:string,data:{
+    name:string;email:string;terms_version:string;
+    accepted_terms:boolean;marketing_opt_in:boolean;
+  }) => postJson<PublicStoreJoinResult>(
+    "/api/v1/public/programs/"+encodeURIComponent(slug)+"/join/",data),
   prepareCsrf: () => merchantApi.getSession(),
   preview: (token:string) =>
     postJson<PublicInvitationPreview>("/api/v1/public/enrollment/preview/",{token}),
