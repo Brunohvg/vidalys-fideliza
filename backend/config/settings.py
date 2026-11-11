@@ -142,6 +142,11 @@ FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED = env_bool(
     "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", False
 )
 
+# Manual approval of verified participants; NO cashback/ledger activation.
+FIDELIZA_PARTICIPANT_APPROVAL_ENABLED = env_bool(
+    "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", False
+)
+
 
 # Contrato SMTP compatível com Mérito/QueroLink, isolado por aplicação no Coolify.
 # Desabilitado até que remetente Vidalys e credenciais sejam validados.
