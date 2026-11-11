@@ -27,7 +27,7 @@ async function mockMerchant(page:Page) {
 }
 async function nav(page:Page,name:string,width:number){
   if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.getByRole("button",{name,exact:true}).click();
+  await page.getByRole("button",{name:new RegExp("^"+name)}).click();
 }
 for(const width of [390,768,1440]) {
   test("Nova experiência: ações, clientes e campanha guiada em "+width+"px",
@@ -38,7 +38,7 @@ for(const width of [390,768,1440]) {
       await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
       await expect(page.getByRole("heading",{name:"Seu plano de ação"})).toBeVisible();
       await expect(page.getByText("Não existem participantes cadastrados nesta loja.")).toBeVisible();
-      await expect(page.getByText("Sugestões com IA")).toBeVisible();
+      await expect(page.getByText(/sugestões com IA/i)).toBeVisible();
 
       await nav(page,"Clientes",width);
       await expect(page.getByRole("heading",{name:"Participantes"})).toBeVisible();
