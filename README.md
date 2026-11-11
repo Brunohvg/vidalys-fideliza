@@ -38,3 +38,7 @@ Notion (hub privado): https://app.notion.com/p/4148f612deaf8143b7d2c27f0623fa61
 
 ## Restrições
 Não conectar produção Nuvemshop, alterar tema Ipanema, instalar scripts, ativar cashback ou editar produtos/pedidos neste estágio. Credenciais e dados pessoais nunca vão ao GitHub.
+
+
+## Portal do lojista — etapa atual
+A rota / usa autenticação de sessão Django, com proteção CSRF e isolamento por associação a lojas. A rota /demo contém apenas exemplos ilustrativos sem API comercial. A calculadora da área autenticada chama a API por tenant; não cria ou concede cashback. Consulte docs/11-PORTAL-LOJISTA-ACESSO.md para provisionamento de usuários/lojas no staging, configurações seguras e limitações.

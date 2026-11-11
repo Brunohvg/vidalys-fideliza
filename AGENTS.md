@@ -47,3 +47,12 @@ Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (
 3. Faça alterações pequenas e fáceis de revisar, com commits/PRs claros.
 4. Execute os testes disponíveis e mostre resultado, screenshots e diffs; não invente evidências.
 5. Liste pendências e próximos passos; peça autorização para alterações em sistemas externos/produção.
+
+
+## Portal autenticado e tenant (P0)
+- A rota / deve exigir sessão válida do Django. Apenas /demo pode mostrar exemplos fictícios.
+- Todas as operações sensíveis pertencem a uma loja: verificar associação por usuário/tenant NO BACKEND, jamais confiar somente em seleção no frontend.
+- Formulários mutáveis e login usam CSRF, sessão HttpOnly, HTTPS e limitação de tentativas; não criar senhas demo, credenciais em README nem token no frontend.
+- A tela autenticada não apresenta métricas fictícias como se fossem reais. Dados sem integração devem exibir estado vazio ou indicação de funcionalidade em desenvolvimento.
+- O simulador remoto não gera descontos nem salva dados; qualquer custo desconhecido continua sem indicação de margem segura.
+- Validar desktop/mobile, estados vazios/erros/loading, acessibilidade e capturas antes de aprovar frontend. Referência: docs/11-PORTAL-LOJISTA-ACESSO.md.
