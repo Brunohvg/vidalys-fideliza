@@ -59,6 +59,7 @@ class PublicWithdrawalRequestView(APIView):
             status__in=[
                 EnrollmentSubmission.Status.PENDING_VERIFICATION,
                 EnrollmentSubmission.Status.EMAIL_VERIFIED,
+                EnrollmentSubmission.Status.LINKED,
             ],
         ).order_by("-accepted_at").first()
         if submission:
