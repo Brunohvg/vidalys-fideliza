@@ -46,6 +46,8 @@ services:
       NUVEMSHOP_API_USER_AGENT: ${NUVEMSHOP_API_USER_AGENT:-}
       # Bloqueio de inscrições com PII até revisão e autorização da homologação.
       FIDELIZA_PUBLIC_SIGNUP_ENABLED: ${FIDELIZA_PUBLIC_SIGNUP_ENABLED:-0}
+      FIDELIZA_EMAIL_DELIVERY_ENABLED: ${FIDELIZA_EMAIL_DELIVERY_ENABLED:-0}
+      FIDELIZA_PUBLIC_BASE_URL: ${FIDELIZA_PUBLIC_BASE_URL:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -72,7 +74,19 @@ services:
     restart: unless-stopped
     mem_limit: 256m
     cpus: 0.25
-    environment: *django_env
+    environment:
+      <<: *django_env
+      # Credenciais SMTP somente no worker; API nunca recebe EMAIL_HOST_PASSWORD.
+      FIDELIZA_EMAIL_DELIVERY_ENABLED: ${FIDELIZA_EMAIL_DELIVERY_ENABLED:-0}
+      FIDELIZA_PUBLIC_BASE_URL: ${FIDELIZA_PUBLIC_BASE_URL:-}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-1}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-0}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
     depends_on:
       api:
         condition: service_healthy
