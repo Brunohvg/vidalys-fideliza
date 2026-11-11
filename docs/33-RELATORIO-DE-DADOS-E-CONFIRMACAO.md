@@ -77,6 +77,11 @@ sem armazenar o e-mail no protocolo. Depois o relatório compara esse
 HMAC exclusivamente com adesões do mesmo tenant. Se a mensagem
 original não trouxe e-mail utilizável, o relatório fica marcado
 **parcial** e a conclusão é bloqueada para revisão manual.
+Se já houve exclusão do mesmo Customer, o relatório inclui
+registros ainda retidos sob pseudônimo, mas também é marcado
+**parcial**: aceitações que não tinham vínculo e tiveram o e-mail
+apagado não podem ser reidentificadas com segurança. Nesses casos,
+não se permite confirmar automaticamente o atendimento integral.
 
 Limite por relatório: no máximo 1 MB e 2.000 movimentos internos;
 volumes maiores são encaminhados para atendimento especial em vez
