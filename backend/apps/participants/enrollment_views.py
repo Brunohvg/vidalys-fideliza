@@ -167,8 +167,12 @@ class PendingEnrollmentsView(APIView):
         member = member_for(request, tenant_id)
         if not can_edit(member):
             return secure(Response({"detail": "Apenas administrador pode consultar aceites."}, status=403))
-        queryset = EnrollmentSubmission.objects.filter(tenant_id=tenant_id).exclude(
-            status=EnrollmentSubmission.Status.WITHDRAWN
+        queryset = EnrollmentSubmission.objects.filter(
+            tenant_id=tenant_id,
+            status__in=[
+                EnrollmentSubmission.Status.PENDING_VERIFICATION,
+                EnrollmentSubmission.Status.EMAIL_VERIFIED,
+            ],
         )
         items = [{
             "id": str(item.id), "name": item.name, "email": item.email,
