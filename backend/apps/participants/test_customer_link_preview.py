@@ -12,6 +12,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.nuvemshop.customer_lookup import exact_email_match, read_customer_candidates
+from apps.nuvemshop.provider import exchange_code, OAuthExchangeError
 from apps.nuvemshop.models import NuvemshopInstallation
 from apps.nuvemshop.scopes import allowed_scopes, has_customer_access
 from apps.nuvemshop.security import OAuthConfig
@@ -33,6 +34,28 @@ class ScopeContractTests(TestCase):
             with self.subTest(scope=scope):
                 self.assertFalse(allowed_scopes(scope, customer_preview_enabled=True))
         self.assertFalse(has_customer_access("read_products", customer_preview_enabled=True))
+
+    def test_oauth_expansion_requires_explicit_flag_and_reinstallation(self):
+        class OAuthAnswer:
+            def __init__(self, scopes):
+                self.scopes = scopes
+            def open(self, req, timeout):
+                return io.BytesIO(json.dumps({
+                    "access_token": "x" * 48,
+                    "token_type": "bearer", "user_id": 1234,
+                    "scope": self.scopes,
+                }).encode())
+        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=False):
+            with self.assertRaises(OAuthExchangeError):
+                exchange_code("secure-code-123", "11111", "test-client-secret",
+                              opener=OAuthAnswer("read_products,read_customers"))
+        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=True):
+            result = exchange_code("secure-code-123", "11111", "test-client-secret",
+                                   opener=OAuthAnswer("read_customers,read_products"))
+            self.assertEqual(result["scope"], "read_customers,read_products")
+            with self.assertRaises(OAuthExchangeError):
+                exchange_code("secure-code-123", "11111", "test-client-secret",
+                              opener=OAuthAnswer("read_customers,read_products,write_orders"))
 
     def test_http_reads_minimum_customer_fields(self):
         class Capture:
