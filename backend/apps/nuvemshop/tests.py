@@ -188,7 +188,7 @@ class NuvemshopOAuthFlowTests(TestCase):
         with patch("apps.nuvemshop.views.exchange_code", return_value=self.fake_token()) as mocked:
             result = self.callback(nonce)
         self.assertEqual(result.status_code, 303)
-        self.assertEqual(result["Location"], "/?nuvemshop=connected")
+        self.assertEqual(result["Location"], "/?nuvemshop=connected&nuvemshop_tenant=" + str(self.tenant.pk))
         self.assertEqual(result["Referrer-Policy"], "no-referrer")
         self.assertNotIn(nonce, result["Location"])
         self.assertNotIn("synthetic-auth-code", result["Location"])

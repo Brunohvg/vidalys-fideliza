@@ -37,10 +37,12 @@ def _owner_admin(member):
     return member.role in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN)
 
 
-def _safe_result(status):
+def _safe_result(status, tenant_id=None):
     # Não transportar code/state/token para HTML, redirect ou histórico do navegador.
     response = HttpResponse(status=303)
-    response["Location"] = "/?nuvemshop=" + status
+    response["Location"] = "/?nuvemshop=" + status + (
+        "&nuvemshop_tenant=" + str(tenant_id) if tenant_id else ""
+    )
     response["Referrer-Policy"] = "no-referrer"
     response["Cache-Control"] = "no-store, max-age=0"
     response["X-Robots-Tag"] = "noindex, nofollow"
@@ -182,7 +184,7 @@ def oauth_callback(request):
             if not tenant.external_store_id:
                 tenant.external_store_id = received["store_id"]
                 tenant.save(update_fields=["external_store_id", "updated_at"])
-        return _safe_result("connected")
+        return _safe_result("connected", attempt.tenant_id)
     except (OAuthExchangeError, OAuthConfigurationError, IntegrityError, Tenant.DoesNotExist):
         return _safe_result("failed")
 

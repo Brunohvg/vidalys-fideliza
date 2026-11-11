@@ -41,6 +41,7 @@ export default function NuvemshopConnection({
     if (result === "failed") setError("A autorização não foi concluída. Verifique a conta, sessão e permissões.");
     if (result) {
       params.delete("nuvemshop");
+      params.delete("nuvemshop_tenant");
       const remaining = params.toString();
       window.history.replaceState(null, "", window.location.pathname +
         (remaining ? "?" + remaining : "") + window.location.hash);

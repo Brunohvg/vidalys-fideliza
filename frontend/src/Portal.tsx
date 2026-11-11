@@ -69,7 +69,9 @@ export default function Portal() {
     new URLSearchParams(window.location.search).has("nuvemshop") ? "catalog" : "overview"
   );
   const [drawer, setDrawer] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>(() =>
+    new URLSearchParams(window.location.search).get("nuvemshop_tenant") || ""
+  );
   const [seedItem, setSeedItem] = useState<CostItem | null>(null);
 
   useEffect(() => {
