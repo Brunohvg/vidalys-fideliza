@@ -32,8 +32,7 @@ substitui politica de backup e teste de restauracao antes de dados reais.
 
 O arquivo ativo usa os nomes consumidos pelo Django, sem aliases FIDELIZA_DB_PASSWORD,
 FIDELIZA_DJANGO_SECRET_KEY ou SERVICE_PASSWORD_64_DJANGO da preparacao anterior.
-Recarregar o Compose e remover essas variaveis obsoletas do recurso novo. Nenhuma senha administrativa e repassada por variavel de ambiente para os containers.
-Provisionar conta piloto apenas por fluxo interativo autorizado e seguro.
+Recarregar o Compose e remover essas variaveis obsoletas do recurso novo. Nenhuma senha administrativa e repassada por variavel de ambiente para os containers.\nProvisionar conta piloto apenas por fluxo interativo autorizado e seguro.
 
 Nao imprimir credenciais nem incluir valores em GitHub, capturas ou chat. Nao
 copiar senhas, usuarios ou URLs de bancos existentes. Nao criar senha padrao.

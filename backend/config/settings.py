@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
     "rest_framework", "apps.core.apps.CoreConfig", "apps.tenants.apps.TenantsConfig",
     "apps.margin.apps.MarginConfig",
+    "apps.costs.apps.CostsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
