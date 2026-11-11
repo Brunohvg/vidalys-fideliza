@@ -1,39 +1,18 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
-  ArrowRight, BadgeCheck, ChartNoAxesCombined, ChevronDown, Check,
+  ArrowRight, ChevronDown, Check,
   CircleHelp, Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
-  LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, Target, UsersRound, X
+  LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, Target, UsersRound, X, BarChart3, HeartHandshake
 } from "lucide-react";
 import MarginSimulator from "./MarginSimulator";
-import CampaignPlanner from "./CampaignPlanner";
+import CampaignGuide from "./CampaignGuide";
+import ParticipantsBoard from "./ParticipantsBoard";
+import ActionCenter from "./ActionCenter";
 import CostCatalog from "./CostCatalog";
 import CatalogReconciliation from "./CatalogReconciliation";
 import { ApiError, merchantApi, type CostItem, type SessionInfo, type Store } from "./api";
 
-type Screen = "overview" | "margin" | "campaign" | "costs" | "catalog" | "roadmap";
-
-const journey = [
-  {
-    title: "Defina uma margem segura",
-    description: "Simule descontos, custos e limites antes de oferecer crédito.",
-    state: "available", icon: ShieldCheck
-  },
-  {
-    title: "Conecte sua Nuvemshop",
-    description: "Autorização segura e prévia de produtos em teste, sem leitura de pedidos.",
-    state: "future", icon: ShoppingBag
-  },
-  {
-    title: "Crie sua primeira campanha",
-    description: "Cashback, pontos e resgates entram depois da validação financeira.",
-    state: "future", icon: Gift
-  },
-  {
-    title: "Meça as recompras",
-    description: "Compare custos, retenção e resultados contra uma base confiável.",
-    state: "future", icon: ChartNoAxesCombined
-  }
-] as const;
+type Screen = "overview" | "clients" | "campaign" | "results" | "margin" | "costs" | "catalog" | "roadmap";
 
 const roleLabel: Record<Store["role"], string> = {
   owner: "Proprietário", admin: "Administrador", analyst: "Analista"
@@ -182,14 +161,19 @@ export default function Portal() {
       <div className="portal-nav-caption">MENU PRINCIPAL</div>
       <nav className="portal-nav">
         <button onClick={()=>navigate("overview")} className={page==="overview"?"is-active":""}><LayoutDashboard size={19}/> Visão geral</button>
+        <button onClick={()=>navigate("clients")} className={page==="clients"?"is-active":""}><UsersRound size={19}/> Clientes</button>
+        <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
+        <button onClick={()=>navigate("results")} className={page==="results"?"is-active":""}><BarChart3 size={19}/> Resultados</button>
+      </nav>
+      <div className="portal-nav-caption portal-tools-caption">FERRAMENTAS AVANÇADAS</div>
+      <nav className="portal-nav portal-nav-secondary">
         <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Rentabilidade</button>
-        <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Target size={19}/> Planejamento <span>Beta</span></button>
         <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>
-        <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação <span>Prévia</span></button>
-        <button onClick={()=>navigate("roadmap")} className={page==="roadmap"?"is-active":""}><Gift size={19}/> Programas <span>Em breve</span></button>
+        <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
+        <button onClick={()=>navigate("roadmap")} className={page==="roadmap"?"is-active":""}><Target size={19}/> Motor de benefícios <span>Em breve</span></button>
       </nav>
       <div className="portal-side-bottom">
-        <div className="portal-side-guide"><CircleHelp size={21}/><b>Primeiro, controle a margem.</b><p>Simule benefícios antes de investir em cashback.</p><button onClick={()=>navigate("margin")}>Abrir simulador <ArrowRight size={16}/></button></div>
+        <div className="portal-side-guide"><HeartHandshake size={21}/><b>Comece pela recompra.</b><p>Desenhe sua campanha em três passos. A análise financeira está nas ferramentas.</p><button onClick={()=>navigate("campaign")}>Criar prévia <ArrowRight size={16}/></button></div>
         <button className="portal-signout" disabled={authBusy} onClick={doLogout}><LogOut size={18}/> Sair da conta</button>
       </div>
     </aside>
@@ -197,15 +181,15 @@ export default function Portal() {
     <div className="portal-main">
       <header className="portal-top">
         <div className="portal-top-title"><button onClick={()=>setDrawer(true)} className="portal-menu" aria-label="Abrir menu"><Menu size={23}/></button>
-          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="margin"?"Rentabilidade":page==="campaign"?"Planejamento":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":"Programas"}</strong>
+          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="clients"?"Clientes":page==="campaign"?"Campanhas":page==="results"?"Resultados":page==="margin"?"Rentabilidade":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":"Motor de benefícios"}</strong>
         </div>
         <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
       </header>
       <main className="portal-content">
         <div className="portal-content-head">
           <div><span className="portal-eyebrow">CENTRO DE FIDELIDADE</span>
-            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="margin"?"Inteligência de margem.":page==="campaign"?"Planeje antes de recompensar.":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":"Programas de fidelidade."}</h1>
-            <p>{page==="overview"?"Comece pelo que importa: criar benefícios sustentáveis para o seu negócio.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="campaign"?"Teste o orçamento e os riscos de uma campanha com números claros.":page==="costs"?"Registre custos por item, confira sua origem e simule sem comprometer a margem.":page==="catalog"?"Compare uma amostra JSON do catálogo com os custos da loja, sem gravar nada.":"Preparando um motor de pontos e cashback seguro."}</p>
+            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="clients"?"Seu relacionamento com clientes.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Inteligência de margem.":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":"Motor de benefícios."}</h1>
+            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="clients"?"Acompanhe adesões verificadas, sem confundir compradores com participantes.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
           <StatusPill>Ambiente de teste</StatusPill>
         </div>
@@ -221,45 +205,24 @@ export default function Portal() {
               </select><ChevronDown size={17}/></div>
               {tenant.status!=="active" && <span className="portal-unlinked">Cadastro {tenant.status==="draft"?"em preparação":"suspenso"}</span>}
             </div>
-            {page==="overview" && <div className="portal-home">
-              <section className="portal-welcome">
-                <div><span className="portal-welcome-label"><BadgeCheck size={17}/> SUA LOJA, SEU CONTROLE</span>
-                  <h2>Fidelidade que respeita <em>seus números.</em></h2>
-                  <p>O próximo benefício não precisa começar com um desconto. Descubra primeiro quanto sua loja pode oferecer.</p>
-                  <div className="portal-welcome-actions">
-                    <button className="portal-primary" onClick={()=>navigate("margin")}>Simular minha margem <ArrowRight size={18}/></button>
-                    <button className="portal-welcome-secondary" onClick={()=>navigate("campaign")}>Planejar campanha <Target size={17}/></button>
-                    <button className="portal-welcome-secondary" onClick={()=>navigate("costs")}>Custos por SKU <PackageSearch size={17}/></button>
-                    <button className="portal-welcome-secondary" onClick={()=>navigate("catalog")}>Prévia de catálogo <ScanSearch size={17}/></button>
-                  </div>
-                </div><div className="portal-welcome-icon" aria-hidden="true"><ShieldCheck size={64} strokeWidth={1.3}/></div>
-              </section>
-              <div className="portal-home-grid">
-                <section className="portal-panel">
-                  <div className="portal-panel-header"><div><span className="portal-eyebrow">INÍCIO RÁPIDO</span><h2>Sua jornada de fidelidade</h2></div><span className="portal-phase">4 etapas</span></div>
-                  <div className="portal-steps">{journey.map((item,index)=>{
-                    const Icon=item.icon;
-                    return <div className="portal-step" key={item.title}><span className={"portal-step-icon "+item.state}><Icon size={20}/></span><div><strong>{index+1}. {item.title}</strong><p>{item.description}</p></div><span className={"portal-step-state "+item.state}>{item.state==="available"?"Disponível":"Em desenvolvimento"}</span></div>;
-                  })}</div>
-                </section>
-                <section className="portal-panel portal-summary">
-                  <span className="portal-eyebrow">STATUS ATUAL</span><div className="portal-progress-graphic"><ShieldCheck size={30}/></div>
-                  <h2>Fundação protegida.</h2><p>Seu espaço está isolado das outras lojas. Não há campanhas, créditos ou compras reais conectadas.</p>
-                  <div className="portal-fact"><span>Loja</span><strong>{tenant.name}</strong></div>
-                  <div className="portal-fact"><span>Acesso</span><strong>{roleLabel[tenant.role]}</strong></div>
-                  <div className="portal-fact"><span>Integração Nuvemshop</span><strong>Consultar na Conciliação</strong></div>
-                  <button onClick={()=>navigate("margin")} className="portal-text-action">Abrir inteligência de margem <ArrowRight size={16}/></button>
-                </section>
-              </div>
-            </div>}
+            {page==="overview" && <ActionCenter tenantId={tenant.id} key={tenant.id}
+              onNavigate={destination=>navigate(destination)}/>}
+            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} key={tenant.id}/>}
+            {page==="results" && <section className="xp-panel xp-results-empty">
+              <div className="xp-results-icon"><BarChart3 size={40}/></div>
+              <span className="portal-eyebrow">MÉTRICAS VERIFICÁVEIS</span>
+              <h2>Resultados sem números inventados.</h2>
+              <p>Quando o programa registrar adesões, benefícios concedidos e resgates, esta área mostrará participantes ativos, recompras verificadas e custo de fidelização. Nenhum pedido ou faturamento é atribuído ao Fideliza apenas por coincidência.</p>
+              <button className="portal-primary" onClick={()=>navigate("campaign")}>Explorar campanha <ArrowRight size={17}/></button>
+            </section>}
             {page==="margin" && <MarginSimulator tenantId={tenant.id} initialItem={seedItem} key={tenant.id+":"+(seedItem?.id||"")}/>}
             {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
             {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
-            {page==="campaign" && <CampaignPlanner tenantId={tenant.id} key={tenant.id}/>}
+            {page==="campaign" && <CampaignGuide tenantId={tenant.id} key={tenant.id}/>}
             {page==="roadmap" && <section className="portal-panel portal-coming">
               <Gift size={37}/><h2>Programas, do jeito certo.</h2>
-              <p>O próximo módulo trará regras de cashback, pontos, reservas e resgate após a validação do checkout. Nenhum benefício será ativado sem autorização do lojista.</p>
-              <button className="portal-primary" onClick={()=>navigate("margin")}>Começar pelo simulador <ArrowRight size={16}/></button>
+              <p>O motor futuro fará o registro, concessão, reserva, resgate e estorno de benefícios com trilha de auditoria. Nenhum crédito é concedido nesta etapa.</p>
+              <button className="portal-primary" onClick={()=>navigate("campaign")}>Começar pelo planejamento <ArrowRight size={16}/></button>
             </section>}
           </>}
         {authError && <div className="portal-auth-error" role="alert">{authError}</div>}
