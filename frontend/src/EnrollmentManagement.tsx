@@ -4,8 +4,8 @@ import {ArrowRight, Check, ClipboardCopy, FileCheck2, HeartHandshake, Link2, Shi
 import "./enrollment.css";
 
 export default function EnrollmentManagement({
-  tenantId, role
-}:{tenantId:string;role:Store["role"]}){
+  tenantId, role, storeSlug, tenantStatus
+}:{tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"]}){
   const [terms,setTerms]=useState<ProgramTerms|null>(null);
   const [pending,setPending]=useState<EnrollmentPendingList|null>(null);
   const [loading,setLoading]=useState(true);
@@ -15,10 +15,13 @@ export default function EnrollmentManagement({
   const [version,setVersion]=useState("v1");
   const [title,setTitle]=useState("Regulamento do programa de fidelidade");
   const [body,setBody]=useState("");
+  const [privacy,setPrivacy]=useState("");
   const [busy,setBusy]=useState(false);
   const [link,setLink]=useState("");
   const [copied,setCopied]=useState(false);
   const canEdit=role==="owner"||role==="admin";
+  const publicReady=tenantStatus==="active"&&Boolean(terms?.privacy_notice?.trim().length&&terms.privacy_notice.trim().length>=120)&&!formOpen;
+  const publicUrl=window.location.origin+"/participar/"+encodeURIComponent(storeSlug);
 
   useEffect(()=>{
     if(!canEdit){setLoading(false);return;}
@@ -45,7 +48,8 @@ export default function EnrollmentManagement({
     event.preventDefault();setBusy(true);setError("");setMessage("");setLink("");
     try{
       const result=await merchantApi.approveProgramTerms(tenantId,{
-        version:version.trim(),title:title.trim(),body:body.trim()
+        version:version.trim(),title:title.trim(),body:body.trim(),
+        privacy_notice:privacy.trim()
       });
       setTerms(result.terms);setFormOpen(false);
       setMessage("Versão dos termos registrada. Nenhum benefício foi ativado.");
@@ -68,7 +72,7 @@ export default function EnrollmentManagement({
     catch{setError("Copie o link manualmente pelo campo abaixo.");}
   };
   const startRevision=()=>{
-    setFormOpen(true);setVersion("");setBody("");setLink("");setMessage("");
+    setFormOpen(true);setVersion("");setBody("");setPrivacy("");setLink("");setMessage("");
   };
 
   return <section className="enroll-manager" aria-labelledby="enroll-title">
@@ -108,17 +112,41 @@ export default function EnrollmentManagement({
             placeholder="Descreva a finalidade, as condições, validade, regras de privacidade e direitos do participante."
             onChange={e=>setBody(e.target.value)}/>
         </label>
-        <p className="enroll-muted">Revise o texto com o responsável jurídico. Uma nova versão invalida convites antigos ainda não aceitos.</p>
+        <label>Aviso de privacidade da loja (separado do regulamento)
+          <textarea required minLength={120} maxLength={2500} rows={5} value={privacy}
+            placeholder="Informe o responsável pelos dados, finalidade, forma de contato, direitos do titular e prazo de retenção."
+            onChange={e=>setPrivacy(e.target.value)}/>
+        </label>
+        <p className="enroll-muted">O texto e o aviso de privacidade devem ser revisados antes da divulgação.
+          A nova versão invalida convites antigos ainda não aceitos.</p>
         <div className="enroll-actions">
           {terms && <button type="button" className="enroll-secondary"
             onClick={()=>setFormOpen(false)}>Cancelar</button>}
-          <button type="submit" className="portal-primary" disabled={busy||body.trim().length<80}>
+          <button type="submit" className="portal-primary" disabled={busy||body.trim().length<80||privacy.trim().length<120}>
             <FileCheck2 size={17}/>{busy?"Registrando…":"Aprovar esta versão"}
           </button>
         </div>
       </form>}
       <div className="enroll-step">
         <span className="enroll-step-number">02</span>
+        <div><strong>Página pública da loja</strong>
+          <p>{publicReady?"Link permanente para solicitar adesão com seus termos e aviso de privacidade."
+            :"Disponível quando a loja estiver ativa e tiver termos e privacidade aprovados."}</p>
+        </div>
+      </div>
+      {publicReady && <div className="enroll-share">
+        <label>Link para divulgar na loja ou compartilhar
+          <input readOnly value={publicUrl} onFocus={e=>e.target.select()}/>
+        </label>
+        <button type="button" className="enroll-secondary"
+          onClick={()=>void navigator.clipboard.writeText(publicUrl).then(()=>{
+            setMessage("Link público copiado para compartilhar.");
+          }).catch(()=>setError("Selecione e copie o link manualmente."))}>
+          <ClipboardCopy size={16}/> Copiar página
+        </button>
+      </div>}
+      <div className="enroll-step">
+        <span className="enroll-step-number">03</span>
         <div><strong>Convite individual de adesão</strong>
           <p>Link único, válido por 24 horas. Envie manualmente, somente com a autorização necessária.</p>
         </div>
@@ -135,7 +163,7 @@ export default function EnrollmentManagement({
         </button>
       </div>}
       <div className="enroll-step">
-        <span className="enroll-step-number">03</span>
+        <span className="enroll-step-number">04</span>
         <div><strong>Aceites aguardando verificação</strong>
           <p>{pending?pending.total+" aceite(s) registrado(s) sem vínculo de cliente confirmado."
             :"Os aceites serão exibidos aqui depois de recebidos."}</p>
