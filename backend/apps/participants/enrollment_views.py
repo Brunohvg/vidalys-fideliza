@@ -56,7 +56,8 @@ def digest(token):
 def terms_payload(item):
     return {
         "id": str(item.id), "version": item.version, "title": item.title,
-        "body": item.body, "approved_at": item.approved_at.isoformat(),
+        "body": item.body, "privacy_notice": item.privacy_notice,
+        "approved_at": item.approved_at.isoformat(),
     }
 
 
@@ -81,15 +82,21 @@ class ProgramTermsView(APIView):
         member = member_for(request, tenant_id)
         if not can_edit(member):
             return secure(Response({"detail": "Apenas administrador pode aprovar termos."}, status=403))
-        if not valid_object(request, ("version", "title", "body")):
+        if not isinstance(request.data, dict) or set(request.data) not in (
+            {"version", "title", "body"},
+            {"version", "title", "body", "privacy_notice"},
+        ):
             return secure(Response({"detail": "Envie somente versão, título e termos."}, status=400))
         version = request.data["version"]
         title = request.data["title"]
         body = request.data["body"]
+        privacy_notice = request.data.get("privacy_notice", "")
         if (not isinstance(version, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", version)
                 or not isinstance(title, str) or not 3 <= len(title.strip()) <= 100
                 or not isinstance(body, str) or not 80 <= len(body.strip()) <= 4000
-                or any(ord(char) == 0 for char in (title + body))):
+                or not isinstance(privacy_notice, str)
+                or (privacy_notice and not 120 <= len(privacy_notice.strip()) <= 2500)
+                or any(ord(char) == 0 for char in (title + body + privacy_notice))):
             return secure(Response({"detail": "Versão, título ou texto dos termos inválido."}, status=400))
         Tenant.objects.select_for_update().get(pk=tenant_id)
         if ProgramTerms.objects.filter(tenant_id=tenant_id, version=version).exists():
@@ -97,6 +104,7 @@ class ProgramTermsView(APIView):
         ProgramTerms.objects.filter(tenant_id=tenant_id, active=True).update(active=False)
         terms = ProgramTerms.objects.create(
             tenant_id=tenant_id, version=version, title=title.strip(), body=body.strip(),
+            privacy_notice=privacy_notice.strip(),
             approved_by=request.user, approved_at=timezone.now(),
         )
         return secure(Response({
@@ -254,7 +262,7 @@ class PublicAcceptView(APIView):
             return secure(Response({"detail": "Convite inválido ou já utilizado."}, status=410))
         now = timezone.now()
         terms_digest = hashlib.sha256(
-            invitation.terms.body.encode("utf-8")
+            (invitation.terms.body + ("\n" + invitation.terms.privacy_notice if invitation.terms.privacy_notice else "")).encode("utf-8")
         ).hexdigest()
         receipt = EnrollmentSubmission.objects.create(
             tenant_id=invitation.tenant_id,
