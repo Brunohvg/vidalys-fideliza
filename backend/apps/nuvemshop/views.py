@@ -77,6 +77,13 @@ class NuvemshopStatusView(APIView):
                 ),
                 "requires_partner_portal_scope_and_reinstallation": not customer_granted,
                 "will_activate_participants": False,
+                "participant_approval_available": bool(
+                    configured and customer_granted and installed
+                    and settings.FIDELIZA_PARTICIPANT_APPROVAL_ENABLED
+                    and settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
+                    and installed.client_id == cfg.client_id
+                    and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
+                ),
                 "will_credit_cashback": False,
             },
             "configured": configured,
