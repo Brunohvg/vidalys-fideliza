@@ -175,7 +175,9 @@ export default function EnrollmentManagement({
       {pending && pending.items.length>0 && <div className="enroll-pending-list">
         {pending.items.map(item=><div key={item.id}>
           <strong>{item.name}</strong><span>{item.email}</span>
-          <small>Versão {item.terms_version} · Pendente de verificação</small>
+          <small>Versão {item.terms_version} · {item.status==="email_verified"
+            ?"E-mail confirmado · aguardando vínculo com a loja"
+            :"Aguardando confirmação do e-mail"}</small>
         </div>)}
       </div>}
       <p className="enroll-footnote"><ShieldCheck size={16}/>
