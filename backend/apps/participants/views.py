@@ -83,14 +83,14 @@ class ParticipantListView(APIView):
             })
         response = Response({
             "source": "verified_opt_in_only",
-            "data_status": "no_enrollment_channel",
+            "data_status": "consent_verified" if summary["total"] else "no_enrollment_channel",
             "summary": summary,
             "total_filtered": count,
             "limit": 20,
             "offset": page_start,
             "items": result,
-            "note": "Nenhum cliente da Nuvemshop é participante automaticamente. "
-                    "A adesão só poderá ser registrada por um canal validado de aceite.",
+            "note": "Somente clientes com adesão expressa, e-mail confirmado e vínculo "
+                    "revisado com a loja aparecem aqui. Isso não ativa recompensas.",
         })
         response["Cache-Control"] = "private, no-store"
         return response
