@@ -182,3 +182,43 @@ class CostCatalogTests(TestCase):
         response = self.client.patch(self.item_url(item), {"expected_version":1,"name":"Renomeado"}, format="json")
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["reference"], "A-001")
+
+    def test_remapping_sku_revokes_old_verification(self):
+        self.login()
+        item = CostItem.objects.get(pk=self.create(
+            verify_cost=True, provenance="Custo conferido para SKU original"
+        ).data["id"])
+        r = self.client.patch(
+            self.item_url(item), {"expected_version": 1, "sku": "SKU-NOVA"}, format="json"
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["review_status"], "needs_review")
+        self.assertIsNone(r.data["verified_at"])
+
+    def test_changing_provenance_revokes_verification(self):
+        self.login()
+        item = CostItem.objects.get(pk=self.create(
+            verify_cost=True, provenance="Origem da conferência inicial"
+        ).data["id"])
+        r = self.client.patch(
+            self.item_url(item), {"expected_version": 1, "provenance": "Outra origem ainda sem conferência"},
+            format="json"
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["review_status"], "needs_review")
+        self.assertIsNone(r.data["verified_at"])
+
+    def test_remap_and_verify_same_request_requires_fresh_evidence(self):
+        self.login()
+        item = CostItem.objects.get(pk=self.create(
+            verify_cost=True, provenance="Nota antiga de custo"
+        ).data["id"])
+        r = self.client.patch(
+            self.item_url(item),
+            {"expected_version": 1, "external_variant_id": "88771",
+             "verify_cost": True, "provenance": "Nova nota de conferência para variante"},
+            format="json"
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["review_status"], "ready_for_simulation")
+        self.assertEqual(r.data["external_variant_id"], "88771")

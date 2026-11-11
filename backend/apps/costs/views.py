@@ -150,7 +150,7 @@ class CostItemDetailView(APIView):
                     "unit_cost_cents", "selling_price_cents",
                 ):
                     if key in data and getattr(item, key) != data[key]:
-                        if key == "unit_cost_cents":
+                        if key in ("unit_cost_cents", "reference", "sku", "external_variant_id"):
                             item.verified_at = None
                             item.verified_by = None
                         setattr(item, key, data[key])
@@ -162,6 +162,10 @@ class CostItemDetailView(APIView):
                     changed = True
                 elif "provenance" in data and data["provenance"] != item.provenance:
                     item.provenance = data["provenance"]
+                    # A evidência declarada mudou. Exigir nova conferência para
+                    # evitar apresentar uma origem substituída como já validada.
+                    item.verified_at = None
+                    item.verified_by = None
                     changed = True
                 if not changed:
                     return Response(CostItemSerializer(item).data)

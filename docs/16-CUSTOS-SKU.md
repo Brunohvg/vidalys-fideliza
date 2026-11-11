@@ -15,7 +15,7 @@ Resolver a maior limitação das simulações: o custo de mercadoria precisa ter
 - Custo ausente é NULL, não zero.
 - Custo positivo declarado manualmente começa com o estado **A conferir**.
 - Somente owner/admin pode marcar **Conferido pelo lojista**, com uma descrição de origem de pelo menos oito caracteres. Isso não significa auditoria oficial do ERP.
-- Alterar custo retira a confirmação anterior. Alterar somente preço não revoga a conferência do custo.
+- Alterar custo, SKU, referência, ID da variante ou nota de origem retira a conferência anterior. Alterar somente preço não revoga a conferência do custo.
 - O item fica **Pronto para simular** apenas quando há custo conferido manualmente e preço de venda informado.
 - Conferência apenas informa a origem declarada; não dá autorização para campanha, cashback ou desconto.
 
