@@ -44,6 +44,8 @@ services:
       NUVEMSHOP_TOKEN_KEYS: ${NUVEMSHOP_TOKEN_KEYS:-}
       NUVEMSHOP_OAUTH_CALLBACK_URL: ${NUVEMSHOP_OAUTH_CALLBACK_URL:-}
       NUVEMSHOP_API_USER_AGENT: ${NUVEMSHOP_API_USER_AGENT:-}
+      # Bloqueio de inscrições com PII até revisão e autorização da homologação.
+      FIDELIZA_PUBLIC_SIGNUP_ENABLED: ${FIDELIZA_PUBLIC_SIGNUP_ENABLED:-0}
     depends_on:
       redis:
         condition: service_healthy
