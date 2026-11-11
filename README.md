@@ -1,23 +1,40 @@
-# Vidalys Fideliza — Kit de produto e identidade v0.1
+# Vidalys Fideliza — SaaS de fidelidade e cashback
 
-Documentação para avaliação e para handoff ao Codex. Contém **arquitetura e regras propostas**, benchmarking, planejamento, identidade e logo conceitual. **Não é aplicativo funcional.** Nenhuma loja foi alterada ou conectada.
+Produto independente do Vidalys Flow, inicialmente para Nuvemshop. A Bibelô será a primeira loja-piloto após validação e autorização. **Neste momento é uma fundação técnica mais protótipo visual; não existe cashback, pontos ou integração Nuvemshop em funcionamento.**
 
-## Importante: atualização de design (v0.2)
-O projeto foi atualizado para deixar **UX/UI com prioridade P0**. Leia `AGENTS.md`, `docs/08-UX-UI-CRITERIOS.md` e `codex/PRIMEIRA_TAREFA.md`; eles incorporam as orientações mais recentes do Notion. A marca e o produto exigem protótipos e validação visual antes da aprovação das interfaces comerciais.
+## Stack
+- Backend: Python 3.12, Django 5.2 LTS, DRF, PostgreSQL, Redis e Celery.
+- Dependências Python: uv 0.10.0 com backend/pyproject.toml e backend/uv.lock versionados.
+- Frontend: React, TypeScript e Vite com tokens Vidalys; telas ilustrativas (dados fictícios).
+- Homologação: Docker Compose isolado, preparado para adaptação ao Coolify.
+- Qualidade: CI com testes backend, build do frontend e smoke test da stack Docker.
 
-**Para iniciar hoje no Codex:** abra `codex/PRIMEIRA_TAREFA.md` e copie o texto na primeira tarefa, depois de colocar os arquivos na raiz de um repositório privado `vidalys-fideliza`.
+## Comece pelo uv
+1. Instale Python 3.12 e uv seguindo a documentação oficial Astral.
+2. Entre na pasta backend.
+3. Execute: uv sync --locked --python 3.12
+4. O uv cria backend/.venv. Não inclua essa pasta no Git.
+5. Configure DJANGO_DEBUG=1 e use uv run --locked python manage.py migrate e uv run --locked python manage.py test.
+6. Execute uv run --locked python manage.py runserver.
 
-## Ordem recomendada
-1. `docs/01-PRD.md` e `docs/02-BENCHMARK.md`
-2. `docs/03-REGRAS-NEGOCIO.md` e `docs/04-ARQUITETURA.md`
-3. `docs/05-IDENTIDADE.md`, `brand/brand-board-conceito.png`, `brand/logo-horizontal.svg`
-4. `docs/06-ROADMAP.md` e `codex/CODEX_START.md`
-5. `docs/07-METRICAS-ECONOMIA.md`
+Atenção: sem DB_HOST e DATABASE_URL e com DEBUG=1, a base local de desenvolvimento será SQLite. Homologação e produção usam PostgreSQL.
 
-## Versão 0.1: riscos não resolvidos
-Validação de OAuth/Discount API em loja autorizada, custo de benefícios e margem (Avanço), política fiscal e LGPD, domínio/marca INPI, preço SaaS, testes reais de UX/checkout, aceitação da identidade gráfica.
+## Executar a stack por Docker Compose
+1. Na raiz, copie .env.example para .env.
+2. Substitua TODOS os placeholders por senhas e chaves fortes. Nunca versione o .env.
+3. Execute docker compose config para validar o arquivo.
+4. Execute docker compose up -d --build.
+5. Abra http://127.0.0.1:8080 e http://127.0.0.1:8080/api/health/.
 
-## Notion
-Hub privado: https://app.notion.com/p/4148f612deaf8143b7d2c27f0623fa61
+O servidor frontend escuta apenas na interface local em 127.0.0.1; o tráfego externo para homologação deve usar o proxy HTTPS do Coolify e uma configuração de rede revisada.
 
-© Conceito de marca do projeto, sujeito a aprovação. Não incluir arquivos de fonte/credenciais.
+## Identidade visual P0
+A experiência do lojista usa grafite #0B1120, azul #1263FF e ciano #00D1E6 como acento. Telas para consumidor usam a marca da loja; protótipos precisam de aprovação em 390/768/1440px e WCAG AA. O Django Admin não é interface comercial.
+
+## Documentação
+Leia AGENTS.md e docs/01-PRD.md até docs/08-UX-UI-CRITERIOS.md. Instruções de execução estão em docs/09-UV-EXECUCAO-COOLIFY.md. Handoff inicial: codex/PRIMEIRA_TAREFA.md.
+
+Notion (hub privado): https://app.notion.com/p/4148f612deaf8143b7d2c27f0623fa61
+
+## Restrições
+Não conectar produção Nuvemshop, alterar tema Ipanema, instalar scripts, ativar cashback ou editar produtos/pedidos neste estágio. Credenciais e dados pessoais nunca vão ao GitHub.
