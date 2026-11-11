@@ -1,5 +1,18 @@
 import type { MarginInput, MarginResult } from "./finance";
 
+export type PrivacyRequestsSummary = {
+  pending_total: number;
+  access_requests: number;
+  deletion_requests: number;
+  items: Array<{
+    id: string;
+    type: "data_access" | "deletion";
+    received_at: string;
+    status: "em_analise";
+  }>;
+  note: string;
+};
+
 export type TenantBranding = {
   program_name: string;
   primary_color: string;
@@ -348,6 +361,10 @@ export type CatalogPreview = {
 };
 
 export const merchantApi = {
+  getTenantPrivacyRequests: (tenantId:string) =>
+    getJson<PrivacyRequestsSummary>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/privacy/requests/"
+    ),
   getTenantSettings: (tenantId:string) =>
     getJson<TenantPreferences>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/settings/"),
   saveTenantBranding: (tenantId:string, expectedVersion:number, input:TenantBranding) =>
