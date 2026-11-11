@@ -9,6 +9,15 @@ Criar um SaaS multi-tenant de fidelidade para e-commerce, inicialmente Nuvemshop
 3. Notion, como fonte editorial mais recente: https://app.notion.com/p/4148f612deaf8143b7d2c27f0623fa61 (se acessível; não pressupor conexão).
 4. Registre conflitos e decida com aprovação humana; não assumir que hipótese comercial é regra aprovada.
 
+## Diferencial competitivo obrigatório — margem primeiro
+- Nosso posicionamento NÃO é "mais um app que gera cashback ou cupons".
+- A diferenciação prioritária é **fidelidade com controle de margem e orçamento**, seguida de mensuração de recompra incremental.
+- O simulador deve considerar descontos Pix, cupons, CMV por SKU, taxas, subsídio de frete e despesas variáveis; custo ausente nunca equivale a custo zero.
+- Nenhuma simulação gera saldo, libera desconto ou ativa campanha. O lojista precisa de revisão financeira, confirmação dos dados e consentimento para ativação.
+- Medir receita, margem e taxa de segunda compra com períodos comparáveis. Sem grupo controle ou método robusto, não alegar aumento causado pelo aplicativo.
+- Evolução planejada: orçamento por campanha, limites por cesta/variante, detecção de combinação de promoções, cohort/holdout e benefícios alternativos de menor custo.
+- Ver `docs/10-DIFERENCIAL-MARGIN-FIRST.md` e os testes de `apps.margin`. Não implementar IA de recomendação enquanto não houver dados confiáveis, feedback e limites.
+
 ## UI/UX é requisito P0, NÃO polimento posterior
 - O produto deve ter qualidade visual profissional, distintiva e consistente com a marca Vidalys (grafite `#0B1120`, azul `#1263FF`, ciano `#00D1E6` apenas como acento).
 - Antes de implementar telas de negócio, criar mapa de navegação, wireframes, protótipos de alta fidelidade e componentes/tokens reutilizáveis. Requisito visual tem a mesma importância que testes financeiros.
