@@ -11,6 +11,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.nuvemshop.models import NuvemshopInstallation
+from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.nuvemshop.security import OAuthConfig
 from apps.tenants.models import Tenant, TenantMembership
 from apps.wallets.models import CashbackEvent
@@ -202,6 +203,21 @@ class ParticipantApprovalTests(TestCase):
         self.install.save(update_fields=["scope","store_id"])
         self.assertEqual(self.approve().status_code,409)
         self.assertFalse(ProgramParticipant.objects.exists())
+
+    def test_privacy_redact_receipt_blocks_any_new_link(self):
+        PrivacyWebhookRequest.objects.create(
+            tenant=self.tenant,store_id="8731",customer_id="351",
+            topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
+            event_key="a"*64,
+            state=PrivacyWebhookRequest.State.NEEDS_REVIEW,
+            reason_code="pending_erasure",
+        )
+        a,b,c=self.mock_customer_api()
+        with a,b,c:
+            response=self.approve()
+        self.assertEqual(response.status_code,409)
+        self.assertFalse(ProgramParticipant.objects.exists())
+        self.assertFalse(EnrollmentCustomerLink.objects.exists())
 
     def test_existing_participant_is_not_adopted_silently(self):
         ProgramParticipant.objects.create(
