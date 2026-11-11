@@ -1,7 +1,7 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {
   ArrowRight,BookOpen,Check,CheckCircle2,Globe2,HeartHandshake,
-  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag,FileText
+  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
 } from "lucide-react";
 import {
   ApiError,merchantApi,type NuvemshopConnectionStatus,
@@ -33,6 +33,8 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   const [settings,setSettings]=useState<TenantPreferences|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
   const [privacy,setPrivacy]=useState<PrivacyRequestsSummary|null>(null);
+  const [reportBusy,setReportBusy]=useState<string|null>(null);
+  const [reportDownloads,setReportDownloads]=useState<Record<string,{digest:string;complete:boolean}>>({});
   const [brand,setBrand]=useState<TenantBranding|null>(null);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
@@ -45,6 +47,7 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   useEffect(()=>{
     let current=true;
     setLoading(true);setSettings(null);setIntegration(null);setPrivacy(null);
+    setReportDownloads({});
     setBrand(null);setError("");setNotice("");
     Promise.all([
       merchantApi.getTenantSettings(tenantId),
@@ -92,6 +95,54 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
       setError(friendlyError(cause,"Não foi possível atualizar a conexão com sua loja."));
       setConnecting(false);
     }
+  };
+
+  const downloadReport=async(requestId:string)=>{
+    if(reportBusy)return;
+    setReportBusy(requestId);setError("");setNotice("");
+    try{
+      const file=await merchantApi.downloadPrivacyReport(tenantId,requestId);
+      if(!/^[0-9a-f]{64}$/.test(file.digest)){
+        throw new Error("Relatório sem comprovante válido.");
+      }
+      const local=URL.createObjectURL(file.blob);
+      const link=document.createElement("a");
+      link.href=local;
+      link.download="relatorio-fideliza-"+requestId+".json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(local),1000);
+      setReportDownloads(old=>({...old,[requestId]:{
+        digest:file.digest,complete:file.complete,
+      }}));
+      setNotice(file.complete
+        ?"O arquivo foi preparado. Confira o conteúdo antes de confirmar o recebimento."
+        :"O relatório parcial foi preparado. A Vidalys precisa revisar os dados antes de encerrar o pedido.");
+    }catch(cause){
+      setError(friendlyError(cause,"Não foi possível preparar o relatório. Tente novamente."));
+    }finally{setReportBusy(null);}
+  };
+  const confirmReport=async(requestId:string)=>{
+    const item=reportDownloads[requestId];
+    if(!item?.complete||reportBusy)return;
+    setReportBusy(requestId);setError("");setNotice("");
+    try{
+      const result=await merchantApi.confirmPrivacyReport(tenantId,requestId,item.digest);
+      setPrivacy(old=>old?{...old,
+        pending_total:Math.max(0,old.pending_total-1),
+        access_requests:Math.max(0,old.access_requests-1),
+        items:old.items.filter(entry=>entry.id!==requestId),
+      }:old);
+      setReportDownloads(old=>{
+        const next={...old};
+        delete next[requestId];
+        return next;
+      });
+      setNotice(result.message);
+    }catch(cause){
+      setError(friendlyError(cause,"Não foi possível confirmar. Baixe novamente o relatório se os dados mudaram."));
+    }finally{setReportBusy(null);}
   };
 
   if(loading)return <section className="ss-loading" role="status">
@@ -272,9 +323,26 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
           Não há solicitações pendentes registradas para esta loja.</p>}
         {privacy?.items.length? <ul className="ss-privacy-list">
           {privacy.items.map(item=><li key={item.id}>
-            <span>{item.type==="data_access"?"Pedido de acesso aos dados":"Pedido de exclusão de dados"}</span>
-            <small>{new Date(item.received_at).toLocaleDateString("pt-BR")}
-              {" · "}Em análise</small>
+            <div className="ss-privacy-entry">
+              <span>{item.type==="data_access"?"Pedido de acesso aos dados":"Pedido de exclusão de dados"}</span>
+              <small>{new Date(item.received_at).toLocaleDateString("pt-BR")}
+                {" · "}Em análise</small>
+            </div>
+            {item.report_available&&<div className="ss-privacy-actions">
+              <button type="button" className="ss-secondary"
+                disabled={reportBusy!==null}
+                onClick={()=>void downloadReport(item.id)}>
+                <Download size={15}/>{reportBusy===item.id?"Preparando…":"Baixar relatório"}
+              </button>
+              {reportDownloads[item.id]?.complete&&<button type="button"
+                className="ss-secondary ss-report-confirm"
+                disabled={reportBusy!==null}
+                onClick={()=>void confirmReport(item.id)}>
+                <Check size={15}/>Confirmar que recebi
+              </button>}
+              {reportDownloads[item.id]&&!reportDownloads[item.id].complete&&
+                <small>O relatório precisa de revisão para concluir o pedido.</small>}
+            </div>}
           </li>)}
         </ul>:null}
         <p className="ss-muted">
