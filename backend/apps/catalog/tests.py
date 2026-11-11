@@ -77,3 +77,82 @@ class MappingTests(SimpleTestCase):
         ]:
             with self.subTest(variant=variant), self.assertRaises(InvalidSnapshot):
                 reconcile_products(products(variant), [])
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+from rest_framework.test import APIClient
+
+from apps.costs.models import CostItem, CostAudit
+from apps.tenants.models import Tenant, TenantMembership
+
+
+class PreviewApiTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create_user(username="preview-owner", password="test-pass-only")
+        self.analyst = User.objects.create_user(username="preview-analyst", password="test-pass-only")
+        self.other = User.objects.create_user(username="preview-other", password="test-pass-only")
+        self.tenant = Tenant.objects.create(name="Alpha", slug="preview-a")
+        self.foreign = Tenant.objects.create(name="Beta", slug="preview-b")
+        TenantMembership.objects.create(user=self.owner, tenant=self.tenant, role="owner")
+        TenantMembership.objects.create(user=self.analyst, tenant=self.tenant, role="analyst")
+        TenantMembership.objects.create(user=self.other, tenant=self.foreign, role="owner")
+        self.item = CostItem.objects.create(
+            tenant=self.tenant, reference="REF-1", name="Fita",
+            sku="FITA", external_variant_id="2001", unit_cost_cents=1200,
+            selling_price_cents=2990,
+        )
+        self.client = APIClient()
+
+    def url(self, tenant=None):
+        return reverse("catalog-reconcile-preview", kwargs={
+            "tenant_id": tenant or self.tenant.pk
+        })
+
+    def test_anonymous_rejected(self):
+        self.assertIn(self.client.post(self.url(), {"products": products()}, format="json").status_code, (401, 403))
+
+    def test_foreign_tenant_hidden(self):
+        self.client.force_authenticate(user=self.other)
+        self.assertEqual(
+            self.client.post(self.url(), {"products": products()}, format="json").status_code, 404
+        )
+
+    def test_analyst_preview_does_not_mutate_costs(self):
+        self.client.force_authenticate(user=self.analyst)
+        before = self.item.snapshot()
+        r = self.client.post(self.url(), {"products": products()}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["items"][0]["local_item_id"], str(self.item.id))
+        self.assertEqual(r.data["writes_performed"], 0)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.snapshot(), before)
+        self.assertEqual(CostAudit.objects.count(), 0)
+
+    def test_other_tenant_costs_never_leak(self):
+        CostItem.objects.create(
+            tenant=self.foreign, reference="REF-X", name="Outro",
+            sku="OUTRO", external_variant_id="5005", unit_cost_cents=1234,
+        )
+        self.client.force_authenticate(user=self.owner)
+        r = self.client.post(self.url(), {"products": products({
+            "id": 5005, "sku": "OUTRO", "price": "40.00"
+        })}, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.data["items"][0]["local_item_id"])
+        self.assertIsNone(r.data["items"][0]["local_cost_cents"])
+
+    def test_invalid_or_oversized_input_rejected(self):
+        self.client.force_authenticate(user=self.owner)
+        for payload in [
+            {"products": []},
+            {"products": products(), "arbitrary_extra_field": 1},
+            {"products": "not-list"},
+        ]:
+            self.assertEqual(self.client.post(self.url(), payload, format="json").status_code, 400)
+        huge = products()
+        huge[0]["name"] = "x" * 151000
+        self.assertEqual(
+            self.client.post(self.url(), {"products": huge}, format="json").status_code, 413
+        )
