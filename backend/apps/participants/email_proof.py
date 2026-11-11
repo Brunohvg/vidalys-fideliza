@@ -23,9 +23,19 @@ def digest(token: str) -> str:
     return hashlib.sha256(token.encode("ascii")).hexdigest()
 
 
-def email_delivery_ready() -> bool:
-    """Exige remetente validado no provedor; a checagem DNS é externa."""
+def email_links_enabled() -> bool:
+    """API só precisa do domínio canônico, não da senha SMTP do worker."""
     if not settings.FIDELIZA_EMAIL_DELIVERY_ENABLED:
+        return False
+    base = urlparse(settings.FIDELIZA_PUBLIC_BASE_URL)
+    return (base.scheme == "https" and bool(base.hostname) and not base.username
+            and not base.password and not base.query and not base.fragment
+            and not base.path.strip("/"))
+
+
+def email_delivery_ready() -> bool:
+    """No worker exige SMTP completo e remetente autorizado no provedor."""
+    if not email_links_enabled():
         return False
     if not (settings.EMAIL_HOST and settings.EMAIL_HOST_USER and
             settings.EMAIL_HOST_PASSWORD and settings.DEFAULT_FROM_EMAIL):
@@ -39,7 +49,7 @@ def email_delivery_ready() -> bool:
 
 def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str):
     """Emitir somente para conta não retirada, após commit, sem token no log."""
-    if not email_delivery_ready():
+    if not email_links_enabled():
         return False
     if purpose not in (EnrollmentEmailChallenge.Purpose.VERIFY,
                        EnrollmentEmailChallenge.Purpose.WITHDRAW):
@@ -67,7 +77,7 @@ def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str):
             from .tasks import send_enrollment_email
             send_enrollment_email.delay(str(challenge.id), token)
         except Exception:
-            logger.exception("Não foi possível enfileirar confirmação (desafio %s)", challenge.id)
+            logger.warning("Falha ao enfileirar confirmação (desafio %s)", challenge.id)
 
     transaction.on_commit(queue_mail)
     return True
