@@ -54,6 +54,7 @@ class EnrollmentSubmission(models.Model):
     class Status(models.TextChoices):
         PENDING_VERIFICATION = "pending_verification", "Aguardando verificação"
         EMAIL_VERIFIED = "email_verified", "E-mail confirmado"
+        LINKED = "linked", "Vínculo com a loja aprovado"
         WITHDRAWN = "withdrawn", "Solicitação retirada"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -97,3 +98,29 @@ class EnrollmentEmailChallenge(models.Model):
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["submission", "purpose", "created_at"],
                                 name="fideliza_email_chal_idx")]
+
+
+class EnrollmentCustomerLink(models.Model):
+    """Comprovação imutável da associação a um participante da mesma loja.
+
+    Não contém saldo e não implica ativação automática de benefícios.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE,
+                               related_name="customer_enrollment_links")
+    submission = models.OneToOneField(EnrollmentSubmission, on_delete=models.PROTECT,
+                                      related_name="customer_link")
+    participant = models.OneToOneField("participants.ProgramParticipant",
+                                       on_delete=models.PROTECT,
+                                       related_name="enrollment_link")
+    external_customer_id = models.CharField(max_length=64)
+    confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                     on_delete=models.SET_NULL, related_name="+")
+    confirmed_at = models.DateTimeField(auto_now_add=True)
+    source = models.CharField(max_length=40, default="nuvemshop_customer_email_match")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["tenant", "external_customer_id"],
+                                    name="loyalty_unique_verified_customer_link"),
+        ]
