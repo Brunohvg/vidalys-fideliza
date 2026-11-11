@@ -6,6 +6,22 @@ Data: 11/11/2026. Ambiente identificado por histórico:
 
 ## Contrato de variáveis
 **Compose recomendado:** `compose.coolify.external-db.yaml`
+
+### Isolamento no Coolify gerenciado
+
+O Coolify 4.7.5 acrescenta `env_file: .env` a todos os serviços do Compose
+gerenciado. Omitir uma variável de `environment` não a remove desse arquivo.
+Por isso o Compose ativo define valores vazios explícitos para credenciais
+herdadas e libera somente as necessárias: banco/chave Django na API e worker,
+OAuth na API e usuário/senha SMTP no worker. Frontend e Redis recebem valores
+vazios para essas credenciais. Aliases antigos e senhas de acesso ao portal
+também são bloqueados. Segredos continuam indisponíveis durante o build.
+
+Ao adicionar uma credencial, atualizar esse contrato e executar
+`python .github/scripts/check_coolify_env_isolation.py`. O teste reproduz a
+injeção global do Coolify usando apenas valores sintéticos, resolve a configuração
+com Docker Compose e falha se um serviço receber credenciais fora do seu escopo.
+Não inicia containers, não consulta serviços externos e não imprime valores.
 **NÃO usar:** `compose.coolify.yaml` (legado com DB embutido; mantido
 exclusivamente para smoke de regressão no CI).
 

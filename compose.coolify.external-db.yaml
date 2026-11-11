@@ -1,8 +1,32 @@
 # Banco independente: selecionar o destino privado fideliza-homolog no Coolify.
 # Connect to predefined network deve apontar SOMENTE para esse destino exclusivo.
 # Nao usar o destino compartilhado coolify nem publicar portas no host.
-# Compartilhado entre API e worker sem segredos da Nuvemshop.
+# Coolify gerenciado injeta env_file: .env em TODOS os serviços.
+# Valores vazios explícitos prevalecem sobre esse arquivo. Cada serviço abaixo
+# libera somente as credenciais que realmente utiliza.
+x-block-inherited-credentials: &blocked_credentials
+  DATABASE_URL: ""
+  DJANGO_SECRET_KEY: ""
+  NUVEMSHOP_CLIENT_ID: ""
+  NUVEMSHOP_CLIENT_SECRET: ""
+  NUVEMSHOP_TOKEN_KEYS: ""
+  NUVEMSHOP_OAUTH_CALLBACK_URL: ""
+  NUVEMSHOP_API_USER_AGENT: ""
+  EMAIL_HOST_USER: ""
+  EMAIL_HOST_PASSWORD: ""
+  # Aliases antigos e senha de acesso guardada somente no painel.
+  FIDELIZA_DATABASE_URL: ""
+  FIDELIZA_DJANGO_SECRET_KEY: ""
+  FIDELIZA_DB_PASSWORD: ""
+  SERVICE_PASSWORD_64_DJANGO: ""
+  POSTGRES_PASSWORD: ""
+  DB_PASSWORD: ""
+  FIDELIZA_HOMOLOG_LOGIN_PASSWORD: ""
+  FIDELIZA_TEST_ADMIN_PASSWORD: ""
+
+# Compartilhado entre API e worker sem segredos da Nuvemshop/SMTP herdados.
 x-django-env: &django_env
+  <<: *blocked_credentials
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
   DJANGO_DEBUG: "0"
   DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?}
@@ -15,6 +39,7 @@ x-django-env: &django_env
 services:
   redis:
     image: redis:7-alpine
+    environment: *blocked_credentials
     restart: unless-stopped
     mem_limit: 128m
     cpus: 0.15
@@ -97,6 +122,7 @@ services:
 
   frontend:
     build: ./frontend
+    environment: *blocked_credentials
     restart: unless-stopped
     mem_limit: 128m
     cpus: 0.10

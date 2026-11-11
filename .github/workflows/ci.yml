@@ -149,6 +149,8 @@ jobs:
       DJANGO_CSRF_TRUSTED_ORIGINS: https://staging.invalid
     steps:
       - uses: actions/checkout@v4
+      - name: Check credential isolation with Coolify shared env_file injection
+        run: python .github/scripts/check_coolify_env_isolation.py
       - name: Generate ephemeral isolated credentials
         run: |
           python - <<'PY'
