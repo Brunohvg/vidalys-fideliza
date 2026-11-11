@@ -237,6 +237,34 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         self.assertTrue(TenantMembership.objects.filter(tenant=self.tenant).exists())
         self.assertEqual(PrivacyWebhookRequest.objects.count(),2)
 
+    def test_unknown_store_is_reconciled_safely_if_provider_retries(self):
+        payload={"store_id":234567,"customer":{"id":555,"email":"new@example.invalid"}}
+        self.assertEqual(self.send("customer-redact",payload).status_code,202)
+        request=PrivacyWebhookRequest.objects.get(store_id="234567")
+        self.assertEqual(request.state,"unknown_store")
+        new_store=Tenant.objects.create(
+            name="Loja mapeada depois",slug="mapped-late",
+            status="active",external_store_id="234567",platform="nuvemshop",
+        )
+        NuvemshopInstallation.objects.create(
+            tenant=new_store,client_id="12345",store_id="234567",
+            scope="read_products",token_ciphertext="synthetic-token",
+        )
+        member=ProgramParticipant.objects.create(
+            tenant=new_store,external_customer_id="555",
+            display_name="Contato antigo",contact_email="new@example.invalid",
+            consent_at=timezone.now(),consent_channel="customer_portal",
+            terms_version="v1",status="active",
+        )
+        self.assertEqual(self.send("customer-redact",payload).status_code,202)
+        request.refresh_from_db()
+        member.refresh_from_db()
+        self.assertEqual(request.state,"needs_review")
+        self.assertEqual(request.tenant_id,new_store.id)
+        self.assertEqual(PrivacyWebhookRequest.objects.count(),1)
+        self.assertEqual(member.status,"withdrawn")
+        self.assertEqual(member.contact_email,"")
+
     def test_database_failure_returns_non_2xx_for_provider_retry(self):
         with patch("apps.nuvemshop.privacy_webhooks.PrivacyWebhookRequest.objects.create",
                    side_effect=RuntimeError("synthetic-error")):
