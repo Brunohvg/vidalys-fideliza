@@ -49,3 +49,6 @@
  .public-enroll-fields {grid-template-columns:1fr;gap:12px}
  .public-enroll-terms {max-height:260px;padding:15px}
 }
+
+.public-enroll-privacy-link {margin-top:24px;color:#526B7D;font-size:12px;line-height:1.6}
+.public-enroll-privacy-link a {display:inline-block;margin-left:6px;color:#087F79;font-weight:750;text-decoration:underline;text-underline-offset:3px}
