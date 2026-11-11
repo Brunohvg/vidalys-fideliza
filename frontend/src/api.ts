@@ -214,7 +214,7 @@ export type ProgramTermsStatus = {
 export type EnrollmentPending = {
   id: string; name: string; email: string; terms_version: string;
   accepted_at: string; marketing_opt_in: boolean;
-  status: "pending_verification";
+  status: "pending_verification" | "email_verified";
 };
 export type EnrollmentPendingList = {
   mode: "consents_pending_identity_verification";
