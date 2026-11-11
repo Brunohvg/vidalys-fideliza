@@ -34,7 +34,10 @@ export default function PublicEnrollment(){
       setLoading(false);return;
     }
     publicEnrollmentApi.prepareCsrf()
-      .then(()=>storeSlug?publicEnrollmentApi.store(storeSlug):publicEnrollmentApi.preview(token))
+      .then(async ()=>{
+        if(storeSlug) return await publicEnrollmentApi.store(storeSlug);
+        return await publicEnrollmentApi.preview(token);
+      })
       .then(data=>{if(active){setPreview(data);setError("");}})
       .catch(cause=>{if(active)setError(
         cause instanceof ApiError?cause.message:"Não foi possível validar o convite."
