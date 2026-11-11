@@ -44,6 +44,7 @@ else:
 assert not settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED, "Public signup must be off"
 assert not settings.FIDELIZA_EMAIL_DELIVERY_ENABLED, "External mail must be off"
 assert not settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
+assert not settings.FIDELIZA_PARTICIPANT_APPROVAL_ENABLED
 assert not settings.FIDELIZA_LEDGER_WRITES_ENABLED
 
 host = "fideliza-homolog.optarys.com.br"
