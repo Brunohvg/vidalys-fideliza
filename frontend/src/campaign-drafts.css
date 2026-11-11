@@ -1,0 +1,29 @@
+/* Complemento incremental ao visual v2 aprovado: não altera navegação, cores ou tipografia. */
+.xp-drafts-section {margin:18px 0 20px}
+.xp-draft-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 12px}
+.xp-draft-heading h3 {font-size:18px;color:#10253E;margin:5px 0}
+.xp-draft-heading p {font-size:12.5px;line-height:1.6;color:#577085;margin:0}
+.xp-draft-new {border:1px solid #C8DDD9;background:#F0F9F6;color:#087F79;border-radius:11px;
+  min-height:44px;padding:10px 15px;font-size:13px;font-weight:750;cursor:pointer}
+.xp-drafts-list {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:11px}
+.xp-draft-card {background:white;border:1px solid #DDE7EF;border-radius:15px;padding:15px;
+  display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;
+  min-height:115px;cursor:pointer;min-width:0}
+.xp-draft-card:hover,.xp-draft-card.is-selected {border-color:#087F79;background:#F0F9F6}
+.xp-draft-card strong {font-size:13px;color:#10253E;overflow-wrap:anywhere}
+.xp-draft-card span {font-size:12px;color:#577085}
+.xp-draft-card small {font-size:11.5px;color:#087F79;font-weight:700}
+.xp-draft-save-zone {display:flex;justify-content:space-between;align-items:center;
+  gap:18px;border:1px solid #DDE7EF;background:#F6F8FB;border-radius:14px;padding:18px;margin:21px 0 10px}
+.xp-draft-save-zone strong {color:#10253E;font-size:14px}
+.xp-draft-save-zone p {color:#577085;font-size:12.5px;line-height:1.6;margin:5px 0 0}
+.xp-draft-save-zone .portal-primary {flex-shrink:0;min-height:44px}
+.xp-draft-helper {color:#577085;font-size:12.5px;line-height:1.65}
+.xp-draft-error {color:#AD334B;font-size:13px;line-height:1.6}
+.xp-draft-success {color:#167A56;font-size:13px;line-height:1.6;font-weight:700}
+.xp-draft-new:focus-visible,.xp-draft-card:focus-visible {outline:3px solid #37D5BB;outline-offset:3px}
+@media (max-width:660px) {
+ .xp-draft-heading {align-items:flex-start;flex-direction:column}
+ .xp-draft-save-zone {align-items:stretch;flex-direction:column}
+ .xp-draft-save-zone .portal-primary {justify-content:center}
+}
