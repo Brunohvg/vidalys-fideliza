@@ -22,7 +22,7 @@ function Status({ready,label}:{ready:boolean;label:string}){
 function friendlyError(error:unknown,defaultMessage:string){
   // Esconder detalhes técnicos de falhas de integração do painel do lojista.
   if(error instanceof ApiError){
-    if(error.status===409)return "Esta opção ainda não está pronta para sua loja. Tente novamente mais tarde.";
+    if(error.status===409)return "Essas informações mudaram. Atualize a página antes de tentar novamente.";
     if(error.status===403)return "Seu usuário não tem autorização para realizar esta ação.";
     if(error.status===429)return "Já houve uma tentativa recente. Tente novamente em alguns instantes.";
     if(error.status===503)return "Conexão temporariamente indisponível. Tente novamente mais tarde.";
