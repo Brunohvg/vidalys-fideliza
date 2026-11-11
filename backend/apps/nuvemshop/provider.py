@@ -53,7 +53,6 @@ def exchange_code(code: str, client_id: str, client_secret: str, *, opener=None)
         raise OAuthExchangeError("Loja OAuth inválida.")
     if not isinstance(scopes, str):
         raise OAuthExchangeError("Escopos OAuth inválidos.")
-    scope_set = {x.strip() for x in scopes.split(",") if x.strip()}
     # Nunca armazenar credencial com poderes de escrita sem aprovação do escopo.
     if not allowed_scopes(scopes, customer_preview_enabled=(
             settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED)) or token_type != "bearer":
