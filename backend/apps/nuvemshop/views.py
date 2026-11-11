@@ -1,5 +1,7 @@
 """OAuth restrito e leitura de amostra: não cria nem altera produtos ou créditos."""
 import secrets
+from django.conf import settings
+from .scopes import has_product_access, has_customer_access
 from datetime import timedelta
 from urllib.parse import quote, urlsplit
 
@@ -60,7 +62,23 @@ class NuvemshopStatusView(APIView):
             configured = True
         except OAuthConfigurationError:
             cfg, configured = None, False
+        customer_preview_enabled = settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
+        customer_granted = bool(installed and has_customer_access(
+            installed.scope, customer_preview_enabled=customer_preview_enabled
+        ))
         response = Response({
+            "customer_matching": {
+                "preview_enabled": customer_preview_enabled,
+                "customer_scope_granted": customer_granted,
+                "read_only_preview_available": bool(
+                    configured and customer_granted and installed
+                    and installed.client_id == cfg.client_id
+                    and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
+                ),
+                "requires_partner_portal_scope_and_reinstallation": not customer_granted,
+                "will_activate_participants": False,
+                "will_credit_cashback": False,
+            },
             "configured": configured,
             "connected": installed is not None and cfg is not None
                          and installed.client_id == cfg.client_id
@@ -202,7 +220,8 @@ class LiveCatalogPreviewView(APIView):
         installed = NuvemshopInstallation.objects.filter(
             tenant_id=tenant_id, client_id=cfg.client_id
         ).first()
-        if (not installed or installed.scope != "read_products" or
+        if (not installed or not has_product_access(installed.scope,
+                customer_preview_enabled=settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED) or
                 member.tenant.external_store_id != installed.store_id):
             return Response({"detail": "Conecte esta loja com a permissão read_products."}, status=409)
 
