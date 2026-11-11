@@ -1,6 +1,7 @@
 from django.urls import path
 from .privacy_webhooks import privacy_webhook
 from .privacy_views import PrivacyRequestsView
+from .privacy_report_views import PrivacyReportDownloadView, PrivacyReportConfirmView
 from .views import (
     NuvemshopStatusView, OAuthStartView, LiveCatalogPreviewView, oauth_callback
 )
@@ -17,4 +18,8 @@ urlpatterns = [
          name="nuvemshop-privacy-webhook"),
     path("tenants/<uuid:tenant_id>/privacy/requests/",
          PrivacyRequestsView.as_view(), name="tenant-privacy-requests"),
+    path("tenants/<uuid:tenant_id>/privacy/requests/<uuid:request_id>/report/",
+         PrivacyReportDownloadView.as_view(), name="tenant-privacy-report"),
+    path("tenants/<uuid:tenant_id>/privacy/requests/<uuid:request_id>/confirm/",
+         PrivacyReportConfirmView.as_view(), name="tenant-privacy-report-confirm"),
 ]
