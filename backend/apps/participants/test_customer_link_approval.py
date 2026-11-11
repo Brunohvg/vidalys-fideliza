@@ -218,6 +218,19 @@ class ParticipantApprovalTests(TestCase):
         self.assertEqual(response.status_code,409)
         self.assertFalse(ProgramParticipant.objects.exists())
         self.assertFalse(EnrollmentCustomerLink.objects.exists())
+        # Mesmo se o protocolo foi concluído, a volta ao programa
+        # exige um fluxo de autorização posterior, não um clique repetido.
+        receipt=PrivacyWebhookRequest.objects.get(
+            store_id="8731", customer_id="351",
+            topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
+        )
+        receipt.state=PrivacyWebhookRequest.State.COMPLETED
+        receipt.save(update_fields=["state"])
+        cache.clear()
+        a,b,c=self.mock_customer_api()
+        with a,b,c:
+            self.assertEqual(self.approve().status_code,409)
+        self.assertFalse(ProgramParticipant.objects.exists())
 
     def test_existing_participant_is_not_adopted_silently(self):
         ProgramParticipant.objects.create(
