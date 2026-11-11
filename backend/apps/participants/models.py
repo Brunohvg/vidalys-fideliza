@@ -46,4 +46,4 @@ class ProgramParticipant(models.Model):
         ]
 
 # Importados aqui para reconhecimento do Django e migrações.
-from .enrollment_models import ProgramTerms, EnrollmentInvite, EnrollmentSubmission  # noqa: E402,F401
+from .enrollment_models import ProgramTerms, EnrollmentInvite, EnrollmentSubmission, EnrollmentEmailChallenge  # noqa: E402,F401
