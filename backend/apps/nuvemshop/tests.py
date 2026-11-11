@@ -213,6 +213,24 @@ class NuvemshopOAuthFlowTests(TestCase):
         self.assertEqual(status.json()["scope"], "read_products")
         self.assertNotIn("access_token", status.content.decode())
 
+    def test_extra_customer_permissions_visible_even_when_feature_off(self):
+        self.tenant.external_store_id = "999"
+        self.tenant.save(update_fields=["external_store_id"])
+        NuvemshopInstallation.objects.create(
+            tenant=self.tenant, client_id="12345", store_id="999",
+            scope="read_products,read_orders,read_customers,write_orders",
+            token_ciphertext=encrypt_token("synthetic-opaque-test-token", self.cipher_key),
+        )
+        status = self.client.get(self.status_url(), secure=True)
+        self.assertEqual(status.status_code, 200)
+        details = status.json()["customer_matching"]
+        self.assertTrue(details["customer_scope_granted"])
+        self.assertFalse(details["preview_enabled"])
+        self.assertFalse(details["read_only_preview_available"])
+        self.assertFalse(details["requires_partner_portal_scope_and_reinstallation"])
+        self.assertFalse(details["participant_approval_available"])
+        self.assertFalse(details["will_credit_cashback"])
+
     def test_state_is_one_time_even_with_same_code(self):
         started = self.start()
         nonce = self.state(started)
