@@ -1,12 +1,14 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertTriangle, ArrowRight, BadgeCheck, Calculator, ChevronDown,
   ChevronLeft, CircleDollarSign, Gift, LockKeyhole, ShieldCheck,
-  Sparkles, Target, UsersRound
+  RefreshCw, Save, Sparkles, Target, UsersRound
 } from "lucide-react";
 import CampaignPlanner from "./CampaignPlanner";
+import "./campaign-drafts.css";
 import RewardPreview from "./RewardPreview";
 import { brl, parseBrl, parsePercent } from "./finance";
+import { ApiError, merchantApi, type CampaignDraft, type CampaignDraftInput, type Store } from "./api";
 
 type Goal = "second_purchase" | "reactivation" | "recurrence";
 const goals: {id:Goal;title:string;description:string;icon:typeof Gift;label:string}[] = [
@@ -50,7 +52,7 @@ function parsePreview(ticket:string, orders:string, cashback:string, budget:stri
     capacity:Math.floor(b/per)};
 }
 
-export default function CampaignGuide({tenantId}:{tenantId:string}) {
+export default function CampaignGuide({tenantId, role}:{tenantId:string;role:Store["role"]}) {
   const [goal,setGoal]=useState<Goal>("second_purchase");
   const [ticket,setTicket]=useState("");
   const [orders,setOrders]=useState("");
@@ -60,6 +62,66 @@ export default function CampaignGuide({tenantId}:{tenantId:string}) {
   const [error,setError]=useState("");
   const [result,setResult]=useState<Preview|null>(null);
   const [showAdvanced,setShowAdvanced]=useState(false);
+  const [drafts,setDrafts]=useState<CampaignDraft[]>([]);
+  const [draftLoading,setDraftLoading]=useState(true);
+  const [draftListError,setDraftListError]=useState("");
+  const [selectedDraft,setSelectedDraft]=useState<CampaignDraft|null>(null);
+  const [saving,setSaving]=useState(false);
+  const [saveNotice,setSaveNotice]=useState("");
+  const [saveError,setSaveError]=useState("");
+  const canSave=role==="owner"||role==="admin";
+
+  useEffect(()=>{
+    let active=true;
+    setDraftLoading(true);
+    merchantApi.listCampaignDrafts(tenantId).then(response=>{
+      if(active){setDrafts(response.items);setDraftListError("");setDraftLoading(false);}
+    }).catch(cause=>{
+      if(active){
+        setDraftListError(cause instanceof ApiError?cause.message:"Rascunhos indisponíveis.");
+        setDraftLoading(false);
+      }
+    });
+    return ()=>{active=false;};
+  },[tenantId]);
+
+  const resumeDraft=(draft:CampaignDraft)=>{
+    setSelectedDraft(draft);setGoal(draft.goal);
+    setTicket((draft.ticket_cents/100).toFixed(2).replace(".",","));
+    setBudget((draft.budget_cents/100).toFixed(2).replace(".",","));
+    setCashback((draft.cashback_rate_bps/100).toString().replace(".",","));
+    setOrders(String(draft.projected_paid_orders));
+    setStep(2);setResult(null);setError("");setSaveError("");
+    setSaveNotice("Rascunho recuperado. Revise os valores e visualize a prévia.");
+  };
+
+  const startNew=()=>{
+    setSelectedDraft(null);setGoal("second_purchase");setTicket("");setBudget("");
+    setCashback("2");setOrders("");setStep(1);setResult(null);
+    setError("");setSaveError("");setSaveNotice("");
+  };
+
+  const saveDraft=async ()=>{
+    if(!result||!canSave||saving)return;
+    const input:CampaignDraftInput={
+      title:selectedDraft?.title||chosen.label+" · "+new Date().toLocaleDateString("pt-BR"),
+      goal, cashback_rate_bps:result.rate,
+      ticket_cents:result.ticket, projected_paid_orders:result.orders,
+      budget_cents:result.budget
+    };
+    setSaving(true);setSaveError("");setSaveNotice("");
+    try{
+      const saved=selectedDraft
+        ?await merchantApi.updateCampaignDraft(tenantId,selectedDraft.id,selectedDraft.version,input)
+        :await merchantApi.createCampaignDraft(tenantId,input);
+      setSelectedDraft(saved);
+      setDrafts(old=>[saved,...old.filter(entry=>entry.id!==saved.id)]
+        .sort((a,b)=>b.updated_at.localeCompare(a.updated_at)));
+      setSaveNotice("Rascunho salvo com segurança. Nenhum benefício foi ativado.");
+    }catch(cause){
+      setSaveError(cause instanceof ApiError?cause.message:"Não foi possível salvar o rascunho.");
+    }finally{setSaving(false);}
+  };
   const chosen=useMemo(()=>goals.find(g=>g.id===goal)!,[goal]);
 
   const next=(event:FormEvent)=>{
@@ -78,6 +140,30 @@ export default function CampaignGuide({tenantId}:{tenantId:string}) {
         <span className="xp-hero-note"><LockKeyhole size={15}/> Planejamento somente. Nenhuma campanha será publicada ou enviada.</span>
       </div>
       <div className="xp-hero-graphic" aria-hidden="true"><Gift size={64} strokeWidth={1.3}/></div>
+    </section>
+
+    <section className="xp-drafts-section" aria-label="Campanhas salvas como rascunho">
+      {draftLoading && <p role="status" className="xp-draft-helper">Carregando seus rascunhos…</p>}
+      {!draftLoading && draftListError && <p role="alert" className="xp-draft-error">
+        Não foi possível carregar rascunhos: {draftListError}
+      </p>}
+      {!draftLoading && drafts.length>0 && <>
+        <div className="xp-draft-heading">
+          <div><span className="portal-eyebrow">CONTINUE DE ONDE PAROU</span>
+            <h3>Rascunhos salvos</h3><p>Somente planejamento. Nenhuma campanha está ativa.</p></div>
+          <button type="button" onClick={startNew} className="xp-draft-new">Novo planejamento</button>
+        </div>
+        <div className="xp-drafts-list">
+          {drafts.slice(0,4).map(draft=><button
+            type="button" className={"xp-draft-card"+(selectedDraft?.id===draft.id?" is-selected":"")}
+            key={draft.id} onClick={()=>resumeDraft(draft)}>
+            <strong>{draft.title}</strong>
+            <span>{brl(draft.budget_cents)} de orçamento ·
+              {(draft.cashback_rate_bps/100).toLocaleString("pt-BR")}% de cashback</span>
+            <small>{new Date(draft.updated_at).toLocaleDateString("pt-BR")} · Retomar</small>
+          </button>)}
+        </div>
+      </>}
     </section>
 
     <div className="xp-wizard-steps" aria-label="Etapas da criação">
@@ -115,6 +201,8 @@ export default function CampaignGuide({tenantId}:{tenantId:string}) {
               <select value={cashback} onChange={e=>{setCashback(e.target.value);setResult(null);}}>
                 <option value="1">1%</option><option value="2">2%</option>
                 <option value="3">3%</option><option value="5">5%</option>
+                {!["1","2","3","5"].includes(cashback) &&
+                  <option value={cashback}>{cashback}% (rascunho)</option>}
               </select></label>
             <label><span>Orçamento mensal (R$)</span><small>Quanto você poderia reservar para benefícios.</small>
               <input inputMode="decimal" value={budget} placeholder="Ex.: 300,00" aria-label="Orçamento mensal"
@@ -153,10 +241,23 @@ export default function CampaignGuide({tenantId}:{tenantId:string}) {
         <RewardPreview creditCents={result.creditPerOrder} goal={chosen.label}/>
         <div className="xp-budget-hint"><AlertTriangle size={19}/>
           <p><b>Ativação indisponível:</b> ainda não existe motor de concessão, carteira, aceite do cliente nem custo confiável por pedido. Esta prévia não garante rentabilidade.</p></div>
+        <div className="xp-draft-save-zone">
+          <div><strong>{selectedDraft?"Atualizar rascunho":"Guardar esta campanha para depois"}</strong>
+            <p>O planejamento ficará na sua loja, sem publicar promoções ou enviar mensagens.</p></div>
+          <button className="portal-primary" type="button" disabled={!canSave||saving}
+            onClick={()=>void saveDraft()}><Save size={17}/>
+            {saving?"Salvando…":selectedDraft?"Atualizar rascunho":"Salvar rascunho"}
+          </button>
+        </div>
+        {!canSave && <p className="xp-draft-helper">Apenas proprietário ou administrador pode salvar.</p>}
+        {saveNotice && <p className="xp-draft-success" role="status">{saveNotice}</p>}
+        {saveError && <p className="xp-draft-error" role="alert">{saveError}</p>}
         <div className="xp-wizard-actions">
           <button className="xp-link-btn" type="button" onClick={()=>{setStep(2);setError("");}}><ChevronLeft size={17}/> Ajustar valores</button>
-          <button className="portal-primary" type="button" onClick={()=>setShowAdvanced(true)}>
+          <button className="xp-link-btn" type="button" onClick={()=>setShowAdvanced(true)}>
             Revisar custos avançados <Calculator size={17}/></button>
+          {selectedDraft && <button className="xp-link-btn" type="button" onClick={startNew}>
+            <RefreshCw size={17}/> Novo planejamento</button>}
         </div>
       </>}
     </section>
