@@ -54,3 +54,56 @@ for(const width of [390,768,1440]){
     expect(overflow).toBeLessThanOrEqual(1);
   });
 }
+
+
+for(const width of [390,768,1440]){
+  test("Página própria da loja solicita adesão com aviso de privacidade em "+width+"px",
+    async ({page})=>{
+      await page.setViewportSize({width,height:850});
+      await page.context().addCookies([{
+        name:"csrftoken",value:"test-public-store-only",url:"http://127.0.0.1:4173"
+      }]);
+      await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+        contentType:"application/json",
+        body:JSON.stringify({authenticated:false,user:null,tenants:[]})
+      }));
+      await page.route("**/api/v1/public/programs/loja-jardim/",route=>route.fulfill({
+        contentType:"application/json",
+        body:JSON.stringify({
+          mode:"public_pre_enrollment",store_name:"Loja Jardim",store_slug:"loja-jardim",
+          terms:{id:"57a26bb4-39aa-4198-a7f2-95d6af5b0021",
+            version:"v1",title:"Programa da Loja Jardim",
+            body:"Ao participar, você entende que a solicitação passará por revisão e "
+              +"nenhum cashback, ponto ou desconto será liberado automaticamente. "
+              +"Este programa ainda está em homologação.",
+            privacy_notice:"A Loja Jardim coletará nome e e-mail para confirmar sua identidade, "
+              +"processar sua solicitação e gerenciar sua participação. "
+              +"O titular pode solicitar acesso, correção ou eliminação pelos canais oficiais da loja.",
+            approved_at:"2026-11-11T12:00:00Z"},
+          identity_verification_required:true,benefits_active:false,
+          note:"A solicitação depende da verificação posterior do cadastro."
+        })
+      }));
+      await page.route("**/api/v1/public/programs/loja-jardim/join/",route=>route.fulfill({
+        status:202,contentType:"application/json",
+        body:JSON.stringify({
+          status:"pending_verification",terms_version:"v1",
+          participant_created:false,cashback_enabled:false,
+          message:"Solicitação recebida. A loja ainda precisa confirmar seu cadastro."
+        })
+      }));
+      await page.goto("/participar/loja-jardim");
+      await expect(page.getByText("Programa da Loja Jardim")).toBeVisible();
+      await expect(page.getByText("Aviso de privacidade da loja")).toBeVisible();
+      await expect(page.getByRole("checkbox",{name:/comunicações promocionais/})).not.toBeChecked();
+      await page.getByRole("textbox",{name:"Seu nome"}).fill("Cliente Interessado");
+      await page.getByRole("textbox",{name:"Seu e-mail"}).fill("cliente@example.invalid");
+      await page.getByRole("checkbox",{name:/Li e aceito os termos/}).check();
+      await page.getByRole("button",{name:"Registrar meu aceite"}).click();
+      await expect(page.getByRole("heading",{name:"Aceite registrado."})).toBeVisible();
+      await expect(page.getByText("não gera saldo, desconto, pontos ou cashback",{exact:false})).toBeVisible();
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+        .toBeLessThanOrEqual(1);
+    }
+  );
+}
