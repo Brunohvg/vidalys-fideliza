@@ -388,7 +388,23 @@ export const merchantApi = {
     )
 };
 
+export type EmailActionResult = {
+  status: "email_verified" | "withdrawn";
+  identity_verified_in_nuvemshop: false;
+  participant_created: false;
+  cashback_enabled: false;
+  message: string;
+};
+
 export const publicEnrollmentApi = {
+  requestWithdrawal: (slug:string,email:string) =>
+    postJson<{status:"accepted";message:string}>(
+      "/api/v1/public/programs/"+encodeURIComponent(slug)+"/withdraw-request/",
+      {email}
+    ),
+  confirmEmailAction: (token:string,action:"verify"|"withdraw") =>
+    postJson<EmailActionResult>("/api/v1/public/enrollment/email-action/",
+      {token,action}),
   store: (slug:string) =>
     getJson<PublicStoreProgram>("/api/v1/public/programs/"+encodeURIComponent(slug)+"/"),
   joinStore: (slug:string,data:{
