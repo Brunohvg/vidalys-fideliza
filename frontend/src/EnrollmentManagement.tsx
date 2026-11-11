@@ -4,8 +4,9 @@ import {ArrowRight, Check, ClipboardCopy, FileCheck2, HeartHandshake, Link2, Shi
 import "./enrollment.css";
 
 export default function EnrollmentManagement({
-  tenantId, role, storeSlug, tenantStatus
-}:{tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"]}){
+  tenantId, role, storeSlug, tenantStatus, onParticipantApproved
+}:{tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"];
+  onParticipantApproved?:()=>void}){
   const [terms,setTerms]=useState<ProgramTerms|null>(null);
   const [pending,setPending]=useState<EnrollmentPendingList|null>(null);
   const [loading,setLoading]=useState(true);
@@ -18,6 +19,9 @@ export default function EnrollmentManagement({
   const [privacy,setPrivacy]=useState("");
   const [signupEnabled,setSignupEnabled]=useState(false);
   const [customerAccess,setCustomerAccess]=useState(false);
+  const [approvalAvailable,setApprovalAvailable]=useState(false);
+  const [approving,setApproving]=useState<string|null>(null);
+  const [approvalTarget,setApprovalTarget]=useState<string|null>(null);
   const [customerCheckBusy,setCustomerCheckBusy]=useState<string|null>(null);
   const [customerCheckResult,setCustomerCheckResult]=useState<{
     submissionId:string;status:CustomerMatchPreview["status"];customerId:string|null
@@ -33,9 +37,13 @@ export default function EnrollmentManagement({
   useEffect(()=>{
     if(!canEdit){setLoading(false);return;}
     let active=true;setLoading(true);setError("");setLink("");
-    setCustomerAccess(false);setCustomerCheckResult(null);setCustomerCheckError("");
+    setCustomerAccess(false);setApprovalAvailable(false);
+    setApprovalTarget(null);setCustomerCheckResult(null);setCustomerCheckError("");
     merchantApi.nuvemshopStatus(tenantId)
-      .then(n=>{if(active)setCustomerAccess(Boolean(n.customer_matching?.read_only_preview_available));})
+      .then(n=>{if(active){
+        setCustomerAccess(Boolean(n.customer_matching?.read_only_preview_available));
+        setApprovalAvailable(Boolean(n.customer_matching?.participant_approval_available));
+      }})
       .catch(()=>{if(active)setCustomerAccess(false)});
     Promise.all([
       merchantApi.currentProgramTerms(tenantId),
@@ -90,11 +98,28 @@ export default function EnrollmentManagement({
     try{
       const result=await merchantApi.previewCustomerMatch(tenantId,submissionId);
       setCustomerCheckResult({submissionId,status:result.status,customerId:result.customer_id});
+      setApprovalTarget(null);
     }catch(cause){
       setCustomerCheckError(cause instanceof ApiError?cause.message:"Falha na prévia autorizada.");
     }finally{setCustomerCheckBusy(null);}
   };
 
+  const approveCustomer=async(submissionId:string,customerId:string)=>{
+    setApproving(submissionId);setError("");setMessage("");setCustomerCheckError("");
+    try{
+      const result=await merchantApi.approveCustomerLink(tenantId,submissionId,customerId);
+      setPending(old=>old?{...old,total:Math.max(0,old.total-1),
+        items:old.items.filter(item=>item.id!==submissionId)}:old);
+      setCustomerCheckResult(null);setApprovalTarget(null);
+      setMessage(result.message);
+      onParticipantApproved?.();
+    }catch(cause){
+      setCustomerCheckError(cause instanceof ApiError
+        ?(cause.status===409?"Não foi possível confirmar este vínculo. Consulte novamente o cadastro da loja.":cause.message)
+        :"Não foi possível aprovar a participação.");
+      setApprovalTarget(null);
+    }finally{setApproving(null);}
+  };
   return <section className="enroll-manager" aria-labelledby="enroll-title">
     <div className="enroll-head">
       <div className="enroll-symbol"><HeartHandshake size={23}/></div>
@@ -207,16 +232,38 @@ export default function EnrollmentManagement({
               onClick={()=>void previewCustomer(item.id)}>
               {customerCheckBusy===item.id?"Consultando…":"Conferir cadastro na Nuvemshop"}
             </button>
-            <span>Somente prévia. Nenhum participante ou benefício será criado.</span>
+            <span>Confirme o cadastro antes de permitir a participação.</span>
           </div>}
           {customerCheckResult?.submissionId===item.id && <div className="enroll-match-result"
             role="status">
             {customerCheckResult.status==="one_exact_match"
-              ?"Correspondência exata: cliente nº "+customerCheckResult.customerId+
-                " — ainda precisa de aprovação e vínculo seguro."
+              ?"Encontramos um cadastro correspondente ao e-mail confirmado."
               :customerCheckResult.status==="ambiguous"
-                ?"Mais de um cadastro correspondente; não é seguro vincular automaticamente."
-                :"Nenhum cadastro correspondente encontrado nesta loja."}
+                ?"Há mais de um cadastro correspondente. Esta pessoa precisa de uma revisão."
+                :"Não encontramos um cadastro correspondente nesta loja."}
+            {customerCheckResult.status==="one_exact_match"&&
+              approvalAvailable&&customerCheckResult.customerId&&
+              <div className="enroll-approval-panel">
+                <p>Confirme a participação apenas após revisar a solicitação e o regulamento aceito.
+                  Nenhuma recompensa será liberada agora.</p>
+                {approvalTarget===item.id
+                  ? <div className="enroll-approval-confirm">
+                      <strong>Confirmar a adesão deste cliente ao clube?</strong>
+                      <button type="button" className="enroll-secondary"
+                        disabled={approving===item.id}
+                        onClick={()=>setApprovalTarget(null)}>Voltar</button>
+                      <button type="button" className="portal-primary"
+                        disabled={approving===item.id}
+                        onClick={()=>void approveCustomer(item.id,customerCheckResult.customerId!)}>
+                        {approving===item.id?"Confirmando…":"Sim, aprovar participação"}
+                      </button>
+                    </div>
+                  : <button type="button" className="enroll-secondary"
+                      disabled={approving!==null}
+                      onClick={()=>setApprovalTarget(item.id)}>
+                      Aprovar participação
+                    </button>}
+              </div>}
           </div>}
         </div>)}
       </div>}
