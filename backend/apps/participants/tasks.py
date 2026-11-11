@@ -8,7 +8,7 @@ from django.conf import settings
 from django.core.mail import EmailMessage
 from django.utils import timezone
 from celery import shared_task
-from .email_proof import digest, email_delivery_ready
+from .email_proof import digest, email_delivery_ready, make_token
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60,
              acks_late=True, ignore_result=True)
-def send_enrollment_email(self, challenge_id: str, token: str):
+def send_enrollment_email(self, challenge_id: str):
     if not email_delivery_ready():
         return "delivery_disabled"
     try:
@@ -25,6 +25,7 @@ def send_enrollment_email(self, challenge_id: str, token: str):
         ).get(pk=challenge_id)
     except EnrollmentEmailChallenge.DoesNotExist:
         return "not_found"
+    token = make_token(challenge.id, challenge.purpose)
     if (challenge.token_digest != digest(token)
             or challenge.consumed_at is not None
             or challenge.expires_at <= timezone.now()
