@@ -16,6 +16,7 @@ from apps.nuvemshop.customer_lookup import (
     CustomerReadError, exact_email_match, read_customer_candidates,
 )
 from apps.nuvemshop.models import NuvemshopInstallation
+from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.nuvemshop.scopes import has_customer_access
 from apps.nuvemshop.security import OAuthConfigurationError, config, decrypt_token
 from apps.tenants.models import Tenant, TenantMembership
@@ -118,6 +119,19 @@ class CustomerLinkApproveView(APIView):
                     fresh.email_verified_at is None or fresh.withdrawn_at):
                 return secure(Response({"detail": "Esta solicitação não pode mais ser aprovada."},
                                        status=409))
+            if PrivacyWebhookRequest.objects.filter(
+                store_id=installed.store_id,
+                customer_id=requested_id,
+                topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
+                state__in=[
+                    PrivacyWebhookRequest.State.NEEDS_REVIEW,
+                    PrivacyWebhookRequest.State.PENDING,
+                    PrivacyWebhookRequest.State.UNKNOWN_STORE,
+                ],
+            ).exists():
+                return secure(Response({
+                    "detail": "Este cliente tem uma solicitação de privacidade pendente."
+                }, status=409))
             # Registros anteriores não são adotados silenciosamente.
             if (EnrollmentCustomerLink.objects.filter(
                     tenant_id=tenant_id,external_customer_id=requested_id).exists()
