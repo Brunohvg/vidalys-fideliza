@@ -73,3 +73,28 @@ jobs:
       - name: Shutdown test stack
         if: always()
         run: docker compose down -v --remove-orphans
+
+
+  visual_qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Screenshots e traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: margin-visual-qa
+          path: frontend/test-results
+          retention-days: 14
+          if-no-files-found: ignore
