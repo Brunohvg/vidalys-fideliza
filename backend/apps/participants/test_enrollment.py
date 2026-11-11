@@ -156,7 +156,7 @@ class EnrollmentPilotTests(TestCase):
         }
         missing = public.post(reverse("public-enrollment-accept"), body, format="json")
         self.assertEqual(missing.status_code, 403)
-        token_response = public.get(reverse("session-info"))
+        token_response = public.get(reverse("auth-session"))
         self.assertEqual(token_response.status_code, 200)
         csrf = public.cookies.get("csrftoken")
         self.assertIsNotNone(csrf)
