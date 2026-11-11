@@ -2,13 +2,14 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowRight, BadgeCheck, ChartNoAxesCombined, ChevronDown, Check,
   CircleHelp, Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
-  LogOut, Menu, ShieldCheck, ShoppingBag, Target, UsersRound, X
+  LogOut, Menu, PackageSearch, ShieldCheck, ShoppingBag, Target, UsersRound, X
 } from "lucide-react";
 import MarginSimulator from "./MarginSimulator";
 import CampaignPlanner from "./CampaignPlanner";
-import { ApiError, merchantApi, type SessionInfo, type Store } from "./api";
+import CostCatalog from "./CostCatalog";
+import { ApiError, merchantApi, type CostItem, type SessionInfo, type Store } from "./api";
 
-type Screen = "overview" | "margin" | "campaign" | "roadmap";
+type Screen = "overview" | "margin" | "campaign" | "costs" | "roadmap";
 
 const journey = [
   {
@@ -66,6 +67,7 @@ export default function Portal() {
   const [page, setPage] = useState<Screen>("overview");
   const [drawer, setDrawer] = useState(false);
   const [selectedId, setSelectedId] = useState<string>("");
+  const [seedItem, setSeedItem] = useState<CostItem | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -108,7 +110,8 @@ export default function Portal() {
     }
   };
 
-  const navigate = (next: Screen) => { setPage(next); setDrawer(false); };
+  const navigate = (next: Screen) => { setPage(next); setDrawer(false); if (next !== "margin") setSeedItem(null); };
+  const simulateProduct = (item: CostItem) => { setSeedItem(item); setPage("margin"); setDrawer(false); };
   const tenants = session?.authenticated ? session.tenants : [];
   const tenant = tenants.find(value => value.id === selectedId) || tenants[0];
 
@@ -176,6 +179,7 @@ export default function Portal() {
         <button onClick={()=>navigate("overview")} className={page==="overview"?"is-active":""}><LayoutDashboard size={19}/> Visão geral</button>
         <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Rentabilidade</button>
         <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Target size={19}/> Planejamento <span>Beta</span></button>
+        <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU <span>Novo</span></button>
         <button onClick={()=>navigate("roadmap")} className={page==="roadmap"?"is-active":""}><Gift size={19}/> Programas <span>Em breve</span></button>
       </nav>
       <div className="portal-side-bottom">
@@ -187,15 +191,15 @@ export default function Portal() {
     <div className="portal-main">
       <header className="portal-top">
         <div className="portal-top-title"><button onClick={()=>setDrawer(true)} className="portal-menu" aria-label="Abrir menu"><Menu size={23}/></button>
-          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="margin"?"Rentabilidade":page==="campaign"?"Planejamento":"Programas"}</strong>
+          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="margin"?"Rentabilidade":page==="campaign"?"Planejamento":page==="costs"?"Custos por SKU":"Programas"}</strong>
         </div>
         <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
       </header>
       <main className="portal-content">
         <div className="portal-content-head">
           <div><span className="portal-eyebrow">CENTRO DE FIDELIDADE</span>
-            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="margin"?"Inteligência de margem.":page==="campaign"?"Planeje antes de recompensar.":"Programas de fidelidade."}</h1>
-            <p>{page==="overview"?"Comece pelo que importa: criar benefícios sustentáveis para o seu negócio.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="campaign"?"Teste o orçamento e os riscos de uma campanha com números claros.":"Preparando um motor de pontos e cashback seguro."}</p>
+            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="margin"?"Inteligência de margem.":page==="campaign"?"Planeje antes de recompensar.":page==="costs"?"Conheça o custo antes do benefício.":"Programas de fidelidade."}</h1>
+            <p>{page==="overview"?"Comece pelo que importa: criar benefícios sustentáveis para o seu negócio.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="campaign"?"Teste o orçamento e os riscos de uma campanha com números claros.":page==="costs"?"Registre custos por item, confira sua origem e simule sem comprometer a margem.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
           <StatusPill>Ambiente de teste</StatusPill>
         </div>
@@ -206,7 +210,7 @@ export default function Portal() {
             <button onClick={doLogout} className="portal-secondary">Trocar de conta</button>
           </section> : <>
             <div className="portal-tenant-bar"><label htmlFor="portal-tenant">Loja selecionada</label>
-              <div className="portal-select-wrap"><select id="portal-tenant" value={tenant.id} onChange={e=>{setSelectedId(e.target.value);setPage("overview");}}>
+              <div className="portal-select-wrap"><select id="portal-tenant" value={tenant.id} onChange={e=>{setSelectedId(e.target.value);setSeedItem(null);setPage("overview");}}>
                 {tenants.map(t=><option key={t.id} value={t.id}>{t.name} · {roleLabel[t.role]}</option>)}
               </select><ChevronDown size={17}/></div>
               {tenant.status!=="active" && <span className="portal-unlinked">Cadastro {tenant.status==="draft"?"em preparação":"suspenso"}</span>}
@@ -219,6 +223,7 @@ export default function Portal() {
                   <div className="portal-welcome-actions">
                     <button className="portal-primary" onClick={()=>navigate("margin")}>Simular minha margem <ArrowRight size={18}/></button>
                     <button className="portal-welcome-secondary" onClick={()=>navigate("campaign")}>Planejar campanha <Target size={17}/></button>
+                    <button className="portal-welcome-secondary" onClick={()=>navigate("costs")}>Custos por SKU <PackageSearch size={17}/></button>
                   </div>
                 </div><div className="portal-welcome-icon" aria-hidden="true"><ShieldCheck size={64} strokeWidth={1.3}/></div>
               </section>
@@ -240,7 +245,8 @@ export default function Portal() {
                 </section>
               </div>
             </div>}
-            {page==="margin" && <MarginSimulator tenantId={tenant.id} key={tenant.id}/>}
+            {page==="margin" && <MarginSimulator tenantId={tenant.id} initialItem={seedItem} key={tenant.id+":"+(seedItem?.id||"")}/>}
+            {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
             {page==="campaign" && <CampaignPlanner tenantId={tenant.id} key={tenant.id}/>}
             {page==="roadmap" && <section className="portal-panel portal-coming">
               <Gift size={37}/><h2>Programas, do jeito certo.</h2>

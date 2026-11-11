@@ -41,17 +41,21 @@ async function getJson<T>(url: string): Promise<T> {
   return readResponse<T>(response);
 }
 
-async function postJson<T>(url: string, body: object): Promise<T> {
+async function writeJson<T>(method: "POST" | "PATCH", url: string, body: object): Promise<T> {
   const csrf = cookie("csrftoken");
   if (!csrf) throw new ApiError("Sessão de segurança não iniciada. Atualize a página.", 403);
   const response = await fetch(url, {
-    method: "POST",
+    method,
     credentials: "same-origin",
     cache: "no-store",
     headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
     body: JSON.stringify(body)
   });
   return readResponse<T>(response);
+}
+
+async function postJson<T>(url: string, body: object): Promise<T> {
+  return writeJson<T>("POST", url, body);
 }
 
 export type CampaignPlanInput = MarginInput & {
@@ -86,8 +90,76 @@ export type CampaignPlanResult = {
   warnings: string[];
 };
 
+export type CostReviewStatus = "missing_cost" | "needs_review" | "missing_price" | "ready_for_simulation";
+
+export type CostItem = {
+  id: string;
+  reference: string;
+  sku: string;
+  external_variant_id: string;
+  name: string;
+  unit_cost_cents: number | null;
+  selling_price_cents: number | null;
+  provenance: string;
+  verified_at: string | null;
+  verified_by_name: string | null;
+  version: number;
+  review_status: CostReviewStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CostList = {
+  summary: { total: number; missing_cost: number; needs_review: number; missing_price: number; ready: number };
+  total_filtered: number;
+  limit: number;
+  offset: number;
+  data_status: "manual_only";
+  items: CostItem[];
+};
+
+export type CostItemInput = {
+  reference?: string;
+  name?: string;
+  sku?: string;
+  external_variant_id?: string;
+  unit_cost_cents?: number | null;
+  selling_price_cents?: number | null;
+  provenance?: string;
+  verify_cost?: boolean;
+  expected_version?: number;
+};
+
+export type CostHistoryEntry = {
+  action: "create" | "update";
+  version: number;
+  created_at: string;
+  by: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown>;
+};
+
 export const merchantApi = {
   getSession: () => getJson<SessionInfo>("/api/v1/auth/session/"),
+  listCosts: (tenantId: string, opts?: { q?: string; status?: CostReviewStatus | ""; offset?: number }) => {
+    const path = "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/cost-items/";
+    const params = new URLSearchParams();
+    if (opts?.q) params.set("q", opts.q);
+    if (opts?.status) params.set("status", opts.status);
+    params.set("limit", "30");
+    params.set("offset", String(opts?.offset || 0));
+    return getJson<CostList>(path + "?" + params.toString());
+  },
+  createCost: (tenantId: string, data: CostItemInput) =>
+    postJson<CostItem>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/cost-items/", data),
+  updateCost: (tenantId: string, itemId: string, data: CostItemInput) =>
+    writeJson<CostItem>("PATCH", "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/cost-items/" + encodeURIComponent(itemId) + "/", data),
+  costHistory: (tenantId: string, itemId: string) =>
+    getJson<{ item_id: string; history: CostHistoryEntry[] }>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/cost-items/" + encodeURIComponent(itemId) + "/history/"
+    ),
   login: (username: string, password: string) =>
     postJson<{ authenticated: true; tenants: Store[] }>("/api/v1/auth/login/", { username, password }),
   logout: () => postJson<{ authenticated: false }>("/api/v1/auth/logout/", {}),

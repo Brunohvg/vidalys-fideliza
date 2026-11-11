@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { AlertTriangle, BadgeCheck, Calculator, Gauge, Info, LockKeyhole, RotateCcw, ShieldAlert } from "lucide-react";
 import { brl, parseBrl, parsePercent, simulateMargin, type MarginInput, type MarginResult } from "./finance";
-import { ApiError, merchantApi } from "./api";
+import { ApiError, merchantApi, type CostItem } from "./api";
 
 type FieldKey =
   | "subtotal" | "discount" | "cogs" | "fee" | "freight" | "other" | "cashback" | "minimum";
@@ -50,8 +50,17 @@ function toPercent(bps: number): string {
   return (bps / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + "%";
 }
 
-export default function MarginSimulator({ tenantId }: { tenantId?: string }) {
-  const [values, setValues] = useState<Inputs>(initial);
+export default function MarginSimulator({ tenantId, initialItem }: { tenantId?: string; initialItem?: CostItem | null }) {
+  const [values, setValues] = useState<Inputs>(() => initialItem &&
+    initialItem.review_status === "ready_for_simulation" &&
+    initialItem.unit_cost_cents !== null &&
+    initialItem.selling_price_cents !== null
+      ? {
+          ...initial, subtotal: (initialItem.selling_price_cents / 100).toFixed(2),
+          cogs: (initialItem.unit_cost_cents / 100).toFixed(2),
+          discount: "0", fee: "0", freight: "0", other: "0"
+        }
+      : initial);
   const [scenario, setScenario] = useState("base");
   const [remoteResult, setRemoteResult] = useState<MarginResult | null>(null);
   const [remoteError, setRemoteError] = useState("");
@@ -154,7 +163,11 @@ export default function MarginSimulator({ tenantId }: { tenantId?: string }) {
           <span className="margin-heading-icon"><Calculator size={20}/></span>
           <div><h3>Dados da venda</h3><p>Preencha valores reais quando estiverem disponíveis.</p></div>
         </header>
-        {tenantId && <div className="margin-example-note" role="note">
+        {initialItem && <div className="margin-example-note" role="note">
+          <Info size={18}/>
+          <span><b>{initialItem.name} — referência {initialItem.reference}.</b> Preço e custo foram copiados do cadastro manual. Desconto, taxas, frete e despesas começam em zero: preencha os custos faltantes. A conferência do lojista não substitui o ERP.</span>
+        </div>}
+        {tenantId && !initialItem && <div className="margin-example-note" role="note">
           <Info size={18}/>
           <span><b>Valores de exemplo.</b> Substitua os campos pelos valores da sua venda antes de interpretar o resultado.</span>
         </div>}
