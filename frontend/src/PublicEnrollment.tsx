@@ -67,10 +67,15 @@ export default function PublicEnrollment(){
     }finally{setBusy(false);}
   };
 
+  const branding=preview&&"store_slug" in preview?preview.branding:null;
+  const primary=branding?.primary_color||"#087F79";
+  const accent=branding?.accent_color||"#37D5BB";
+  const publicTitle=branding?.program_name||preview?.store_name||"FIDELIZA";
+
   return <div className="public-enroll-shell">
     <main className="public-enroll-card">
-      <div className="public-enroll-brand"><span><HeartHandshake size={25}/></span>
-        <div><strong>{preview?.store_name || "FIDELIZA"}</strong><small>PROGRAMA DE FIDELIDADE • TECNOLOGIA VIDALYS</small></div></div>
+      <div className="public-enroll-brand"><span style={{background:accent}}><HeartHandshake size={25}/></span>
+        <div><strong>{publicTitle}</strong><small>PROGRAMA DE FIDELIDADE • TECNOLOGIA VIDALYS</small></div></div>
       {loading && <div role="status" className="public-enroll-state">Validando convite seguro…</div>}
       {!loading && result && <div className="public-enroll-done" role="status">
         <CheckCircle2 size={42}/>
@@ -120,7 +125,7 @@ export default function PublicEnrollment(){
               onChange={e=>setMarketing(e.target.checked)}/>
             <span>Também aceito receber comunicações promocionais. Esta escolha é opcional e independente da adesão.</span>
           </label>
-          <button className="public-enroll-submit" type="submit" disabled={!accepted||busy}>
+          <button className="public-enroll-submit" type="submit" style={{background:primary}} disabled={!accepted||busy}>
             {busy?"Registrando aceite…":"Registrar meu aceite"}
           </button>
           <div className="public-enroll-warning"><LockKeyhole size={16}/>
@@ -128,6 +133,10 @@ export default function PublicEnrollment(){
             Nenhum benefício é concedido nesta etapa.</div>
         </form>}
       </>}
+      {branding?.support_email&&<p className="public-enroll-privacy-link">
+        Dúvidas sobre o programa? <a href={"mailto:"+branding.support_email}>
+          {branding.support_email}</a>
+      </p>}
       {storeSlug && <p className="public-enroll-privacy-link">
         Quer retirar sua solicitação de adesão?
         <a href={"/retirar/"+encodeURIComponent(storeSlug)}>Solicitar retirada por e-mail</a>.
