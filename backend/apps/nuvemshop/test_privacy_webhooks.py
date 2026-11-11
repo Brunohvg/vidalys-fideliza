@@ -19,6 +19,7 @@ from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation, OAuthAttempt
 from .privacy_models import PrivacyWebhookRequest
+from apps.wallets.models import CashbackWallet, CashbackEvent, CashbackEntry
 
 SECRET="private-hmac-for-synthetic-tests"
 
@@ -308,6 +309,163 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         TenantMembership.objects.create(tenant=self.tenant,user=analyst,role="analyst")
         self.client.force_login(analyst)
         self.assertEqual(self.client.get(path).status_code,403)
+
+    def _privacy_report_request(self,*,email="secret@example.invalid",request_id=995):
+        customer={"id":556}
+        if email is not None:
+            customer["email"]=email
+        self.assertEqual(self.send("customers-data-request",{
+            "store_id":91834,"customer":customer,
+            "data_request":{"id":request_id},
+            "orders_requested":[18,29],
+        }).status_code,202)
+        return PrivacyWebhookRequest.objects.get(request_id=str(request_id))
+
+    def _report_auth(self,user=None):
+        self.client.force_login(user or self.owner)
+        self.client.get("/api/v1/auth/session/",secure=True)
+        return {"secure":True,
+                "HTTP_X_CSRFTOKEN":self.client.cookies["csrftoken"].value,
+                "HTTP_ORIGIN":"https://testserver"}
+
+    def _post_report(self,receipt,action="report",data=None,**headers):
+        path=reverse("tenant-privacy-report" if action=="report"
+                     else "tenant-privacy-report-confirm",
+                     kwargs={"tenant_id":self.tenant.id,"request_id":receipt.id})
+        return self.client.post(path,
+                data=json.dumps(data if data is not None else {}),
+                content_type="application/json",**headers)
+
+    def test_report_exports_only_matching_customer_app_data(self):
+        submission,challenge,participant=self._make_submission()
+        wallet=CashbackWallet.objects.create(tenant=self.tenant,participant=participant)
+        event=CashbackEvent.objects.create(
+            wallet=wallet,kind="accrual",amount_cents=90,
+            rule_version="test-rule",source_order_id="order-123",
+            idempotency_key="test-report-event",
+        )
+        CashbackEntry.objects.create(
+            event=event,bucket="pending",delta_cents=90,
+        )
+        receipt=self._privacy_report_request()
+        self.assertEqual(len(receipt.customer_email_digest),64)
+        foreign=Tenant.objects.create(name="Loja estranha",slug="private-other",
+                                     external_store_id="765432",status="active")
+        ProgramParticipant.objects.create(
+            tenant=foreign,external_customer_id="556",
+            display_name="SENSITIVE OTHER TENANT",contact_email="other@example.invalid",
+            consent_at=timezone.now(),consent_channel="customer_portal",
+            terms_version="old",
+        )
+        headers=self._report_auth()
+        report=self._post_report(receipt,**headers)
+        self.assertEqual(report.status_code,200,report.content)
+        self.assertIn("attachment;",report["Content-Disposition"])
+        self.assertEqual(report["Cache-Control"],"private, no-store, max-age=0")
+        self.assertEqual(report["X-Fideliza-Report-Complete"],"true")
+        data=json.loads(report.content)
+        self.assertEqual(data["solicitacao"],"995")
+        self.assertEqual(len(data["participacoes"]),1)
+        self.assertEqual(len(data["aceites"]),1)
+        self.assertEqual(data["aceites"][0]["email"],"secret@example.invalid")
+        self.assertEqual(data["movimentos_financeiros_internos"][0]["valor_centavos"],90)
+        for secret in ("SENSITIVE OTHER TENANT","other@example.invalid",
+                       "synthetic-encrypted-token","token_digest",
+                       "idempotency_key","9876","orders_requested"):
+            self.assertNotIn(secret,report.content.decode())
+        digest=hashlib.sha256(report.content).hexdigest()
+        self.assertEqual(report["X-Fideliza-Report-Digest"],digest)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.state,"pending")
+        self.assertEqual(receipt.report_digest,digest)
+        self.assertEqual(receipt.report_accessed_by,self.owner)
+        self.assertIsNotNone(receipt.report_accessed_at)
+
+        self.assertEqual(
+            self._post_report(receipt,action="confirm",
+                              data={"confirm":True,"digest":digest},
+                              **headers).status_code,200)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.state,"completed")
+        self.assertEqual(receipt.delivery_confirmed_by,self.owner)
+        self.assertIsNotNone(receipt.processed_at)
+        self.assertEqual(receipt.reason_code,"merchant_confirmed_download")
+        self.assertEqual(self._post_report(receipt,**headers).status_code,409)
+        self.assertEqual(self._post_report(receipt,action="confirm",
+                        data={"confirm":True,"digest":digest},**headers).status_code,409)
+
+    def test_unlinked_consent_included_via_hmac_email_only(self):
+        submission,_,_=self._make_submission(linked=False)
+        receipt=self._privacy_report_request(email="SECRET@example.invalid")
+        report=self._post_report(receipt,**self._report_auth())
+        self.assertEqual(report.status_code,200)
+        data=json.loads(report.content)
+        self.assertEqual(data["participacoes"],[])
+        self.assertEqual(len(data["aceites"]),1)
+        self.assertEqual(data["aceites"][0]["id"],str(submission.id))
+        self.assertEqual(report["X-Fideliza-Report-Complete"],"true")
+
+    def test_report_without_customer_email_requires_manual_review(self):
+        self._make_submission(linked=False)
+        receipt=self._privacy_report_request(email=None)
+        headers=self._report_auth()
+        report=self._post_report(receipt,**headers)
+        self.assertEqual(report.status_code,200)
+        self.assertEqual(report["X-Fideliza-Report-Complete"],"false")
+        self.assertFalse(json.loads(report.content)["cobertura"]["aceites_sem_vinculo_identificaveis"])
+        result=self._post_report(
+            receipt,action="confirm",
+            data={"confirm":True,"digest":report["X-Fideliza-Report-Digest"]},
+            **headers,
+        )
+        self.assertEqual(result.status_code,409)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.state,"pending")
+
+    def test_changed_report_and_wrong_checksum_cannot_be_confirmed(self):
+        submission,_,_=self._make_submission()
+        receipt=self._privacy_report_request()
+        headers=self._report_auth()
+        report=self._post_report(receipt,**headers)
+        self.assertEqual(self._post_report(receipt,action="confirm",
+                         data={"confirm":True,"digest":"0"*64},**headers).status_code,409)
+        submission.name="Nome atualizado após download"
+        submission.save(update_fields=["name"])
+        result=self._post_report(receipt,action="confirm",
+            data={"confirm":True,"digest":report["X-Fideliza-Report-Digest"]},**headers)
+        self.assertEqual(result.status_code,409)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.state,"pending")
+        newer=self._post_report(receipt,**headers)
+        self.assertNotEqual(newer["X-Fideliza-Report-Digest"],
+                            report["X-Fideliza-Report-Digest"])
+        self.assertEqual(self._post_report(
+            receipt,action="confirm",
+            data={"confirm":True,"digest":newer["X-Fideliza-Report-Digest"]},
+            **headers).status_code,200)
+
+    def test_report_requires_csrf_and_owner_in_correct_store(self):
+        receipt=self._privacy_report_request()
+        path=reverse("tenant-privacy-report",kwargs={
+            "tenant_id":self.tenant.id,"request_id":receipt.id
+        })
+        self.assertIn(self._post_report(receipt).status_code,(401,403))
+        self.client.force_login(self.owner)
+        self.assertEqual(self._post_report(receipt).status_code,403)
+        headers=self._report_auth()
+        self.assertEqual(self.client.get(path,secure=True).status_code,405)
+        self.assertEqual(self._post_report(receipt,
+                        data={"email":"someone@example.invalid"},**headers).status_code,400)
+        outsider=get_user_model().objects.create_user(username="privacy-report-outsider")
+        other=Tenant.objects.create(name="Foreign",slug="privacy-report-other")
+        TenantMembership.objects.create(user=outsider,tenant=other,role="owner")
+        self._report_auth(outsider)
+        self.assertEqual(self._post_report(receipt,**self._report_auth(outsider)).status_code,404)
+        analyst=get_user_model().objects.create_user(username="privacy-report-analyst")
+        TenantMembership.objects.create(user=analyst,tenant=self.tenant,role="analyst")
+        self.assertEqual(self._post_report(receipt,**self._report_auth(analyst)).status_code,403)
+        receipt.refresh_from_db()
+        self.assertEqual(receipt.report_digest,"")
 
     def test_unknown_route_is_not_accepted(self):
         self.assertEqual(self.send("invalid-topic",{"store_id":91834}).status_code,404)
