@@ -9,6 +9,9 @@ export type PrivacyRequestsSummary = {
     type: "data_access" | "deletion";
     received_at: string;
     status: "em_analise";
+    report_available: boolean;
+    downloaded: boolean;
+    can_confirm: boolean;
   }>;
   note: string;
 };
@@ -364,6 +367,30 @@ export const merchantApi = {
   getTenantPrivacyRequests: (tenantId:string) =>
     getJson<PrivacyRequestsSummary>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/privacy/requests/"
+    ),
+  downloadPrivacyReport: async (tenantId:string, requestId:string) => {
+    const csrf=cookie("csrftoken");
+    if(!csrf)throw new ApiError("Sua sessão expirou. Atualize a página.",403);
+    const response=await fetch(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+
+      "/privacy/requests/"+encodeURIComponent(requestId)+"/report/",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json","X-CSRFToken":csrf},
+        body:"{}",
+      }
+    );
+    if(!response.ok)await readResponse<never>(response);
+    return {
+      blob:await response.blob(),
+      digest:response.headers.get("X-Fideliza-Report-Digest")||"",
+      complete:response.headers.get("X-Fideliza-Report-Complete")==="true",
+    };
+  },
+  confirmPrivacyReport: (tenantId:string, requestId:string, digest:string) =>
+    postJson<{status:"completed";message:string}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+
+      "/privacy/requests/"+encodeURIComponent(requestId)+"/confirm/",
+      {confirm:true,digest}
     ),
   getTenantSettings: (tenantId:string) =>
     getJson<TenantPreferences>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/settings/"),
