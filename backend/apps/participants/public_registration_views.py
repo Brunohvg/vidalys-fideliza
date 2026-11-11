@@ -22,6 +22,8 @@ from rest_framework.views import APIView
 from apps.tenants.models import Tenant
 from .enrollment_models import EnrollmentInvite, EnrollmentSubmission, ProgramTerms
 from .enrollment_views import secure, terms_payload, valid_object, _limit_public
+from .email_proof import enqueue_confirmation, email_links_enabled
+from .enrollment_models import EnrollmentEmailChallenge
 
 PUBLIC_REQUESTS_PER_DAY = 40
 
@@ -105,7 +107,10 @@ class PublicStoreJoinView(APIView):
 
         already = EnrollmentSubmission.objects.filter(
             tenant=tenant, email__iexact=email,
-            status=EnrollmentSubmission.Status.PENDING_VERIFICATION
+            status__in=[
+                EnrollmentSubmission.Status.PENDING_VERIFICATION,
+                EnrollmentSubmission.Status.EMAIL_VERIFIED,
+            ],
         ).exists()
         if not already:
             # Convite interno usado imediatamente. Nenhum token é devolvido.
@@ -118,12 +123,14 @@ class PublicStoreJoinView(APIView):
                 expires_at=now + timedelta(hours=24), consumed_at=now,
             )
             consent_text = (terms.body + "\n" + terms.privacy_notice).encode("utf-8")
-            EnrollmentSubmission.objects.create(
+            receipt = EnrollmentSubmission.objects.create(
                 tenant=tenant, invitation=invitation, terms=terms,
                 name=name.strip(), email=email, accepted_at=now,
                 marketing_opt_in=request.data["marketing_opt_in"],
                 terms_digest=hashlib.sha256(consent_text).hexdigest(),
             )
+            if email_links_enabled():
+                enqueue_confirmation(receipt, EnrollmentEmailChallenge.Purpose.VERIFY)
         # A mesma resposta evita revelar se um e-mail já está na fila.
         return secure(Response({
             "status": "pending_verification", "participant_created": False,
