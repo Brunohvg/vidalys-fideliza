@@ -64,10 +64,12 @@ for (const width of [390, 768, 1440]) {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
     if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
-    await page.getByRole("button", { name: /Planejamento/ }).click();
+    await page.getByRole("button", { name: /^Campanhas/ }).click();
     if (width <= 1020) {
       await expect.poll(() => page.locator(".portal-side").evaluate(node => node.getBoundingClientRect().right)).toBeLessThan(2);
     }
+    // O planejador original permanece disponível na área avançada.
+    await page.getByRole("button", { name: /Abrir análise avançada/ }).click();
     await expect(page.getByRole("heading", { name: "Seu plano de fidelidade" })).toBeVisible();
     await expect(page.getByText("Os campos estão preenchidos com exemplos")).toBeVisible();
 
