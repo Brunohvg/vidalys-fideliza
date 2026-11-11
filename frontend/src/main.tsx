@@ -10,7 +10,8 @@ import "./fideliza-theme.css";
 // A demo nunca usa credenciais, dados ou endpoints de lojistas.
 // A rota principal exige sessão real do Django.
 const isDemo = window.location.pathname === "/demo";
-const isEnrollment = window.location.pathname === "/participar";
+const isEnrollment = window.location.pathname === "/participar" ||
+  /^\/participar\/[a-z0-9-]+\/?$/i.test(window.location.pathname);
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     {isEnrollment ? <PublicEnrollment /> : isDemo ? <App /> : <Portal />}
