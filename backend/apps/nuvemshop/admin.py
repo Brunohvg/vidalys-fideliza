@@ -14,6 +14,8 @@ class PrivacyWebhookRequestAdmin(admin.ModelAdmin):
     readonly_fields = (
         "id", "tenant", "store_id", "customer_id", "request_id",
         "topic", "event_key", "state", "reason_code", "received_at", "processed_at",
+        "report_accessed_at", "report_accessed_by", "delivery_confirmed_by",
+        "report_digest",
     )
     ordering = ("-received_at",)
     list_per_page = 30
