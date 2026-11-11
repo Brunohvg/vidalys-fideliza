@@ -37,8 +37,13 @@ def email_delivery_ready() -> bool:
     """No worker exige SMTP completo e remetente autorizado no provedor."""
     if not email_links_enabled():
         return False
+    if settings.EMAIL_BACKEND != "django.core.mail.backends.smtp.EmailBackend":
+        return False  # nunca imprimir links no log pelo console backend.
     if not (settings.EMAIL_HOST and settings.EMAIL_HOST_USER and
             settings.EMAIL_HOST_PASSWORD and settings.DEFAULT_FROM_EMAIL):
+        return False
+    if not (settings.EMAIL_USE_TLS or settings.EMAIL_USE_SSL):
+        return False
         return False
     base = urlparse(settings.FIDELIZA_PUBLIC_BASE_URL)
     return (base.scheme == "https" and bool(base.hostname) and not base.username
