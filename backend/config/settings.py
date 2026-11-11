@@ -137,6 +137,11 @@ FIDELIZA_LEDGER_WRITES_ENABLED = False
 # Registro público desativado até a homologação do fluxo de dados pessoais.
 FIDELIZA_PUBLIC_SIGNUP_ENABLED = env_bool("FIDELIZA_PUBLIC_SIGNUP_ENABLED", False)
 
+# Leitura de clientes somente após reautorização da loja e liberação explícita.
+FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED = env_bool(
+    "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", False
+)
+
 
 # Contrato SMTP compatível com Mérito/QueroLink, isolado por aplicação no Coolify.
 # Desabilitado até que remetente Vidalys e credenciais sejam validados.
