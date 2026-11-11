@@ -289,3 +289,4 @@ export default function CostCatalog({
 
     <div className="cost-footer-disclaimer"><AlertTriangle size={17}/> Ainda não importamos custos da Nuvemshop ou do Avanço. Use apenas dados revisados e confira todos os encargos antes de configurar cashback.</div>
   </div>;
+}
