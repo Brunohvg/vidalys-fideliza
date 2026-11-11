@@ -44,3 +44,6 @@ class ProgramParticipant(models.Model):
         indexes = [
             models.Index(fields=["tenant", "status", "joined_at"], name="loyalty_tenant_member_idx"),
         ]
+
+# Importados aqui para reconhecimento do Django e migrações.
+from .enrollment_models import ProgramTerms, EnrollmentInvite, EnrollmentSubmission  # noqa: E402,F401
