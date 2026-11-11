@@ -7,15 +7,14 @@ import hashlib
 import json
 import os
 
-from django.core.exceptions import ValidationError
-from django.utils import timezone
+from django.db.models import Q
 
 from apps.participants.enrollment_models import EnrollmentCustomerLink, EnrollmentSubmission
 from apps.participants.models import ProgramParticipant
-from apps.wallets.models import CashbackEvent, CashbackWallet
+from apps.wallets.models import CashbackEvent
 
 from .privacy_models import PrivacyWebhookRequest
-from .privacy_security import email_identity_digest
+from .privacy_security import email_identity_digest, pseudonymous_customer_id
 
 
 class PrivacyReportError(RuntimeError):
@@ -39,16 +38,18 @@ def build_customer_report(receipt: PrivacyWebhookRequest):
     secret=os.getenv("NUVEMSHOP_CLIENT_SECRET","").strip()
     if not secret:
         raise PrivacyReportError("missing_secret")
+    pseudonym=pseudonymous_customer_id(receipt.store_id,receipt.customer_id,secret)
+    identity=Q(external_customer_id=receipt.customer_id) | Q(
+        external_customer_id=pseudonym
+    )
     participants=list(
         ProgramParticipant.objects.filter(
-            tenant_id=receipt.tenant_id,
-            external_customer_id=receipt.customer_id,
+            identity, tenant_id=receipt.tenant_id,
         ).order_by("id")
     )
     links=list(
         EnrollmentCustomerLink.objects.filter(
-            tenant_id=receipt.tenant_id,
-            external_customer_id=receipt.customer_id,
+            identity, tenant_id=receipt.tenant_id,
         ).select_related("submission","submission__terms").order_by("id")
     )
     # A aceitação pode ter ocorrido antes do vínculo com a conta Nuvemshop.
