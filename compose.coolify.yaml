@@ -1,4 +1,6 @@
-# Homologacao: carregar como Application / Docker Compose, base directory /.
+# LEGADO / CI: banco embutido. NAO usar no Coolify do Vidalys Fideliza atual.
+# Homologacao real com PostgreSQL separado: compose.coolify.external-db.yaml.
+# Testes de regressao ainda exercitam esta stack local isolada.
 # Sem name/container_name/ports/redes externas: Coolify atribui o namespace unico.
 # Manter Connect to predefined network e automatic deployments desabilitados.
 # Compartilhado entre API e worker sem segredos da Nuvemshop.
