@@ -82,3 +82,13 @@ Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (
 - API catalog/reconcile-preview/ exige login, tenant e limites estritos de payload; só faz leitura.
 - Cliente GET oficial não tem token armazenado nem OAuth ativo. Ver docs/17-CONCILIACAO-CATALOGO.md.
 - Nunca habilitar importação real nem cashback a partir desta prévia.
+
+
+## OAuth Nuvemshop de leitura P0
+- OAuth é iniciado pelo proprietário/admin autenticado na própria loja tenant, requer sessão + CSRF, HTTPS e state de uso único; não aceitar callback anônimo sem state.
+- Authorization code expira em 5 minutos. Token pertence ao par app + loja, usa user_id como store ID e scope read_products **exato** para o piloto.
+- Guardar somente token cifrado com Fernet em banco, com NUVEMSHOP_TOKEN_KEYS exclusivo da API em secrets Coolify. Nunca publicar chaves/token ou permitir secrets no worker/frontend.
+- Rejeitar vinculação cruzada entre lojas; consulta GET da amostra usa store_id derivado da instalação autorizada, jamais parâmetro do cliente.
+- Redigir logs de callback (Nginx e Gunicorn sem query); verificar proxy do Coolify.
+- Nenhum write_products, read_orders, descontos, scripts ou cashback nesta etapa.
+- Privacy webhooks, desinstalação e onboarding por App Store são gates antes de publicação; ver docs/18-OAUTH-NUVEMSHOP.md.
