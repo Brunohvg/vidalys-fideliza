@@ -33,7 +33,7 @@ function displayName(item: ProgramParticipant) {
   return item.display_name || "Participante sem nome informado";
 }
 
-export default function ParticipantsBoard({ tenantId, role }: { tenantId: string; role: Store["role"] }) {
+export default function ParticipantsBoard({ tenantId, role, storeSlug, tenantStatus }: { tenantId: string; role: Store["role"]; storeSlug: string; tenantStatus: Store["status"] }) {
   const [response, setResponse] = useState<ParticipantDirectoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -86,7 +86,7 @@ export default function ParticipantsBoard({ tenantId, role }: { tenantId: string
       <div className="xp-hero-graphic" aria-hidden="true"><UsersRound size={66} strokeWidth={1.3}/></div>
     </section>
 
-    <EnrollmentManagement tenantId={tenantId} role={role}/>
+    <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug} tenantStatus={tenantStatus}/>
 
     <div className="xp-stats">
       <div className="xp-stat"><span><UsersRound size={17}/> Participantes</span><strong>{response?.summary.total ?? "—"}</strong><small>Com cadastro de adesão</small></div>
