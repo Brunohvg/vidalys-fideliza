@@ -156,3 +156,82 @@ class PreviewApiTests(TestCase):
         self.assertEqual(
             self.client.post(self.url(), {"products": huge}, format="json").status_code, 413
         )
+
+import io
+import json
+from urllib.error import HTTPError
+from .client import CatalogReadError, read_products_page
+
+
+class FakeResponse:
+    def __init__(self, data):
+        self.data = json.dumps(data).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *unused):
+        return None
+
+    def read(self, size):
+        return self.data[:size]
+
+
+class FakeTransport:
+    def __init__(self, answers):
+        self.answers = iter(answers)
+        self.requests = []
+
+    def open(self, request, timeout=8):
+        self.requests.append((request, timeout))
+        answer = next(self.answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return FakeResponse(answer)
+
+
+class ReadClientTests(SimpleTestCase):
+    def test_get_uses_fixed_host_and_get_only(self):
+        fake = FakeTransport([[{"id": 10}]])
+        rows = read_products_page(
+            store_id=1234, access_token="synthetic-only",
+            user_agent="Fideliza QA (qa@example.invalid)", opener=fake,
+        )
+        self.assertEqual(rows[0]["id"], 10)
+        req, timeout = fake.requests[0]
+        self.assertEqual(req.get_method(), "GET")
+        self.assertEqual(
+            req.full_url,
+            "https://api.tiendanube.com/2025-03/1234/products?page=1&per_page=15",
+        )
+        self.assertEqual(timeout, 8)
+
+    def test_retries_on_429_without_leaking_response(self):
+        error = HTTPError("internal", 429, "too many", {}, io.BytesIO(b"private"))
+        fake = FakeTransport([error, [{"id": 11}]])
+        pauses = []
+        rows = read_products_page(
+            store_id=1234, access_token="synthetic-only",
+            user_agent="Fideliza QA (qa@example.invalid)",
+            opener=fake, pause=lambda value: pauses.append(value),
+        )
+        self.assertEqual(rows[0]["id"], 11)
+        self.assertEqual(pauses, [1])
+
+    def test_errors_avoid_sensitive_body(self):
+        fake = FakeTransport([HTTPError("internal", 403, "unauthorized", {}, io.BytesIO(b"private"))])
+        with self.assertRaises(CatalogReadError) as caught:
+            read_products_page(
+                store_id=1234, access_token="synthetic-only",
+                user_agent="Fideliza QA (qa@example.invalid)", opener=fake,
+            )
+        self.assertNotIn("private", str(caught.exception))
+        self.assertNotIn("synthetic-only", str(caught.exception))
+
+    def test_rejects_invalid_store_and_excessive_pages(self):
+        for kwargs in ({"store_id": 0}, {"page": 0}, {"per_page": 200}):
+            args = {"store_id": 1234, "access_token": "synthetic-only",
+                    "user_agent": "Fideliza QA (qa@example.invalid)"}
+            args.update(kwargs)
+            with self.assertRaises(ValueError):
+                read_products_page(**args, opener=FakeTransport([]))
