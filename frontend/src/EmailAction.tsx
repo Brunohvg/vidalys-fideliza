@@ -29,7 +29,7 @@ export default function EmailAction(){
     if(!isValid||!link.action||busy)return;
     setError("");setBusy(true);
     try{
-      const response=await publicEnrollmentApi.confirmEmailAction(link.token,link.action);
+      const response=await publicEnrollmentApi.confirmEmailAction(link.token,link.action as "verify"|"withdraw");
       setResult(response);
       window.history.replaceState(null,"",window.location.pathname);
     }catch(cause){
