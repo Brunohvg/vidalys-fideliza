@@ -5,6 +5,7 @@ import {
   Sparkles, Target, UsersRound
 } from "lucide-react";
 import CampaignPlanner from "./CampaignPlanner";
+import RewardPreview from "./RewardPreview";
 import { brl, parseBrl, parsePercent } from "./finance";
 
 type Goal = "second_purchase" | "reactivation" | "recurrence";
@@ -149,6 +150,7 @@ export default function CampaignGuide({tenantId}:{tenantId:string}) {
           <div><span><Gift size={16}/> Créditos potenciais no mês</span><strong>{brl(result.totalExposure)}</strong><small>{result.orders.toLocaleString("pt-BR")} pedidos hipotéticos</small></div>
           <div><span><ShieldCheck size={16}/> Orçamento informado</span><strong>{brl(result.budget)}</strong><small>Não é saldo disponível real</small></div>
         </div>
+        <RewardPreview creditCents={result.creditPerOrder} goal={chosen.label}/>
         <div className="xp-budget-hint"><AlertTriangle size={19}/>
           <p><b>Ativação indisponível:</b> ainda não existe motor de concessão, carteira, aceite do cliente nem custo confiável por pedido. Esta prévia não garante rentabilidade.</p></div>
         <div className="xp-wizard-actions">

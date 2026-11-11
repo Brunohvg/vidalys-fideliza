@@ -321,3 +321,79 @@ button,select,textarea,input {font-family:inherit}
 @media (prefers-reduced-motion:reduce) {
   .portal-primary,.xp-action-card,.xp-goal-card,.xp-action-link {transition:none!important;transform:none!important}
 }
+
+
+/* Preview de recompensa: componente de visualização apenas, não carteira real. */
+.vf-reward-preview {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(236px,.76fr);
+  gap:28px;
+  align-items:center;
+  overflow:hidden;
+  margin-top:23px;
+  padding:26px clamp(20px,3vw,34px);
+  border-radius:19px;
+  background:linear-gradient(125deg,#F2FBF7,#FAFCF9);
+  border:1px solid #CEE8DE;
+}
+.vf-reward-preview-copy {min-width:0}
+.vf-preview-kicker {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:10px;
+  letter-spacing:.12em;
+  color:var(--vf-primary);
+  font-weight:800;
+}
+.vf-reward-preview-copy h3 {
+  font-size:clamp(21px,2.3vw,28px);
+  line-height:1.27;
+  letter-spacing:-.05em;
+  color:var(--vf-ink);
+  margin:13px 0 10px;
+}
+.vf-reward-preview-copy p {color:var(--vf-muted);line-height:1.78;font-size:12px;max-width:440px;margin:0}
+.vf-reward-preview-copy strong {color:var(--vf-ink)}
+.vf-preview-note {
+  display:flex;align-items:flex-start;gap:10px;
+  margin-top:21px;color:#6E6248;
+  background:#FFF7E8;border:1px solid #F2DEBC;
+  border-radius:11px;padding:12px 13px;
+  font-size:11px;line-height:1.7;
+}
+.vf-preview-note svg {flex:none;color:var(--vf-reward-ink);margin-top:1px}
+.vf-phone-frame {
+  width:min(100%,292px);
+  justify-self:center;
+  border:6px solid #122E3C;
+  border-radius:29px;
+  padding:15px;
+  background:#FFFFFF;
+  box-shadow:0 18px 42px rgba(16,37,62,.16);
+}
+.vf-phone-top {
+  display:flex;align-items:center;justify-content:space-between;
+  color:#21534F;font:800 13px var(--vf-font-display);
+  letter-spacing:-.045em;margin:0 2px 14px;
+}
+.vf-phone-dot{width:9px;height:9px;background:var(--vf-mint);border-radius:50%}
+.vf-wallet-card{
+  color:white;
+  background:radial-gradient(circle at 90% 0%,rgba(245,186,81,.19),transparent 45%),
+    linear-gradient(135deg,#13394A,#0A746D);
+  border-radius:18px;padding:18px 17px 17px;
+  min-height:188px;
+  box-shadow:0 10px 24px rgba(9,99,94,.21);
+}
+.vf-wallet-top{display:flex;justify-content:space-between;align-items:center;color:#C4FFF1}
+.vf-wallet-top span{display:inline-flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.12em;font-weight:800}
+.vf-wallet-top>svg{color:var(--vf-reward)}
+.vf-wallet-small{display:block;font-size:10px;color:#D5F1E8;margin:20px 0 4px}
+.vf-wallet-card>strong{display:block;font:800 clamp(28px,3vw,34px) var(--vf-font-display);letter-spacing:-.06em}
+.vf-wallet-divider{height:1px;background:rgba(255,255,255,.23);margin:15px 0 10px}
+.vf-wallet-goal{font-size:10px;color:#D8F6ED;line-height:1.5}
+.vf-wallet-future{display:flex;align-items:flex-start;gap:7px;color:#647783;font-size:9px;line-height:1.55;padding:13px 2px 3px}
+.vf-wallet-future svg{flex:none}
+@media(max-width:900px){.vf-reward-preview{grid-template-columns:1fr;gap:23px}.vf-phone-frame{justify-self:start}}
+@media(max-width:520px){.vf-reward-preview{padding:20px}.vf-phone-frame{justify-self:center;width:min(100%,286px)}}
