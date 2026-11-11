@@ -104,7 +104,8 @@ test("Sem autorização read_customers, não consultar clientes da loja",async (
   await mock(page,false);
   await page.goto("/");
   await page.locator(".portal-nav").getByRole("button",{name:/^Clientes/}).click();
-  await expect(page.getByText("Vínculo com clientes da Nuvemshop indisponível.",{exact:false}))
+  await expect(page.getByText("Ainda não é possível conferir cadastros de clientes.",{exact:false}))
     .toBeVisible();
+  await expect(page.getByText("read_customers",{exact:false})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Conferir cadastro na Nuvemshop"})).toHaveCount(0);
 });
