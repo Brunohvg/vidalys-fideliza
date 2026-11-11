@@ -160,8 +160,8 @@ class CostCatalogTests(TestCase):
     def test_search_summary_and_status_filter(self):
         self.login()
         self.create()
-        self.create(reference="B-002", name="Sem custo", external_variant_id="55002", unit_cost_cents=None)
-        self.create(reference="C-003", name="Conferido", external_variant_id="55003", verify_cost=True, provenance="Conferido NF teste 3")
+        self.create(reference="B-002", sku="SKU-B", name="Sem custo", external_variant_id="55002", unit_cost_cents=None)
+        self.create(reference="C-003", sku="SKU-C", name="Conferido", external_variant_id="55003", verify_cost=True, provenance="Conferido NF teste 3")
         r = self.client.get(self.list_url())
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.data["summary"]["total"], 3)
