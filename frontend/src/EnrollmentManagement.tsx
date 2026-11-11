@@ -193,7 +193,7 @@ export default function EnrollmentManagement({
       </div>
       {pending?.items.some(item=>item.status==="email_verified") && !customerAccess &&
         <p className="enroll-muted">Vínculo com clientes da Nuvemshop indisponível.
-          A etapa requer autorização de leitura de clientes (`read_customers`) no aplicativo,
+          A etapa requer autorização de leitura de clientes (<code>read_customers</code>) no aplicativo,
           reinstalação na loja e liberação da prévia na homologação.</p>}
       {customerCheckError && <div className="enroll-error" role="alert">{customerCheckError}</div>}
       {pending && pending.items.length>0 && <div className="enroll-pending-list">
