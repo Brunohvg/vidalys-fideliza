@@ -1,6 +1,6 @@
 """Registro espontâneo por loja: teste de termos, privacidade e não concessão."""
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -19,6 +19,7 @@ PRIVACY_NOTICE = (
 )
 
 
+@override_settings(FIDELIZA_PUBLIC_SIGNUP_ENABLED=True)
 class StorePublicEnrollmentTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -58,6 +59,13 @@ class StorePublicEnrollmentTests(TestCase):
 
     def join(self):
         return reverse("public-store-join",kwargs={"slug":self.tenant.slug})
+
+    def test_public_registration_flag_off_blocks_data_collection(self):
+        self.terms()
+        with override_settings(FIDELIZA_PUBLIC_SIGNUP_ENABLED=False):
+            self.assertEqual(self.client.get(self.page()).status_code,404)
+            self.assertEqual(self.client.post(self.join(),self.data,format="json").status_code,404)
+        self.assertEqual(EnrollmentSubmission.objects.count(),0)
 
     def test_only_approved_active_store_with_privacy_is_visible(self):
         self.assertEqual(self.client.get(self.page()).status_code,404)
