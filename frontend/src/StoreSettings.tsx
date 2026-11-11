@@ -1,7 +1,7 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {
-  ArrowRight,BookOpen,Check,CheckCircle2,Cloud,Globe2,HeartHandshake,
-  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert
+  ArrowRight,BookOpen,Check,CheckCircle2,Globe2,HeartHandshake,
+  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag
 } from "lucide-react";
 import {
   ApiError,merchantApi,type NuvemshopConnectionStatus,
@@ -19,8 +19,15 @@ function Status({ready,label}:{ready:boolean;label:string}){
     {label}
   </span>;
 }
-function fallbackError(error:unknown,defaultMessage:string){
-  return error instanceof ApiError?error.message:defaultMessage;
+function friendlyError(error:unknown,defaultMessage:string){
+  // Esconder detalhes técnicos de falhas de integração do painel do lojista.
+  if(error instanceof ApiError){
+    if(error.status===409)return "Esta opção ainda não está pronta para sua loja. Tente novamente mais tarde.";
+    if(error.status===403)return "Seu usuário não tem autorização para realizar esta ação.";
+    if(error.status===429)return "Já houve uma tentativa recente. Tente novamente em alguns instantes.";
+    if(error.status===503)return "Conexão temporariamente indisponível. Tente novamente mais tarde.";
+  }
+  return defaultMessage;
 }
 export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   const [settings,setSettings]=useState<TenantPreferences|null>(null);
@@ -44,8 +51,8 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
     ]).then(([prefs,link])=>{
       if(!current)return;
       setSettings(prefs);setBrand(prefs.branding);setIntegration(link);
-    }).catch(cause=>{
-      if(current)setError(fallbackError(cause,"Não foi possível carregar as configurações."));
+    }).catch(()=>{
+      if(current)setError("Não foi possível carregar as configurações da loja.");
     }).finally(()=>{if(current)setLoading(false)});
     return ()=>{current=false};
   },[tenantId]);
@@ -60,9 +67,11 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
       const result=await merchantApi.saveTenantBranding(tenantId,settings.version,brand);
       setSettings({...settings,branding:result.branding,version:result.version});
       setBrand(result.branding);
-      setNotice(result.updated?"Identidade salva. A página pública usará os novos dados quando for habilitada.":"Nenhuma alteração necessária.");
+      setNotice(result.updated
+        ?"Alterações salvas. Suas cores e seu nome serão usados na página do programa quando ela estiver disponível."
+        :"Suas preferências já estão atualizadas.");
     }catch(cause){
-      setError(fallbackError(cause,"Não foi possível salvar as configurações."));
+      setError(friendlyError(cause,"Não foi possível salvar. Confira os campos e tente novamente."));
     }finally{setSaving(false);}
   };
   const reconnect=async()=>{
@@ -77,20 +86,21 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
       }
       window.location.assign(url.toString());
     }catch(cause){
-      setError(fallbackError(cause,"Não foi possível iniciar a autorização da Nuvemshop."));
+      setError(friendlyError(cause,"Não foi possível atualizar a conexão com sua loja."));
       setConnecting(false);
     }
   };
 
   if(loading)return <section className="ss-loading" role="status">
-    <RefreshCw size={20} className="portal-spin"/> Consultando configurações da loja…
+    <RefreshCw size={20} className="portal-spin"/> Carregando suas preferências…
   </section>;
   if(!settings||!brand)return <section className="ss-feedback ss-error" role="alert">
-    {error||"Configurações indisponíveis."}
+    {error||"As configurações não estão disponíveis no momento."}
   </section>;
-  const status=integration?.customer_matching;
   const connected=Boolean(integration?.connected);
-  const previewReady=Boolean(status?.read_only_preview_available);
+  const customerReady=Boolean(integration?.customer_matching?.read_only_preview_available);
+  const enrollmentReady=Boolean(settings.features.public_signup_enabled&&
+    settings.tenant_status==="active");
   const programName=brand.program_name||("Clube "+settings.tenant_name);
   const programColor=/^#[0-9A-Fa-f]{6}$/.test(brand.primary_color)?brand.primary_color:"#087F79";
   const accent=/^#[0-9A-Fa-f]{6}$/.test(brand.accent_color)?brand.accent_color:"#37D5BB";
@@ -98,9 +108,9 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   return <div className="ss-root">
     <div className="ss-intro">
       <div className="ss-intro-icon"><Settings2 size={23}/></div>
-      <div><span className="portal-eyebrow">CONTROLE DA SUA LOJA</span>
+      <div><span className="portal-eyebrow">SUA LOJA, SUA IDENTIDADE</span>
         <h2>Configurações</h2>
-        <p>Personalize a experiência dos seus clientes e acompanhe as conexões do seu programa.</p>
+        <p>Escolha como seus clientes vão conhecer seu programa e acompanhe o que já está disponível.</p>
       </div>
     </div>
     {error&&<div className="ss-feedback ss-error" role="alert"><TriangleAlert size={17}/>{error}</div>}
@@ -109,17 +119,16 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
       <section className="ss-card" aria-labelledby="ss-brand-title">
         <div className="ss-card-heading">
           <div className="ss-card-icon"><Palette size={21}/></div>
-          <div><h3 id="ss-brand-title">Identidade do programa</h3>
-            <p>Como sua loja será apresentada aos participantes.</p></div>
-          <Status ready={true} label="Configurável"/>
+          <div><h3 id="ss-brand-title">Aparência do programa</h3>
+            <p>Personalize o nome e as cores que seus clientes vão ver.</p></div>
         </div>
         <div className="ss-brand-layout">
           <form className="ss-form" onSubmit={save}>
-            <label>Nome do programa
+            <label>Nome do clube de vantagens
               <input value={brand.program_name}
                 onChange={e=>update("program_name",e.target.value)} maxLength={80}
                 disabled={!editable||saving} placeholder={"Clube "+settings.tenant_name}/>
-              <small>Deixe vazio para usar o nome padrão da loja.</small>
+              <small>Exemplo: Clube Bibelô. Se deixar vazio, usamos o nome da sua loja.</small>
             </label>
             <div className="ss-color-grid">
               <label>Cor principal
@@ -129,7 +138,7 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
                     onChange={e=>update("primary_color",e.target.value)}/>
                   <span>{brand.primary_color}</span>
                 </div>
-                <small>Utilizada em botões; deve oferecer contraste.</small>
+                <small>Cor dos botões e destaques principais.</small>
               </label>
               <label>Cor de destaque
                 <div className="ss-color-control">
@@ -138,118 +147,114 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
                     onChange={e=>update("accent_color",e.target.value)}/>
                   <span>{brand.accent_color}</span>
                 </div>
-                <small>Para detalhes decorativos.</small>
+                <small>Usada em pequenos detalhes do programa.</small>
               </label>
             </div>
-            <label>E-mail de atendimento do programa
+            <label>E-mail para dúvidas dos participantes
               <input value={brand.support_email}
                 onChange={e=>update("support_email",e.target.value)}
                 disabled={!editable||saving} maxLength={254}
                 type="email" autoComplete="off" placeholder="atendimento@sualoja.com.br"/>
-              <small>Informação de contato, não altera o remetente SMTP da Vidalys.</small>
+              <small>O contato que o cliente poderá usar para falar com sua loja.</small>
             </label>
             {editable&&<div className="ss-action-row">
-              <span>Versão {settings.version} · Alterações registradas</span>
               <button className="portal-primary" disabled={!dirty||saving} type="submit">
-                <Save size={16}/>{saving?"Salvando…":"Salvar identidade"}
+                <Save size={16}/>{saving?"Salvando…":"Salvar alterações"}
               </button>
             </div>}
-            {!editable&&<p className="ss-readonly">Seu perfil pode visualizar, mas não modificar essas preferências.</p>}
+            {!editable&&<p className="ss-readonly">Você pode consultar estas opções. Um administrador da loja pode alterá-las.</p>}
           </form>
-          <aside className="ss-live-card" aria-label="Prévia da identidade do programa">
+          <aside className="ss-live-card" aria-label="Prévia da página do clube">
             <div className="ss-preview-stage" style={{background:programColor}}>
               <div className="ss-preview-icon" style={{background:accent}}><HeartHandshake size={21}/></div>
-              <span>PRÉVIA PARA O CONSUMIDOR</span>
+              <span>COMO SEU CLIENTE VAI VER</span>
               <strong>{programName}</strong>
-              <p>Uma relação que vale mais. Conheça o programa da sua loja.</p>
-              <div className="ss-preview-button">Conhecer regras e benefícios <ArrowRight size={16}/></div>
+              <p>Uma relação que vale mais. Conheça as vantagens do seu clube.</p>
+              <div className="ss-preview-button">Conhecer meu clube <ArrowRight size={16}/></div>
             </div>
             <div className="ss-preview-caption"><ShieldCheck size={15}/>
-              Identidade em prévia. Nenhuma inscrição foi publicada.
+              Esta é uma prévia visual. Ela não publica seu programa.
             </div>
           </aside>
         </div>
       </section>
-      <section className="ss-card" aria-labelledby="ss-integrations">
+      <section className="ss-card" aria-labelledby="ss-store-connection">
         <div className="ss-card-heading">
-          <div className="ss-card-icon"><Cloud size={21}/></div>
-          <div><h3 id="ss-integrations">Integrações</h3>
-            <p>Status das conexões autorizadas, sem expor credenciais.</p></div>
+          <div className="ss-card-icon"><ShoppingBag size={20}/></div>
+          <div><h3 id="ss-store-connection">Conexão com a loja</h3>
+            <p>Conecte sua loja para aproveitar os recursos do Fideliza.</p></div>
         </div>
         <div className="ss-integration">
-          <div className="ss-service-label"><span className="ss-service-icon"><Cloud size={20}/></span>
-            <div><strong>Nuvemshop</strong><small>Produtos e cadastro de clientes</small></div></div>
-          <Status ready={connected} label={connected?"Instalação vinculada":"Conexão pendente"}/>
+          <div className="ss-service-label"><span className="ss-service-icon"><ShoppingBag size={20}/></span>
+            <div><strong>Nuvemshop</strong><small>Sua loja virtual</small></div>
+          </div>
+          <Status ready={connected} label={connected?"Conectada":"Não conectada"}/>
         </div>
-        <div className="ss-connection-info">
-          <div><small>Identificador da loja</small><strong>{integration?.store_id||"Não informado"}</strong></div>
-          <div><small>Permissões do token instalado</small>
-            <strong>{integration?.scope||"Não identificadas"}</strong></div>
-          <div><small>Prévia de clientes</small>
-            <strong>{previewReady?"Autorizada para leitura":status?.customer_scope_granted
-              ?"Escopo presente; recurso bloqueado no servidor"
-              :"Aguardando token com read_customers e liberação do recurso"}</strong></div>
-        </div>
+        <p className="ss-muted">{!connected
+          ?"Conecte sua loja para consultar as informações necessárias ao programa."
+          :customerReady
+            ?"A conexão está pronta para conferir cadastros de clientes que autorizaram participar."
+            :"A loja está conectada. A consulta de participantes ainda está em preparação."}</p>
         {editable&&<button type="button" className="ss-secondary" onClick={()=>void reconnect()}
           disabled={connecting||!integration?.configured}>
-          <RefreshCw size={16}/>{connecting?"Iniciando…":connected?"Reautorizar Nuvemshop":"Conectar Nuvemshop"}
+          <RefreshCw size={16}/>{connecting?"Abrindo sua loja…":connected?"Atualizar conexão":"Conectar minha loja"}
           <ArrowRight size={15}/>
         </button>}
-        {!integration?.configured&&<p className="ss-muted">OAuth indisponível até configurar o aplicativo no ambiente do servidor.</p>}
+        {editable&&!integration?.configured&&<p className="ss-muted">
+          A conexão estará disponível assim que a plataforma concluir a preparação da sua loja.</p>}
         <div className="ss-divider"/>
         <div className="ss-integration">
           <div className="ss-service-label"><span className="ss-service-icon"><Mail size={20}/></span>
-            <div><strong>SMTP2GO · Vidalys</strong><small>Confirmação de e-mail e retirada do programa</small></div></div>
+            <div><strong>Confirmação por e-mail</strong>
+              <small>Para que os participantes confirmem o cadastro com segurança</small>
+            </div>
+          </div>
           <Status ready={settings.features.email_delivery_enabled}
-            label={settings.features.email_delivery_enabled?"Habilitado no servidor":"Envio bloqueado"}/>
+            label={settings.features.email_delivery_enabled?"Configurada":"Em preparação"}/>
         </div>
-        <p className="ss-muted">O status indica apenas a configuração de envio, não garante entrega. O remetente é configurado pela Vidalys, nunca pelo lojista.</p>
+        <p className="ss-muted">As mensagens de confirmação serão usadas quando o cadastro de participantes estiver disponível.</p>
       </section>
       <section className="ss-card" aria-labelledby="ss-program-title">
         <div className="ss-card-heading">
           <div className="ss-card-icon"><BookOpen size={20}/></div>
-          <div><h3 id="ss-program-title">Programa e consentimento</h3>
-            <p>Termos, privacidade e regras para entrada de participantes.</p></div>
+          <div><h3 id="ss-program-title">Regras do clube</h3>
+            <p>Defina as condições antes de convidar seus clientes.</p></div>
         </div>
         <div className="ss-config-row"><div>
             <strong>Cadastro de participantes</strong>
-            <p>A liberação depende de regulamento aprovado e confirmação de identidade.</p>
+            <p>Seus clientes poderão solicitar adesão depois que as regras estiverem prontas.</p>
           </div>
-          <Status ready={settings.features.public_signup_enabled}
-            label={settings.features.public_signup_enabled?"Habilitado no servidor":"Bloqueado"}/>
+          <Status ready={enrollmentReady} label={enrollmentReady?"Disponível":"Em preparação"}/>
         </div>
         <div className="ss-config-row"><div>
-            <strong>Cashback e resgates</strong>
-            <p>Continuam indisponíveis até haver pedidos pagos e resgate auditável.</p>
+            <strong>Recompensas</strong>
+            <p>Os benefícios serão liberados quando o programa estiver pronto para funcionar.</p>
           </div>
-          <Status ready={false} label="Não ativo"/>
+          <Status ready={false} label="Em breve"/>
         </div>
         <button type="button" className="ss-secondary" onClick={onGoToClients}>
-          <BookOpen size={16}/> Gerenciar regulamento e aceites <ArrowRight size={15}/>
+          <BookOpen size={16}/> Editar regras e adesão <ArrowRight size={15}/>
         </button>
       </section>
       <section className="ss-card" aria-labelledby="ss-domains-title">
         <div className="ss-card-heading">
           <div className="ss-card-icon"><Globe2 size={20}/></div>
-          <div><h3 id="ss-domains-title">Endereço da sua loja</h3>
-            <p>O cliente acessará seu programa em uma página própria.</p></div>
-          <Status ready={false} label="Em desenvolvimento"/>
+          <div><h3 id="ss-domains-title">Página do clube</h3>
+            <p>Um espaço exclusivo para seus clientes conhecerem o programa.</p></div>
         </div>
         <div className="ss-domain">
-          <div><small>Página de adesão planejada</small>
-            <strong>{window.location.origin+"/participar/"+settings.tenant_slug}</strong></div>
-          <div><small>Domínio personalizado</small>
-            <strong>fideliza.sualoja.com.br</strong></div>
+          <div><small>Seu endereço do programa</small>
+            <strong>{enrollmentReady
+              ?"A página ficará disponível após a aprovação das regras."
+              :"Estamos preparando a página do seu clube."}</strong></div>
+          <div><small>Usar o endereço da sua própria loja</small>
+            <strong>Em breve você poderá escolher um endereço personalizado.</strong></div>
         </div>
-        <div className="ss-advisory"><LockKeyhole size={16}/>
-          Domínios próprios exigem verificação DNS e certificado SSL. Nenhum domínio
-          está ativado por esta tela; não é necessário alterar o DNS agora.
-        </div>
+        <p className="ss-muted">Você não precisa alterar o site da sua loja para personalizar o clube.</p>
       </section>
     </div>
     <div className="ss-security-note"><ShieldCheck size={18}/>
-      Preferências da loja não modificam estoque, pedidos, preços nem permissões
-      da Nuvemshop. Cada alteração é vinculada ao usuário administrador e à versão salva.
+      Alterar seu clube aqui não muda preços, estoque nem pedidos da sua loja.
     </div>
   </div>;
 }
