@@ -46,7 +46,8 @@ def exchange_code(code: str, client_id: str, client_secret: str, *, opener=None)
     token_type = str(data.get("token_type", "")).lower()
     if not isinstance(token, str) or not 16 <= len(token) <= 4096:
         raise OAuthExchangeError("Token OAuth inválido.")
-    if isinstance(user_id, bool) or not str(user_id).isascii() or not str(user_id).isdecimal() or int(user_id) <= 0:
+    if (isinstance(user_id, bool) or len(str(user_id)) > 20 or
+            not str(user_id).isascii() or not str(user_id).isdecimal() or int(user_id) <= 0):
         raise OAuthExchangeError("Loja OAuth inválida.")
     if not isinstance(scopes, str):
         raise OAuthExchangeError("Escopos OAuth inválidos.")

@@ -243,9 +243,9 @@ export default function CatalogReconciliation({ tenantId, role }: { tenantId: st
           <div className="reconcile-mini-chart">
             <span>Qualidade do mapeamento nesta amostra</span>
             <div className="reconcile-bar" aria-label="Proporção dos resultados">
-              <i style={{width:result.summary.matched/result.summary.variants*100+"%"}} className="ok"/>
-              <i style={{width:result.summary.review_required/result.summary.variants*100+"%"}} className="review"/>
-              <i style={{width:result.summary.unmapped/result.summary.variants*100+"%"}} className="unknown"/>
+              <i style={{width:(result.summary.variants ? result.summary.matched/result.summary.variants*100 : 0)+"%"}} className="ok"/>
+              <i style={{width:(result.summary.variants ? result.summary.review_required/result.summary.variants*100 : 0)+"%"}} className="review"/>
+              <i style={{width:(result.summary.variants ? result.summary.unmapped/result.summary.variants*100 : 0)+"%"}} className="unknown"/>
             </div>
             <small>Apenas uma amostra. Não é a cobertura completa do catálogo da loja.</small>
           </div>

@@ -63,7 +63,8 @@ class NuvemshopStatusView(APIView):
         response = Response({
             "configured": configured,
             "connected": installed is not None and cfg is not None
-                         and installed.client_id == cfg.client_id,
+                         and installed.client_id == cfg.client_id
+                         and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id,
             "store_id": installed.store_id if installed else None,
             "scope": installed.scope if installed else None,
             "mode": "read_products_only",
@@ -206,7 +207,7 @@ class LiveCatalogPreviewView(APIView):
             return Response({"detail": "Conecte esta loja com a permissão read_products."}, status=409)
 
         raw_page = request.query_params.get("page", "1")
-        if not raw_page.isascii() or not raw_page.isdecimal():
+        if len(raw_page) > 5 or not raw_page.isascii() or not raw_page.isdecimal():
             return Response({"detail": "Página inválida."}, status=400)
         page = int(raw_page)
         if not 1 <= page <= 10000:
