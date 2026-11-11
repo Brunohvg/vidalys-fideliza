@@ -3,7 +3,7 @@ import {
   ArrowRight, BarChart3, CircleHelp, Gift, HeartHandshake,
   LockKeyhole, PlugZap, ShieldCheck, Sparkles, UsersRound
 } from "lucide-react";
-import {merchantApi, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus} from "./api";
+import {merchantApi, type CampaignDraftList, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus} from "./api";
 
 type Destination = "clients"|"campaign"|"catalog"|"results";
 type Action = {
@@ -20,14 +20,19 @@ export default function ActionCenter({
 }: {tenantId:string; onNavigate:(target:Destination)=>void}) {
   const [participants,setParticipants]=useState<ParticipantDirectoryResponse|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
+  const [drafts,setDrafts]=useState<CampaignDraftList|null>(null);
+  const [draftsError,setDraftsError]=useState(false);
   const [participantsError,setParticipantsError]=useState(false);
   const [integrationError,setIntegrationError]=useState(false);
 
   useEffect(()=>{
     let active=true;
-    setParticipants(null);setIntegration(null);setParticipantsError(false);setIntegrationError(false);
+    setParticipants(null);setIntegration(null);setDrafts(null);
+    setParticipantsError(false);setIntegrationError(false);setDraftsError(false);
     merchantApi.listParticipants(tenantId).then(r=>{if(active)setParticipants(r)})
       .catch(()=>{if(active)setParticipantsError(true)});
+    merchantApi.listCampaignDrafts(tenantId).then(r=>{if(active)setDrafts(r)})
+      .catch(()=>{if(active)setDraftsError(true)});
     merchantApi.nuvemshopStatus(tenantId).then(r=>{if(active)setIntegration(r)})
       .catch(()=>{if(active)setIntegrationError(true)});
     return ()=>{active=false};
@@ -60,12 +65,22 @@ export default function ActionCenter({
       target:"clients",callToAction:"Abrir clientes",icon:UsersRound,
     });
   }
-  actions.push({
-    title:"Desenhe sua primeira campanha",
-    body:"Escolha entre segunda compra, reativação ou recorrência. Faça uma prévia de orçamento em poucos passos.",
-    reason:"O motor de benefícios ainda está em desenvolvimento; a ferramenta não publica campanhas.",
-    target:"campaign",callToAction:"Planejar benefício",icon:Gift,
-  });
+  if(drafts?.items.length){
+    const latest=drafts.items[0];
+    actions.push({
+      title:"Retome seu planejamento",
+      body:"Você já começou “"+latest.title+"”. Continue de onde parou, confira o orçamento e revise os limites.",
+      reason:drafts.items.length+" rascunho(s) salvo(s). Nenhuma campanha foi publicada.",
+      target:"campaign",callToAction:"Retomar campanha",icon:Gift,
+    });
+  }else{
+    actions.push({
+      title:"Desenhe sua primeira campanha",
+      body:"Escolha entre segunda compra, reativação ou recorrência. Faça uma prévia de orçamento em poucos passos.",
+      reason:"O motor de benefícios ainda está em desenvolvimento; a ferramenta não publica campanhas.",
+      target:"campaign",callToAction:"Planejar benefício",icon:Gift,
+    });
+  }
   if (actions.length<3) {
     actions.push({
       title:"Prepare a medição de resultados",
@@ -89,7 +104,7 @@ export default function ActionCenter({
       <div className="xp-section-heading"><span className="portal-eyebrow">PRÓXIMOS PASSOS DA LOJA</span>
         <h2>Seu plano de ação</h2>
         <p>Recomendações baseadas no estado conhecido do sistema, não em vendas inventadas.</p></div>
-      {(integrationError||participantsError) && <div className="xp-action-warning" role="status">
+      {(integrationError||participantsError||draftsError) && <div className="xp-action-warning" role="status">
         <CircleHelp size={18}/> Alguns dados não puderam ser consultados. As sugestões abaixo não representam uma avaliação completa da loja.
       </div>}
       <div className="xp-action-cards">
