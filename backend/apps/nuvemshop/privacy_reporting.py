@@ -67,6 +67,15 @@ def build_customer_report(receipt: PrivacyWebhookRequest):
             pk__in=submission_ids,
         ).select_related("terms").order_by("id")
     )
+    # Uma exclusão anterior pode ter apagado o e-mail de solicitações
+    # que ainda não estavam vinculadas. Não declarar um relatório completo
+    # se essa associação deixou de poder ser comprovada.
+    has_previous_redaction=PrivacyWebhookRequest.objects.filter(
+        tenant_id=receipt.tenant_id,
+        store_id=receipt.store_id,
+        customer_id=receipt.customer_id,
+        topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
+    ).exists()
     member_ids=[p.id for p in participants]
     event_count=CashbackEvent.objects.filter(
         wallet__tenant_id=receipt.tenant_id,
@@ -90,7 +99,9 @@ def build_customer_report(receipt: PrivacyWebhookRequest):
         ),
         "cobertura":{
             "cadastros_vinculados":True,
-            "aceites_sem_vinculo_identificaveis":bool(receipt.customer_email_digest),
+            "aceites_sem_vinculo_identificaveis":bool(receipt.customer_email_digest)
+                and not has_previous_redaction,
+            "exclusao_anterior_exige_revisao":has_previous_redaction,
             "pedidos_nuvemshop_nao_consultados":True,
         },
         "participacoes":[{
@@ -143,4 +154,6 @@ def build_customer_report(receipt: PrivacyWebhookRequest):
                      separators=(",",":"))+"\n").encode("utf-8")
     if len(data)>1024*1024:
         raise PrivacyReportError("manual_large_report")
-    return data,hashlib.sha256(data).hexdigest(),bool(receipt.customer_email_digest)
+    return data,hashlib.sha256(data).hexdigest(),(
+        bool(receipt.customer_email_digest) and not has_previous_redaction
+    )
