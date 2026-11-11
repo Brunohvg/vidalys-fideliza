@@ -112,6 +112,9 @@ for(const width of [390,768,1440]){
 for(const width of [390,768,1440]){
   test("Confirmar e-mail com token e retirada em "+width+"px", async ({page})=>{
     await page.setViewportSize({width,height:850});
+    await page.context().addCookies([{
+      name:"csrftoken",value:"csrf-mail-test",url:"http://127.0.0.1:4173"
+    }]);
     await page.route("**/api/v1/auth/session/",route=>route.fulfill({
       contentType:"application/json",body:JSON.stringify({
         authenticated:false,user:null,tenants:[]
@@ -136,6 +139,9 @@ for(const width of [390,768,1440]){
 
   test("Solicitar retirada sem revelar existência da conta em "+width+"px",async ({page})=>{
     await page.setViewportSize({width,height:850});
+    await page.context().addCookies([{
+      name:"csrftoken",value:"csrf-withdraw-test",url:"http://127.0.0.1:4173"
+    }]);
     await page.route("**/api/v1/auth/session/",route=>route.fulfill({
       contentType:"application/json",body:JSON.stringify({
         authenticated:false,user:null,tenants:[]
