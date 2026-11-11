@@ -50,6 +50,16 @@ def inspect(env, host):
               and callback.path == "/api/v1/oauth/nuvemshop/callback/"
               and not callback.query and not callback.fragment,
               "OAuth completo; validar chave Fernet no backend")
+    signup = env.get("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "0").lower().strip()
+    if signup in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "ALERTA",
+                       "Inscrições públicas permitidas; revisar política LGPD e autorização"))
+    elif signup in ("0", "false", "", "off", "no"):
+        result.append(("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "OK",
+                       "Inscrições públicas desativadas por padrão"))
+    else:
+        result.append(("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "FALHA",
+                       "Use apenas 0/1, false/true ou no/yes"))
     if env.get("FIDELIZA_LEDGER_WRITES_ENABLED"):
         result.append(("LEDGER", "ALERTA", "Variável de escrita ignorada: backend mantém bloqueio"))
     return result
