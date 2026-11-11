@@ -7,6 +7,13 @@ for (const width of [390, 768, 1440]) {
     const mobile = width <= 980;
     if (mobile) await page.getByRole("button", { name: "Abrir menu" }).click();
     await page.getByRole("button", { name: "Rentabilidade", exact: true }).click();
+    if (mobile) {
+      // Aguardar a transição do drawer antes de capturar screenshot.
+      await expect(page.locator(".sidebar")).not.toHaveClass(/open/);
+      await expect.poll(() => page.locator(".sidebar").evaluate(
+        element => element.getBoundingClientRect().right
+      )).toBeLessThan(2);
+    }
 
     await expect(page.getByRole("heading", { name: "Simulador de rentabilidade" })).toBeVisible();
     await expect(page.getByText("Dentro da meta simulada")).toBeVisible();
