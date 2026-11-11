@@ -4,6 +4,7 @@ import App from "./App";
 import Portal from "./Portal";
 import "./styles.css";
 import "./portal.css";
+import "./fideliza-theme.css";
 
 // A demo nunca usa credenciais, dados ou endpoints de lojistas.
 // A rota principal exige sessão real do Django.

@@ -1,18 +1,31 @@
+/* Vidalys Fideliza — Loyalty Experience v2
+   Tokens de referência, espelhados no frontend/src/fideliza-theme.css.
+   O widget para clientes herda o visual da loja parceira, NÃO estes estilos.
+*/
 :root {
-  /* Vidalys — produto Fideliza: conceito 0.1 */
-  --vf-graphite: #0B1120;
-  --vf-primary: #1263FF;
-  --vf-cyan: #00D1E6;
-  --vf-white: #FFFFFF;
-  --vf-surface: #F3F5F9;
-  --vf-border: #D8DEE9;
-  --vf-muted: #526071;
-  --vf-success: #16A36A;
-  --vf-warning: #D97706;
-  --vf-danger: #D92D20;
+  --vf-ink: #10253E;            /* confiança / navegação */
+  --vf-ink-soft: #233E55;
+  --vf-primary: #087F79;        /* ações / conexão / relacionamento */
+  --vf-primary-hover: #096B66;
+  --vf-primary-contrast: #FFFFFF;
+  --vf-mint: #37D5BB;           /* progresso (decoração sobre fundo escuro) */
+  --vf-mint-soft: #E8F9F4;
+  --vf-reward: #F5BA51;         /* recompensa, nunca texto sobre branco */
+  --vf-reward-ink: #98631A;
+  --vf-reward-soft: #FFF6E6;
+  --vf-info: #2463BD;           /* informações técnicas */
+  --vf-info-soft: #EFF5FF;
+  --vf-canvas: #F6F8FB;
+  --vf-surface: #FFFFFF;
+  --vf-border: #DDE7EF;
+  --vf-muted: #577085;
+  --vf-success: #167A56;
+  --vf-warning: #98631A;
+  --vf-danger: #AD334B;
   --vf-radius-sm: 10px;
   --vf-radius-md: 16px;
-  --vf-radius-lg: 24px;
-  --vf-shadow-card: 0 12px 30px rgba(11,17,32,.10);
-  --vf-font: Manrope, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vf-radius-lg: 22px;
+  --vf-shadow-card: 0 14px 40px rgba(16,37,62,.055);
+  --vf-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --vf-font-display: "Manrope", "Inter", system-ui, sans-serif;
 }

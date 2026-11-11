@@ -21,9 +21,9 @@ const roleLabel: Record<Store["role"], string> = {
 function Symbol({ small = false }: { small?: boolean }) {
   return <div className={"portal-symbol" + (small ? " small" : "")} aria-hidden="true">
     <svg viewBox="0 0 48 48" width={small ? 28 : 42} height={small ? 28 : 42} fill="none">
-      <rect width="48" height="48" rx="14" fill="#1263FF"/>
+      <rect width="48" height="48" rx="14" fill="#087F79"/>
       <path d="M12 14 24 35 36 14" stroke="#fff" strokeWidth="5.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M12 31c8 9 21 6 25-8" stroke="#00D1E6" strokeWidth="3" strokeLinecap="round"/>
+      <path d="M12 31c8 9 21 6 25-8" stroke="#37D5BB" strokeWidth="3" strokeLinecap="round"/>
     </svg>
   </div>;
 }
@@ -114,12 +114,12 @@ export default function Portal() {
         <div className="portal-auth-logo"><Symbol/><Wordmark/></div>
         <div className="portal-auth-text">
           <span className="portal-eyebrow">FIDELIDADE INTELIGENTE</span>
-          <h1>Clientes voltam.<br/><em>Seu lucro fica.</em></h1>
-          <p>Uma plataforma para criar relacionamentos duradouros sem abrir mão da margem do seu negócio.</p>
+          <h1>Mais conexão.<br/><em>Mais motivos para voltar.</em></h1>
+          <p>Uma experiência simples para fortalecer a recompra, acompanhar benefícios e tomar decisões responsáveis.</p>
           <div className="portal-auth-features">
-            <span><Check size={18}/> Cashback com limites claros</span>
-            <span><Check size={18}/> Visão financeira antes da campanha</span>
-            <span><Check size={18}/> Tecnologia preparada para várias lojas</span>
+            <span><Check size={18}/> Benefícios planejados com limites claros</span>
+            <span><Check size={18}/> Campanhas guiadas e transparentes</span>
+            <span><Check size={18}/> Relacionamento com clientes como prioridade</span>
           </div>
         </div>
         <span className="portal-auth-foot">VIDALYS • AMBIENTE DE HOMOLOGAÇÃO</span>

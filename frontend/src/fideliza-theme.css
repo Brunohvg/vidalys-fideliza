@@ -300,6 +300,9 @@ button,select,textarea,input {font-family:inherit}
 .portal-demo-link {color:var(--vf-primary)}
 .portal-loading {background:var(--vf-ink)}
 .portal-loading p {color:#D4E8E4}
+@media (max-width:1020px) {
+  .portal-main {margin-left:0;width:100%}
+}
 @media (max-width:780px) {
   .xp-action-card:hover {transform:none}
   .xp-action-banner,.xp-hero {padding:27px 24px}

@@ -19,9 +19,9 @@ function Brand() {
   return <div className="brand" aria-label="Vidalys Fideliza">
     <div className="brand-mark" aria-hidden="true">
       <svg viewBox="0 0 44 44" fill="none" width="44" height="44">
-        <rect x="1" y="1" width="42" height="42" rx="13" fill="#1263FF" />
+        <rect x="1" y="1" width="42" height="42" rx="13" fill="#087F79" />
         <path d="m11 13 11 20 11-20" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M13 30c8 7 19 4 23-8" stroke="#00D1E6" strokeWidth="2.7" strokeLinecap="round" />
+        <path d="M13 30c8 7 19 4 23-8" stroke="#37D5BB" strokeWidth="2.7" strokeLinecap="round" />
       </svg>
     </div>
     <span className="brand-copy">vidalys<span>fideliza</span></span>
