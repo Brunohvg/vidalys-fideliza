@@ -53,6 +53,8 @@ class EnrollmentInvite(models.Model):
 class EnrollmentSubmission(models.Model):
     class Status(models.TextChoices):
         PENDING_VERIFICATION = "pending_verification", "Aguardando verificação"
+        EMAIL_VERIFIED = "email_verified", "E-mail confirmado"
+        WITHDRAWN = "withdrawn", "Solicitação retirada"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE,
@@ -66,8 +68,32 @@ class EnrollmentSubmission(models.Model):
     terms_digest = models.CharField(max_length=64)
     accepted_at = models.DateTimeField()
     marketing_opt_in = models.BooleanField(default=False)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=32, choices=Status.choices,
                               default=Status.PENDING_VERIFICATION)
 
     class Meta:
         ordering = ["-accepted_at", "-id"]
+
+
+class EnrollmentEmailChallenge(models.Model):
+    """Token de verificação/retirada, apenas digest persistido, sem dados extras de contato."""
+
+    class Purpose(models.TextChoices):
+        VERIFY = "verify", "Confirmar e-mail"
+        WITHDRAW = "withdraw", "Retirar solicitação"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    submission = models.ForeignKey(EnrollmentSubmission, on_delete=models.CASCADE,
+                                   related_name="email_challenges")
+    purpose = models.CharField(max_length=12, choices=Purpose.choices)
+    token_digest = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["submission", "purpose", "created_at"],
+                                name="fideliza_email_chal_idx")]
