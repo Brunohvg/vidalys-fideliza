@@ -58,6 +58,35 @@ async function postJson<T>(url: string, body: object): Promise<T> {
   return writeJson<T>("POST", url, body);
 }
 
+export type CampaignDraftInput = {
+  title: string;
+  goal: "second_purchase" | "reactivation" | "recurrence";
+  cashback_rate_bps: number;
+  ticket_cents: number;
+  projected_paid_orders: number;
+  budget_cents: number;
+};
+
+export type CampaignDraft = CampaignDraftInput & {
+  id: string;
+  version: number;
+  status: "draft";
+  created_at: string;
+  updated_at: string;
+  preview: {
+    credit_per_order_cents: number;
+    max_exposure_cents: number;
+    exceeds_budget: boolean;
+    assumptions_only: true;
+  };
+};
+
+export type CampaignDraftList = {
+  mode: "draft_only";
+  activation_available: false;
+  items: CampaignDraft[];
+};
+
 export type CampaignPlanInput = MarginInput & {
   projected_paid_orders: number;
   campaign_budget_cents: number;
@@ -264,6 +293,14 @@ export const merchantApi = {
   login: (username: string, password: string) =>
     postJson<{ authenticated: true; tenants: Store[] }>("/api/v1/auth/login/", { username, password }),
   logout: () => postJson<{ authenticated: false }>("/api/v1/auth/logout/", {}),
+  listCampaignDrafts: (tenantId: string) =>
+    getJson<CampaignDraftList>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-drafts/"),
+  createCampaignDraft: (tenantId: string, input: CampaignDraftInput) =>
+    postJson<CampaignDraft>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-drafts/", input),
+  updateCampaignDraft: (tenantId: string, draftId: string, expectedVersion: number, input: CampaignDraftInput) =>
+    writeJson<CampaignDraft>("PATCH",
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-drafts/" +
+      encodeURIComponent(draftId) + "/", {...input, expected_version: expectedVersion}),
   previewCampaign: (tenantId: string, input: CampaignPlanInput) =>
     postJson<CampaignPlanResult>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-plans/preview/",
