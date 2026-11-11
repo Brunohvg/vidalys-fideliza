@@ -235,6 +235,11 @@ export type ProgramTermsStatus = {
   public_signup_enabled: boolean;
   terms: ProgramTerms | null;
 };
+export type CustomerLinkApproved = {
+  status:"linked"; already_linked:boolean; participant_id:string;
+  cashback_enabled:false; orders_modified:false; message:string;
+};
+
 export type CustomerMatchPreview = {
   mode: "read_only_customer_match_preview";
   status: "one_exact_match" | "not_found" | "ambiguous";
@@ -299,6 +304,7 @@ export type NuvemshopConnectionStatus = {
     preview_enabled: boolean;
     customer_scope_granted: boolean;
     read_only_preview_available: boolean;
+    participant_approval_available?: boolean;
     requires_partner_portal_scope_and_reinstallation: boolean;
     will_activate_participants: false;
     will_credit_cashback: false;
@@ -377,6 +383,12 @@ export const merchantApi = {
       "/api/v1/tenants/" + encodeURIComponent(tenantId) +
       "/enrollment-submissions/" + encodeURIComponent(submissionId) +
       "/customer-match/preview/", {}
+    ),
+  approveCustomerLink: (tenantId:string, submissionId:string, customerId:string) =>
+    postJson<CustomerLinkApproved>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/enrollment-submissions/" + encodeURIComponent(submissionId) +
+      "/customer-match/approve/", {customer_id:customerId, confirm:true}
     ),
   participantWallet: (tenantId: string, participantId: string) =>
     getJson<CashbackWalletView>(
