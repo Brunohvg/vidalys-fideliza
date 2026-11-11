@@ -1,0 +1,37 @@
+name: generate-uv-lock
+on:
+  push:
+    branches: [feat/foundation-django-staging]
+    paths:
+      - backend/pyproject.toml
+      - .github/workflows/generate-uv-lock.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.10.0"
+          enable-cache: true
+      - name: Gerar lockfile reproduzível
+        working-directory: backend
+        run: uv sync --python 3.12
+      - name: Commitar somente backend/uv.lock na branch de desenvolvimento
+        run: |
+          git add backend/uv.lock
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build: lock uv dependencies for Python 3.12"
+            git push origin HEAD:feat/foundation-django-staging
+          else
+            echo "uv.lock já está atualizado."
+          fi
