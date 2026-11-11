@@ -274,5 +274,40 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         self.assertEqual(result.status_code,503)
         self.assertFalse(PrivacyWebhookRequest.objects.exists())
 
+    def test_merchant_summary_is_isolated_and_never_exposes_personal_data(self):
+        self.assertEqual(self.send("customers-data-request",{
+            "store_id":91834,
+            "customer":{"id":556,"email":"private@example.invalid",
+                        "phone":"+55 31 90000-0000"},
+            "data_request":{"id":801},
+        }).status_code,202)
+        path=reverse("tenant-privacy-requests",kwargs={"tenant_id":self.tenant.id})
+        self.assertIn(self.client.get(path).status_code,(302,401,403))
+        self.client.force_login(self.owner)
+        response=self.client.get(path)
+        self.assertEqual(response.status_code,200,response.content)
+        self.assertEqual(response.json()["pending_total"],1)
+        self.assertEqual(response.json()["access_requests"],1)
+        self.assertEqual(response.json()["deletion_requests"],0)
+        self.assertEqual(response["Cache-Control"],"private, no-store")
+        for secret in ("556","801","private@example.invalid","+55","91834"):
+            self.assertNotIn(secret,response.content.decode())
+        # Nenhum vazamento cruzado, inclusive para membro da loja errada.
+        foreign=Tenant.objects.create(
+            name="Outra loja",slug="privacy-foreign",platform="nuvemshop",
+            external_store_id="999999",
+        )
+        outsider=get_user_model().objects.create_user(username="privacy-outsider")
+        TenantMembership.objects.create(tenant=foreign,user=outsider,role="owner")
+        self.assertEqual(self.client.get(reverse("tenant-privacy-requests",kwargs={
+            "tenant_id":foreign.id
+        })).status_code,404)
+        self.client.force_login(outsider)
+        self.assertEqual(self.client.get(path).status_code,404)
+        analyst=get_user_model().objects.create_user(username="privacy-analyst")
+        TenantMembership.objects.create(tenant=self.tenant,user=analyst,role="analyst")
+        self.client.force_login(analyst)
+        self.assertEqual(self.client.get(path).status_code,403)
+
     def test_unknown_route_is_not_accepted(self):
         self.assertEqual(self.send("invalid-topic",{"store_id":91834}).status_code,404)
