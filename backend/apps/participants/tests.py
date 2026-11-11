@@ -46,7 +46,7 @@ class ParticipantDirectoryTests(TestCase):
         r = self.client.get(self.path())
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.data["source"], "verified_opt_in_only")
-        self.assertEqual(r.data["data_status"], "no_enrollment_channel")
+        self.assertEqual(r.data["data_status"], "consent_verified")
         self.assertEqual(r.data["summary"]["total"], 0)
         self.assertEqual(r.data["items"], [])
         self.assertNotIn("read_customers", str(r.data))
