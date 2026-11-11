@@ -1,6 +1,6 @@
 """Aceite com registro próprio não cria ProgramParticipant nem saldo."""
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -9,6 +9,7 @@ from .models import ProgramParticipant
 from .enrollment_models import EnrollmentInvite, EnrollmentSubmission, ProgramTerms
 
 
+@override_settings(FIDELIZA_PUBLIC_SIGNUP_ENABLED=True)
 class EnrollmentPilotTests(TestCase):
     def setUp(self):
         User = get_user_model()
