@@ -86,7 +86,8 @@ export default function ParticipantsBoard({ tenantId, role, storeSlug, tenantSta
       <div className="xp-hero-graphic" aria-hidden="true"><UsersRound size={66} strokeWidth={1.3}/></div>
     </section>
 
-    <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug} tenantStatus={tenantStatus}/>
+    <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
+      tenantStatus={tenantStatus} onParticipantApproved={()=>setVersion(n=>n+1)}/>
 
     <div className="xp-stats">
       <div className="xp-stat"><span><UsersRound size={17}/> Participantes</span><strong>{response?.summary.total ?? "—"}</strong><small>Com cadastro de adesão</small></div>
