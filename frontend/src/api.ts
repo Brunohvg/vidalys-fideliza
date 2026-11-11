@@ -208,6 +208,7 @@ export type ProgramTerms = {
 };
 export type ProgramTermsStatus = {
   mode: "approval_required";
+  public_signup_enabled: boolean;
   terms: ProgramTerms | null;
 };
 export type EnrollmentPending = {
