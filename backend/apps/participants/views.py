@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from apps.tenants.models import TenantMembership
 from .models import ProgramParticipant
+from apps.wallets.services import balances_for_participants
 
 
 class ParticipantListView(APIView):
@@ -47,8 +48,13 @@ class ParticipantListView(APIView):
                 Q(external_customer_id__icontains=search)
             )
         count = filtered.count()
+        page = list(filtered[page_start:page_start + 20])
+        balances = balances_for_participants(
+            tenant_id=tenant_id, participant_ids=[item.id for item in page],
+        )
         result = []
-        for item in filtered[page_start:page_start + 20]:
+        for item in page:
+            wallet_balance = balances.get(item.id)
             result.append({
                 "id": str(item.id),
                 "customer_reference": item.external_customer_id,
@@ -62,10 +68,18 @@ class ParticipantListView(APIView):
                     if item.last_program_activity_at else None
                 ),
                 "consent_channel": item.consent_channel,
-                # Ainda não existe carteira/ledger; não inventar saldo zero.
+                # Ledger interno não implica cashback resgatável.
                 "points_balance": None,
-                "cashback_balance_cents": None,
-                "balance_status": "not_implemented",
+                "cashback_balance_cents": (
+                    wallet_balance["available_cents"] if wallet_balance else None
+                ),
+                "cashback_pending_cents": (
+                    wallet_balance["pending_cents"] if wallet_balance else None
+                ),
+                "cashback_reserved_cents": (
+                    wallet_balance["reserved_cents"] if wallet_balance else None
+                ),
+                "balance_status": "ledger_only" if wallet_balance else "not_implemented",
             })
         response = Response({
             "source": "verified_opt_in_only",
