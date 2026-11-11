@@ -74,6 +74,7 @@ class ProgramTermsView(APIView):
         terms = ProgramTerms.objects.filter(tenant_id=tenant_id, active=True).first()
         return secure(Response({
             "mode": "approval_required",
+            "public_signup_enabled": settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED,
             "terms": terms_payload(terms) if terms else None,
         }))
 
@@ -109,6 +110,7 @@ class ProgramTermsView(APIView):
         )
         return secure(Response({
             "mode": "approval_required", "terms": terms_payload(terms),
+            "public_signup_enabled": settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED,
             "message": "Termos registrados; nenhuma campanha ou adesão foi ativada.",
         }, status=201))
 
@@ -122,6 +124,8 @@ class InvitationView(APIView):
         member = member_for(request, tenant_id)
         if not can_edit(member):
             return secure(Response({"detail": "Apenas administrador pode gerar convites."}, status=403))
+        if not settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED:
+            return secure(Response({"detail": "Adesão pública ainda bloqueada na homologação."}, status=409))
         if not valid_object(request, ()):
             return secure(Response({"detail": "Este convite não recebe dados de clientes."}, status=400))
         Tenant.objects.select_for_update().get(pk=tenant_id)
@@ -203,6 +207,8 @@ class PublicInvitationView(APIView):
     http_method_names = ["post", "options"]
 
     def post(self, request):
+        if not settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED:
+            return secure(Response({"detail": "Adesão pública indisponível."}, status=404))
         if _limit_public(request):
             return secure(Response({"detail": "Muitas tentativas. Tente depois."}, status=429))
         if not valid_object(request, ("token",)):
