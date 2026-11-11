@@ -16,11 +16,12 @@ export default function EnrollmentManagement({
   const [title,setTitle]=useState("Regulamento do programa de fidelidade");
   const [body,setBody]=useState("");
   const [privacy,setPrivacy]=useState("");
+  const [signupEnabled,setSignupEnabled]=useState(false);
   const [busy,setBusy]=useState(false);
   const [link,setLink]=useState("");
   const [copied,setCopied]=useState(false);
   const canEdit=role==="owner"||role==="admin";
-  const publicReady=tenantStatus==="active"&&Boolean(terms?.privacy_notice?.trim().length&&terms.privacy_notice.trim().length>=120)&&!formOpen;
+  const publicReady=signupEnabled&&tenantStatus==="active"&&Boolean(terms?.privacy_notice?.trim().length&&terms.privacy_notice.trim().length>=120)&&!formOpen;
   const publicUrl=window.location.origin+"/participar/"+encodeURIComponent(storeSlug);
 
   useEffect(()=>{
@@ -31,7 +32,7 @@ export default function EnrollmentManagement({
       merchantApi.pendingEnrollments(tenantId)
     ]).then(([t,p])=>{
       if(!active)return;
-      setTerms(t.terms);setPending(p);
+      setTerms(t.terms);setPending(p);setSignupEnabled(t.public_signup_enabled);
       setFormOpen(!t.terms);
     }).catch(cause=>{
       if(active)setError(cause instanceof ApiError?cause.message:"Falha ao consultar adesões.");
@@ -131,6 +132,7 @@ export default function EnrollmentManagement({
         <span className="enroll-step-number">02</span>
         <div><strong>Página pública da loja</strong>
           <p>{publicReady?"Link permanente para solicitar adesão com seus termos e aviso de privacidade."
+            :!signupEnabled?"Adesão pública bloqueada até aprovação técnica e jurídica."
             :"Disponível quando a loja estiver ativa e tiver termos e privacidade aprovados."}</p>
         </div>
       </div>
@@ -150,7 +152,7 @@ export default function EnrollmentManagement({
         <div><strong>Convite individual de adesão</strong>
           <p>Link único, válido por 24 horas. Envie manualmente, somente com a autorização necessária.</p>
         </div>
-        <button type="button" disabled={!terms||formOpen||busy} className="enroll-secondary"
+        <button type="button" disabled={!signupEnabled||!terms||formOpen||busy} className="enroll-secondary"
           onClick={()=>void createLink()}><Link2 size={16}/> Gerar convite</button>
       </div>
       {link && <div className="enroll-share">
