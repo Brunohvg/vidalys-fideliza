@@ -140,7 +140,7 @@ for (const width of [390, 768, 1440]) {
     await page.getByRole("textbox", { name: /SKU \(opcional\)/ }).fill("SKU-ARG100");
     await page.getByRole("textbox", { name: /Custo unitário manual/ }).fill("7,00");
     await page.getByRole("textbox", { name: /Preço de venda manual/ }).fill("29,90");
-    await page.getByRole("button", { name: "Cadastrar item", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Cadastrar item", exact: true }).click();
     await expect(page.getByText("Item salvo com sucesso.")).toBeVisible();
     await expect(page.getByText("Argola transparente 100 mm")).toBeVisible();
     await expect(page.getByText("A conferir", { exact: true })).toBeVisible();
