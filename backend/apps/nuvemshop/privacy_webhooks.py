@@ -24,7 +24,7 @@ from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation, OAuthAttempt
 from .privacy_models import PrivacyWebhookRequest
-from .privacy_security import email_identity_digest, privacy_event_key, legacy_event_key
+from .privacy_security import email_identity_digest, privacy_event_key, legacy_event_key, pseudonymous_customer_id
 
 
 MAX_WEBHOOK_BYTES = 65536
@@ -135,13 +135,21 @@ def _revoke_customer(tenant, customer_id, payload):
             withdrawn_at=now,
         )
     if participant_ids:
+        pseudonym=pseudonymous_customer_id(
+            str(tenant.external_store_id), customer_id,
+            os.environ["NUVEMSHOP_CLIENT_SECRET"].strip(),
+        )
         ProgramParticipant.objects.filter(
             tenant=tenant, pk__in=set(participant_ids)
         ).update(
+            external_customer_id=pseudonym,
             display_name="", contact_email="",
             status=ProgramParticipant.Status.WITHDRAWN,
             last_program_activity_at=None,
         )
+        EnrollmentCustomerLink.objects.filter(
+            tenant=tenant, external_customer_id=customer_id,
+        ).update(external_customer_id=pseudonym)
     # Mesmo depois de desativar contato/adesão, há IDs em links e eventual
     # histórico contábil; não alegar exclusão total antes da revisão.
 
