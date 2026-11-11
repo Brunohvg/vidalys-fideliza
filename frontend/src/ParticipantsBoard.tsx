@@ -1,4 +1,5 @@
 import "./wallet-details.css";
+import EnrollmentManagement from "./EnrollmentManagement";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, CircleHelp,
@@ -7,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   ApiError, merchantApi, type CashbackWalletView, type ParticipantDirectoryResponse,
-  type ProgramParticipant
+  type ProgramParticipant, type Store
 } from "./api";
 
 const money = (value: number) => new Intl.NumberFormat("pt-BR", {
@@ -32,7 +33,7 @@ function displayName(item: ProgramParticipant) {
   return item.display_name || "Participante sem nome informado";
 }
 
-export default function ParticipantsBoard({ tenantId }: { tenantId: string }) {
+export default function ParticipantsBoard({ tenantId, role }: { tenantId: string; role: Store["role"] }) {
   const [response, setResponse] = useState<ParticipantDirectoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -85,6 +86,8 @@ export default function ParticipantsBoard({ tenantId }: { tenantId: string }) {
       <div className="xp-hero-graphic" aria-hidden="true"><UsersRound size={66} strokeWidth={1.3}/></div>
     </section>
 
+    <EnrollmentManagement tenantId={tenantId} role={role}/>
+
     <div className="xp-stats">
       <div className="xp-stat"><span><UsersRound size={17}/> Participantes</span><strong>{response?.summary.total ?? "—"}</strong><small>Com cadastro de adesão</small></div>
       <div className="xp-stat"><span><BadgeCheck size={17}/> Participando</span><strong>{response?.summary.active ?? "—"}</strong><small>Adesão ativa</small></div>
@@ -123,7 +126,7 @@ export default function ParticipantsBoard({ tenantId }: { tenantId: string }) {
           <div className="xp-empty-icon"><UserRoundCheck size={39}/></div>
           <h3>{response.summary.total===0?"Sua comunidade começa com o primeiro aceite":"Nenhum participante encontrado"}</h3>
           <p>{response.summary.total===0
-            ?"A área está pronta, mas ainda não existe um canal de adesão publicado. Conectar a Nuvemshop não transforma compradores em participantes."
+            ?"Os convites de adesão entram primeiro na fila de verificação. Conectar a Nuvemshop não transforma compradores em participantes."
             :"Ajuste a busca ou o filtro para encontrar outros participantes."}</p>
           {response.summary.total===0 && <div className="xp-empty-steps">
             <span><BadgeCheck size={16}/> Definir as regras do programa</span>
