@@ -133,3 +133,7 @@ SESSION_SAVE_EVERY_REQUEST = False
 
 # Bloqueado: concessões e resgates dependem de autorização e eventos verificados.
 FIDELIZA_LEDGER_WRITES_ENABLED = False
+
+# Registro público desativado até a homologação do fluxo de dados pessoais.
+FIDELIZA_PUBLIC_SIGNUP_ENABLED = env_bool("FIDELIZA_PUBLIC_SIGNUP_ENABLED", False)
+
