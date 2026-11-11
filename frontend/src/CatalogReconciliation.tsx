@@ -8,6 +8,8 @@ import {
   ApiError, merchantApi, type CatalogDecision, type CatalogPreview
 } from "./api";
 import { brl } from "./finance";
+import NuvemshopConnection from "./NuvemshopConnection";
+import type { Store } from "./api";
 
 const example = {
   products: [
@@ -100,7 +102,7 @@ function extractPayload(input: string): unknown[] {
   });
 }
 
-export default function CatalogReconciliation({ tenantId }: { tenantId: string }) {
+export default function CatalogReconciliation({ tenantId, role }: { tenantId: string; role: Store["role"] }) {
   const [json, setJson] = useState("");
   const [origin, setOrigin] = useState("");
   const [result, setResult] = useState<CatalogPreview | null>(null);
@@ -175,6 +177,11 @@ export default function CatalogReconciliation({ tenantId }: { tenantId: string }
       <span className="reconcile-art" aria-hidden="true"><ScanSearch size={64} strokeWidth={1.2}/></span>
     </section>
 
+    <NuvemshopConnection tenantId={tenantId} role={role} onLivePreview={live => {
+      setResult(live); setError(""); setFilter("all");
+      setOrigin("Consulta oficial somente leitura — página " + (live.page || 1));
+    }}/>
+
     <div className="reconcile-steps" aria-label="Etapas da conciliação">
       <span><FileJson size={17}/> 1. Informar amostra</span><ArrowRight size={15}/>
       <span><SearchCheck size={17}/> 2. Comparar IDs e SKUs</span><ArrowRight size={15}/>
@@ -223,7 +230,7 @@ export default function CatalogReconciliation({ tenantId }: { tenantId: string }
           <h3>{busy ? "Conferindo a amostra…" : "Pronto para comparar"}</h3>
           <p>Carregue um JSON ou utilize o exemplo fictício para conhecer os alertas de importação.</p>
         </div> : <>
-          <div className="reconcile-complete"><CheckCheck size={20}/><div><b>Análise concluída, nenhuma alteração realizada.</b><span>Amostra fornecida manualmente; não representa consulta ao vivo.</span></div></div>
+          <div className="reconcile-complete"><CheckCheck size={20}/><div><b>Análise concluída, nenhuma alteração realizada.</b><span>{result.source==="nuvemshop_live_read_only"?"Amostra consultada via API oficial; nenhum dado foi alterado.":"Amostra fornecida manualmente; não representa consulta ao vivo."}</span></div></div>
           <div className="reconcile-stats">
             <div><span>Variantes analisadas</span><strong>{result.summary.variants}</strong></div>
             <div><span>Correspondentes</span><strong>{result.summary.matched}</strong></div>

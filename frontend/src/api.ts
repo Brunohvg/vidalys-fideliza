@@ -139,6 +139,15 @@ export type CostHistoryEntry = {
   after: Record<string, unknown>;
 };
 
+export type NuvemshopConnectionStatus = {
+  configured: boolean;
+  connected: boolean;
+  store_id: string | null;
+  scope: string | null;
+  mode: "read_products_only";
+  ready_for_write: false;
+};
+
 export type CatalogDecision = "matched" | "review_required" | "unmapped";
 export type CatalogPreviewItem = {
   product_id: string;
@@ -160,8 +169,10 @@ export type CatalogPreviewItem = {
   will_modify_product: false;
 };
 export type CatalogPreview = {
-  mode: "read_only_snapshot_preview";
-  source: "operator_supplied_json";
+  mode: "read_only_snapshot_preview" | "read_only";
+  source: "operator_supplied_json" | "nuvemshop_live_read_only";
+  page?: number;
+  empty?: boolean;
   automatically_approved: false;
   writes_performed: 0;
   summary: {
@@ -175,6 +186,19 @@ export type CatalogPreview = {
 
 export const merchantApi = {
   getSession: () => getJson<SessionInfo>("/api/v1/auth/session/"),
+  nuvemshopStatus: (tenantId: string) =>
+    getJson<NuvemshopConnectionStatus>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/nuvemshop/status/"
+    ),
+  beginNuvemshopOAuth: (tenantId: string) =>
+    postJson<{ authorize_url: string; expires_in_seconds: number; mode: "read_products_only" }>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/nuvemshop/connect/", {}
+    ),
+  previewLiveNuvemshop: (tenantId: string, page: number = 1) =>
+    getJson<CatalogPreview>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/nuvemshop/catalog/preview/?page=" + encodeURIComponent(String(page))
+    ),
   reconcileCatalog: (tenantId: string, products: unknown[]) =>
     postJson<CatalogPreview>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/catalog/reconcile-preview/",

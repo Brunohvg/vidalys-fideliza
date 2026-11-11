@@ -20,7 +20,7 @@ const journey = [
   },
   {
     title: "Conecte sua Nuvemshop",
-    description: "OAuth e leitura das vendas ainda serão liberados após homologação.",
+    description: "Autorização segura e prévia de produtos em teste, sem leitura de pedidos.",
     state: "future", icon: ShoppingBag
   },
   {
@@ -65,7 +65,9 @@ export default function Portal() {
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
-  const [page, setPage] = useState<Screen>("overview");
+  const [page, setPage] = useState<Screen>(() =>
+    new URLSearchParams(window.location.search).has("nuvemshop") ? "catalog" : "overview"
+  );
   const [drawer, setDrawer] = useState(false);
   const [selectedId, setSelectedId] = useState<string>("");
   const [seedItem, setSeedItem] = useState<CostItem | null>(null);
@@ -243,14 +245,14 @@ export default function Portal() {
                   <h2>Fundação protegida.</h2><p>Seu espaço está isolado das outras lojas. Não há campanhas, créditos ou compras reais conectadas.</p>
                   <div className="portal-fact"><span>Loja</span><strong>{tenant.name}</strong></div>
                   <div className="portal-fact"><span>Acesso</span><strong>{roleLabel[tenant.role]}</strong></div>
-                  <div className="portal-fact"><span>Integração Nuvemshop</span><strong>Não conectada</strong></div>
+                  <div className="portal-fact"><span>Integração Nuvemshop</span><strong>Consultar na Conciliação</strong></div>
                   <button onClick={()=>navigate("margin")} className="portal-text-action">Abrir inteligência de margem <ArrowRight size={16}/></button>
                 </section>
               </div>
             </div>}
             {page==="margin" && <MarginSimulator tenantId={tenant.id} initialItem={seedItem} key={tenant.id+":"+(seedItem?.id||"")}/>}
             {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
-            {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} key={tenant.id}/>}
+            {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="campaign" && <CampaignPlanner tenantId={tenant.id} key={tenant.id}/>}
             {page==="roadmap" && <section className="portal-panel portal-coming">
               <Gift size={37}/><h2>Programas, do jeito certo.</h2>
