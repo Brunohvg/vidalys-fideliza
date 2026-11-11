@@ -143,7 +143,7 @@ for (const width of [390, 768, 1440]) {
     await page.getByRole("dialog").getByRole("button", { name: "Cadastrar item", exact: true }).click();
     await expect(page.getByText("Item salvo com sucesso.")).toBeVisible();
     await expect(page.getByText("Argola transparente 100 mm")).toBeVisible();
-    await expect(page.getByText("A conferir", { exact: true })).toBeVisible();
+    await expect(page.locator(".cost-table tbody tr").getByText("A conferir", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Editar Argola transparente 100 mm" }).click();
     await page.getByRole("textbox", { name: "Origem da conferência" }).fill("Conferido em nota de compra piloto");
     await page.getByRole("checkbox", { name: /Conferi o custo informado/ }).check();
