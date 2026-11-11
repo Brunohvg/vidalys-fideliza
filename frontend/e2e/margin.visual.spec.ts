@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 for (const width of [390, 768, 1440]) {
   test("Rentabilidade funciona no viewport de " + width + "px", async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-    await page.goto("/");
+    await page.goto("/demo");
     const mobile = width <= 980;
     if (mobile) await page.getByRole("button", { name: "Abrir menu" }).click();
     await page.getByRole("button", { name: "Rentabilidade", exact: true }).click();
