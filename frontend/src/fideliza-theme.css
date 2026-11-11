@@ -1,0 +1,320 @@
+/*
+ * Vidalys Fideliza / Loyalty Experience v2
+ * Uma linguagem única: segurança (navy), relacionamento (jade),
+ * progresso (mint) e recompensa (gold). Não é o tema do lojista.
+ * Escopo: painel Vidalys; widget da vitrine deve herdar a marca da loja.
+ */
+:root {
+  --vf-ink: #10253E;
+  --vf-ink-soft: #233E55;
+  --vf-primary: #087F79;
+  --vf-primary-hover: #096B66;
+  --vf-primary-contrast: #FFFFFF;
+  --vf-mint: #37D5BB;
+  --vf-mint-soft: #E8F9F4;
+  --vf-reward: #F5BA51;
+  --vf-reward-ink: #98631A;
+  --vf-reward-soft: #FFF6E6;
+  --vf-info: #2463BD;
+  --vf-info-soft: #EFF5FF;
+  --vf-canvas: #F6F8FB;
+  --vf-surface: #FFFFFF;
+  --vf-border: #DDE7EF;
+  --vf-muted: #577085;
+  --vf-success: #167A56;
+  --vf-warning: #98631A;
+  --vf-danger: #AD334B;
+  --vf-radius-sm: 10px;
+  --vf-radius-md: 16px;
+  --vf-radius-lg: 22px;
+  --vf-shadow-card: 0 14px 40px rgba(16,37,62,.055);
+  --vf-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --vf-font-display: "Manrope", "Inter", system-ui, sans-serif;
+}
+html {color-scheme: light}
+body {background:var(--vf-canvas);color:var(--vf-ink)}
+button,select,textarea,input {font-family:inherit}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible {
+  outline:3px solid var(--vf-primary);
+  outline-offset:3px;
+}
+:where(.portal-shell,.portal-auth-layout,.portal-loading,.layout) {
+  font-family:var(--vf-font);
+}
+:where(.portal-shell,.portal-auth-layout,.layout) h1,
+:where(.portal-shell,.portal-auth-layout,.layout) h2,
+:where(.portal-shell,.portal-auth-layout,.layout) h3 {
+  font-family:var(--vf-font-display);
+}
+:where(.portal-shell,.portal-auth-layout) a {color:var(--vf-primary)}
+:where(.portal-shell,.portal-auth-layout) a:hover {color:var(--vf-primary-hover)}
+.portal-primary {
+  background:var(--vf-primary);
+  border-radius:12px;
+  color:var(--vf-primary-contrast);
+  min-height:46px;
+  padding-inline:20px;
+  box-shadow:0 6px 14px rgba(8,127,121,.12);
+  transition:background-color .16s ease,transform .16s ease,box-shadow .16s ease;
+}
+.portal-primary:hover:not(:disabled) {
+  background:var(--vf-primary-hover);
+  box-shadow:0 8px 18px rgba(8,127,121,.18);
+}
+.portal-primary:disabled {box-shadow:none}
+.portal-eyebrow {color:var(--vf-primary);letter-spacing:.115em}
+.portal-wordmark {font-family:var(--vf-font-display);letter-spacing:-.045em}
+.portal-wordmark span {color:#A4F0E0}
+.portal-shell {
+  background:var(--vf-canvas);
+  color:var(--vf-ink);
+}
+.portal-side {
+  background:radial-gradient(circle at 100% 0%,rgba(55,213,187,.095),transparent 48%),#10253E;
+  border-right:1px solid #274458;
+  width:264px;
+  padding-top:29px;
+}
+.portal-side-brand {padding-bottom:27px}
+.portal-store {
+  background:rgba(255,255,255,.06);
+  border-color:rgba(182,226,222,.17);
+  padding:13px 12px;
+  border-radius:14px;
+}
+.portal-store-mark {background:#1B605E;color:#A6F0DF}
+.portal-store span {color:#C0D3D7}
+.portal-nav-caption {color:#98B0B9;letter-spacing:.12em}
+.portal-tools-caption {border-color:rgba(255,255,255,.13)}
+.portal-nav button {
+  color:#C8D8DD;
+  border-radius:12px;
+  min-height:47px;
+  font-size:12.5px;
+  font-weight:650;
+}
+.portal-nav button:hover {background:rgba(55,213,187,.12);color:#FFFFFF}
+.portal-nav button.is-active {
+  background:rgba(55,213,187,.15);
+  box-shadow:inset 3px 0 var(--vf-mint);
+  color:#FFFFFF;
+}
+.portal-nav button.is-active svg {color:#80F0D7}
+.portal-nav button span {
+  background:rgba(255,255,255,.075);
+  color:#B6CBD0;
+  padding:4px 7px;
+  border-radius:6px;
+  font-weight:700;
+}
+.portal-nav-secondary button {color:#B3CBD1!important}
+.portal-nav-secondary button.is-active {color:#FFFFFF!important}
+.portal-side-guide {
+  background:linear-gradient(145deg,#1E5553,#173C46 78%);
+  border-color:rgba(167,245,229,.30);
+  border-radius:16px;
+  padding:21px 17px;
+}
+.portal-side-guide>svg {color:var(--vf-reward)}
+.portal-side-guide p {color:#DBECE8}
+.portal-side-guide button {color:#BCF7E7}
+.portal-signout {background:rgba(0,0,0,.12);border-color:#45606B;color:#D6E5E6}
+.portal-main {margin-left:264px;width:calc(100% - 264px)}
+.portal-top {
+  height:74px;
+  position:sticky;
+  z-index:20;
+  top:0;
+  background:rgba(255,255,255,.94);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-color:var(--vf-border);
+}
+.portal-top-title {color:#687D8C}
+.portal-top-title strong {color:var(--vf-ink)}
+.portal-test-label {
+  background:#FFF6E6;
+  border-color:#F0DEB7;
+  color:#825615;
+  letter-spacing:.045em;
+}
+.portal-test-label span {background:#C99025}
+.portal-avatar {background:var(--vf-mint-soft);color:var(--vf-primary)}
+.portal-content {max-width:1450px;padding:32px clamp(22px,3.3vw,46px) 30px}
+.portal-content-head {margin-bottom:22px}
+.portal-content-head h1 {color:var(--vf-ink);font-size:clamp(26px,2.7vw,35px);letter-spacing:-.045em}
+.portal-content-head p {color:var(--vf-muted)}
+.portal-status {color:#35655F;background:#E8F9F4;border-color:#C8EAE1}
+.portal-tenant-bar {margin-bottom:23px}
+.portal-tenant-bar label {color:var(--vf-muted)}
+.portal-select-wrap select {border-color:var(--vf-border);color:var(--vf-ink);border-radius:12px}
+.portal-panel,.xp-panel,.xp-action-section,.xp-stat,.reconcile-card,.cost-panel,.campaign-card {
+  border-color:var(--vf-border);
+  box-shadow:var(--vf-shadow-card);
+}
+.xp-action-center,.xp-campaign,.experience-page {gap:19px}
+.xp-action-banner,.xp-hero,.reconcile-hero,.cost-hero,.campaign-hero {
+  background:
+    radial-gradient(circle at 85% 14%,rgba(55,213,187,.17),transparent 35%),
+    linear-gradient(120deg,#10253E 0%,#114C52 58%,#0D6E68 100%);
+  border-color:#2B706B;
+  border-radius:21px;
+  box-shadow:0 15px 38px rgba(13,76,75,.11);
+}
+.xp-action-banner::after,.xp-hero::after,.reconcile-hero::after {
+  border-color:rgba(175,242,224,.27);
+  box-shadow:0 0 0 55px rgba(55,213,187,.08),0 0 0 120px rgba(245,186,81,.045);
+}
+.xp-eyebrow,.reconcile-kicker,.campaign-eyebrow,.cost-eyebrow {color:#AEF3E5}
+.xp-action-banner h2,.xp-hero h2 {line-height:1.16;letter-spacing:-.05em}
+.xp-action-banner h2 em,.xp-hero h2 em,.reconcile-hero h2 em {color:#B1F2DF}
+.xp-action-banner p,.xp-hero p,.reconcile-hero p {color:#DEEEEA}
+.xp-action-safe,.xp-hero-note,.reconcile-safe {
+  border-color:rgba(174,243,229,.31);
+  background:rgba(255,255,255,.10);
+  color:#E1F5EF;
+}
+.xp-action-decoration,.xp-hero-graphic,.reconcile-art {
+  border-color:rgba(173,241,224,.38);
+  color:#D5FFF4;
+  background:rgba(255,255,255,.10);
+  transform:rotate(-5deg);
+}
+.xp-action-section,.xp-panel {border-radius:19px}
+.xp-section-heading h2,.xp-panel-title h2 {color:var(--vf-ink);letter-spacing:-.04em}
+.xp-section-heading p,.xp-panel-title p {color:var(--vf-muted)}
+.xp-action-cards {gap:16px}
+.xp-action-card {
+  background:#FFFFFF;
+  border:1px solid #DFEAE9;
+  border-radius:16px;
+  box-shadow:0 7px 19px rgba(16,37,62,.035);
+  padding:22px;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.xp-action-card:hover {transform:translateY(-3px);box-shadow:0 15px 27px rgba(16,37,62,.09);border-color:#B9DFD8}
+.xp-action-card h3 {color:var(--vf-ink);font-size:17px}
+.xp-action-card p {color:var(--vf-muted)}
+.xp-action-number {color:#687E8B}
+.xp-action-icon {color:var(--vf-primary);background:var(--vf-mint-soft);border-color:#D0EBE1}
+.xp-action-card:nth-child(2) .xp-action-icon {
+  background:var(--vf-reward-soft);color:var(--vf-reward-ink);border-color:#F1D9A4;
+}
+.xp-action-card:nth-child(3) .xp-action-icon {
+  background:var(--vf-info-soft);color:var(--vf-info);border-color:#D6E4F9;
+}
+.xp-action-reason {color:var(--vf-muted);border-color:#E7EEEE}
+.xp-action-reason svg {color:var(--vf-primary)}
+.xp-action-link {border-color:#CDE8E2;color:var(--vf-primary);background:#F4FCF9}
+.xp-action-link:hover {border-color:var(--vf-primary);background:#E7F8F3}
+.xp-ai-note {
+  background:#F0FAF6;
+  border-color:#D0E8E0;
+  border-radius:15px;
+}
+.xp-ai-note-symbol {background:#DDF4EB;color:var(--vf-primary)}
+.xp-ai-note strong,.xp-guidance strong {color:#1B4C46}
+.xp-ai-note p,.xp-guidance p {color:var(--vf-muted)}
+.xp-ai-stage {color:#466B66;border-color:#C9E4D9}
+.xp-stats {gap:13px}
+.xp-stat {border-radius:16px}
+.xp-stat>span {color:var(--vf-muted)}
+.xp-stat>span svg {color:var(--vf-primary)}
+.xp-stat strong {color:var(--vf-ink)}
+.xp-empty {background:#FBFEFD;border-color:#CDDED7}
+.xp-empty-icon,.xp-results-icon {background:var(--vf-mint-soft);color:var(--vf-primary)}
+.xp-empty h3,.xp-results-empty h2 {color:var(--vf-ink)}
+.xp-empty p,.xp-results-empty p {color:var(--vf-muted)}
+.xp-empty-steps span {border-color:#CEE6DB;color:#296D62}
+.xp-link-btn,.xp-action-link {border-radius:11px}
+.xp-link-btn {border-color:#D0E7E1;color:var(--vf-primary)}
+.xp-link-btn:hover {border-color:var(--vf-primary);background:#E8F9F4}
+.xp-search {border-color:#CEDFD9}
+.xp-search button {background:#E8F9F4;color:var(--vf-primary);border-color:#CFEBDF}
+.xp-filter select {border-color:#D2E2DC}
+.xp-table th {background:#F7FAF9}
+.xp-table td {color:var(--vf-ink-soft)}
+.xp-person-avatar {background:#DFF4EB;color:var(--vf-primary)}
+.xp-tag.active {color:#176F4C}
+.xp-guidance {background:var(--vf-reward-soft);border-color:#F1DFB9}
+.xp-guidance>svg {color:#98631A}
+.xp-wizard-step.is-active {background:var(--vf-mint-soft);border-color:#9BD8CA;color:#1B5D54}
+.xp-wizard-step.is-active>span {background:var(--vf-primary)}
+.xp-wizard-step.is-complete {color:var(--vf-success)}
+.xp-wizard-step.is-complete>span {background:#D9F3E6;color:var(--vf-success)}
+.xp-goal-card {border-color:var(--vf-border);background:#FFFFFF;border-radius:15px}
+.xp-goal-card.selected {border-color:var(--vf-primary);background:#F2FBF8;box-shadow:0 0 0 2px rgba(8,127,121,.10)}
+.xp-goal-icon {background:var(--vf-mint-soft);color:var(--vf-primary)}
+.xp-goal-card:nth-child(2) .xp-goal-icon {background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
+.xp-goal-card:nth-child(3) .xp-goal-icon {background:var(--vf-info-soft);color:var(--vf-info)}
+.xp-goal-check,.xp-selection-summary button {color:var(--vf-primary)}
+.xp-selection-summary {background:var(--vf-mint-soft);border-color:#CEE9DE;color:#315F55}
+.xp-selection-summary strong {color:var(--vf-primary)}
+.xp-form-grid input,.xp-form-grid select {border-color:#D5E5DE;color:var(--vf-ink)}
+.xp-form-grid input:focus-visible,.xp-form-grid select:focus-visible {outline-color:var(--vf-primary);border-color:var(--vf-primary)}
+.xp-form-grid label>span {color:var(--vf-ink-soft)}
+.xp-form-grid label>small {color:var(--vf-muted)}
+.xp-budget-hint {background:#FFF8EC;border-color:#F0DEBA;color:#76541B}
+.xp-verdict.neutral {background:var(--vf-mint-soft);border-color:#BDE2D2;color:#1A5F51}
+.xp-verdict.warning {background:var(--vf-reward-soft);border-color:#EBD5A0;color:#845A15}
+.xp-preview-grid>div {background:#FFFFFF;border-color:#E0E9E6}
+.xp-preview-grid>div:nth-child(2) {background:#FFF9ED;border-color:#F1E0BD}
+.xp-preview-grid strong {color:var(--vf-ink)}
+.xp-preview-grid>div:nth-child(2) strong {color:#805211}
+.xp-advanced-section {background:#FAFCFB}
+.xp-action-warning {color:#76541B}
+.reconcile-icon,.nuv-connection-mark,.cost-stat-icon {background:var(--vf-mint-soft);color:var(--vf-primary)}
+.nuv-connection-mark {background:linear-gradient(130deg,#087F79,#1BAF9F);color:#fff}
+.nuv-connection {border-color:var(--vf-border);box-shadow:var(--vf-shadow-card)}
+.nuv-connection-pill.connected {background:var(--vf-mint-soft);border-color:#C6E7D9;color:var(--vf-success)}
+.nuv-security-title {color:var(--vf-primary)}
+.nuv-security-facts svg {color:var(--vf-primary)}
+.nuv-connection-actions .portal-primary {background:var(--vf-primary)}
+.reconcile-card,.cost-panel {border-color:var(--vf-border)}
+.reconcile-status.matched {background:var(--vf-mint-soft);color:var(--vf-success)}
+.reconcile-tabs button.is-active {background:var(--vf-mint-soft);border-color:#AEDDCB;color:var(--vf-primary)}
+.reconcile-stats strong {color:var(--vf-ink)}
+.reconcile-stats>div:nth-child(3) strong {color:var(--vf-warning)}
+.reconcile-file-btn,.reconcile-example-btn {border-color:#CCE4DB;color:var(--vf-primary)}
+.reconcile-file-btn:hover,.reconcile-example-btn:hover {border-color:var(--vf-primary);background:var(--vf-mint-soft)}
+.reconcile-bar i.ok {background:var(--vf-primary)}
+.portal-auth-layout {background:var(--vf-canvas)}
+.portal-auth-brand {
+  background:radial-gradient(circle at 18% 0%,rgba(55,213,187,.15),transparent 44%),
+    linear-gradient(145deg,#10253E,#0D4F52 95%);
+}
+.portal-auth-brand::after {border-color:rgba(55,213,187,.36);box-shadow:0 0 0 65px rgba(55,213,187,.06),0 0 0 150px rgba(245,186,81,.05)}
+.portal-auth-text h1 em {color:#B1F2DF}
+.portal-auth-text>p {color:#D1E6E7}
+.portal-auth-features svg {color:var(--vf-mint)}
+.portal-auth-foot {color:#B2C9C9}
+.portal-login-panel {background:radial-gradient(circle at 80% 5%,#E6F6EF,#FFFFFF 63%)}
+.portal-login-card h2 {color:var(--vf-ink)}
+.portal-login-card>p {color:var(--vf-muted)}
+.portal-login-icon {background:var(--vf-mint-soft);color:var(--vf-primary)}
+.portal-login-card label {color:var(--vf-ink-soft)}
+.portal-login-card input {border-color:var(--vf-border)}
+.portal-login-card input:focus {outline:3px solid rgba(8,127,121,.18);border-color:var(--vf-primary)}
+.portal-login-help {background:#F3F9F7;color:var(--vf-muted)}
+.portal-login-help svg {color:var(--vf-primary)}
+.portal-demo-link {color:var(--vf-primary)}
+.portal-loading {background:var(--vf-ink)}
+.portal-loading p {color:#D4E8E4}
+@media (max-width:780px) {
+  .xp-action-card:hover {transform:none}
+  .xp-action-banner,.xp-hero {padding:27px 24px}
+  .portal-content {padding:25px 20px 29px}
+  .portal-top {backdrop-filter:none}
+}
+@media (max-width:520px) {
+  .portal-content {padding:20px 16px 26px}
+  .portal-content-head {gap:11px}
+  .portal-content-head h1 {font-size:25px}
+  .xp-action-banner,.xp-hero {padding:25px 20px}
+  .xp-action-banner h2,.xp-hero h2 {font-size:28px}
+  .xp-action-card {padding:19px}
+  .xp-action-section,.xp-panel {padding:19px}
+}
+@media (prefers-reduced-motion:reduce) {
+  .portal-primary,.xp-action-card,.xp-goal-card,.xp-action-link {transition:none!important;transform:none!important}
+}
