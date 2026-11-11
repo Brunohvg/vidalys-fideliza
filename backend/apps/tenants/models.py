@@ -42,3 +42,6 @@ class TenantMembership(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["tenant", "user"], name="unique_tenant_member")]
+
+# Importados para reconhecimento do Django e migrações.
+from .branding_models import TenantBranding, TenantBrandingAudit  # noqa: E402,F401
