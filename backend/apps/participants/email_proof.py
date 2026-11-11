@@ -15,7 +15,8 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
+from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission, EnrollmentCustomerLink
+from .models import ProgramParticipant
 
 logger = logging.getLogger(__name__)
 TOKEN_LIFETIME = timedelta(minutes=30)
@@ -124,6 +125,13 @@ def consume_challenge(token: str, purpose: str):
             submission.save(update_fields=["email_verified_at", "status"])
     else:
         # Retirada imediata: impede futura promoção e marketing.
+        # Se já foi participante, encerrar a adesão no mesmo commit.
+        # O extrato é preservado para auditoria; nenhum resgate é executado.
+        link = EnrollmentCustomerLink.objects.filter(submission=submission).first()
+        if link:
+            ProgramParticipant.objects.select_for_update().filter(
+                pk=link.participant_id, tenant_id=submission.tenant_id,
+            ).update(status=ProgramParticipant.Status.WITHDRAWN)
         submission.withdrawn_at = now
         submission.status = EnrollmentSubmission.Status.WITHDRAWN
         submission.marketing_opt_in = False
