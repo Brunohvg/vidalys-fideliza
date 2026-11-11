@@ -53,7 +53,7 @@ def read_products_page(*, store_id: int, access_token: str,
                 content = response.read(2_000_001)
                 if len(content) > 2_000_000:
                     raise CatalogReadError("Resposta da Nuvemshop acima do limite de 2 MB.")
-                data = json.loads(content)
+                data = json.loads(content, parse_float=str)
                 if not isinstance(data, list):
                     raise CatalogReadError("Resposta inesperada da Nuvemshop.")
                 return data

@@ -1,6 +1,17 @@
 # Banco independente: selecionar o destino privado fideliza-homolog no Coolify.
 # Connect to predefined network deve apontar SOMENTE para esse destino exclusivo.
 # Nao usar o destino compartilhado coolify nem publicar portas no host.
+# Compartilhado entre API e worker sem segredos da Nuvemshop.
+x-django-env: &django_env
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
+  DJANGO_DEBUG: "0"
+  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?}
+  DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:?}
+  DJANGO_SECURE_SSL_REDIRECT: "1"
+  DATABASE_URL: ${DATABASE_URL:?}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+
 services:
   redis:
     image: redis:7-alpine
@@ -26,15 +37,13 @@ services:
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.50
-    environment: &django_env
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
-      DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?}
-      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:?}
-      DJANGO_SECURE_SSL_REDIRECT: "1"
-      DATABASE_URL: ${DATABASE_URL:?}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
+    environment:
+      <<: *django_env
+      NUVEMSHOP_CLIENT_ID: ${NUVEMSHOP_CLIENT_ID:-}
+      NUVEMSHOP_CLIENT_SECRET: ${NUVEMSHOP_CLIENT_SECRET:-}
+      NUVEMSHOP_TOKEN_KEYS: ${NUVEMSHOP_TOKEN_KEYS:-}
+      NUVEMSHOP_OAUTH_CALLBACK_URL: ${NUVEMSHOP_OAUTH_CALLBACK_URL:-}
+      NUVEMSHOP_API_USER_AGENT: ${NUVEMSHOP_API_USER_AGENT:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -43,7 +52,7 @@ services:
       - -ec
       - |
         python manage.py migrate --noinput
-        exec gunicorn config.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000 --access-logfile -
+        exec gunicorn config.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000 --access-logfile - --access-logformat '%(h)s %(U)s %(s)s'
     healthcheck:
       test:
         - CMD

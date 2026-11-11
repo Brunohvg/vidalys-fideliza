@@ -1,6 +1,21 @@
 # Homologacao: carregar como Application / Docker Compose, base directory /.
 # Sem name/container_name/ports/redes externas: Coolify atribui o namespace unico.
 # Manter Connect to predefined network e automatic deployments desabilitados.
+# Compartilhado entre API e worker sem segredos da Nuvemshop.
+x-django-env: &django_env
+  DJANGO_SECRET_KEY: ${FIDELIZA_DJANGO_SECRET_KEY:?}
+  DJANGO_DEBUG: "0"
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,${FIDELIZA_STAGING_HOST:?}
+  DJANGO_CSRF_TRUSTED_ORIGINS: https://${FIDELIZA_STAGING_HOST:?}
+  DJANGO_SECURE_SSL_REDIRECT: "1"
+  DB_HOST: db
+  DB_PORT: "5432"
+  DB_NAME: fideliza_homolog
+  DB_USER: fideliza_homolog
+  DB_PASSWORD: ${FIDELIZA_DB_PASSWORD:?}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+
 services:
   db:
     image: postgres:16-alpine
@@ -45,19 +60,13 @@ services:
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.50
-    environment: &django_env
-      DJANGO_SECRET_KEY: ${FIDELIZA_DJANGO_SECRET_KEY:?}
-      DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,${FIDELIZA_STAGING_HOST:?}
-      DJANGO_CSRF_TRUSTED_ORIGINS: https://${FIDELIZA_STAGING_HOST:?}
-      DJANGO_SECURE_SSL_REDIRECT: "1"
-      DB_HOST: db
-      DB_PORT: "5432"
-      DB_NAME: fideliza_homolog
-      DB_USER: fideliza_homolog
-      DB_PASSWORD: ${FIDELIZA_DB_PASSWORD:?}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
+    environment:
+      <<: *django_env
+      NUVEMSHOP_CLIENT_ID: ${NUVEMSHOP_CLIENT_ID:-}
+      NUVEMSHOP_CLIENT_SECRET: ${NUVEMSHOP_CLIENT_SECRET:-}
+      NUVEMSHOP_TOKEN_KEYS: ${NUVEMSHOP_TOKEN_KEYS:-}
+      NUVEMSHOP_OAUTH_CALLBACK_URL: ${NUVEMSHOP_OAUTH_CALLBACK_URL:-}
+      NUVEMSHOP_API_USER_AGENT: ${NUVEMSHOP_API_USER_AGENT:-}
     depends_on:
       db:
         condition: service_healthy
@@ -68,7 +77,7 @@ services:
       - -ec
       - |
         python manage.py migrate --noinput
-        exec gunicorn config.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000 --access-logfile -
+        exec gunicorn config.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000 --access-logfile - --access-logformat '%(h)s %(U)s %(s)s'
     healthcheck:
       # TLS termina no proxy; este healthcheck local precisa indicar HTTPS.
       test:
