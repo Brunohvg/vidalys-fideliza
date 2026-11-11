@@ -1,0 +1,89 @@
+name: One-time Fideliza branch cleanup
+on:
+  push:
+    branches: [homolog]
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  cleanup:
+    if: github.repository == 'Brunohvg/vidalys-fideliza' && github.ref == 'refs/heads/homolog'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify all old branch heads are reachable and no open pull requests
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          expected=(
+            'design/loyalty-experience-v2'
+            'docs/discovery-p0-plan'
+            'feat/campaign-budget-planner-v1'
+            'feat/campaign-drafts-guided-v1'
+            'feat/cashback-ledger-readonly-v1'
+            'feat/catalog-reconciliation-preview-v1'
+            'feat/cost-catalog-v1'
+            'feat/foundation-django-staging'
+            'feat/margin-intelligence-v1'
+            'feat/merchant-experience-clients-v1'
+            'feat/merchant-portal-auth-v1'
+            'feat/nuvemshop-oauth-readonly-v1'
+            'fix/sidebar-navigation-scroll-v2'
+            'infra/coolify-homologacao-v1'
+            'infra/fideliza-external-db-staging-v1'
+            'integrate/fideliza-homologacao-v3'
+            'test/staging-real-auth-e2e-v1'
+          )
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+          open_count=$(gh api "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" --jq 'length')
+          if [[ "$open_count" != 0 ]]; then echo 'Open PR found; refusing cleanup'; exit 1; fi
+          mapfile -t found < <(gh api --paginate "repos/$GITHUB_REPOSITORY/branches?per_page=100" --jq '.[].name')
+          if [[ ${#found[@]} -ne 19 ]]; then echo "Unexpected branch count: ${#found[@]}"; exit 1; fi
+          for item in "${found[@]}"; do
+            if [[ "$item" == main || "$item" == homolog ]]; then continue; fi
+            is_expected=0
+            for old in "${expected[@]}"; do
+              if [[ "$item" == "$old" ]]; then is_expected=1; break; fi
+            done
+            if [[ $is_expected -ne 1 ]]; then echo "Unapproved branch: $item"; exit 1; fi
+          done
+          for old in "${expected[@]}"; do
+            git show-ref --verify --quiet "refs/remotes/origin/$old"
+            git merge-base --is-ancestor "refs/remotes/origin/$old" "refs/remotes/origin/homolog" || { echo "Not merged: $old"; exit 1; }
+          done
+          echo 'All 17 old branch heads verified; cleanup approved.'
+      - name: Delete only the verified obsolete branches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for old in \
+            'design/loyalty-experience-v2' \
+            'docs/discovery-p0-plan' \
+            'feat/campaign-budget-planner-v1' \
+            'feat/campaign-drafts-guided-v1' \
+            'feat/cashback-ledger-readonly-v1' \
+            'feat/catalog-reconciliation-preview-v1' \
+            'feat/cost-catalog-v1' \
+            'feat/foundation-django-staging' \
+            'feat/margin-intelligence-v1' \
+            'feat/merchant-experience-clients-v1' \
+            'feat/merchant-portal-auth-v1' \
+            'feat/nuvemshop-oauth-readonly-v1' \
+            'fix/sidebar-navigation-scroll-v2' \
+            'infra/coolify-homologacao-v1' \
+            'infra/fideliza-external-db-staging-v1' \
+            'integrate/fideliza-homologacao-v3' \
+            'test/staging-real-auth-e2e-v1'
+          do
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$old" >/dev/null
+            echo "Deleted $old"
+          done
+          remaining=$(gh api --paginate "repos/$GITHUB_REPOSITORY/branches?per_page=100" --jq '.[].name')
+          if [[ "$remaining" != $'homolog\nmain' && "$remaining" != $'main\nhomolog' ]]; then echo "Unexpected remaining branches: $remaining"; exit 1; fi
+          echo 'Only main and homolog remain.'
