@@ -50,7 +50,7 @@ for(const width of [390,768,1440]){
     await mockPortal(page);
     await page.goto("/");
     if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
-    await page.getByRole("button",{name:"Clientes"}).click();
+    await page.getByRole("complementary",{name:"Menu do lojista"}).getByRole("button",{name:"Clientes",exact:true}).click();
     await expect(page.getByText("Pessoa QA")).toBeVisible();
     await page.getByRole("button",{name:"Ver extrato"}).click();
     await expect(page.getByRole("heading",{name:"Histórico de Pessoa QA"})).toBeVisible();
