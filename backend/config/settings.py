@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.catalog.apps.CatalogConfig",
     "apps.nuvemshop.apps.NuvemshopConfig",
     "apps.participants.apps.ParticipantsConfig",
+    "apps.campaigns.apps.CampaignsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
