@@ -171,3 +171,7 @@
   .portal-login-card{margin-top:25px}
 }
 @media(prefers-reduced-motion:reduce){.portal-side,.portal-primary{transition:none}.portal-spin{animation:none}}
+
+.margin-example-note{display:flex;align-items:start;gap:10px;padding:12px 14px;margin:-3px 0 19px;border:1px solid #DDEAFD;background:#F5F9FF;color:#466488;border-radius:10px;font-size:11.5px;line-height:1.7}
+.margin-example-note svg{flex:none;color:#1263FF;margin-top:2px}
+.margin-example-note b{color:#244E83}

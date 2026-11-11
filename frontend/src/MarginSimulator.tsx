@@ -154,6 +154,10 @@ export default function MarginSimulator({ tenantId }: { tenantId?: string }) {
           <span className="margin-heading-icon"><Calculator size={20}/></span>
           <div><h3>Dados da venda</h3><p>Preencha valores reais quando estiverem disponíveis.</p></div>
         </header>
+        {tenantId && <div className="margin-example-note" role="note">
+          <Info size={18}/>
+          <span><b>Valores de exemplo.</b> Substitua os campos pelos valores da sua venda antes de interpretar o resultado.</span>
+        </div>}
         <div className="margin-fields">
           {fields.map(f => <label className="margin-field" key={f.key}>
             <span className="margin-field-label">{f.label}</span>

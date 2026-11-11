@@ -78,6 +78,10 @@ for (const width of [390, 768, 1440]) {
     await page.getByRole("button", { name: "Calcular no servidor" }).click();
     await expect(page.getByText("Dentro da meta simulada")).toBeVisible();
     expect(called).toBe(true);
+    // O botão fica abaixo da primeira dobra; capture após voltar ao topo
+    // para evitar posicionamento deslocado do menu fixo no screenshot fullPage.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     await page.screenshot({
       path: testInfo.outputPath("portal-margin-" + width + ".png"), fullPage: true
     });
