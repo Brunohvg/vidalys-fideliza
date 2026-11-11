@@ -107,3 +107,52 @@ for(const width of [390,768,1440]){
     }
   );
 }
+
+
+for(const width of [390,768,1440]){
+  test("Confirmar e-mail com token e retirada em "+width+"px", async ({page})=>{
+    await page.setViewportSize({width,height:850});
+    await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        authenticated:false,user:null,tenants:[]
+      })
+    }));
+    await page.route("**/api/v1/public/enrollment/email-action/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        status:"email_verified",identity_verified_in_nuvemshop:false,
+        participant_created:false,cashback_enabled:false,
+        message:"E-mail confirmado. A loja ainda precisa validar o cadastro na Nuvemshop."
+      })
+    }));
+    await page.goto("/confirmar#acao=verify&token="+ "A".repeat(43));
+    await expect(page.getByRole("heading",{name:"Confirme seu endereço de e-mail"})).toBeVisible();
+    await page.getByRole("button",{name:"Confirmar meu e-mail"}).click();
+    await expect(page.getByRole("heading",{name:"E-mail confirmado."})).toBeVisible();
+    await expect(page.getByText("não concedeu cashback, pontos ou descontos",{exact:false})).toBeVisible();
+    expect(new URL(page.url()).hash).toBe("");
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+      .toBeLessThanOrEqual(1);
+  });
+
+  test("Solicitar retirada sem revelar existência da conta em "+width+"px",async ({page})=>{
+    await page.setViewportSize({width,height:850});
+    await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        authenticated:false,user:null,tenants:[]
+      })
+    }));
+    await page.route("**/api/v1/public/programs/loja-jardim/withdraw-request/",route=>route.fulfill({
+      status:202,contentType:"application/json",body:JSON.stringify({
+        status:"accepted",
+        message:"Se houver uma solicitação correspondente, enviaremos um link de confirmação."
+      })
+    }));
+    await page.goto("/retirar/loja-jardim");
+    await expect(page.getByRole("heading",{name:"Retirar minha solicitação"})).toBeVisible();
+    await page.getByRole("textbox",{name:"Seu e-mail"}).fill("cliente@example.invalid");
+    await page.getByRole("button",{name:"Solicitar retirada por e-mail"}).click();
+    await expect(page.getByText("Se houver uma solicitação associada",{exact:false})).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
+      .toBeLessThanOrEqual(1);
+  });
+}
