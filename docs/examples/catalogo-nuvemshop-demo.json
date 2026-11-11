@@ -1,0 +1,47 @@
+{
+  "products": [
+    {
+      "id": 89101,
+      "name": {
+        "pt": "Fita cetim 10 mm — DEMONSTRAÇÃO"
+      },
+      "variants": [
+        {
+          "id": 99301,
+          "product_id": 89101,
+          "sku": "FITA-10-VERMELHA",
+          "barcode": "0780000000123",
+          "price": "14.90",
+          "promotional_price": "12.90",
+          "cost": null
+        },
+        {
+          "id": 99302,
+          "product_id": 89101,
+          "sku": "FITA-10-AZUL",
+          "barcode": "0780000000456",
+          "price": "14.90",
+          "promotional_price": null,
+          "cost": "6.50"
+        }
+      ]
+    },
+    {
+      "id": 89102,
+      "name": {
+        "pt": "Argola 100 mm — DEMONSTRAÇÃO"
+      },
+      "variants": [
+        {
+          "id": 99303,
+          "product_id": 89102,
+          "sku": "ARG-100-TR",
+          "barcode": "",
+          "price": "29.90",
+          "promotional_price": null,
+          "cost": null
+        }
+      ]
+    }
+  ]
+}

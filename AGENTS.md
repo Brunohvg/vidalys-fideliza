@@ -73,3 +73,12 @@ Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (
 - Edição de custo revoga confirmação. Nunca usar preços manuais como preços atuais da Nuvemshop sem revalidar.
 - Registro versionado com histórico aditivo; nunca sobrescrever em lote ou aceitar um update com versão antiga.
 - Não implementar conexão OAuth ou alteração de catálogo sem ler docs oficiais atuais e obter consentimento. Ver docs/16-CUSTOS-SKU.md.
+
+
+## Conciliação do catálogo (prévia de amostra)
+- Comparar product_id e variant_id antes de qualquer vínculo; alterações de atributos na Nuvemshop podem recriar IDs.
+- SKU repetido, ausente ou candidato por troca de ID exige revisão humana. EAN não é chave de vinculação definitiva.
+- Cost na API é opcional e não pode sobrescrever custo local conferido.
+- API catalog/reconcile-preview/ exige login, tenant e limites estritos de payload; só faz leitura.
+- Cliente GET oficial não tem token armazenado nem OAuth ativo. Ver docs/17-CONCILIACAO-CATALOGO.md.
+- Nunca habilitar importação real nem cashback a partir desta prévia.
