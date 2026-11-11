@@ -1,5 +1,7 @@
 """Troca OAuth: somente destino oficial, sem redirect de token nem segredos no log."""
 import json
+from django.conf import settings
+from .scopes import allowed_scopes, parse_scopes
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -53,9 +55,11 @@ def exchange_code(code: str, client_id: str, client_secret: str, *, opener=None)
         raise OAuthExchangeError("Escopos OAuth inválidos.")
     scope_set = {x.strip() for x in scopes.split(",") if x.strip()}
     # Nunca armazenar credencial com poderes de escrita sem aprovação do escopo.
-    if scope_set != {"read_products"} or token_type != "bearer":
-        raise OAuthExchangeError("Permissões inesperadas; aplicativo deve usar somente read_products.")
+    if not allowed_scopes(scopes, customer_preview_enabled=(
+            settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED)) or token_type != "bearer":
+        raise OAuthExchangeError("Permissões inesperadas; somente leituras aprovadas são permitidas.")
     if data.get("user_id") is not None and data.get("store_id") is not None:
         if str(data["user_id"]) != str(data["store_id"]):
             raise OAuthExchangeError("Loja OAuth inconsistente.")
-    return {"access_token": token, "store_id": str(int(user_id)), "scope": "read_products"}
+    return {"access_token": token, "store_id": str(int(user_id)),
+            "scope": ",".join(sorted(parse_scopes(scopes)))}
