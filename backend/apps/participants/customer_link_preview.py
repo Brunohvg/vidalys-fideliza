@@ -13,6 +13,7 @@ from apps.nuvemshop.customer_lookup import (
     CustomerReadError, exact_email_match, read_customer_candidates,
 )
 from apps.nuvemshop.models import NuvemshopInstallation
+from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.nuvemshop.scopes import has_customer_access
 from apps.nuvemshop.security import OAuthConfigurationError, config, decrypt_token
 from apps.tenants.models import TenantMembership
@@ -73,6 +74,19 @@ class CustomerLinkPreviewView(APIView):
                 email=submission.email,
             )
             match_status, customer_id = exact_email_match(data, submission.email)
+            if match_status=="one_exact_match" and PrivacyWebhookRequest.objects.filter(
+                store_id=installed.store_id,
+                customer_id=customer_id,
+                topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
+                state__in=[
+                    PrivacyWebhookRequest.State.NEEDS_REVIEW,
+                    PrivacyWebhookRequest.State.PENDING,
+                    PrivacyWebhookRequest.State.UNKNOWN_STORE,
+                ],
+            ).exists():
+                return secure(Response({
+                    "detail": "Este cadastro tem uma solicitação de privacidade pendente."
+                }, status=409))
         except OAuthConfigurationError:
             return secure(Response({"detail": "Credencial Nuvemshop indisponível."}, status=503))
         except (CustomerReadError, ValueError):
