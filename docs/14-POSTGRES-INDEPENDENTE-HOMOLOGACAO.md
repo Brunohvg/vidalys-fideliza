@@ -29,12 +29,10 @@ substitui politica de backup e teste de restauracao antes de dados reais.
 | DATABASE_URL | URL interna real do PostgreSQL novo, mantida oculta |
 | DJANGO_ALLOWED_HOSTS | localhost,127.0.0.1 e o hostname HTTPS do staging |
 | DJANGO_CSRF_TRUSTED_ORIGINS | Origem HTTPS completa do staging |
-| FIDELIZA_TEST_ADMIN_PASSWORD | Opcional; senha aleatoria exclusiva para provisionar conta piloto |
 
 O arquivo ativo usa os nomes consumidos pelo Django, sem aliases FIDELIZA_DB_PASSWORD,
 FIDELIZA_DJANGO_SECRET_KEY ou SERVICE_PASSWORD_64_DJANGO da preparacao anterior.
-Recarregar o Compose e remover essas variaveis obsoletas do recurso novo. A senha
-opcional nao cria conta automaticamente e nao deve ser usada fora da homologacao.
+Recarregar o Compose e remover essas variaveis obsoletas do recurso novo. Nenhuma senha administrativa e repassada por variavel de ambiente para os containers.\nProvisionar conta piloto apenas por fluxo interativo autorizado e seguro.
 
 Nao imprimir credenciais nem incluir valores em GitHub, capturas ou chat. Nao
 copiar senhas, usuarios ou URLs de bancos existentes. Nao criar senha padrao.

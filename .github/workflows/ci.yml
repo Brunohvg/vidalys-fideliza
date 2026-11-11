@@ -181,6 +181,9 @@ jobs:
           connection.close()
           PY
           docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T worker celery -A config inspect ping --timeout 5
+      - name: Full private auth, CSRF and tenant integration smoke
+        run: |
+          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T -e FIDELIZA_CI_ISOLATED=1 api python - < .github/scripts/smoke_real_auth.py
       - name: Remove ephemeral resources only
         if: always()
         run: |
