@@ -82,3 +82,19 @@ segredos retorna **ALERTA** se essa variável estiver ativada.
 
 A mudança de código não modifica automaticamente as variáveis salvas
 na interface do Coolify.
+
+## Nova permissão opcional Nuvemshop (prévia de clientes)
+
+`FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=0` permanece como padrão
+no Compose externo. Enquanto desativada, a autenticação OAuth mantém
+o escopo anterior de `read_products` e nenhum cliente é consultado.
+
+A flag `1` exige escopos `read_products,read_customers` realmente
+concedidos, atualização das permissões no Portal de Parceiros e
+reinstalação/autorização de cada loja. A auditoria local mostrará
+**ALERTA** ao encontrar essa flag ativada; a autorização deve ser
+confirmada na instalação OAuth correspondente, não presumida.
+
+Esta flag não habilita inclusão automática de participantes,
+resgates ou `read_orders`. Consulte
+[28 — Prévia de vínculo de clientes Nuvemshop](./28-PREVIA-VINCULO-CLIENTE-NUVEMSHOP.md).
