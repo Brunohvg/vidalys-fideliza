@@ -93,7 +93,7 @@ for(const width of [390,1440]){
       await expect(page.getByText("Cliente Pendente")).toBeVisible();
       await expect(page.getByRole("button",{name:"Conferir cadastro na Nuvemshop"})).toHaveCount(1);
       await page.getByRole("button",{name:"Conferir cadastro na Nuvemshop"}).click();
-      await expect(page.getByText("Correspondência exata: cliente nº 123",{exact:false})).toBeVisible();
+      await expect(page.getByText("Encontramos um cadastro correspondente ao e-mail confirmado.")).toBeVisible();
       expect(requests).toBe(1);
       expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
         .toBeLessThanOrEqual(1);
@@ -108,4 +108,56 @@ test("Sem autorização read_customers, não consultar clientes da loja",async (
     .toBeVisible();
   await expect(page.getByText("read_customers",{exact:false})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Conferir cadastro na Nuvemshop"})).toHaveCount(0);
+});
+
+test("Lojista aprova explicitamente vínculo verificado sem conceder recompensas",async ({page})=>{
+  await mock(page,true);
+  await page.route("**/api/v1/tenants/**/nuvemshop/status/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      configured:true,connected:true,store_id:"1234",
+      scope:"read_customers,read_products,read_orders",
+      mode:"read_products_only",ready_for_write:false,
+      customer_matching:{
+        preview_enabled:true,customer_scope_granted:true,
+        read_only_preview_available:true,participant_approval_available:true,
+        requires_partner_portal_scope_and_reinstallation:false,
+        will_activate_participants:false,will_credit_cashback:false,
+      },
+    }),
+  }));
+  await page.route("**/customer-match/preview/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      mode:"read_only_customer_match_preview",status:"one_exact_match",
+      customer_id:"123",email_verified:true,submission_id:receiptId,tenant_id:store.id,
+      scope_required:"read_customers",writes_performed:0,
+      participant_created:false,cashback_enabled:false,
+      note:"Prévia sem alterações",
+    }),
+  }));
+  let approvals=0;
+  await page.route("**/customer-match/approve/",async route=>{
+    approvals+=1;
+    expect(route.request().postDataJSON()).toEqual({
+      customer_id:"123",confirm:true,
+    });
+    expect(route.request().url()).toContain(receiptId);
+    await route.fulfill({
+      status:201,contentType:"application/json",body:JSON.stringify({
+        status:"linked",already_linked:false,participant_id:"7cc50f6a-4cda-4166-9bf8-90de14040bc8",
+        cashback_enabled:false,orders_modified:false,
+        message:"Cliente vinculado ao programa. Recompensas ainda não estão disponíveis.",
+      }),
+    });
+  });
+  await page.goto("/");
+  await page.locator(".portal-nav").getByRole("button",{name:/^Clientes/}).click();
+  await page.getByRole("button",{name:"Conferir cadastro na Nuvemshop"}).click();
+  await page.getByRole("button",{name:"Aprovar participação"}).click();
+  await expect(page.getByText("Confirmar a adesão deste cliente ao clube?")).toBeVisible();
+  expect(approvals).toBe(0);
+  await page.getByRole("button",{name:"Sim, aprovar participação"}).click();
+  await expect(page.getByText("Cliente vinculado ao programa.",{exact:false})).toBeVisible();
+  await expect(page.getByText("Cliente Verificado")).toHaveCount(0);
+  expect(approvals).toBe(1);
+  await expect(page.getByText("Recompensas ainda não estão disponíveis.",{exact:false})).toBeVisible();
 });
