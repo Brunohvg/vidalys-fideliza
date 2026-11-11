@@ -6,6 +6,7 @@ aceite pendente, nunca ProgramParticipant ou evento de ledger.
 import hashlib
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
@@ -39,6 +40,8 @@ class PublicStoreProgramView(APIView):
     http_method_names = ["get", "head", "options"]
 
     def get(self, request, slug):
+        if not settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED:
+            return secure(Response({"detail": "Adesão pública indisponível."}, status=404))
         tenant = get_object_or_404(Tenant, slug=slug, status=Tenant.Status.ACTIVE)
         terms = active_terms_for(tenant)
         if not is_ready(terms):
@@ -60,6 +63,8 @@ class PublicStoreJoinView(APIView):
 
     @transaction.atomic
     def post(self, request, slug):
+        if not settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED:
+            return secure(Response({"detail": "Adesão pública indisponível."}, status=404))
         if _limit_public(request):
             return secure(Response({"detail": "Muitas tentativas. Tente novamente mais tarde."}, status=429))
         if not valid_object(
