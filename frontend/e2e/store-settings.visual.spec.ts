@@ -35,6 +35,7 @@ async function setup(page:Page,role:"owner"|"analyst"="owner"){
       items:[{
         id:"a9d97a5e-4840-4f68-b65a-90f0623a5f12",
         type:"data_access",received_at:"2026-11-11T10:00:00Z",status:"em_analise",
+        report_available:true,downloaded:false,can_confirm:false,
       }],
       note:"Solicitação em análise",
     }),
@@ -142,4 +143,49 @@ test("Analista consulta aparência mas não vê ação de salvar",async ({page})
   await expect(page.getByText("Um administrador da loja pode alterá-las.",{exact:false})).toBeVisible();
   await expect(page.getByRole("button",{name:"Salvar alterações"})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Atualizar conexão"})).toHaveCount(0);
+});
+
+test("Relatório de dados exige download e confirmação explícita, sem segredo na tela",async ({page})=>{
+  await setup(page);
+  const receiptId="a9d97a5e-4840-4f68-b65a-90f0623a5f12";
+  const digest="a".repeat(64);
+  let downloaded=0,confirmed=0;
+  await page.route("**/privacy/requests/**/report/",route=>{
+    downloaded++;
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers()["x-csrftoken"]).toBe("csrf-settings-qa");
+    expect(route.request().url()).toContain(receiptId);
+    return route.fulfill({
+      contentType:"application/json",
+      headers:{
+        "X-Fideliza-Report-Digest":digest,
+        "X-Fideliza-Report-Complete":"true",
+      },
+      body:JSON.stringify({documento:"Relatório da loja",aceites:[]}),
+    });
+  });
+  await page.route("**/privacy/requests/**/confirm/",route=>{
+    confirmed++;
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers()["x-csrftoken"]).toBe("csrf-settings-qa");
+    expect(route.request().postDataJSON()).toEqual({confirm:true,digest});
+    return route.fulfill({
+      contentType:"application/json",
+      body:JSON.stringify({status:"completed",message:"Recebimento do relatório confirmado e registrado."}),
+    });
+  });
+  await goSettings(page,1440);
+  await expect(page.getByRole("button",{name:"Confirmar que recebi"})).toHaveCount(0);
+  const downloadPromise=page.waitForEvent("download");
+  await page.getByRole("button",{name:"Baixar relatório"}).click();
+  const file=await downloadPromise;
+  expect(file.suggestedFilename()).toContain("relatorio-fideliza");
+  expect(downloaded).toBe(1);
+  expect(confirmed).toBe(0);
+  await expect(page.getByRole("button",{name:"Confirmar que recebi"})).toBeVisible();
+  await page.getByRole("button",{name:"Confirmar que recebi"}).click();
+  await expect(page.getByText("Recebimento do relatório confirmado e registrado.")).toBeVisible();
+  expect(confirmed).toBe(1);
+  await expect(page.getByRole("button",{name:"Baixar relatório"})).toHaveCount(0);
+  await expect(page.getByText("Nenhuma solicitação pendente",{exact:false})).toHaveCount(0);
 });
