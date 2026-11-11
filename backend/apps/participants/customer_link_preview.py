@@ -78,11 +78,6 @@ class CustomerLinkPreviewView(APIView):
                 store_id=installed.store_id,
                 customer_id=customer_id,
                 topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
-                state__in=[
-                    PrivacyWebhookRequest.State.NEEDS_REVIEW,
-                    PrivacyWebhookRequest.State.PENDING,
-                    PrivacyWebhookRequest.State.UNKNOWN_STORE,
-                ],
             ).exists():
                 return secure(Response({
                     "detail": "Este cadastro tem uma solicitação de privacidade pendente."
