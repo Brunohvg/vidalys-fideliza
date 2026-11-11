@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "apps.nuvemshop.apps.NuvemshopConfig",
     "apps.participants.apps.ParticipantsConfig",
     "apps.campaigns.apps.CampaignsConfig",
+    "apps.wallets.apps.WalletsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -129,3 +130,6 @@ if REDIS_URL:
 # Em desenvolvimento sem Redis, Django usa cache local em memória.
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7
 SESSION_SAVE_EVERY_REQUEST = False
+
+# Bloqueado: concessões e resgates dependem de autorização e eventos verificados.
+FIDELIZA_LEDGER_WRITES_ENABLED = False

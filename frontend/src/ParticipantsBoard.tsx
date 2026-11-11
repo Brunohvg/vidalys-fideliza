@@ -1,3 +1,4 @@
+import "./wallet-details.css";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, CircleHelp,
@@ -5,9 +6,20 @@ import {
   UserRoundCheck, UsersRound
 } from "lucide-react";
 import {
-  ApiError, merchantApi, type ParticipantDirectoryResponse,
+  ApiError, merchantApi, type CashbackWalletView, type ParticipantDirectoryResponse,
   type ProgramParticipant
 } from "./api";
+
+const money = (value: number) => new Intl.NumberFormat("pt-BR", {
+  style: "currency", currency: "BRL"
+}).format(value / 100);
+
+const movements: Record<CashbackWalletView["events"][number]["kind"], string> = {
+  accrual:"Crédito pendente", release:"Liberação interna", reserve:"Reserva interna",
+  cancel_reservation:"Reserva cancelada", redeem:"Resgate registrado",
+  expire:"Crédito expirado", reverse_pending:"Estorno pendente",
+  reverse_available:"Estorno de saldo liberado"
+};
 
 function dateString(value: string | null) {
   if (!value) return "Não disponível";
@@ -29,6 +41,22 @@ export default function ParticipantsBoard({ tenantId }: { tenantId: string }) {
   const [status, setStatus] = useState<"all"|"active"|"paused">("all");
   const [offset, setOffset] = useState(0);
   const [version, setVersion] = useState(0);
+  const [selected, setSelected] = useState<ProgramParticipant | null>(null);
+  const [wallet, setWallet] = useState<CashbackWalletView | null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState("");
+
+  const openWallet = async (item: ProgramParticipant) => {
+    setSelected(item); setWallet(null); setWalletError(""); setWalletLoading(true);
+    try {
+      const result = await merchantApi.participantWallet(tenantId, item.id);
+      setWallet(result);
+    } catch (cause) {
+      setWalletError(cause instanceof ApiError ? cause.message : "Falha ao consultar extrato.");
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -110,7 +138,14 @@ export default function ParticipantsBoard({ tenantId }: { tenantId: string }) {
               <span><strong>{displayName(item)}</strong><small>{item.contact_email || "Contato não informado"}</small></span></div></td>
             <td><strong>{dateString(item.consented_at)}</strong><small>{item.consent_channel==="customer_portal"?"Portal do participante":"Aceite na loja"}</small></td>
             <td><span className={"xp-tag "+item.status}>{item.status==="active"?"Participando":"Pausado"}</span></td>
-            <td><span className="xp-unavailable">Aguardando carteira</span><small>Atividade: {dateString(item.last_program_activity_at)}</small></td>
+            <td>{item.balance_status === "ledger_only" && item.cashback_balance_cents !== null
+              ? <><strong>{money(item.cashback_balance_cents)}</strong>
+                  <small>Registro interno · não resgatável</small>
+                  <button type="button" className="vf-wallet-open" onClick={() => void openWallet(item)}>
+                    Ver extrato
+                  </button></>
+              : <span className="xp-unavailable">Aguardando carteira</span>}
+              <small>Atividade: {dateString(item.last_program_activity_at)}</small></td>
           </tr>)}</tbody></table>
         </div>}
       {!loading && !error && response && response.total_filtered>0 && <div className="xp-pagination">
@@ -121,6 +156,38 @@ export default function ParticipantsBoard({ tenantId }: { tenantId: string }) {
       </div>}
     </section>
 
+    {selected && <section className="xp-panel vf-wallet-detail" aria-label="Extrato interno do participante">
+      <div className="vf-wallet-heading">
+        <div><span className="portal-eyebrow">CARTEIRA EM HOMOLOGAÇÃO</span>
+          <h3>Histórico de {displayName(selected)}</h3>
+          <p>Extrato contábil interno. Não representa crédito resgatável na Nuvemshop.</p>
+        </div>
+        <button type="button" className="vf-wallet-close"
+          onClick={() => {setSelected(null);setWallet(null);setWalletError("");}}>Fechar</button>
+      </div>
+      {walletLoading && <p role="status">Carregando extrato…</p>}
+      {walletError && <p role="alert" className="vf-wallet-error">{walletError}</p>}
+      {!walletLoading && wallet?.balances && <>
+        <div className="vf-wallet-balances">
+          <div><span>Disponível no ledger</span><strong>{money(wallet.balances.available_cents)}</strong></div>
+          <div><span>Pendente</span><strong>{money(wallet.balances.pending_cents)}</strong></div>
+          <div><span>Reservado</span><strong>{money(wallet.balances.reserved_cents)}</strong></div>
+        </div>
+        <p className="vf-wallet-disclaimer">Resgate desativado. Movimentações somente de teste
+          até que pagamentos e regras sejam validados.</p>
+        <h4>Últimas movimentações</h4>
+        {wallet.events.length ? <ul className="vf-wallet-events">
+          {wallet.events.map(entry => <li key={entry.id}>
+            <span><strong>{movements[entry.kind]}</strong>
+              <small>{dateString(entry.created_at)} · Regra {entry.rule_version}</small></span>
+            <strong>{money(entry.amount_cents)}</strong>
+          </li>)}
+        </ul> : <p>Nenhuma movimentação registrada.</p>}
+      </>}
+      {!walletLoading && wallet && !wallet.balances &&
+        <p>Carteira ainda não disponível para este participante.</p>}
+    </section>}
+    
     <aside className="xp-guidance"><ShieldCheck size={19}/><div><strong>Privacidade antes de campanhas.</strong>
       <p>Adesão, contato de marketing e compartilhamento de dados têm finalidades distintas. O Fideliza exigirá um aceite verificável antes de atribuir benefícios; clientes sem aceite não aparecerão nesta lista.</p></div>
       <ArrowRight size={18} className="xp-guidance-arrow"/></aside>

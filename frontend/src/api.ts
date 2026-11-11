@@ -179,8 +179,27 @@ export type ProgramParticipant = {
   last_program_activity_at: string | null;
   consent_channel: "customer_portal" | "storefront_opt_in";
   points_balance: null;
-  cashback_balance_cents: null;
-  balance_status: "not_implemented";
+  cashback_balance_cents: number | null;
+  cashback_pending_cents: number | null;
+  cashback_reserved_cents: number | null;
+  balance_status: "not_implemented" | "ledger_only";
+};
+
+export type CashbackWalletView = {
+  mode: "ledger_read_only";
+  balance_status: "not_implemented" | "ledger_only";
+  balances: null | {
+    pending_cents: number; available_cents: number; reserved_cents: number;
+  };
+  events: Array<{
+    id: string; kind: "accrual" | "release" | "reserve" |
+      "cancel_reservation" | "redeem" | "expire" |
+      "reverse_pending" | "reverse_available";
+    amount_cents: number; rule_version: string; created_at: string;
+  }>;
+  events_limit: 20;
+  redemption_enabled: false;
+  note: string;
 };
 
 export type ParticipantDirectoryResponse = {
@@ -253,6 +272,11 @@ export const merchantApi = {
       "/participants/?" + query.toString()
     );
   },
+  participantWallet: (tenantId: string, participantId: string) =>
+    getJson<CashbackWalletView>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/participants/" + encodeURIComponent(participantId) + "/wallet/"
+    ),
   nuvemshopStatus: (tenantId: string) =>
     getJson<NuvemshopConnectionStatus>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/nuvemshop/status/"
