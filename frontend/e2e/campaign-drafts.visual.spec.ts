@@ -73,3 +73,27 @@ for(const width of [390,768,1440]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   });
 }
+
+test("Página inicial recomenda retomar campanha existente sem ativar benefícios",async ({page})=>{
+  await mockSession(page);
+  await page.route("**/api/v1/tenants/**/campaign-drafts/",r=>r.fulfill({
+    contentType:"application/json",
+    body:JSON.stringify({
+      mode:"draft_only",activation_available:false,
+      items:[{
+        id:draftId,title:"Segunda compra de novembro",goal:"second_purchase",
+        cashback_rate_bps:200,ticket_cents:10000,projected_paid_orders:100,
+        budget_cents:30000,version:1,status:"draft",
+        created_at:"2026-11-11T14:00:00Z",updated_at:"2026-11-11T14:00:00Z",
+        preview:{credit_per_order_cents:200,max_exposure_cents:20000,
+          exceeds_budget:false,assumptions_only:true}
+      }]
+    })
+  }));
+  await page.goto("/");
+  await expect(page.getByRole("heading",{name:"Retome seu planejamento"})).toBeVisible();
+  await expect(page.getByText("Nenhuma campanha foi publicada.")).toBeVisible();
+  await page.getByRole("button",{name:"Retomar campanha"}).click();
+  await expect(page.getByRole("heading",{name:"Rascunhos salvos"})).toBeVisible();
+  expect(await page.getByRole("button",{name:/Publicar|Ativar/}).count()).toBe(0);
+});
