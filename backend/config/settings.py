@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "rest_framework", "apps.core.apps.CoreConfig", "apps.tenants.apps.TenantsConfig",
     "apps.margin.apps.MarginConfig",
     "apps.costs.apps.CostsConfig",
+    "apps.catalog.apps.CatalogConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
