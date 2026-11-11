@@ -113,3 +113,39 @@ Compose Coolify e Playwright.
 **Não habilitar `FIDELIZA_PUBLIC_SIGNUP_ENABLED` nem
 `FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED` em produção sem gates
 jurídicos, autorização, backup e validação operacional.**
+
+## Continuidade implementada — 11/11/2026: aprovação explícita do vínculo
+
+O fluxo `read_only_customer_match_preview` foi mantido. Acrescentamos
+`POST /api/v1/tenants/{tenant_uuid}/enrollment-submissions/{submission_uuid}/customer-match/approve/`
+com `{"customer_id":"<id_confimado_na_previa>","confirm":true}`.
+
+A API reconsulta via **GET** o mesmo cadastro Nuvemshop e exige correspondência
+única com o e-mail já confirmado, tenant/loja iguais, usuário OWNER/ADMIN e
+consentimento não retirado. Uma transação serializada por loja registra
+`EnrollmentCustomerLink` e um `ProgramParticipant` com o número de cliente
+verificado, termos, data de aceite e quem aprovou. Nova tentativa com o
+mesmo vínculo devolve o mesmo participante; conta já vinculada por
+outra solicitação não é adotada automaticamente.
+
+O cliente então aparece na lista de Participantes; nenhum saldo é criado,
+nenhum pedido é alterado, nenhuma API de escrita da Nuvemshop é chamada.
+Se ele retirar a adesão pelo link confirmado de e-mail, o participante
+é marcado `withdrawn`, marketing opt-in fica falso e os dados de
+auditoria são preservados.
+
+**Gate de segurança:** `FIDELIZA_PARTICIPANT_APPROVAL_ENABLED=0` por
+padrão. A opção também depende da prévia `read_customers` estar
+ativada, do token da loja conter autorização de clientes e de
+aceite realmente confirmado. Essa flag permite adesão auditada, não
+cashback, resgate, campanhas ativas nem comunicação promocional.
+
+Nova migração: `participants/0005_customer_link_approval`.
+Testes: `test_customer_link_approval.py` e QA Playwright de aprovação.
+
+**Ajuste de OAuth:** não exigir conjunto *exato* de escopos. O token
+pode incluir `read_orders` e outras permissões concedidas; isso não
+liga a leitura de pedidos nem operações de escrita automaticamente.
+Quando um scope de escrita implica leitura no contrato Nuvemshop, o
+Fideliza aceita o token mas continua restrito aos métodos GET do app.
+A situação "permissão recebida" é distinta de "funcionalidade ligada".
