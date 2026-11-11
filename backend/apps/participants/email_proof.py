@@ -3,9 +3,11 @@
 Nunca armazena token em claro. Envio transacional em fila Celery privada.
 Esta prova NÃO confirma identidade do cliente Nuvemshop.
 """
+import base64
 import hashlib
+import hmac
 import logging
-import secrets
+import uuid
 from datetime import timedelta
 from urllib.parse import urlparse
 
@@ -21,6 +23,15 @@ TOKEN_LIFETIME = timedelta(minutes=30)
 
 def digest(token: str) -> str:
     return hashlib.sha256(token.encode("ascii")).hexdigest()
+
+
+def make_token(challenge_id, purpose: str) -> str:
+    """HMAC de UUID único; o token não precisa trafegar no broker Redis."""
+    message = f"fideliza:email-proof:v1:{challenge_id}:{purpose}".encode("ascii")
+    signature = hmac.new(
+        settings.SECRET_KEY.encode("utf-8"), message, hashlib.sha256,
+    ).digest()
+    return base64.urlsafe_b64encode(signature).decode("ascii").rstrip("=")
 
 
 def email_links_enabled() -> bool:
@@ -71,16 +82,18 @@ def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str):
         expires_at__gt=now,
     ).exists():
         return False
-    token = secrets.token_urlsafe(32)
+    challenge_id = uuid.uuid4()
+    token = make_token(challenge_id, purpose)
     challenge = EnrollmentEmailChallenge.objects.create(
-        submission=submission, purpose=purpose, token_digest=digest(token),
+        id=challenge_id, submission=submission, purpose=purpose,
+        token_digest=digest(token),
         expires_at=now + TOKEN_LIFETIME,
     )
     # Falha de fila não transforma registro em confirmação nem expõe token.
     def queue_mail():
         try:
             from .tasks import send_enrollment_email
-            send_enrollment_email.delay(str(challenge.id), token)
+            send_enrollment_email.delay(str(challenge.id))
         except Exception:
             logger.warning("Falha ao enfileirar confirmação (desafio %s)", challenge.id)
 
