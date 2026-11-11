@@ -1,30 +1,32 @@
-"""Controle restritivo de permissões Nuvemshop.
+"""Capacidades efetivas do token OAuth da loja.
 
-`read_customers` somente se a funcionalidade for explicitamente habilitada
-na homologação e autorizada no Portal de Parceiros. Nunca aceitar write_*.
+Permissões extras concedidas pelo lojista não habilitam funcionalidades.
+A aplicação somente faz chamadas GET suportadas e auditadas. write_*
+não é usado como autorização para executar alterações.
 """
 
 
 def parse_scopes(value: str) -> frozenset[str]:
     if not isinstance(value, str):
         return frozenset()
-    return frozenset(part.strip() for part in value.split(",") if part.strip())
+    return frozenset(part.strip().lower() for part in value.split(",")
+                     if part.strip())
 
 
-PRODUCT_SCOPES = frozenset({"read_products"})
-CUSTOMER_PREVIEW_SCOPES = frozenset({"read_products", "read_customers"})
-
-
-def allowed_scopes(value: str, *, customer_preview_enabled: bool) -> bool:
+def has_product_access(value: str, *, customer_preview_enabled: bool = False) -> bool:
+    """write_products também inclui leitura, conforme documentação oficial."""
     scopes = parse_scopes(value)
-    return scopes == PRODUCT_SCOPES or (
-        customer_preview_enabled and scopes == CUSTOMER_PREVIEW_SCOPES
-    )
-
-
-def has_product_access(value: str, *, customer_preview_enabled: bool) -> bool:
-    return allowed_scopes(value, customer_preview_enabled=customer_preview_enabled)
+    return bool({"read_products", "write_products"} & scopes)
 
 
 def has_customer_access(value: str, *, customer_preview_enabled: bool) -> bool:
-    return customer_preview_enabled and parse_scopes(value) == CUSTOMER_PREVIEW_SCOPES
+    if not customer_preview_enabled:
+        return False
+    scopes = parse_scopes(value)
+    return (has_product_access(value) and
+            bool({"read_customers", "write_customers"} & scopes))
+
+
+def allowed_scopes(value: str, *, customer_preview_enabled: bool) -> bool:
+    """Aceita permissões concedidas além das usadas; nunca concede poderes de escrita."""
+    return has_product_access(value, customer_preview_enabled=customer_preview_enabled)
