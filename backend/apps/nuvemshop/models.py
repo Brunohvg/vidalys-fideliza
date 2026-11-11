@@ -36,3 +36,6 @@ class NuvemshopInstallation(models.Model):
         constraints = [models.UniqueConstraint(
             fields=["client_id", "store_id"], name="nuv_unique_app_store"
         )]
+
+# Registro de notificações obrigatórias LGPD.
+from .privacy_models import PrivacyWebhookRequest  # noqa: E402,F401
