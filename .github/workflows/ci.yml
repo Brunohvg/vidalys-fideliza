@@ -143,7 +143,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      FIDELIZA_STAGING_HOST: staging.invalid
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,frontend,staging.invalid
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://staging.invalid
     steps:
       - uses: actions/checkout@v4
       - name: Generate ephemeral isolated credentials
@@ -153,8 +154,8 @@ jobs:
           with open(os.environ["GITHUB_ENV"], "a") as output:
               password = secrets.token_hex(32)
               output.write(f"POSTGRES_PASSWORD={password}\n")
-              output.write(f"SERVICE_PASSWORD_64_DJANGO={secrets.token_hex(32)}\n")
-              output.write(f"FIDELIZA_DATABASE_URL=postgresql://fideliza:{password}@fideliza-db:5432/fideliza\n")
+              output.write(f"DJANGO_SECRET_KEY={secrets.token_hex(32)}\n")
+              output.write(f"DATABASE_URL=postgresql://fideliza:{password}@fideliza-db:5432/fideliza\n")
           PY
       - name: Start an independent private PostgreSQL
         run: |

@@ -25,9 +25,16 @@ substitui politica de backup e teste de restauracao antes de dados reais.
 
 | Variavel | Origem |
 | --- | --- |
-| SERVICE_PASSWORD_64_DJANGO | Gerada pelo Coolify, exclusiva desta aplicacao |
-| FIDELIZA_DATABASE_URL | URL interna do novo PostgreSQL, transferida sem exibir o valor |
-| FIDELIZA_STAGING_HOST | Dominio exclusivo de homologacao com HTTPS |
+| DJANGO_SECRET_KEY | Segredo novo e exclusivo, salvo somente no Coolify |
+| DATABASE_URL | URL interna real do PostgreSQL novo, mantida oculta |
+| DJANGO_ALLOWED_HOSTS | localhost,127.0.0.1 e o hostname HTTPS do staging |
+| DJANGO_CSRF_TRUSTED_ORIGINS | Origem HTTPS completa do staging |
+| FIDELIZA_TEST_ADMIN_PASSWORD | Opcional; senha aleatoria exclusiva para provisionar conta piloto |
+
+O arquivo ativo usa os nomes consumidos pelo Django, sem aliases FIDELIZA_DB_PASSWORD,
+FIDELIZA_DJANGO_SECRET_KEY ou SERVICE_PASSWORD_64_DJANGO da preparacao anterior.
+Recarregar o Compose e remover essas variaveis obsoletas do recurso novo. A senha
+opcional nao cria conta automaticamente e nao deve ser usada fora da homologacao.
 
 Nao imprimir credenciais nem incluir valores em GitHub, capturas ou chat. Nao
 copiar senhas, usuarios ou URLs de bancos existentes. Nao criar senha padrao.

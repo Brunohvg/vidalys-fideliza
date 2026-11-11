@@ -27,14 +27,15 @@ services:
     mem_limit: 512m
     cpus: 0.50
     environment: &django_env
-      DJANGO_SECRET_KEY: ${SERVICE_PASSWORD_64_DJANGO:?}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
       DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,${FIDELIZA_STAGING_HOST:?}
-      DJANGO_CSRF_TRUSTED_ORIGINS: https://${FIDELIZA_STAGING_HOST:?}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:?}
       DJANGO_SECURE_SSL_REDIRECT: "1"
-      DATABASE_URL: ${FIDELIZA_DATABASE_URL:?}
+      DATABASE_URL: ${DATABASE_URL:?}
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
+      FIDELIZA_TEST_ADMIN_PASSWORD: ${FIDELIZA_TEST_ADMIN_PASSWORD:-}
     depends_on:
       redis:
         condition: service_healthy
