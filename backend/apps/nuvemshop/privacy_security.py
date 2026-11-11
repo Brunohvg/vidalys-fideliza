@@ -33,3 +33,16 @@ def legacy_event_key(topic: str, store_id: str, customer_id: str,
     # Reconhecer eventos emitidos antes da migração para HMAC, sem duplicar.
     canonical = f"nuvemshop-privacy-v1:{topic}:{store_id}:{customer_id}:{request_id}"
     return hashlib.sha256(canonical.encode("ascii")).hexdigest()
+
+
+def pseudonymous_customer_id(store_id: str, customer_id: str,
+                            secret: str) -> str:
+    """Referência irreversível e estável por loja para preservar FKs do ledger.
+
+    Não equivale a eliminação total; o pedido permanece em revisão até
+    avaliar registros financeiros, retenção legal e backups.
+    """
+    canonical=f"fideliza:privacy-customer-pseudonym:v1:{store_id}:{customer_id}"
+    token=hmac.new(secret.encode("utf-8"),canonical.encode("ascii"),
+                   hashlib.sha256).hexdigest()
+    return "anon:"+token[:59]
