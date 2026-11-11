@@ -70,8 +70,21 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "FALHA",
                        "Valor de habilitação inválido"))
-    if env.get("FIDELIZA_LEDGER_WRITES_ENABLED"):
-        result.append(("LEDGER", "ALERTA", "Variável de escrita ignorada: backend mantém bloqueio"))
+    approval = env.get("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "0").lower().strip()
+    if approval in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "ALERTA",
+                       "Aprovação habilitada; validar email, consentimento e OAuth por loja"))
+        if customer_preview not in ("1", "true", "yes", "on"):
+            result.append(("FIDELIZA_PARTICIPANT_APPROVAL_DEPENDENCY", "FALHA",
+                           "Aprovação requer a prévia de cliente habilitada"))
+    elif approval in ("0", "false", "", "no", "off"):
+        result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "OK",
+                       "Aprovação de participantes desativada por padrão"))
+    else:
+        result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "FALHA",
+                       "Valor de habilitação inválido"))
+    if env.get("FIDELIZA_LEDGER_WRITES_ENABLED", "").lower().strip() in ("1", "true", "yes", "on"):
+        result.append(("LEDGER", "ALERTA", "Escrita do ledger exige validação separada"))
     return result
 
 
