@@ -92,3 +92,11 @@ Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (
 - Redigir logs de callback (Nginx e Gunicorn sem query); verificar proxy do Coolify.
 - Nenhum write_products, read_orders, descontos, scripts ou cashback nesta etapa.
 - Privacy webhooks, desinstalação e onboarding por App Store são gates antes de publicação; ver docs/18-OAUTH-NUVEMSHOP.md.
+
+
+## Reorientação UX + ações inteligentes (PR #11)
+- Fluxo do lojista começa em Ações → Clientes → Campanhas → Resultados. Ferramentas financeiras são avançadas e opcionais na interface.
+- Listagem de participantes usa somente adesão com consentimento verificado; não chamar todos os clientes Nuvemshop de participantes. Não inventar saldos sem ledger.
+- Cashbacks sugeridos no wizard são hipóteses, não recomendação financeira aprovada. Nunca inventar compras/receitas/ROI.
+- Custo SKU manual é fallback quando Nuvemshop não informa cost confiável. Não exigir cadastro manual geral.
+- Ações deste PR são regras locais sem chamada externa. Gemini/Grok são arquitetura futura opcional, default off; nenhuma PII/credencial para free-tier de IA, sem aprovação automática. Ver docs/19-UX-ACOES-INTELIGENTES.md.
