@@ -1,11 +1,11 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {
   ArrowRight,BookOpen,Check,CheckCircle2,Globe2,HeartHandshake,
-  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag
+  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag,FileText
 } from "lucide-react";
 import {
   ApiError,merchantApi,type NuvemshopConnectionStatus,
-  type Store,type TenantBranding,type TenantPreferences,
+  type Store,type TenantBranding,type TenantPreferences,type PrivacyRequestsSummary,
 } from "./api";
 import "./store-settings.css";
 
@@ -32,6 +32,7 @@ function friendlyError(error:unknown,defaultMessage:string){
 export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   const [settings,setSettings]=useState<TenantPreferences|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
+  const [privacy,setPrivacy]=useState<PrivacyRequestsSummary|null>(null);
   const [brand,setBrand]=useState<TenantBranding|null>(null);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
@@ -43,14 +44,16 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
 
   useEffect(()=>{
     let current=true;
-    setLoading(true);setSettings(null);setIntegration(null);
+    setLoading(true);setSettings(null);setIntegration(null);setPrivacy(null);
     setBrand(null);setError("");setNotice("");
     Promise.all([
       merchantApi.getTenantSettings(tenantId),
-      merchantApi.nuvemshopStatus(tenantId).catch(()=>null)
-    ]).then(([prefs,link])=>{
+      merchantApi.nuvemshopStatus(tenantId).catch(()=>null),
+      editable?merchantApi.getTenantPrivacyRequests(tenantId).catch(()=>null):Promise.resolve(null)
+    ]).then(([prefs,link,requests])=>{
       if(!current)return;
       setSettings(prefs);setBrand(prefs.branding);setIntegration(link);
+      setPrivacy(requests);
     }).catch(()=>{
       if(current)setError("Não foi possível carregar as configurações da loja.");
     }).finally(()=>{if(current)setLoading(false)});
@@ -252,6 +255,33 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
         </div>
         <p className="ss-muted">Você não precisa alterar o site da sua loja para personalizar o clube.</p>
       </section>
+      {editable&&<section className="ss-card" aria-labelledby="ss-privacy-title">
+        <div className="ss-card-heading">
+          <div className="ss-card-icon"><FileText size={20}/></div>
+          <div><h3 id="ss-privacy-title">Privacidade dos participantes</h3>
+            <p>Acompanhe os pedidos de acesso ou exclusão dos dados do programa.</p></div>
+        </div>
+        {privacy
+          ? <div className="ss-privacy-summary">
+              <div><strong>{privacy.pending_total}</strong><span>Solicitações em análise</span></div>
+              <div><strong>{privacy.access_requests}</strong><span>Pedidos de dados</span></div>
+              <div><strong>{privacy.deletion_requests}</strong><span>Pedidos de exclusão</span></div>
+            </div>
+          : <p className="ss-muted">Não foi possível consultar as solicitações agora.</p>}
+        {privacy?.items.length===0&&<p className="ss-muted">
+          Não há solicitações pendentes registradas para esta loja.</p>}
+        {privacy?.items.length? <ul className="ss-privacy-list">
+          {privacy.items.map(item=><li key={item.id}>
+            <span>{item.type==="data_access"?"Pedido de acesso aos dados":"Pedido de exclusão de dados"}</span>
+            <small>{new Date(item.received_at).toLocaleDateString("pt-BR")}
+              {" · "}Em análise</small>
+          </li>)}
+        </ul>:null}
+        <p className="ss-muted">
+          A Vidalys acompanha o atendimento. Um pedido recebido ainda não significa
+          que a solicitação foi concluída.
+        </p>
+      </section>}
     </div>
     <div className="ss-security-note"><ShieldCheck size={18}/>
       Alterar seu clube aqui não muda preços, estoque nem pedidos da sua loja.
