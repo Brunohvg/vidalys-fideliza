@@ -110,3 +110,17 @@ X_FRAME_OPTIONS = "DENY"
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
+
+# Limitação de tentativas de login compartilhada entre workers em homologação/produção.
+# O Redis do Compose não expõe portas externas.
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
+    }
+# Em desenvolvimento sem Redis, Django usa cache local em memória.
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7
+SESSION_SAVE_EVERY_REQUEST = False
