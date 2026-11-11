@@ -265,6 +265,7 @@ export type PublicInvitationPreview = {
 export type PublicStoreProgram = {
   mode: "public_pre_enrollment";
   store_name: string; store_slug: string; terms: ProgramTerms;
+  branding?: TenantBranding;
   identity_verification_required: true; benefits_active: false; note: string;
 };
 export type PublicStoreJoinResult = {
