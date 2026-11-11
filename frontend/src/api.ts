@@ -202,6 +202,36 @@ export type CashbackWalletView = {
   note: string;
 };
 
+export type ProgramTerms = {
+  id: string; version: string; title: string; body: string; approved_at: string;
+};
+export type ProgramTermsStatus = {
+  mode: "approval_required";
+  terms: ProgramTerms | null;
+};
+export type EnrollmentPending = {
+  id: string; name: string; email: string; terms_version: string;
+  accepted_at: string; marketing_opt_in: boolean;
+  status: "pending_verification";
+};
+export type EnrollmentPendingList = {
+  mode: "consents_pending_identity_verification";
+  total: number; items: EnrollmentPending[]; note: string;
+};
+export type InvitationCreated = {
+  mode: "invitation_only"; token: string; expires_at: string;
+  participant_created: false; cashback_enabled: false; note: string;
+};
+export type PublicInvitationPreview = {
+  mode: "explicit_consent_only"; store_name: string;
+  terms: ProgramTerms; expires_at: string;
+  identity_verified: false; benefits_active: false;
+};
+export type PublicConsentResult = {
+  status: "pending_verification"; receipt_id: string; terms_version: string;
+  participant_created: false; cashback_enabled: false; message: string;
+};
+
 export type ParticipantDirectoryResponse = {
   source: "verified_opt_in_only";
   data_status: "no_enrollment_channel";
@@ -272,6 +302,16 @@ export const merchantApi = {
       "/participants/?" + query.toString()
     );
   },
+  currentProgramTerms: (tenantId: string) =>
+    getJson<ProgramTermsStatus>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/program-terms/"),
+  approveProgramTerms: (tenantId: string, input: {version:string;title:string;body:string}) =>
+    postJson<ProgramTermsStatus>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/program-terms/",input),
+  createEnrollmentInvitation: (tenantId: string) =>
+    postJson<InvitationCreated>("/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/enrollment-invitations/",{}),
+  pendingEnrollments: (tenantId: string) =>
+    getJson<EnrollmentPendingList>("/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/enrollment-submissions/"),
   participantWallet: (tenantId: string, participantId: string) =>
     getJson<CashbackWalletView>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) +
@@ -335,4 +375,13 @@ export const merchantApi = {
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/margin-simulations/",
       input
     )
+};
+
+export const publicEnrollmentApi = {
+  prepareCsrf: () => merchantApi.getSession(),
+  preview: (token:string) =>
+    postJson<PublicInvitationPreview>("/api/v1/public/enrollment/preview/",{token}),
+  accept: (data:{
+    token:string;name:string;email:string;accepted_terms:boolean;marketing_opt_in:boolean;
+  }) => postJson<PublicConsentResult>("/api/v1/public/enrollment/accept/",data)
 };
