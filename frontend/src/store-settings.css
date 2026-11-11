@@ -103,3 +103,14 @@
 
 .ss-settings-menu{border-top:1px solid #293b56;padding-top:12px;margin-top:16px}
 .ss-settings-menu button{min-height:47px}
+
+.ss-privacy-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+.ss-privacy-summary>div{background:#f2f9f7;border:1px solid #d8ebe5;border-radius:11px;padding:13px 10px;display:grid;gap:6px}
+.ss-privacy-summary strong{font-family:Manrope,Inter,sans-serif;font-size:24px;color:#087f79}
+.ss-privacy-summary span{font-size:10.5px;color:#426575;line-height:1.45}
+.ss-privacy-list{margin:14px 0;padding:0;list-style:none;display:grid;gap:0}
+.ss-privacy-list li{display:flex;gap:9px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 0;border-top:1px solid #edf2f5}
+.ss-privacy-list span{color:#10253e;font-size:12px;font-weight:750}
+.ss-privacy-list small{color:#688092;font-size:11px}
+@media(max-width:420px){.ss-privacy-summary{grid-template-columns:1fr 1fr}
+  .ss-privacy-summary>div:first-child{grid-column:1/-1}}
