@@ -1,21 +1,20 @@
 import { useState } from "react";
+import MarginSimulator from "./MarginSimulator";
 import {
   ArrowRight, ArrowUpRight, BarChart3, Check, ChevronDown,
   CircleHelp, Gift, LayoutDashboard, Menu, Plus, Settings2,
-  ShieldCheck, TrendingUp, Users, Wallet, X
+  ShieldCheck, TrendingUp, Users, Wallet, X, Calculator
 } from "lucide-react";
 
 const nav = [
   { key: "overview", text: "Visão geral", icon: LayoutDashboard },
   { key: "programs", text: "Programas", icon: Gift },
   { key: "wallets", text: "Carteiras", icon: Wallet },
+  { key: "margin", text: "Rentabilidade", icon: Calculator },
   { key: "insights", text: "Resultados", icon: BarChart3 }
 ] as const;
 
 type Page = (typeof nav)[number]["key"];
-const formatBRL = (n: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-
 function Brand() {
   return <div className="brand" aria-label="Vidalys Fideliza">
     <div className="brand-mark" aria-hidden="true">
@@ -53,11 +52,7 @@ const rows = [
 export default function App() {
   const [page, setPage] = useState<Page>("overview");
   const [drawer, setDrawer] = useState(false);
-  const [modal, setModal] = useState(false);
   const [info, setInfo] = useState(false);
-  const [spend, setSpend] = useState("200");
-  const [rate, setRate] = useState("2");
-  const benefit = Math.max(0, Number(spend) || 0) * Math.max(0, Math.min(100, Number(rate) || 0)) / 100;
   const title = nav.find(p => p.key === page)?.text || "Visão geral";
   const navigate = (next: Page) => { setPage(next); setDrawer(false); };
 
@@ -76,10 +71,10 @@ export default function App() {
         })}
       </nav>
       <span className="nav-heading settings-heading">FERRAMENTAS</span>
-      <button className="nav-link" onClick={() => setModal(true)}><Settings2 size={19}/>Simular cashback</button>
+      <button className="nav-link" onClick={() => navigate("margin")}><Settings2 size={19}/>Simular rentabilidade</button>
       <button className="nav-link" onClick={() => setInfo(true)}><CircleHelp size={19}/>Sobre o protótipo</button>
       <div className="sidebar-bottom">
-        <div className="sidebar-tip"><span className="tip-symbol"><ShieldCheck size={20}/></span><b>Incentivos com inteligência.</b><p>Recompensa boa é aquela que cabe na margem da loja.</p><button onClick={() => setModal(true)}>Fazer simulação <ArrowRight size={16}/></button></div>
+        <div className="sidebar-tip"><span className="tip-symbol"><ShieldCheck size={20}/></span><b>Incentivos com inteligência.</b><p>Recompensa boa é aquela que cabe na margem da loja.</p><button onClick={() => navigate("margin")}>Fazer simulação <ArrowRight size={16}/></button></div>
         <small className="sidebar-version">FIDELIZA <span>•</span> VISUAL P0</small>
       </div>
     </aside>
@@ -93,7 +88,7 @@ export default function App() {
         <div className="intro">
           <div className="intro-copy"><div className="eyebrow">VIDALYS FIDELIZA <span>•</span> CONCEITO VISUAL</div><h1>{page === "overview" ? "Sua fidelidade, em movimento." : title}</h1>
             <p>{page === "overview" ? "Transforme cada compra em um motivo para voltar. Com controle, clareza e uma experiência que seu cliente merece." : "Uma operação de recompensas transparente, preparada para crescer com a sua loja."}</p></div>
-          <button className="button-primary" onClick={() => page === "overview" ? navigate("programs") : setModal(true)}><Plus size={18}/>{page === "overview" ? "Explorar programas" : "Simular benefício"}</button>
+          {page !== "margin" && <button className="button-primary" onClick={() => page === "overview" ? navigate("programs") : navigate("margin")}><Plus size={18}/>{page === "overview" ? "Explorar programas" : "Simular rentabilidade"}</button>}
         </div>
 
         {page === "overview" && <>
@@ -117,7 +112,7 @@ export default function App() {
         </>}
 
         {page === "programs" && <div className="secondary-grid">
-          <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 01</span><div className="program-icon blue"><Wallet size={25}/></div><h2>Cashback promocional</h2><p>Uma porcentagem da compra vira crédito para a próxima compra. Sem transferência ou saque.</p><div className="program-bottom"><span className="soft-label">Planejado para o MVP</span><button onClick={() => setModal(true)}>Simular <ArrowRight size={17}/></button></div></section>
+          <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 01</span><div className="program-icon blue"><Wallet size={25}/></div><h2>Cashback promocional</h2><p>Uma porcentagem da compra vira crédito para a próxima compra. Sem transferência ou saque.</p><div className="program-bottom"><span className="soft-label">Planejado para o MVP</span><button onClick={() => navigate("margin")}>Simular <ArrowRight size={17}/></button></div></section>
           <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 02</span><div className="program-icon cyan"><Gift size={25}/></div><h2>Pontos de fidelidade</h2><p>Pontos acumulados por compras elegíveis, convertidos em descontos futuros.</p><div className="program-bottom"><span className="soft-label">Planejado para o MVP</span><button onClick={() => setInfo(true)}>Entenda <ArrowRight size={17}/></button></div></section>
         </div>}
 
@@ -126,19 +121,12 @@ export default function App() {
           <section className="panel guide"><span className="panel-kicker">EXPERIÊNCIA DO CLIENTE</span><h2>O benefício é simples. A regra é transparente.</h2><p>O comprador poderá consultar seus créditos, entender quando serão liberados e resgatar conforme as regras da loja.</p><div className="guide-note"><ShieldCheck size={18}/> Os dados exibidos aqui são fictícios; nenhuma carteira real foi criada.</div></section>
         </div>}
 
-        {page === "insights" && <section className="panel insights"><span className="panel-kicker">INTELIGÊNCIA COMERCIAL</span><h2>Mais do que distribuir descontos.</h2><p>O Vidalys Fideliza acompanhará recorrência, custo dos benefícios e impacto comercial. Nesta versão, os indicadores ainda são demonstrativos.</p><div className="insight-tags"><span>Segunda compra</span><span>Margem após incentivo</span><span>Créditos pendentes</span><span>Retenção por período</span></div><button className="button-primary" onClick={() => setModal(true)}>Testar simulação <ArrowRight size={17}/></button></section>}
+        {page === "margin" && <MarginSimulator />}
+
+        {page === "insights" && <section className="panel insights"><span className="panel-kicker">INTELIGÊNCIA COMERCIAL</span><h2>Mais do que distribuir descontos.</h2><p>O Vidalys Fideliza acompanhará recorrência, custo dos benefícios e impacto comercial. Nesta versão, os indicadores ainda são demonstrativos.</p><div className="insight-tags"><span>Segunda compra</span><span>Margem após incentivo</span><span>Créditos pendentes</span><span>Retenção por período</span></div><button className="button-primary" onClick={() => navigate("margin")}>Testar simulação <ArrowRight size={17}/></button></section>}
         <div className="prototype-footer"><ShieldCheck size={15}/> Ambiente demonstrativo. Nenhum dado ou operação de loja conectado.</div>
       </div>
     </main>
-    {modal && <div className="dialog-scrim" role="presentation" onClick={() => setModal(false)}>
-      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" onClick={e => e.stopPropagation()}>
-        <div className="dialog-head"><span className="panel-kicker">SIMULADOR</span><button aria-label="Fechar simulador" onClick={() => setModal(false)}><X size={20}/></button></div><h2 id="dialog-title">Simule um benefício</h2><p>Uma simulação visual. Não ativa cashback nem altera dados reais.</p>
-        <label>Subtotal elegível da compra (R$)<input type="number" min="0" step="0.01" value={spend} onChange={e => setSpend(e.target.value)}/></label>
-        <label>Percentual de cashback (%)<input type="number" min="0" max="100" step="0.1" value={rate} onChange={e => setRate(e.target.value)}/></label>
-        <div className="result-box"><span>Crédito promocional potencial</span><strong>{formatBRL(benefit)}</strong></div>
-        <span className="modal-caveat">Esta estimativa não considera custo do produto, frete, Pix, cupons ou margem. Ainda não é uma configuração pronta para ativação.</span>
-      </div>
-    </div>}
     {info && <div className="dialog-scrim" role="presentation" onClick={() => setInfo(false)}><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="info-title" onClick={e => e.stopPropagation()}><div className="dialog-head"><span className="panel-kicker">SOBRE</span><button aria-label="Fechar informações" onClick={() => setInfo(false)}><X size={20}/></button></div><h2 id="info-title">Um conceito visual, não um programa ativo.</h2><p>Esta interface demonstra a identidade Vidalys. Não existe integração OAuth, geração de cashback nem carteira conectada. A estrutura Django está sendo desenvolvida separadamente.</p><button className="button-primary close-info" onClick={() => setInfo(false)}>Entendi <Check size={16}/></button></div></div>}
   </div>;
 }
