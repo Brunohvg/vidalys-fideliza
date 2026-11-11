@@ -100,3 +100,6 @@
   .ss-live-card{max-width:100%}.ss-preview-stage{min-height:220px}
   .ss-config-row{align-items:flex-start;flex-wrap:wrap}
 }
+
+.ss-settings-menu{border-top:1px solid #293b56;padding-top:12px;margin-top:16px}
+.ss-settings-menu button{min-height:47px}
