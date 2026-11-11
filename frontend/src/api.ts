@@ -54,11 +54,48 @@ async function postJson<T>(url: string, body: object): Promise<T> {
   return readResponse<T>(response);
 }
 
+export type CampaignPlanInput = MarginInput & {
+  projected_paid_orders: number;
+  campaign_budget_cents: number;
+  already_committed_cents: number;
+};
+
+export type CampaignPlanResult = {
+  mode: "planning_only";
+  status: "cost_unknown" | "margin_already_below_target" |
+    "budget_already_exceeded" | "cashback_exceeds_margin" |
+    "campaign_budget_exceeded" | "within_limits";
+  automatically_approved: false;
+  projected_paid_orders: number;
+  cashback_rate_bps: number;
+  per_order_net_revenue_cents: number;
+  per_order_cashback_cents: number;
+  campaign_budget_cents: number;
+  already_committed_cents: number;
+  available_campaign_budget_cents: number;
+  projected_new_exposure_cents: number;
+  projected_total_exposure_cents: number;
+  estimated_order_capacity: number | null;
+  budget_within_limit: boolean;
+  margin_within_target: boolean;
+  maximum_margin_rate_bps: number | null;
+  maximum_budget_rate_bps: number;
+  suggested_limit_rate_bps: number | null;
+  per_order_contribution_after_cents: number | null;
+  projected_contribution_after_cents: number | null;
+  warnings: string[];
+};
+
 export const merchantApi = {
   getSession: () => getJson<SessionInfo>("/api/v1/auth/session/"),
   login: (username: string, password: string) =>
     postJson<{ authenticated: true; tenants: Store[] }>("/api/v1/auth/login/", { username, password }),
   logout: () => postJson<{ authenticated: false }>("/api/v1/auth/logout/", {}),
+  previewCampaign: (tenantId: string, input: CampaignPlanInput) =>
+    postJson<CampaignPlanResult>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-plans/preview/",
+      input
+    ),
   simulate: (tenantId: string, input: MarginInput) =>
     postJson<MarginResult>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/margin-simulations/",

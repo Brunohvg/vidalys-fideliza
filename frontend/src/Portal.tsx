@@ -2,12 +2,13 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowRight, BadgeCheck, ChartNoAxesCombined, ChevronDown, Check,
   CircleHelp, Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
-  LogOut, Menu, ShieldCheck, ShoppingBag, UsersRound, X
+  LogOut, Menu, ShieldCheck, ShoppingBag, Target, UsersRound, X
 } from "lucide-react";
 import MarginSimulator from "./MarginSimulator";
+import CampaignPlanner from "./CampaignPlanner";
 import { ApiError, merchantApi, type SessionInfo, type Store } from "./api";
 
-type Screen = "overview" | "margin" | "roadmap";
+type Screen = "overview" | "margin" | "campaign" | "roadmap";
 
 const journey = [
   {
@@ -174,6 +175,7 @@ export default function Portal() {
       <nav className="portal-nav">
         <button onClick={()=>navigate("overview")} className={page==="overview"?"is-active":""}><LayoutDashboard size={19}/> Visão geral</button>
         <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Rentabilidade</button>
+        <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Target size={19}/> Planejamento <span>Beta</span></button>
         <button onClick={()=>navigate("roadmap")} className={page==="roadmap"?"is-active":""}><Gift size={19}/> Programas <span>Em breve</span></button>
       </nav>
       <div className="portal-side-bottom">
@@ -185,15 +187,15 @@ export default function Portal() {
     <div className="portal-main">
       <header className="portal-top">
         <div className="portal-top-title"><button onClick={()=>setDrawer(true)} className="portal-menu" aria-label="Abrir menu"><Menu size={23}/></button>
-          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="margin"?"Rentabilidade":"Programas"}</strong>
+          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="margin"?"Rentabilidade":page==="campaign"?"Planejamento":"Programas"}</strong>
         </div>
         <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
       </header>
       <main className="portal-content">
         <div className="portal-content-head">
           <div><span className="portal-eyebrow">CENTRO DE FIDELIDADE</span>
-            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="margin"?"Inteligência de margem.":"Programas de fidelidade."}</h1>
-            <p>{page==="overview"?"Comece pelo que importa: criar benefícios sustentáveis para o seu negócio.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":"Preparando um motor de pontos e cashback seguro."}</p>
+            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="margin"?"Inteligência de margem.":page==="campaign"?"Planeje antes de recompensar.":"Programas de fidelidade."}</h1>
+            <p>{page==="overview"?"Comece pelo que importa: criar benefícios sustentáveis para o seu negócio.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="campaign"?"Teste o orçamento e os riscos de uma campanha com números claros.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
           <StatusPill>Ambiente de teste</StatusPill>
         </div>
@@ -214,7 +216,10 @@ export default function Portal() {
                 <div><span className="portal-welcome-label"><BadgeCheck size={17}/> SUA LOJA, SEU CONTROLE</span>
                   <h2>Fidelidade que respeita <em>seus números.</em></h2>
                   <p>O próximo benefício não precisa começar com um desconto. Descubra primeiro quanto sua loja pode oferecer.</p>
-                  <button className="portal-primary" onClick={()=>navigate("margin")}>Simular minha margem <ArrowRight size={18}/></button>
+                  <div className="portal-welcome-actions">
+                    <button className="portal-primary" onClick={()=>navigate("margin")}>Simular minha margem <ArrowRight size={18}/></button>
+                    <button className="portal-welcome-secondary" onClick={()=>navigate("campaign")}>Planejar campanha <Target size={17}/></button>
+                  </div>
                 </div><div className="portal-welcome-icon" aria-hidden="true"><ShieldCheck size={64} strokeWidth={1.3}/></div>
               </section>
               <div className="portal-home-grid">
@@ -236,6 +241,7 @@ export default function Portal() {
               </div>
             </div>}
             {page==="margin" && <MarginSimulator tenantId={tenant.id} key={tenant.id}/>}
+            {page==="campaign" && <CampaignPlanner tenantId={tenant.id} key={tenant.id}/>}
             {page==="roadmap" && <section className="portal-panel portal-coming">
               <Gift size={37}/><h2>Programas, do jeito certo.</h2>
               <p>O próximo módulo trará regras de cashback, pontos, reservas e resgate após a validação do checkout. Nenhum benefício será ativado sem autorização do lojista.</p>
