@@ -54,3 +54,8 @@
  .enroll-share .enroll-secondary {width:100%}
  .enroll-pending-list>div {grid-template-columns:1fr;gap:5px}
 }
+
+.enroll-match-action,.enroll-match-result {grid-column:1/-1;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.enroll-match-action span {color:#587084;font-size:11px}
+.enroll-match-result {background:#ECF8F5;border:1px solid #BDE6DC;border-radius:10px;padding:10px 12px;color:#0A655B;font-size:12px}
+@media(max-width:650px){.enroll-match-action .enroll-secondary{width:100%}}
