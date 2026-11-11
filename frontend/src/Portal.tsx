@@ -218,7 +218,7 @@ export default function Portal() {
             {page==="margin" && <MarginSimulator tenantId={tenant.id} initialItem={seedItem} key={tenant.id+":"+(seedItem?.id||"")}/>}
             {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
             {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
-            {page==="campaign" && <CampaignGuide tenantId={tenant.id} key={tenant.id}/>}
+            {page==="campaign" && <CampaignGuide tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="roadmap" && <section className="portal-panel portal-coming">
               <Gift size={37}/><h2>Programas, do jeito certo.</h2>
               <p>O motor futuro fará o registro, concessão, reserva, resgate e estorno de benefícios com trilha de auditoria. Nenhum crédito é concedido nesta etapa.</p>
