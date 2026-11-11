@@ -89,7 +89,8 @@ jobs:
           node-version: "22"
       - run: npm install --no-audit --no-fund
       - run: npm run build
-      - run: npx playwright install chromium
+      # Chrome já vem instalado no runner Ubuntu 24.04.
+      # Não baixar navegadores nem executar apt-get no job visual.
       - run: npm run test:e2e
       - name: Screenshots e traces
         if: always()

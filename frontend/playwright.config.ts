@@ -7,6 +7,8 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4173",
     browserName: "chromium",
+    // GitHub-hosted Ubuntu 24.04 includes Chrome stable; local runs use Chromium.
+    channel: process.env.CI ? "chrome" : undefined,
     trace: "retain-on-failure"
   },
   webServer: {
