@@ -31,7 +31,9 @@ Não usar as URLs propostas como prova de que o webhook já funciona externament
   O token OAuth da loja **não é** a chave da assinatura.
 - Extrair somente `store_id`, ID de Customer e ID da solicitação.
   **Não persistir** body, email, telefone, CPF, endereço ou pedidos do
-  payload em `PrivacyWebhookRequest`.
+  payload em `PrivacyWebhookRequest`. O e-mail do evento agora é convertido
+  em HMAC irreversível para localizar aceites sem vínculo no relatório.
+  Chaves de idempotência também usam HMAC com compatibilidade de legado.
 - ID da loja precisa corresponder ao `external_store_id` local e,
   havendo instalação, ao `client_id` do aplicativo correto.
 - Deduplicar por evento lógico: tipo + loja + Customer + ID da requisição.
@@ -52,33 +54,43 @@ Não usar as URLs propostas como prova de que o webhook já funciona externament
 encerrar a adesão, desativar marketing e limpar nome/e-mail de
 `ProgramParticipant` e `EnrollmentSubmission` relacionados ao
 Customer (inclusive participantes legados sem `EnrollmentCustomerLink`).
-Revogar desafios de e-mail abertos; manter auditoria do recebimento.
+Pseudonimizar a referência externa do consumidor nos vínculos, sem romper
+as referências contábeis. Revogar desafios de e-mail abertos; manter
+auditoria do recebimento. Pseudonimização não equivale à eliminação total.
 
 **app/store_redact**: suspender a loja, revogar a instalação OAuth
 (tokens cifrados), tentativas OAuth e acesso de membros do tenant.
 Preservar registros pendentes de revisão de eliminação conforme política.
 
 **customers/data_request**: guardar solicitação mínima com ID de
-pedido e Customer da mesma loja. A entrega do relatório de dados
-à loja **não é automática nesta etapa**.
+pedido e Customer da mesma loja. O lojista proprietário/admin pode
+baixar no painel um JSON gerado sob demanda com os dados do Fideliza
+associados à identidade verificada; depois pode confirmar explicitamente
+seu recebimento. O sistema compara o hash com o conteúdo atual, registra
+usuário e horário, e só então marca a solicitação de **acesso** como
+concluída. Se faltar identificação suficiente do titular, somente relatório
+parcial; a confirmação é bloqueada. O arquivo **não é enviado por SMTP**
+nem salvo no banco. Esse fluxo não conclui pedidos de exclusão.
 
 **ATENÇÃO — PRIVACIDADE NÃO ESTÁ CONCLUÍDA:**
 - `202 Accepted` significa apenas **solicitação recebida e persistida**.
-- Customer redact permanece `needs_review`; referência externa do
-  cliente, eventuais lançamentos imutáveis e outras obrigações de
+- Customer redact permanece `needs_review`; apesar da pseudonimização,
+  eventuais lançamentos imutáveis e outras obrigações de
   retenção/eliminação exigem revisão e fechamento documentado.
 - Store redact permanece `needs_review`; suspender acesso não equivale
   a excluir todos os dados da loja.
-- Data request permanece `pending` até que relatório seja efetivamente
-  preparado e enviado ao lojista, com evidência.
+- Data request permanece `pending` até que o lojista obtenha o relatório
+  autenticado e confirme o recebimento da versão exata; ficam guardados
+  somente digest, usuário e horários. Relatórios parciais não encerram pedidos.
 - Não marcar `completed` automaticamente nem afirmar atendimento
   integral à LGPD antes de criar e validar esse procedimento.
 - Se houver retenção obrigatória de registros fiscais/financeiros,
   aplicar minimização e retenção apropriada com orientação jurídica.
 - Backups, outros sistemas integrados e exclusão final ficam no runbook
   operacional que ainda precisa de implementação e revisão.
-- A aprovação de novos participantes consulta pedidos de redaction
-  pendentes e não permite reativar dados do consumidor afetado.
+- A aprovação de novos participantes consulta qualquer protocolo de
+  exclusão daquele cliente, inclusive concluído. Uma reautorização futura
+  exige fluxo explícito, não readmissão silenciosa.
 
 ## Acompanhamento do lojista
 
@@ -124,7 +136,8 @@ monitor operacional aprovado antes de abrir para lojistas reais.
   no desktop/tablet/celular, sem vazamento de dados técnicos.
 - CI do SHA exato: backend, frontend, QA visual, Compose, Docker,
   PostgreSQL separado e verificação de migração.
-- Nova migração: `nuvemshop/0002_privacy_requests`.
+- Migrações: `nuvemshop/0002_privacy_requests` e
+  `nuvemshop/0003_privacy_delivery_evidence`.
 - Credencial usada: `NUVEMSHOP_CLIENT_SECRET` já existente só
   no serviço API, não no worker ou frontend.
 
@@ -136,11 +149,19 @@ monitor operacional aprovado antes de abrir para lojistas reais.
 4. Enviar casos **sintéticos assinados** no ambiente isolado, validar estados
    sem afetar nenhum cliente/loja reais.
 5. Registrar as URLs no Portal de Parceiros após validação.
-6. Implementar envio real do relatório e fechamento do procedimento
-   de eliminação e retenção por cliente/loja **antes da ativação real**.
+6. Validar com uma conta de loja de teste o download do relatório e
+   a confirmação do recebimento (sem SMTP). Implementar fechamento do
+   procedimento de eliminação e retenção por cliente/loja **antes da
+   ativação real**.
 7. Só então validar ponta a ponta com autorização expressa e
    promover `main`, mantendo saldo/cashback desligados.
 
 **Não feito nesta entrega:** cadastro no Portal, deploy Coolify,
-uso de dados reais, exclusão total de PII, geração/envio completo
-de relatório, alteração de `main`, cashback e leitura de pedidos.
+uso de dados reais, exclusão integral e auditada de PII,
+envio automático de relatórios por e-mail, alteração de `main`,
+cashback e leitura de pedidos.
+
+## Complemento — relatório e evidência de entrega
+
+Detalhes da implementação, cobertura e limites em
+[33-RELATORIO-DE-DADOS-E-CONFIRMACAO.md](33-RELATORIO-DE-DADOS-E-CONFIRMACAO.md).
