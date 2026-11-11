@@ -397,3 +397,22 @@ button,select,textarea,input {font-family:inherit}
 .vf-wallet-future svg{flex:none}
 @media(max-width:900px){.vf-reward-preview{grid-template-columns:1fr;gap:23px}.vf-phone-frame{justify-self:start}}
 @media(max-width:520px){.vf-reward-preview{padding:20px}.vf-phone-frame{justify-self:center;width:min(100%,286px)}}
+
+
+/* Legibilidade primeiro: o antigo protótipo usava textos auxiliares de 10–11px. */
+.portal-content-head p {font-size:13.5px}
+.portal-nav button {font-size:13px}
+.xp-action-card p,.xp-empty p,.xp-ai-note p,.xp-guidance p,
+.xp-section-heading p,.xp-panel-title p {font-size:13px;line-height:1.72}
+.xp-action-reason,.xp-action-link,.xp-verdict p,.xp-budget-hint p {font-size:12px}
+.xp-action-link {min-height:44px}
+.xp-goal-card small,.xp-form-grid label>small,.xp-selection-summary {font-size:12px}
+.xp-form-grid input,.xp-form-grid select {font-size:14px}
+.xp-search input,.xp-filter select {font-size:13px}
+.xp-wizard-step strong {font-size:12px}
+.vf-reward-preview-copy p {font-size:13px}
+.xp-stats .xp-stat small {font-size:11px}
+@media(max-width:520px) {
+  .xp-wizard-step strong {font-size:11px}
+  .xp-action-card p,.xp-ai-note p,.xp-guidance p {font-size:12.5px}
+}
