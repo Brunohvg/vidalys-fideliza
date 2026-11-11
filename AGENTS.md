@@ -56,3 +56,11 @@ Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (
 - A tela autenticada não apresenta métricas fictícias como se fossem reais. Dados sem integração devem exibir estado vazio ou indicação de funcionalidade em desenvolvimento.
 - O simulador remoto não gera descontos nem salva dados; qualquer custo desconhecido continua sem indicação de margem segura.
 - Validar desktop/mobile, estados vazios/erros/loading, acessibilidade e capturas antes de aprovar frontend. Referência: docs/11-PORTAL-LOJISTA-ACESSO.md.
+
+
+## Planejamento de orçamento (prévia, sem ativação)
+- Planejador de campanhas só calcula hipóteses em centavos e bps, nunca cria créditos.
+- Sem dados de ERP/Nuvemshop, volume e custo são digitados manualmente e identificados como exemplos.
+- O teto matemático combina orçamento restante e margem mínima, mas NÃO é recomendação comercial definitiva.
+- Antes de habilitar campanha real: custos auditados, regras financeiras, ledger, API oficial Nuvemshop e testes de estorno/conversão.
+- API tenant-scoped: conferir CSRF, autenticação, validação e isolamento. Ver docs/13-PLANEJADOR-CAMPANHAS.md.
