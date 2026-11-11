@@ -60,6 +60,16 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "FALHA",
                        "Use apenas 0/1, false/true ou no/yes"))
+    customer_preview = env.get("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "0").lower().strip()
+    if customer_preview in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "ALERTA",
+                       "Leitura opcional de clientes: confirmar scope read_customers e reautorização"))
+    elif customer_preview in ("0", "false", "", "no", "off"):
+        result.append(("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "OK",
+                       "Prévia de cliente desligada por padrão"))
+    else:
+        result.append(("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "FALHA",
+                       "Valor de habilitação inválido"))
     if env.get("FIDELIZA_LEDGER_WRITES_ENABLED"):
         result.append(("LEDGER", "ALERTA", "Variável de escrita ignorada: backend mantém bloqueio"))
     return result
