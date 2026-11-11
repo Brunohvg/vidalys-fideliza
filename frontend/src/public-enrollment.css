@@ -1,0 +1,51 @@
+.public-enroll-shell {min-height:100vh;background:linear-gradient(150deg,#0F273E,#087F79);
+  padding:38px 16px;color:#10253E;display:flex;flex-direction:column;align-items:center;gap:14px;
+  font-family:Inter,system-ui,Arial,sans-serif}
+.public-enroll-card {max-width:665px;width:100%;background:#FFF;border-radius:22px;
+  padding:35px;box-shadow:0 25px 85px rgba(7,26,40,.2);border:1px solid rgba(255,255,255,.5)}
+.public-enroll-brand {display:flex;align-items:center;gap:11px;color:#10253E;margin-bottom:35px}
+.public-enroll-brand>span {background:#DCF7ED;border-radius:11px;display:grid;place-items:center;
+  width:43px;height:43px;color:#087F79}
+.public-enroll-brand strong {display:block;font-size:17px;letter-spacing:.16em}
+.public-enroll-brand small {display:block;font-size:10px;letter-spacing:.1em;color:#6A8092;margin-top:4px}
+.public-enroll-eyebrow {display:flex;align-items:center;gap:7px;font-size:11px;
+  color:#087F79;letter-spacing:.08em;font-weight:800}
+.public-enroll-top h1,.public-enroll-done h1 {font-family:Manrope,Inter,sans-serif;
+  font-size:clamp(26px,5vw,38px);line-height:1.25;margin:15px 0;color:#10253E}
+.public-enroll-top>p,.public-enroll-done p {color:#526B7D;font-size:14px;line-height:1.75}
+.public-enroll-terms {margin:24px 0 20px;border:1px solid #C9DDE1;background:#F5FAFA;
+  border-radius:14px;max-height:300px;overflow:auto;padding:20px}
+.public-enroll-terms>div {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.public-enroll-terms strong {color:#10253E;font-size:14px}
+.public-enroll-terms span {color:#087F79;font-size:12px;font-weight:750}
+.public-enroll-terms p {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;
+  font-size:13px;color:#38546A;margin-bottom:0}
+.public-enroll-fields {display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:21px}
+.public-enroll-fields label {display:grid;gap:7px;font-size:13px;font-weight:700}
+.public-enroll-fields input {width:100%;min-height:46px;background:#fff;color:#10253E;
+  border:1px solid #C8D7E2;border-radius:11px;font:inherit;padding:12px}
+.public-enroll-choice {display:flex;align-items:flex-start;gap:11px;margin:15px 0;
+  color:#344F64;line-height:1.55;font-size:13px}
+.public-enroll-choice input {width:20px;height:20px;accent-color:#087F79;flex-shrink:0}
+.public-enroll-submit {width:100%;border:0;border-radius:12px;background:#087F79;
+  color:white;min-height:50px;font-size:14px;font-weight:750;cursor:pointer;margin:13px 0 17px}
+.public-enroll-submit:disabled {opacity:.54;cursor:not-allowed}
+.public-enroll-warning {display:flex;align-items:start;gap:9px;color:#526B7D;font-size:12px;line-height:1.65}
+.public-enroll-warning svg {flex-shrink:0}
+.public-enroll-error {padding:12px;background:#FFF0F2;color:#9B304A;border:1px solid #F5CFD8;
+  border-radius:11px;font-size:13px;margin:15px 0}
+.public-enroll-done>svg {color:#087F79}
+.public-enroll-done>span {display:block;background:#F4F8FA;padding:12px;
+  border-radius:10px;color:#597183;overflow-wrap:anywhere;font-size:11px}
+.public-enroll-shell>footer {color:#D4EBE8;max-width:600px;text-align:center;
+  font-size:11px;line-height:1.65}
+.public-enroll-state {padding:36px;color:#51697B;text-align:center}
+.public-enroll-card input:focus-visible,.public-enroll-card button:focus-visible {
+  outline:3px solid #37D5BB;outline-offset:3px}
+@media(max-width:600px) {
+ .public-enroll-shell {padding:16px 12px}
+ .public-enroll-card {padding:22px 19px;border-radius:17px}
+ .public-enroll-brand {margin-bottom:26px}
+ .public-enroll-fields {grid-template-columns:1fr;gap:12px}
+ .public-enroll-terms {max-height:260px;padding:15px}
+}
