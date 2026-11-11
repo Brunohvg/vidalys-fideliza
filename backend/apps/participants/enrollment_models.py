@@ -16,6 +16,7 @@ class ProgramTerms(models.Model):
     version = models.CharField(max_length=40)
     title = models.CharField(max_length=100)
     body = models.TextField(max_length=4000)
+    privacy_notice = models.TextField(max_length=2500, blank=True, default="")
     active = models.BooleanField(default=True)
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                     on_delete=models.SET_NULL, related_name="+")
