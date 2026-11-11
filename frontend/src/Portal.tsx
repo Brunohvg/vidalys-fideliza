@@ -207,7 +207,7 @@ export default function Portal() {
             </div>
             {page==="overview" && <ActionCenter tenantId={tenant.id} key={tenant.id}
               onNavigate={destination=>navigate(destination)}/>}
-            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} key={tenant.id}/>}
+            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="results" && <section className="xp-panel xp-results-empty">
               <div className="xp-results-icon"><BarChart3 size={40}/></div>
               <span className="portal-eyebrow">MÉTRICAS VERIFICÁVEIS</span>
