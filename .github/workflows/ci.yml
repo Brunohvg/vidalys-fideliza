@@ -98,3 +98,43 @@ jobs:
           path: frontend/test-results
           retention-days: 14
           if-no-files-found: ignore
+
+  coolify_compose_smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FIDELIZA_STAGING_HOST: staging.invalid
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate ephemeral test credentials
+        run: |
+          python - <<'PY'
+          import os, secrets
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              for key in ("FIDELIZA_DB_PASSWORD", "FIDELIZA_DJANGO_SECRET_KEY"):
+                  output.write(f"{key}={secrets.token_hex(32)}\n")
+          PY
+      - run: docker compose -f compose.coolify.yaml config --quiet
+      - run: docker compose -f compose.coolify.yaml up --build -d --wait --wait-timeout 180
+      - name: Check private proxy readiness and secure session settings
+        run: |
+          docker compose -f compose.coolify.yaml exec -T frontend wget -q -O /dev/null --header='Host: staging.invalid' --header='X-Forwarded-Proto: https' http://127.0.0.1:8080/api/ready/
+          docker compose -f compose.coolify.yaml exec -T api python - <<'PY'
+          import http.client
+          connection = http.client.HTTPConnection("127.0.0.1", 8000, timeout=5)
+          connection.request("GET", "/api/v1/auth/session/", headers={"Host": "staging.invalid"})
+          response = connection.getresponse()
+          assert response.status == 301, response.status
+          assert response.getheader("Location").startswith("https://staging.invalid/")
+          response.read()
+          connection.request("GET", "/api/v1/auth/session/", headers={"Host": "staging.invalid", "X-Forwarded-Proto": "https"})
+          response = connection.getresponse()
+          assert response.status == 200, response.status
+          assert "Secure" in response.getheader("Set-Cookie", "")
+          response.read()
+          connection.close()
+          PY
+          docker compose -f compose.coolify.yaml exec -T worker celery -A config inspect ping --timeout 5
+      - name: Shutdown isolated test stack
+        if: always()
+        run: docker compose -f compose.coolify.yaml down -v --remove-orphans

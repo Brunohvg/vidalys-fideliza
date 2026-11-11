@@ -42,3 +42,9 @@ Não conectar produção Nuvemshop, alterar tema Ipanema, instalar scripts, ativ
 
 ## Portal do lojista — etapa atual
 A rota / usa autenticação de sessão Django, com proteção CSRF e isolamento por associação a lojas. A rota /demo contém apenas exemplos ilustrativos sem API comercial. A calculadora da área autenticada chama a API por tenant; não cria ou concede cashback. Consulte docs/11-PORTAL-LOJISTA-ACESSO.md para provisionamento de usuários/lojas no staging, configurações seguras e limitações.
+
+## Homologação no Coolify
+Use `compose.coolify.yaml` e [o plano de homologação](docs/12-HOMOLOGACAO-COOLIFY.md).
+A configuração remove portas fixas, separa volumes, limita recursos e exige HTTPS.
+O recurso deve permanecer parado, sem domínio e sem deploy automático durante a
+preparação; os gates e limitações estão registrados no plano.
