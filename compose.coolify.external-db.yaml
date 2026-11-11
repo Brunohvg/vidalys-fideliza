@@ -1,0 +1,84 @@
+# Banco independente: selecionar o destino privado fideliza-homolog no Coolify.
+# Connect to predefined network deve apontar SOMENTE para esse destino exclusivo.
+# Nao usar o destino compartilhado coolify nem publicar portas no host.
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.15
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - fideliza_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    logging: &bounded_logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.50
+    environment: &django_env
+      DJANGO_SECRET_KEY: ${SERVICE_PASSWORD_64_DJANGO:?}
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,${FIDELIZA_STAGING_HOST:?}
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://${FIDELIZA_STAGING_HOST:?}
+      DJANGO_SECURE_SSL_REDIRECT: "1"
+      DATABASE_URL: ${FIDELIZA_DATABASE_URL:?}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      - sh
+      - -ec
+      - |
+        python manage.py migrate --noinput
+        exec gunicorn config.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000 --access-logfile -
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; r=urllib.request.Request('http://127.0.0.1:8000/api/ready/', headers={'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(r, timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    logging: *bounded_logs
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.25
+    environment: *django_env
+    depends_on:
+      api:
+        condition: service_healthy
+    command: celery -A config worker --loglevel=INFO --concurrency=1
+    logging: *bounded_logs
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.10
+    expose:
+      - "8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *bounded_logs
+
+volumes:
+  fideliza_redis_data:

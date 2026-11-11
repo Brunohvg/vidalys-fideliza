@@ -1,0 +1,58 @@
+# Homologacao com PostgreSQL independente
+
+Em 11/11/2026 o usuario autorizou criar variaveis de teste e iniciar o sistema,
+considerando o banco fora da stack. Esta preparacao incorpora o planejador da
+PR #5 (base e111a2600d019e5248987146e28b7f718e69a27f).
+
+## Topologia aprovada
+
+- Servidor Mexico; projeto vidalys fideliza; ambiente homologacao.
+- Destino novo Fideliza Homologacao, rede Docker exclusiva fideliza-homolog.
+- PostgreSQL 16 como recurso independente, volume proprio, sem acesso publico.
+- Aplicacao Compose no mesmo destino exclusivo, com Connect to predefined network
+  habilitado SOMENTE para essa rede nova. Nao conectar ao destino compartilhado coolify.
+- Stack da aplicacao: Redis, Django, Celery e frontend, sem banco embutido, sem portas
+  publicadas no host e sem volumes de outros produtos.
+- Coolify nao troca o destino de um recurso existente: clonar a configuracao para o
+  novo destino; preservar a preparacao anterior parada e sem dominio.
+- Compose ativo: /compose.coolify.external-db.yaml, base /, commit fixado.
+
+Separar o banco permite reiniciar/atualizar a aplicacao sem recriar o recurso de
+dados e facilita backups proprios no Coolify. Isso nao torna o host dedicado nem
+substitui politica de backup e teste de restauracao antes de dados reais.
+
+## Variaveis e acesso
+
+| Variavel | Origem |
+| --- | --- |
+| SERVICE_PASSWORD_64_DJANGO | Gerada pelo Coolify, exclusiva desta aplicacao |
+| FIDELIZA_DATABASE_URL | URL interna do novo PostgreSQL, transferida sem exibir o valor |
+| FIDELIZA_STAGING_HOST | Dominio exclusivo de homologacao com HTTPS |
+
+Nao imprimir credenciais nem incluir valores em GitHub, capturas ou chat. Nao
+copiar senhas, usuarios ou URLs de bancos existentes. Nao criar senha padrao.
+O provisionamento de uma conta piloto deve ocorrer por fluxo seguro e somente
+para tenant sintetico, sem external_store_id de loja real.
+
+## Protecoes e validacao
+
+DEBUG=0, redirecionamento HTTPS, cookies Secure/HttpOnly da sessao e CSRF ficam
+ativos. Nginx limita login por peer a 10 requisicoes/minuto com burst 5. Atras do
+proxy isso pode agregar usuarios do staging; e uma guarda conservadora, nao uma
+identificacao confiavel do IP individual. O backend tambem limita por conta.
+O host emite X-Robots-Tag noindex/nofollow; isso nao e controle de acesso.
+
+O CI external_database_smoke sobe PostgreSQL em container separado e rede privada,
+executa migracoes na aplicacao, verifica readiness atraves do Nginx, rejeicao de
+login sem CSRF e ping Celery. O override .github/compose.external-db-test.yaml e
+apenas do runner; o Coolify injeta a rede escolhida, sem esse override.
+
+Antes de considerar o deploy aceito: banco e quatro servicos saudaveis no host,
+readiness 200, HTTPS valido, ausencia de portas publicas no banco, login/CSRF e
+acesso por tenant verificados. Nenhuma integracao Nuvemshop ou beneficio e ativado.
+
+## Referencias verificadas
+
+- https://coolify.io/docs/core/networking/destinations/create
+- https://coolify.io/docs/core/networking/destinations/manage
+- https://coolify.io/docs/applications/builds/docker-compose
