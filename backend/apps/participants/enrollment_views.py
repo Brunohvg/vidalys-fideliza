@@ -24,6 +24,8 @@ from rest_framework.views import APIView
 
 from apps.tenants.models import Tenant, TenantMembership
 from .enrollment_models import EnrollmentInvite, EnrollmentSubmission, ProgramTerms
+from .email_proof import enqueue_confirmation, email_links_enabled
+from .enrollment_models import EnrollmentEmailChallenge
 
 
 INVITATION_TTL = timedelta(hours=24)
@@ -240,6 +242,8 @@ class PublicAcceptView(APIView):
 
     @transaction.atomic
     def post(self, request):
+        if not settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED:
+            return secure(Response({"detail": "Adesão pública indisponível."}, status=404))
         if _limit_public(request):
             return secure(Response({"detail": "Muitas tentativas. Tente depois."}, status=429))
         if not valid_object(
@@ -279,6 +283,8 @@ class PublicAcceptView(APIView):
         )
         invitation.consumed_at = now
         invitation.save(update_fields=["consumed_at"])
+        if email_links_enabled():
+            enqueue_confirmation(receipt, EnrollmentEmailChallenge.Purpose.VERIFY)
         return secure(Response({
             "status": "pending_verification",
             "receipt_id": str(receipt.id),
