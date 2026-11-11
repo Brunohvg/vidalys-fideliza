@@ -172,7 +172,12 @@ export default function Portal() {
         <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>
         <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
         <button onClick={()=>navigate("roadmap")} className={page==="roadmap"?"is-active":""}><Target size={19}/> Motor de benefícios <span>Em breve</span></button>
-        <button onClick={()=>navigate("settings")} className={page==="settings"?"is-active":""}><Settings2 size={19}/> Configurações</button>
+
+      </nav>
+      <nav className="portal-nav portal-nav-secondary ss-settings-menu" aria-label="Preferências da loja">
+        <button onClick={()=>navigate("settings")} className={page==="settings"?"is-active":""}>
+          <Settings2 size={19}/> Configurações
+        </button>
       </nav>
       <div className="portal-side-bottom">
         <div className="portal-side-guide"><HeartHandshake size={21}/><b>Comece pela recompra.</b><p>Desenhe sua campanha em três passos. A análise financeira está nas ferramentas.</p><button onClick={()=>navigate("campaign")}>Criar prévia <ArrowRight size={16}/></button></div>
