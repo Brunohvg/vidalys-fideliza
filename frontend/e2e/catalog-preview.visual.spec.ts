@@ -12,6 +12,11 @@ async function init(page: Page) {
   await page.context().addCookies([{
     name: "csrftoken", value: "csrf-json-preview", domain: "127.0.0.1", path: "/"
   }]);
+  await page.route("**/api/v1/tenants/**/nuvemshop/status/", route => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ configured: false, connected: false, store_id: null,
+      scope: null, mode: "read_products_only", ready_for_write: false })
+  }));
   await page.route("**/api/v1/auth/session/", route => route.fulfill({
     status: 200, contentType: "application/json",
     body: JSON.stringify({
@@ -127,6 +132,6 @@ test("JSON inválido bloqueia envio antes da API", async ({page})=>{
   await navigate(page,1440);
   await page.getByLabel("Ou cole o JSON de uma amostra autorizada").fill("{invalid");
   await page.getByRole("button",{name:"Analisar variantes"}).click();
-  await expect(page.getByRole("alert")).toContainText("não é um JSON válido");
+  await expect(page.locator(".reconcile-input-card").getByRole("alert")).toContainText("não é um JSON válido");
   expect(calls).toBe(0);
 });
