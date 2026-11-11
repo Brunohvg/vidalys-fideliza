@@ -64,3 +64,12 @@ Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (
 - O teto matemático combina orçamento restante e margem mínima, mas NÃO é recomendação comercial definitiva.
 - Antes de habilitar campanha real: custos auditados, regras financeiras, ledger, API oficial Nuvemshop e testes de estorno/conversão.
 - API tenant-scoped: conferir CSRF, autenticação, validação e isolamento. Ver docs/13-PLANEJADOR-CAMPANHAS.md.
+
+
+## Cadastro de custos por SKU P0
+- Custos de mercadoria são dados sensíveis por loja; armazenar por tenant, validar papel e versionamento.
+- Não confundir SKU, referência local e ID de variante externa; custo não informado é NULL.
+- Cadastro manual de custo inicia não conferido. Owner/admin pode conferir com evidência declarada; a conferência não substitui verificação do ERP.
+- Edição de custo revoga confirmação. Nunca usar preços manuais como preços atuais da Nuvemshop sem revalidar.
+- Registro versionado com histórico aditivo; nunca sobrescrever em lote ou aceitar um update com versão antiga.
+- Não implementar conexão OAuth ou alteração de catálogo sem ler docs oficiais atuais e obter consentimento. Ver docs/16-CUSTOS-SKU.md.

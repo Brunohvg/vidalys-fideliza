@@ -35,7 +35,8 @@ class CostWriteSerializer(serializers.Serializer):
     expected_version = serializers.IntegerField(min_value=1, required=False)
 
     def validate(self, attrs):
-        attrs["reference"] = attrs.get("reference", "").strip().upper() if "reference" in attrs else attrs.get("reference")
+        if "reference" in attrs:
+            attrs["reference"] = attrs["reference"].strip().upper()
         if "sku" in attrs:
             attrs["sku"] = attrs["sku"].strip().upper()
         if "external_variant_id" in attrs:
