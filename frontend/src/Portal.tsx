@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowRight, ChevronDown, Check,
-  CircleHelp, Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
+  Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
   LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, Target, UsersRound, X, BarChart3, HeartHandshake
 } from "lucide-react";
 import MarginSimulator from "./MarginSimulator";
