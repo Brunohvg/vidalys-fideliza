@@ -123,11 +123,6 @@ class CustomerLinkApproveView(APIView):
                 store_id=installed.store_id,
                 customer_id=requested_id,
                 topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
-                state__in=[
-                    PrivacyWebhookRequest.State.NEEDS_REVIEW,
-                    PrivacyWebhookRequest.State.PENDING,
-                    PrivacyWebhookRequest.State.UNKNOWN_STORE,
-                ],
             ).exists():
                 return secure(Response({
                     "detail": "Este cliente tem uma solicitação de privacidade pendente."
