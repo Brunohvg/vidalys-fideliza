@@ -68,7 +68,7 @@ for (const width of [390, 768, 1440]) {
 
     await enterMargin(page, width);
     await expect(page.getByText("Pronto para calcular")).toBeVisible();
-    await expect(page.getByText("Calcular no servidor")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Calcular no servidor" })).toBeVisible();
 
     const scroll = await page.evaluate(() =>
       ({ doc: document.documentElement.scrollWidth, viewport: window.innerWidth })
