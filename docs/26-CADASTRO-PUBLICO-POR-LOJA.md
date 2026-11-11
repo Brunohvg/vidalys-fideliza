@@ -82,3 +82,21 @@ registro e recebem resposta neutra.
 **Nota:** Cadastro público é uma pré-adesão. Um contrato apresentado e
 marcado no formulário não substitui, por si só, prova de titularidade do
 contato ou adequação jurídica à LGPD.
+
+## Trava obrigatória de publicação
+
+A configuração `FIDELIZA_PUBLIC_SIGNUP_ENABLED` tem valor **0** por
+padrão no Django e no `compose.coolify.external-db.yaml`. Ela bloqueia
+as rotas públicas de convite e inscrição antes de qualquer coleta
+espontânea de dados pessoais, mesmo quando a loja tem termos aprovados.
+O painel informa o bloqueio e não divulga links de inscrição.
+
+Somente após completar os gates de identidade, política de privacidade,
+segurança, retirada e retenção, a equipe autorizada poderá mudar o valor
+para **1** na configuração da homologação, de forma controlada.
+O script `backend/scripts/audit_runtime_env.py` gera **ALERTA**
+quando encontra essa flag ativa; nunca imprime credenciais.
+
+A tela e os endpoints podem ser exercitados com dados sintéticos em testes
+automatizados usando `override_settings(FIDELIZA_PUBLIC_SIGNUP_ENABLED=True)`.
+Esta documentação não autoriza abrir inscrições para clientes reais.
