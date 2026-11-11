@@ -43,13 +43,8 @@ class CustomerLinkPreviewView(APIView):
             return secure(Response({
                 "detail": "O e-mail precisa estar confirmado e a solicitação ativa."
             }, status=409))
-        try:
-            cfg = config()
-        except OAuthConfigurationError:
-            return secure(Response({"detail": "OAuth da Nuvemshop indisponível."}, status=503))
-        installed = NuvemshopInstallation.objects.filter(
-            tenant_id=tenant_id, client_id=cfg.client_id
-        ).first()
+        # Conferir os direitos de acesso antes de buscar credenciais e consumir limites.
+        installed = NuvemshopInstallation.objects.filter(tenant_id=tenant_id).first()
         if (installed is None or membership.tenant.platform != "nuvemshop"
                 or not membership.tenant.external_store_id
                 or installed.store_id != membership.tenant.external_store_id
@@ -62,6 +57,13 @@ class CustomerLinkPreviewView(APIView):
         if not cache.add(throttle_key, 1, timeout=60):
             return secure(Response({"detail": "Prévia recente. Tente novamente depois."},
                                    status=429))
+        try:
+            cfg = config()
+        except OAuthConfigurationError:
+            return secure(Response({"detail": "OAuth da Nuvemshop indisponível."}, status=503))
+        if installed.client_id != cfg.client_id:
+            return secure(Response({"detail": "Aplicativo Nuvemshop da loja não corresponde."},
+                                   status=409))
         try:
             token = decrypt_token(installed.token_ciphertext, cfg.token_keys)
             data = read_customer_candidates(
