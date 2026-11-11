@@ -37,9 +37,13 @@ O arquivo real de configuração e senhas nunca deve ser commitado.
 - **Worker Celery:** recebe o mesmo gate e base URL, mais as variáveis
   `EMAIL_*` e `SERVER_EMAIL`.
 - **Cache e broker:** Redis privado da stack Fideliza.
-- O token tem 32 bytes aleatórios; só `SHA-256(token)` é persistido.
-- A tarefa Celery só recebe o token efêmero via broker privado;
-  API/SMTP não devem registrar link/token, destinatário, senha ou header.
+- O desafio possui UUID aleatório e token derivado via HMAC-SHA-256
+  com a chave forte do Django e a finalidade da ação. Só o digest
+  SHA-256 do token é persistido.
+- A tarefa Celery recebe **somente o UUID do desafio** via broker;
+  reconstrói o token com o mesmo segredo do Django antes de enviar.
+  Não há link/token em texto puro na mensagem Redis ou no banco.
+- API/SMTP nunca devem registrar link/token, destinatário, senha ou headers.
 - O link tem duração de 30 minutos, é individual, de uso único e
   não é aceito para a ação oposta.
 - Comunicação é **transacional**, não depende do aceite separado de marketing.
