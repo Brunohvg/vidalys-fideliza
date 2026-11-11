@@ -253,3 +253,14 @@ h1{font-size:clamp(26px,3vw,37px);line-height:1.2;letter-spacing:-.055em;margin:
 @media(max-width:700px){.margin-hero{padding:25px 22px}.margin-heading{align-items:start;flex-direction:column}.margin-hero h2{font-size:26px}.margin-panel{padding:21px}.margin-safe-row{align-items:start}.margin-field small{min-height:0}}
 @media(max-width:440px){.margin-fields{grid-template-columns:1fr}.margin-result-grid{grid-template-columns:1fr}.margin-result-main{grid-column:auto}.margin-result-main strong{font-size:29px}.margin-panel-head h3{font-size:15px}.margin-safe-row{flex-direction:column;gap:5px}.margin-hero p{max-width:100%}.margin-disclaimer{align-items:flex-start;line-height:1.5}}
 @media(prefers-reduced-motion:reduce){.margin-meter span{transition:none}}
+
+/* Barra superior compacta em celular: evitar overflow na combinação de breadcrumb e indicador demo. */
+@media(max-width:500px){
+  .topbar-left>span:first-of-type,.topbar-left .slash{display:none}
+  .topbar-left{min-width:0}
+  .topbar-left b{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-right{gap:6px;flex:none}
+  .topbar-right .sample-pill{font-size:8px;letter-spacing:0;padding:7px 8px}
+  .topbar-right .sample-pill span{flex:none}
+  .topbar .profile{height:34px;width:34px;flex:none}
+}

@@ -15,7 +15,13 @@ for (const width of [390, 768, 1440]) {
     const noOverflow = await page.evaluate(() =>
       document.documentElement.scrollWidth <= window.innerWidth + 1
     );
-    expect(noOverflow).toBe(true);
+    const overflowElements = await page.evaluate(() =>
+      [...document.body.querySelectorAll("*")].map(el => {
+        const rect = el.getBoundingClientRect();
+        return { tag: el.tagName, className: String(el.className).slice(0, 90), right: Math.round(rect.right) };
+      }).filter(x => x.right > window.innerWidth + 1).slice(0, 12)
+    );
+    expect(noOverflow, JSON.stringify(overflowElements)).toBe(true);
 
     await page.screenshot({ path: testInfo.outputPath("margin-default-" + width + ".png"), fullPage: true });
 
