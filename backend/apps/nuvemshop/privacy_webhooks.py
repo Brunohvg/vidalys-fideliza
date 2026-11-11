@@ -24,6 +24,7 @@ from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation, OAuthAttempt
 from .privacy_models import PrivacyWebhookRequest
+from .privacy_security import email_identity_digest, privacy_event_key, legacy_event_key
 
 
 MAX_WEBHOOK_BYTES = 65536
@@ -185,9 +186,12 @@ def privacy_webhook(request, kind):
     if decoded is None:
         return HttpResponse(status=400)
     store_id, customer_id, request_id, payload = decoded
-    key = hashlib.sha256(
-        f"nuvemshop-privacy-v1:{topic}:{store_id}:{customer_id}:{request_id}".encode("ascii")
-    ).hexdigest()
+    secret = os.environ["NUVEMSHOP_CLIENT_SECRET"].strip()
+    key = privacy_event_key(topic, store_id, customer_id, request_id, secret)
+    old_key = legacy_event_key(topic, store_id, customer_id, request_id)
+    email_hash = email_identity_digest(payload.get("customer", {}).get("email")
+                                      if isinstance(payload.get("customer"), dict)
+                                      else None, secret)
     client_id = _positive_id(os.getenv("NUVEMSHOP_CLIENT_ID", ""))
     try:
         with transaction.atomic():
@@ -199,7 +203,7 @@ def privacy_webhook(request, kind):
                 if install is not None and install.client_id != client_id:
                     tenant = None  # Nunca acessar credenciais de outro app.
             existing = PrivacyWebhookRequest.objects.select_for_update().filter(
-                event_key=key
+                event_key__in=(key, old_key)
             ).first()
             # Se a loja não estava mapeada na primeira entrega, processar o
             # reenvio depois de identificá-la. Não perder o direito do titular.
@@ -214,6 +218,7 @@ def privacy_webhook(request, kind):
                 PrivacyWebhookRequest.objects.create(
                     tenant=tenant, store_id=store_id, topic=topic, event_key=key,
                     customer_id=customer_id, request_id=request_id,
+                    customer_email_digest=email_hash,
                     state=state if topic != PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
                           else (PrivacyWebhookRequest.State.PENDING if tenant is not None
                                 else PrivacyWebhookRequest.State.UNKNOWN_STORE),
@@ -228,7 +233,11 @@ def privacy_webhook(request, kind):
                 existing.reason_code=("report_not_delivered"
                     if topic == PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
                     else "pending_erasure")
-                existing.save(update_fields=["tenant","state","reason_code"])
+                if email_hash:
+                    existing.customer_email_digest = email_hash
+                existing.save(update_fields=[
+                    "tenant", "state", "reason_code", "customer_email_digest"
+                ])
             if tenant is not None and topic == PrivacyWebhookRequest.Topic.CUSTOMER_REDACT:
                 _revoke_customer(tenant, customer_id, payload)
             elif tenant is not None and topic == PrivacyWebhookRequest.Topic.STORE_REDACT:
