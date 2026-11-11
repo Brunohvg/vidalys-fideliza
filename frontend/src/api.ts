@@ -284,7 +284,7 @@ export type PublicConsentResult = {
 
 export type ParticipantDirectoryResponse = {
   source: "verified_opt_in_only";
-  data_status: "no_enrollment_channel";
+  data_status: "no_enrollment_channel" | "consent_verified";
   summary: { total: number; active: number; paused: number };
   total_filtered: number;
   limit: number;
