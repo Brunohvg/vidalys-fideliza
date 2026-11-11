@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                 ("scope", models.CharField(max_length=240)),
                 ("connected_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
-                ("connected_by", models.ForeignKey(to=settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL)),
+                ("connected_by", models.ForeignKey(to=settings.AUTH_USER_MODEL, null=True, on_delete=django.db.models.deletion.SET_NULL)),
                 ("tenant", models.OneToOneField(to="tenants.tenant", on_delete=django.db.models.deletion.CASCADE, related_name="nuvemshop_installation")),
             ],
         ),

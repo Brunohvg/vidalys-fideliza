@@ -152,18 +152,6 @@ class NuvemshopOAuthFlowTests(TestCase):
         return {"access_token": "opaque-test-token-without-real-privileges",
                 "store_id": store_id, "scope": "read_products"}
 
-    def install(self, store_id="999"):
-        self.assertEqual(self.start().status_code, 200)
-        nonce = self.state(self.start()) if False else None  # Never start twice.
-        # Start already produced the active attempt; load its hash only via URL.
-        # Deliberately use a fresh start after clearing one-per-8s limiter.
-        cache.clear()
-        started = self.start()
-        nonce = self.state(started)
-        with patch("apps.nuvemshop.views.exchange_code", return_value=self.fake_token(store_id)):
-            response = self.callback(nonce)
-        return response
-
     def test_anonymous_and_cross_tenant_blocked(self):
         self.client.logout()
         response = self.client.post(self.start_url(), "{}", "application/json", secure=True)
