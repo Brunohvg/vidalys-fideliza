@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowRight, BadgeCheck, ChartNoAxesCombined, ChevronDown, Check,
   CircleHelp, Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
-  LogOut, Menu, ShieldCheck, ShoppingBag, UsersRound, Wallet, X
+  LogOut, Menu, ShieldCheck, ShoppingBag, UsersRound, X
 } from "lucide-react";
 import MarginSimulator from "./MarginSimulator";
 import { ApiError, merchantApi, type SessionInfo, type Store } from "./api";
@@ -50,7 +50,7 @@ function Wordmark() {
   return <span className="portal-wordmark">vidalys<span>fideliza</span></span>;
 }
 
-function StatusPill({ children }: { children: React.ReactNode }) {
+function StatusPill({ children }: { children: ReactNode }) {
   return <span className="portal-status"><ShieldCheck size={14}/>{children}</span>;
 }
 
@@ -76,7 +76,7 @@ export default function Portal() {
     return () => { current = false; };
   }, [refresh]);
 
-  const doLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+  const doLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAuthBusy(true); setAuthError("");
     try {

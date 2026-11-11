@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AlertTriangle, BadgeCheck, Calculator, Gauge, Info, LockKeyhole, RotateCcw, ShieldAlert } from "lucide-react";
-import { brl, parseBrl, parsePercent, simulateMargin, type MarginInput } from "./finance";
+import { brl, parseBrl, parsePercent, simulateMargin, type MarginInput, type MarginResult } from "./finance";
+import { ApiError, merchantApi } from "./api";
 
 type FieldKey =
   | "subtotal" | "discount" | "cogs" | "fee" | "freight" | "other" | "cashback" | "minimum";
@@ -49,9 +50,44 @@ function toPercent(bps: number): string {
   return (bps / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + "%";
 }
 
-export default function MarginSimulator() {
+export default function MarginSimulator({ tenantId }: { tenantId?: string }) {
   const [values, setValues] = useState<Inputs>(initial);
   const [scenario, setScenario] = useState("base");
+  const [remoteResult, setRemoteResult] = useState<MarginResult | null>(null);
+  const [remoteError, setRemoteError] = useState("");
+  const [calculating, setCalculating] = useState(false);
+  const requestVersion = useRef(0);
+
+  const invalidate = () => {
+    requestVersion.current += 1;
+    setRemoteResult(null);
+    setRemoteError("");
+    setCalculating(false);
+  };
+
+  const calculateOnline = async () => {
+    if (!tenantId) return;
+    invalidate();
+    let payload: MarginInput;
+    try {
+      payload = parseValues(values);
+    } catch (error) {
+      setRemoteError(error instanceof Error ? error.message : "Revise os valores.");
+      return;
+    }
+    const version = ++requestVersion.current;
+    setCalculating(true);
+    try {
+      const result = await merchantApi.simulate(tenantId, payload);
+      if (version === requestVersion.current) setRemoteResult(result);
+    } catch (error) {
+      if (version === requestVersion.current) setRemoteError(
+        error instanceof ApiError ? error.message : "Erro de conexão com o servidor."
+      );
+    } finally {
+      if (version === requestVersion.current) setCalculating(false);
+    }
+  };
 
   const computation = useMemo(() => {
     try {
@@ -64,10 +100,15 @@ export default function MarginSimulator() {
     }
   }, [values]);
 
-  const result = computation.result;
+  const result = tenantId ? remoteResult : computation.result;
+  const errorMessage = tenantId ? (remoteError || computation.error) : computation.error;
   const status = result?.status ?? "invalid";
   const statusInfo = {
-    invalid: { title: "Revise os valores", sub: computation.error || "Dados inválidos", tone: "warning" },
+    invalid: { title: errorMessage ? "Revise os valores" : (tenantId ? "Pronto para calcular" : "Revise os valores"),
+      sub: errorMessage || (tenantId
+        ? "Clique em 'Calcular no servidor' para receber o diagnóstico seguro."
+        : "Dados inválidos"),
+      tone: "warning" },
     cost_unknown: { title: "Custo desconhecido", sub: "Sem o custo da mercadoria, não recomendamos ativar benefícios.", tone: "warning" },
     margin_already_below_target: { title: "Margem insuficiente", sub: "Esta compra não alcança a margem mínima nem antes do cashback.", tone: "danger" },
     cashback_exceeds_margin: { title: "Cashback acima do limite", sub: "Reduza a taxa ou ajuste os custos para preservar a margem configurada.", tone: "danger" },
@@ -77,6 +118,7 @@ export default function MarginSimulator() {
   const setField = (key: FieldKey, value: string) => {
     setValues(previous => ({ ...previous, [key]: value }));
     setScenario("custom");
+    invalidate();
   };
 
   const presets = [
@@ -88,22 +130,22 @@ export default function MarginSimulator() {
   return <div className="margin-experience">
     <div className="margin-hero">
       <div className="margin-hero-copy">
-        <span className="margin-kicker"><Gauge size={16} /> VIDALYS INTELLIGENCE <span>•</span> PRÉVIA</span>
+        <span className="margin-kicker"><Gauge size={16} /> VIDALYS INTELLIGENCE <span>•</span> {tenantId ? "ANÁLISE NO SERVIDOR" : "PRÉVIA"}</span>
         <h2>Recompensar é fácil.<br/><span>Proteger a margem é inteligência.</span></h2>
         <p>Simule o custo total de uma campanha antes de oferecer cashback. Aqui, a margem é prioridade — não apenas o desconto.</p>
-        <span className="margin-disclaimer"><LockKeyhole size={15}/> Cálculos locais com dados digitados. Nenhuma campanha é ativada.</span>
+        <span className="margin-disclaimer"><LockKeyhole size={15}/> {tenantId ? "Envie os dados para cálculo no Django. Nenhum benefício será ativado." : "Cálculos locais com dados digitados. Nenhuma campanha é ativada."}</span>
       </div>
       <div className="margin-hero-symbol" aria-hidden="true"><Calculator size={68} strokeWidth={1.3}/></div>
     </div>
 
     <div className="margin-heading">
       <div><span className="panel-kicker">CENTRAL DE DECISÃO</span><h2>Simulador de rentabilidade</h2><p>Compare cenários e descubra quando uma recompensa pode comprometer o pedido.</p></div>
-      <button className="margin-reset" onClick={() => { setValues(initial); setScenario("base"); }}><RotateCcw size={16}/> Restaurar</button>
+      <button className="margin-reset" onClick={() => { setValues(initial); setScenario("base"); invalidate(); }}><RotateCcw size={16}/> Restaurar</button>
     </div>
 
     <div className="margin-presets" aria-label="Cenários de simulação">
       {presets.map(p => <button key={p.id} className={"margin-preset" + (scenario === p.id ? " active" : "")}
-        aria-pressed={scenario === p.id} onClick={() => { setValues(p.data); setScenario(p.id); }}>{p.label}</button>)}
+        aria-pressed={scenario === p.id} onClick={() => { setValues(p.data); setScenario(p.id); invalidate(); }}>{p.label}</button>)}
     </div>
 
     <div className="margin-layout">
@@ -125,6 +167,14 @@ export default function MarginSimulator() {
             <small>{f.hint}</small>
           </label>)}
         </div>
+        {tenantId && <div className="margin-submit-wrap">
+          <button className="portal-primary" type="button" onClick={calculateOnline}
+            disabled={calculating || Boolean(computation.error)}>
+            {calculating ? "Calculando…" : "Calcular no servidor"}
+            <Calculator size={17}/>
+          </button>
+          <small>Usa somente os valores informados. Não salva dados nem cria campanhas.</small>
+        </div>}
       </section>
 
       <section className="margin-panel margin-results" aria-live="polite">
