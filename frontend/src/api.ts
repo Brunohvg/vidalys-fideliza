@@ -211,6 +211,15 @@ export type ProgramTermsStatus = {
   public_signup_enabled: boolean;
   terms: ProgramTerms | null;
 };
+export type CustomerMatchPreview = {
+  mode: "read_only_customer_match_preview";
+  status: "one_exact_match" | "not_found" | "ambiguous";
+  customer_id: string | null; email_verified: true;
+  tenant_id: string; submission_id: string;
+  scope_required: "read_customers"; writes_performed: 0;
+  participant_created: false; cashback_enabled: false; note: string;
+};
+
 export type EnrollmentPending = {
   id: string; name: string; email: string; terms_version: string;
   accepted_at: string; marketing_opt_in: boolean;
@@ -261,6 +270,14 @@ export type NuvemshopConnectionStatus = {
   scope: string | null;
   mode: "read_products_only";
   ready_for_write: false;
+  customer_matching?: {
+    preview_enabled: boolean;
+    customer_scope_granted: boolean;
+    read_only_preview_available: boolean;
+    requires_partner_portal_scope_and_reinstallation: boolean;
+    will_activate_participants: false;
+    will_credit_cashback: false;
+  };
 };
 
 export type CatalogDecision = "matched" | "review_required" | "unmapped";
@@ -323,6 +340,12 @@ export const merchantApi = {
   pendingEnrollments: (tenantId: string) =>
     getJson<EnrollmentPendingList>("/api/v1/tenants/" + encodeURIComponent(tenantId) +
       "/enrollment-submissions/"),
+  previewCustomerMatch: (tenantId:string, submissionId:string) =>
+    postJson<CustomerMatchPreview>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/enrollment-submissions/" + encodeURIComponent(submissionId) +
+      "/customer-match/preview/", {}
+    ),
   participantWallet: (tenantId: string, participantId: string) =>
     getJson<CashbackWalletView>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) +
