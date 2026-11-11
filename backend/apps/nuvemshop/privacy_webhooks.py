@@ -107,6 +107,10 @@ def _revoke_customer(tenant, customer_id, payload):
     ).values_list("submission_id", "participant_id"))
     submission_ids = [submission_id for submission_id, _ in links]
     participant_ids = [participant_id for _, participant_id in links]
+    # Participantes legados podem não ter EnrollmentCustomerLink.
+    participant_ids.extend(ProgramParticipant.objects.filter(
+        tenant=tenant, external_customer_id=customer_id,
+    ).values_list("id", flat=True))
     # O evento da plataforma também pode identificar adesões ainda não
     # vinculadas. O e-mail é lido em memória, nunca salvo no protocolo.
     raw_email = payload.get("customer", {}).get("email")
@@ -194,27 +198,43 @@ def privacy_webhook(request, kind):
                 install = NuvemshopInstallation.objects.filter(tenant=tenant).first()
                 if install is not None and install.client_id != client_id:
                     tenant = None  # Nunca acessar credenciais de outro app.
-            existing = PrivacyWebhookRequest.objects.filter(event_key=key).first()
-            if existing is not None:
-                return _limited_response()  # Evento já duravelmente recebido.
+            existing = PrivacyWebhookRequest.objects.select_for_update().filter(
+                event_key=key
+            ).first()
+            # Se a loja não estava mapeada na primeira entrega, processar o
+            # reenvio depois de identificá-la. Não perder o direito do titular.
+            if existing is not None and not (
+                tenant is not None
+                and existing.state == PrivacyWebhookRequest.State.UNKNOWN_STORE
+            ):
+                return _limited_response()
             state = (PrivacyWebhookRequest.State.NEEDS_REVIEW
                      if tenant is not None else PrivacyWebhookRequest.State.UNKNOWN_STORE)
-            receipt = PrivacyWebhookRequest.objects.create(
-                tenant=tenant, store_id=store_id, topic=topic, event_key=key,
-                customer_id=customer_id, request_id=request_id,
-                state=state if topic != PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
-                      else (PrivacyWebhookRequest.State.PENDING if tenant is not None
-                            else PrivacyWebhookRequest.State.UNKNOWN_STORE),
-                reason_code=("pending_erasure" if topic != PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
-                             else "report_not_delivered") if tenant is not None else "unmapped_store",
-            )
+            if existing is None:
+                PrivacyWebhookRequest.objects.create(
+                    tenant=tenant, store_id=store_id, topic=topic, event_key=key,
+                    customer_id=customer_id, request_id=request_id,
+                    state=state if topic != PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
+                          else (PrivacyWebhookRequest.State.PENDING if tenant is not None
+                                else PrivacyWebhookRequest.State.UNKNOWN_STORE),
+                    reason_code=("pending_erasure" if topic != PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
+                                 else "report_not_delivered") if tenant is not None else "unmapped_store",
+                )
+            else:
+                existing.tenant=tenant
+                existing.state=(PrivacyWebhookRequest.State.PENDING
+                    if topic == PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
+                    else PrivacyWebhookRequest.State.NEEDS_REVIEW)
+                existing.reason_code=("report_not_delivered"
+                    if topic == PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST
+                    else "pending_erasure")
+                existing.save(update_fields=["tenant","state","reason_code"])
             if tenant is not None and topic == PrivacyWebhookRequest.Topic.CUSTOMER_REDACT:
                 _revoke_customer(tenant, customer_id, payload)
             elif tenant is not None and topic == PrivacyWebhookRequest.Topic.STORE_REDACT:
                 _revoke_store(tenant)
             # Nunca marcar COMPLETED aqui: 202 comprova apenas aceitação.
             # Sem publicação externa, e-mail ou escrita na API Nuvemshop.
-            _ = receipt
         return _limited_response()
     except Exception:
         # Transação falhou; não devolver 2xx para que a plataforma reenvie.
