@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import ParticipantListView
+from .public_registration_views import PublicStoreJoinView, PublicStoreProgramView
 from .enrollment_views import (
     InvitationView, PendingEnrollmentsView, ProgramTermsView,
     PublicAcceptView, PublicInvitationView,
@@ -14,6 +15,10 @@ urlpatterns = [
          name="tenant-enrollment-invitations"),
     path("tenants/<uuid:tenant_id>/enrollment-submissions/", PendingEnrollmentsView.as_view(),
          name="tenant-enrollment-submissions"),
+    path("public/programs/<slug:slug>/", PublicStoreProgramView.as_view(),
+         name="public-store-program"),
+    path("public/programs/<slug:slug>/join/", PublicStoreJoinView.as_view(),
+         name="public-store-join"),
     path("public/enrollment/preview/", PublicInvitationView.as_view(),
          name="public-enrollment-preview"),
     path("public/enrollment/accept/", PublicAcceptView.as_view(),
