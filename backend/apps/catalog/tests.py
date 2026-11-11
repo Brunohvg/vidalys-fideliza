@@ -74,6 +74,8 @@ class MappingTests(SimpleTestCase):
             {"id": 2, "price": "19.999"},
             {"id": 2, "price": -1},
             {"id": 2, "price": float("nan")},
+            {"id": 2, "sku": "A" * 101, "price": "10.00"},
+            {"id": 2, "barcode": "0" * 81, "price": "10.00"},
         ]:
             with self.subTest(variant=variant), self.assertRaises(InvalidSnapshot):
                 reconcile_products(products(variant), [])

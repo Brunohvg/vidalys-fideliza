@@ -40,7 +40,10 @@ def _sku(value):
         return ""
     if not isinstance(value, str):
         raise InvalidSnapshot("SKU precisa ser texto, sem conversão de números.")
-    return value.strip()[:100].upper()
+    result = value.strip()
+    if len(result) > 100:
+        raise InvalidSnapshot("SKU acima do limite de 100 caracteres.")
+    return result.upper()
 
 
 def _barcode(value):
@@ -48,7 +51,10 @@ def _barcode(value):
         return ""
     if not isinstance(value, str):
         raise InvalidSnapshot("EAN/código de barras precisa ser texto.")
-    return value.strip()[:80]
+    result = value.strip()
+    if len(result) > 80:
+        raise InvalidSnapshot("Código de barras acima do limite de 80 caracteres.")
+    return result
 
 
 def _money(value, field, required=False):
