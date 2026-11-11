@@ -76,7 +76,8 @@ export default function PublicEnrollment(){
         <CheckCircle2 size={42}/>
         <h1>Aceite registrado.</h1>
         <p>Sua solicitação de adesão foi registrada com a versão {result.terms_version} do regulamento.</p>
-        <p><strong>A loja ainda precisa confirmar sua identidade.</strong> Este registro não gera saldo, desconto, pontos ou cashback.</p>
+        <p><strong>Confira seu e-mail para confirmar o endereço quando o envio estiver disponível.</strong>
+          A loja ainda precisa verificar sua identidade. Este registro não gera saldo, desconto, pontos ou cashback.</p>
         {"receipt_id" in result && <span>Protocolo de aceite: {result.receipt_id}</span>}
       </div>}
       {!loading && !result && <>
@@ -127,6 +128,10 @@ export default function PublicEnrollment(){
             Nenhum benefício é concedido nesta etapa.</div>
         </form>}
       </>}
+      {storeSlug && <p className="public-enroll-privacy-link">
+        Quer retirar sua solicitação de adesão?
+        <a href={"/retirar/"+encodeURIComponent(storeSlug)}>Solicitar retirada por e-mail</a>.
+      </p>}
     </main>
     <footer>Vidalys Fideliza · Sem inscrição automática · Seus dados são usados para registrar esta solicitação.</footer>
   </div>;
