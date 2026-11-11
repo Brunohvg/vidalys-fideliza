@@ -63,15 +63,16 @@ class NuvemshopStatusView(APIView):
         except OAuthConfigurationError:
             cfg, configured = None, False
         customer_preview_enabled = settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
+        # Distinguir "scope recebido" de "recurso habilitado" no backend.
         customer_granted = bool(installed and has_customer_access(
-            installed.scope, customer_preview_enabled=customer_preview_enabled
+            installed.scope, customer_preview_enabled=True
         ))
         response = Response({
             "customer_matching": {
                 "preview_enabled": customer_preview_enabled,
                 "customer_scope_granted": customer_granted,
                 "read_only_preview_available": bool(
-                    configured and customer_granted and installed
+                    configured and customer_preview_enabled and customer_granted and installed
                     and installed.client_id == cfg.client_id
                     and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
                 ),
