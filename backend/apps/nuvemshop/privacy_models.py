@@ -4,6 +4,7 @@ Jamais armazenar body de webhook, e-mail, telefone, documento ou token.
 A recepção não equivale a conclusão da eliminação ou envio de dados.
 """
 import uuid
+from django.conf import settings
 from django.db import models
 
 
@@ -25,12 +26,25 @@ class PrivacyWebhookRequest(models.Model):
     store_id = models.CharField(max_length=64)
     customer_id = models.CharField(max_length=64, blank=True, default="")
     request_id = models.CharField(max_length=64, blank=True, default="")
+    # HMAC do e-mail enviado no webhook: permite localizar aceites ainda sem vínculo.
+    # Nunca guardar o e-mail original neste protocolo.
+    customer_email_digest = models.CharField(max_length=64, blank=True, default="")
     topic = models.CharField(max_length=40, choices=Topic.choices)
     event_key = models.CharField(max_length=64, unique=True)
     state = models.CharField(max_length=20, choices=State.choices,
                              default=State.PENDING)
     received_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
+    report_digest = models.CharField(max_length=64, blank=True, default="")
+    report_accessed_at = models.DateTimeField(null=True, blank=True)
+    report_accessed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    delivery_confirmed_by = models.ForeignKey(
+        "auth.User", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
     # Apenas código controlado, nunca body com PII ou mensagem de exceção.
     reason_code = models.CharField(max_length=40, blank=True, default="")
 
