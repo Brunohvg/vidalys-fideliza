@@ -9,4 +9,5 @@ urlpatterns = [
     path("api/v1/", include("apps.margin.urls")),
     path("api/v1/", include("apps.costs.urls")),
     path("api/v1/", include("apps.catalog.urls")),
+    path("api/v1/", include("apps.nuvemshop.urls")),
 ]
