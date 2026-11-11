@@ -139,6 +139,32 @@ export type CostHistoryEntry = {
   after: Record<string, unknown>;
 };
 
+export type ProgramParticipant = {
+  id: string;
+  customer_reference: string;
+  display_name: string;
+  contact_email: string;
+  status: "active" | "paused";
+  consented_at: string;
+  joined_at: string;
+  last_program_activity_at: string | null;
+  consent_channel: "customer_portal" | "storefront_opt_in";
+  points_balance: null;
+  cashback_balance_cents: null;
+  balance_status: "not_implemented";
+};
+
+export type ParticipantDirectoryResponse = {
+  source: "verified_opt_in_only";
+  data_status: "no_enrollment_channel";
+  summary: { total: number; active: number; paused: number };
+  total_filtered: number;
+  limit: number;
+  offset: number;
+  items: ProgramParticipant[];
+  note: string;
+};
+
 export type NuvemshopConnectionStatus = {
   configured: boolean;
   connected: boolean;
@@ -186,6 +212,18 @@ export type CatalogPreview = {
 
 export const merchantApi = {
   getSession: () => getJson<SessionInfo>("/api/v1/auth/session/"),
+  listParticipants: (tenantId: string, opts?: {
+    q?: string; status?: "active" | "paused" | "all"; offset?: number
+  }) => {
+    const query = new URLSearchParams();
+    if (opts?.q) query.set("q", opts.q);
+    if (opts?.status && opts.status !== "all") query.set("status", opts.status);
+    query.set("offset", String(opts?.offset || 0));
+    return getJson<ParticipantDirectoryResponse>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/participants/?" + query.toString()
+    );
+  },
   nuvemshopStatus: (tenantId: string) =>
     getJson<NuvemshopConnectionStatus>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/nuvemshop/status/"
