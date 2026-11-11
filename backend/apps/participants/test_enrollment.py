@@ -136,7 +136,7 @@ class EnrollmentPilotTests(TestCase):
         self.assertEqual(listed.data["total"], 1)
         self.assertEqual(listed.data["items"][0]["status"], "pending_verification")
         self.client.force_authenticate(self.stranger)
-        hidden = self.client.get(self.url("tenant-enrollment-submissions", self.other))
+        hidden = self.client.get(self.url("tenant-enrollment-submissions", self.other.pk))
         self.assertEqual(hidden.data["total"], 0)
 
     def test_strict_payload_no_unverified_identity(self):
