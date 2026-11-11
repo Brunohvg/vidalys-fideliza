@@ -1,5 +1,29 @@
 import type { MarginInput, MarginResult } from "./finance";
 
+export type TenantBranding = {
+  program_name: string;
+  primary_color: string;
+  accent_color: string;
+  support_email: string;
+};
+export type TenantPreferences = {
+  tenant_id: string; tenant_name: string; tenant_slug: string;
+  tenant_status: "draft"|"active"|"suspended";
+  can_edit: boolean; version: number;
+  branding: TenantBranding; public_link: null;
+  features: {
+    public_signup_enabled: boolean;
+    email_delivery_enabled: boolean;
+    customer_preview_enabled: boolean;
+    cashback_activation_enabled: false;
+    custom_domain_available: false;
+  };
+  note: string;
+};
+export type TenantPreferencesSaved = {
+  version: number; branding: TenantBranding; updated: boolean;
+};
+
 export type Store = {
   id: string;
   name: string;
@@ -317,6 +341,13 @@ export type CatalogPreview = {
 };
 
 export const merchantApi = {
+  getTenantSettings: (tenantId:string) =>
+    getJson<TenantPreferences>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/settings/"),
+  saveTenantBranding: (tenantId:string, expectedVersion:number, input:TenantBranding) =>
+    writeJson<TenantPreferencesSaved>(
+      "PATCH","/api/v1/tenants/"+encodeURIComponent(tenantId)+"/settings/",
+      {...input, expected_version:expectedVersion}
+    ),
   getSession: () => getJson<SessionInfo>("/api/v1/auth/session/"),
   listParticipants: (tenantId: string, opts?: {
     q?: string; status?: "active" | "paused" | "all"; offset?: number
