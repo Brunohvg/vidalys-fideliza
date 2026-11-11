@@ -132,12 +132,14 @@ class NuvemshopOAuthFlowTests(TestCase):
         })
 
     def start(self, tenant=None):
+        # Cada sessão recém-criada precisa obter o CSRF cookie.
+        self.client.get("/api/v1/auth/session/", secure=True)
         csrf = self.client.cookies["csrftoken"].value
-        response = self.client.post(
+        return self.client.post(
             self.start_url(tenant), data="{}", content_type="application/json",
             secure=True, HTTP_X_CSRFTOKEN=csrf,
+            HTTP_REFERER="https://testserver/",
         )
-        return response
 
     def state(self, response):
         return parse_qs(urlsplit(response.json()["authorize_url"]).query)["state"][0]
