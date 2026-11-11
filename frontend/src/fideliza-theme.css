@@ -416,3 +416,35 @@ button,select,textarea,input {font-family:inherit}
   .xp-wizard-step strong {font-size:11px}
   .xp-action-card p,.xp-ai-note p,.xp-guidance p {font-size:12.5px}
 }
+
+
+/* Sidebar: menos rolagem visual sem bloquear navegação por teclado/toque. */
+.portal-side {
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(173, 218, 215, .30) transparent;
+}
+.portal-side::-webkit-scrollbar { width: 4px; }
+.portal-side::-webkit-scrollbar-track { background: transparent; }
+.portal-side::-webkit-scrollbar-thumb {
+  background: rgba(173, 218, 215, .30);
+  border-radius: 12px;
+}
+.portal-side:hover::-webkit-scrollbar-thumb {
+  background: rgba(173, 218, 215, .56);
+}
+/* Menus compactam primeiro; nunca cortar links de navegação. */
+@media (max-height: 900px) {
+  .portal-side { padding-top: 18px; padding-bottom: 14px; }
+  .portal-side-brand { padding-bottom: 15px; }
+  .portal-nav-caption { margin-top: 18px; margin-bottom: 9px; }
+  .portal-nav { gap: 4px; }
+  .portal-nav button { min-height: 44px; padding: 10px 12px; }
+  .portal-side-bottom { padding-top: 12px; gap: 10px; }
+  .portal-side-guide { padding: 14px; gap: 8px; }
+  .portal-side-guide p { display: none; }
+}
+@media (max-height: 660px) {
+  /* O atalho é redundante com Campanhas; preservar todos os menus e Sair. */
+  .portal-side-guide { display: none; }
+}
