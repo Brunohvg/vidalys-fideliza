@@ -170,6 +170,9 @@ jobs:
           exit 1
       - run: docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml config --quiet
       - run: docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml up --build -d --wait --wait-timeout 180
+      - name: Verify external database runtime variable contract without printing secrets
+        run: |
+          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T api python scripts/audit_runtime_env.py --host staging.invalid
       - name: Verify readiness with external database and CSRF
         run: |
           docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T frontend wget -q -O /dev/null --header='Host: staging.invalid' --header='X-Forwarded-Proto: https' http://127.0.0.1:8080/api/ready/
