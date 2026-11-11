@@ -20,6 +20,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import Tenant
+from apps.tenants.branding_models import TenantBranding
+from apps.tenants.settings_views import _display
 from .enrollment_models import EnrollmentInvite, EnrollmentSubmission, ProgramTerms
 from .enrollment_views import secure, terms_payload, valid_object, _limit_public
 from .email_proof import enqueue_confirmation, email_links_enabled
@@ -48,9 +50,11 @@ class PublicStoreProgramView(APIView):
         terms = active_terms_for(tenant)
         if not is_ready(terms):
             return secure(Response({"detail": "Adesão pública ainda não disponível."}, status=404))
+        branding = TenantBranding.objects.filter(tenant=tenant).first()
         return secure(Response({
             "mode": "public_pre_enrollment",
             "store_name": tenant.name, "store_slug": tenant.slug,
+            "branding": _display(tenant, branding),
             "terms": terms_payload(terms),
             "identity_verification_required": True,
             "benefits_active": False,
