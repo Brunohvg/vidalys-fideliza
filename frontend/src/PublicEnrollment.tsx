@@ -70,7 +70,7 @@ export default function PublicEnrollment(){
   return <div className="public-enroll-shell">
     <main className="public-enroll-card">
       <div className="public-enroll-brand"><span><HeartHandshake size={25}/></span>
-        <div><strong>VIDALYS</strong><small>FIDELIZA • AMBIENTE DE TESTE</small></div></div>
+        <div><strong>{preview?.store_name || "FIDELIZA"}</strong><small>PROGRAMA DE FIDELIDADE • TECNOLOGIA VIDALYS</small></div></div>
       {loading && <div role="status" className="public-enroll-state">Validando convite seguro…</div>}
       {!loading && result && <div className="public-enroll-done" role="status">
         <CheckCircle2 size={42}/>
@@ -83,8 +83,11 @@ export default function PublicEnrollment(){
         <div className="public-enroll-top"><span className="public-enroll-eyebrow">
           <ShieldCheck size={16}/> ADESÃO VOLUNTÁRIA</span>
           <h1>Faça parte de uma relação que vale mais.</h1>
-          <p>{preview?"Convite enviado por "+preview.store_name+". Leia as condições antes de decidir participar."
-            :"Este convite não está disponível."}</p></div>
+          <p>{preview
+            ? ("store_slug" in preview
+                ? "Conheça o programa de "+preview.store_name+" e leia as condições antes de solicitar participação."
+                : "Convite enviado por "+preview.store_name+". Leia as condições antes de decidir participar.")
+            :"O cadastro público desta loja não está disponível."}</p></div>
         {error && <div role="alert" className="public-enroll-error">{error}</div>}
         {preview && <form onSubmit={submit}>
           <section className="public-enroll-terms">
