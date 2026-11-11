@@ -67,3 +67,18 @@ auditoria autenticada no recurso certo, sem mostrar credenciais.
 
 `main` não recebe alterações sem promoção homologada. Não adicionar
 novas branches de desenvolvimento ou PRs permanentes.
+
+## Bloqueio explícito da adesão pública
+
+`FIDELIZA_PUBLIC_SIGNUP_ENABLED=0` é a configuração padrão (segura).
+O Compose com banco externo passa o valor somente para a API.
+Habilitar `1` abre os endpoints de pré-adesão por loja e de convite,
+permitindo coletar nome e e-mail **sem conceder benefícios**.
+
+**Não ativar** antes de revisar os termos e a privacidade, confirmar
+responsáveis, retenção e retirada, teste anti-bot, verificação de identidade
+e processo operacional de atendimento aos titulares. A auditoria sem
+segredos retorna **ALERTA** se essa variável estiver ativada.
+
+A mudança de código não modifica automaticamente as variáveis salvas
+na interface do Coolify.
