@@ -426,6 +426,30 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         receipt.refresh_from_db()
         self.assertEqual(receipt.state,"pending")
 
+    def test_access_report_includes_pseudonymized_records_after_erasure_request(self):
+        _,_,participant=self._make_submission()
+        wallet=CashbackWallet.objects.create(tenant=self.tenant,participant=participant)
+        CashbackEvent.objects.create(
+            wallet=wallet,kind="accrual",amount_cents=450,
+            rule_version="retained-ledger",source_order_id="order-123",
+            idempotency_key="retained-event",
+        )
+        self.assertEqual(self.send("customer-redact",{
+            "store_id":91834,"customer":{"id":556,"email":"secret@example.invalid"}
+        }).status_code,202)
+        participant.refresh_from_db()
+        self.assertTrue(participant.external_customer_id.startswith("anon:"))
+        receipt=self._privacy_report_request(request_id=997)
+        file=self._post_report(receipt,**self._report_auth())
+        self.assertEqual(file.status_code,200,file.content)
+        report=json.loads(file.content)
+        self.assertEqual(len(report["participacoes"]),1)
+        self.assertEqual(report["participacoes"][0]["situacao"],"withdrawn")
+        self.assertEqual(report["participacoes"][0]["nome"],"")
+        self.assertTrue(report["participacoes"][0]["cliente_referencia"].startswith("anon:"))
+        self.assertEqual(report["movimentos_financeiros_internos"][0]["valor_centavos"],450)
+        self.assertEqual(len(report["aceites"]),1)
+
     def test_changed_report_and_wrong_checksum_cannot_be_confirmed(self):
         submission,_,_=self._make_submission()
         receipt=self._privacy_report_request()
