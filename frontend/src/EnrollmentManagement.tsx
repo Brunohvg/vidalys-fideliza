@@ -1,5 +1,5 @@
 import {useEffect, useState, type FormEvent} from "react";
-import {ApiError, merchantApi, type EnrollmentPendingList, type ProgramTerms, type Store} from "./api";
+import {ApiError, merchantApi, type CustomerMatchPreview, type EnrollmentPendingList, type ProgramTerms, type Store} from "./api";
 import {ArrowRight, Check, ClipboardCopy, FileCheck2, HeartHandshake, Link2, ShieldCheck} from "lucide-react";
 import "./enrollment.css";
 
@@ -17,6 +17,12 @@ export default function EnrollmentManagement({
   const [body,setBody]=useState("");
   const [privacy,setPrivacy]=useState("");
   const [signupEnabled,setSignupEnabled]=useState(false);
+  const [customerAccess,setCustomerAccess]=useState(false);
+  const [customerCheckBusy,setCustomerCheckBusy]=useState<string|null>(null);
+  const [customerCheckResult,setCustomerCheckResult]=useState<{
+    submissionId:string;status:CustomerMatchPreview["status"];customerId:string|null
+  }|null>(null);
+  const [customerCheckError,setCustomerCheckError]=useState("");
   const [busy,setBusy]=useState(false);
   const [link,setLink]=useState("");
   const [copied,setCopied]=useState(false);
@@ -27,6 +33,10 @@ export default function EnrollmentManagement({
   useEffect(()=>{
     if(!canEdit){setLoading(false);return;}
     let active=true;setLoading(true);setError("");setLink("");
+    setCustomerAccess(false);setCustomerCheckResult(null);setCustomerCheckError("");
+    merchantApi.nuvemshopStatus(tenantId)
+      .then(n=>{if(active)setCustomerAccess(Boolean(n.customer_matching?.read_only_preview_available));})
+      .catch(()=>{if(active)setCustomerAccess(false)});
     Promise.all([
       merchantApi.currentProgramTerms(tenantId),
       merchantApi.pendingEnrollments(tenantId)
@@ -74,6 +84,15 @@ export default function EnrollmentManagement({
   };
   const startRevision=()=>{
     setFormOpen(true);setVersion("");setBody("");setPrivacy("");setLink("");setMessage("");
+  };
+  const previewCustomer=async(submissionId:string)=>{
+    setCustomerCheckBusy(submissionId);setCustomerCheckError("");setCustomerCheckResult(null);
+    try{
+      const result=await merchantApi.previewCustomerMatch(tenantId,submissionId);
+      setCustomerCheckResult({submissionId,status:result.status,customerId:result.customer_id});
+    }catch(cause){
+      setCustomerCheckError(cause instanceof ApiError?cause.message:"Falha na prévia autorizada.");
+    }finally{setCustomerCheckBusy(null);}
   };
 
   return <section className="enroll-manager" aria-labelledby="enroll-title">
@@ -172,12 +191,34 @@ export default function EnrollmentManagement({
         </div>
         <ArrowRight size={18} aria-hidden="true"/>
       </div>
+      {pending?.items.some(item=>item.status==="email_verified") && !customerAccess &&
+        <p className="enroll-muted">Vínculo com clientes da Nuvemshop indisponível.
+          A etapa requer autorização de leitura de clientes (`read_customers`) no aplicativo,
+          reinstalação na loja e liberação da prévia na homologação.</p>}
+      {customerCheckError && <div className="enroll-error" role="alert">{customerCheckError}</div>}
       {pending && pending.items.length>0 && <div className="enroll-pending-list">
         {pending.items.map(item=><div key={item.id}>
           <strong>{item.name}</strong><span>{item.email}</span>
           <small>Versão {item.terms_version} · {item.status==="email_verified"
             ?"E-mail confirmado · aguardando vínculo com a loja"
             :"Aguardando confirmação do e-mail"}</small>
+          {item.status==="email_verified" && customerAccess && <div className="enroll-match-action">
+            <button type="button" className="enroll-secondary"
+              disabled={customerCheckBusy!==null}
+              onClick={()=>void previewCustomer(item.id)}>
+              {customerCheckBusy===item.id?"Consultando…":"Conferir cadastro na Nuvemshop"}
+            </button>
+            <span>Somente prévia. Nenhum participante ou benefício será criado.</span>
+          </div>}
+          {customerCheckResult?.submissionId===item.id && <div className="enroll-match-result"
+            role="status">
+            {customerCheckResult.status==="one_exact_match"
+              ?"Correspondência exata: cliente nº "+customerCheckResult.customerId+
+                " — ainda precisa de aprovação e vínculo seguro."
+              :customerCheckResult.status==="ambiguous"
+                ?"Mais de um cadastro correspondente; não é seguro vincular automaticamente."
+                :"Nenhum cadastro correspondente encontrado nesta loja."}
+          </div>}
         </div>)}
       </div>}
       <p className="enroll-footnote"><ShieldCheck size={16}/>
