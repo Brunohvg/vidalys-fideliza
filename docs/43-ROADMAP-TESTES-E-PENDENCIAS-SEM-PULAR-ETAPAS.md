@@ -65,7 +65,7 @@ YAMLs, wizards, mecanismos de benefício ou documentos duplicados.
 | G4 (webhooks) | CÓDIGO VALIDADO | Registro e entrega HMAC em loja piloto, reenvio e ordenação | Executar após G2/G3 |
 | G5 (reconsulta) | CÓDIGO VALIDADO | GET real, cancelamento e estorno sem crédito | Executar após G4 |
 | G6 (benefício simulado) | CÓDIGO VALIDADO | UX e teto em homologação com dados sintéticos | Conferir na revisão do portal |
-| G7 (conciliação financeira) | PENDENTE (código preliminar de divergências) | Captura PSP/ERP independente, estorno parcial e total | Implementar após prova dos pedidos |
+| G7 (conciliação financeira) | CÓDIGO OFFLINE EM TESTE: normalizador de capturas/reembolsos/chargebacks com idempotência; sem fonte PSP autenticada | Adaptador oficial, prova de captura/estorno, vínculo do pedido e reconciliação efetiva | Após G1–G5 reais, integrar PSP/ERP autorizado, validar margem e não abrir ledger antes de G8 |
 | G8 (crédito/resgate) | PENDENTE (ledger bloqueado) | Ledger/idempotência/limites e reversões auditados | Não habilitar antes de G7 |
 | G9 (gamificação) | PENDENTE | Níveis, missões, pontos, cupons e antifraude | Após G8; simulação isolada opcional |
 | G10 (IA/multicanal) | PENDENTE | Integrações Flow/PDV, métricas confiáveis | Após validações de base |
@@ -220,3 +220,9 @@ Reforço: sem acesso autenticado ao Coolify, os itens G1–G5 continuam
 Atualização G1 12/11: a correção migrou o único Compose de Managed
 para Raw e os testes passam a reprovar injeções globais. Não implantar
 até conferir proxy Traefik e redes externas reais; ver docs/44.
+
+
+**12/11/2026 — G7 independente de G1:** adicionada análise financeira
+offline sem credenciais nem IO (docs/46); mantém provas de origem
+independentes como pendência. A prioridade operacional segue G1 no
+Coolify; nenhum gate financeiro foi liberado nem cliente real envolvido.
