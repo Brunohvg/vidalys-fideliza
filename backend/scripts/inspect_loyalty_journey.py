@@ -19,6 +19,7 @@ django.setup()
 from django.conf import settings
 from apps.campaigns.models import CampaignDraft
 from apps.nuvemshop.models import NuvemshopInstallation
+from apps.nuvemshop.scopes import has_product_access,has_customer_access
 from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.participants.enrollment_models import (
     EnrollmentSubmission,ProgramTerms,EnrollmentCustomerLink,
@@ -38,6 +39,11 @@ def inspect(slug:str)->dict:
         and tenant.external_store_id
         and str(installed.store_id)==str(tenant.external_store_id)
     )
+    product_access=bool(connected and installed and has_product_access(installed.scope))
+    customer_access=bool(connected and installed and has_customer_access(
+        installed.scope,
+        customer_preview_enabled=settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED,
+    ))
     terms=ProgramTerms.objects.filter(tenant=tenant,active=True).exists()
     optin=EnrollmentSubmission.objects.filter(
         tenant=tenant,email_verified_at__isnull=False,
@@ -49,6 +55,8 @@ def inspect(slug:str)->dict:
         "tenant_slug":tenant.slug,
         "tenant_active":tenant.status==Tenant.Status.ACTIVE,
         "nuvemshop_connected":connected,
+        "products_read_permission_recorded":product_access,
+        "customers_read_permission_recorded":customer_access,
         "program_terms_approved":terms,
         "public_signup_enabled":bool(settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED),
         "email_delivery_flag_enabled":bool(settings.FIDELIZA_EMAIL_DELIVERY_ENABLED),
@@ -72,8 +80,9 @@ def inspect(slug:str)->dict:
         "live_cashback_granting_available":False,
         "live_redemption_available":False,
         "note":(
-            "O relatório usa contagens internas. Flags de e-mail ativas "
-            "não provam que SMTP/entrega esteja funcionando. "
+            "Conexão e permissões significam registros OAuth locais, "
+            "não validação de uma chamada real à Nuvemshop. "
+            "Flags de e-mail não comprovam entrega SMTP. "
             "Pedido pago e cashback real permanecem indisponíveis."
         ),
     }
