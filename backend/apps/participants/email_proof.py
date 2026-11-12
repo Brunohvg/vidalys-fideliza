@@ -73,6 +73,8 @@ def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str):
         return False
     if submission.status == EnrollmentSubmission.Status.WITHDRAWN:
         return False
+    if submission.tenant.status != "active":
+        return False
     if purpose == EnrollmentEmailChallenge.Purpose.VERIFY and (
             submission.email_verified_at is not None):
         return False
