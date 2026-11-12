@@ -102,7 +102,6 @@ class TenantSettingsTests(TestCase):
 
     def test_invalid_payload_cannot_insert_css_html_or_extra_fields(self):
         bad=[
-            {**self.body,"primary_color":"#FFFFFF"},
             {**self.body,"primary_color":"red"},
             {**self.body,"primary_color":"#000000; background:url(https://bad.invalid)"},
             {**self.body,"program_name":"A"},
@@ -117,6 +116,15 @@ class TenantSettingsTests(TestCase):
                 self.assertEqual(self.client.patch(self.endpoint,item,format="json").status_code,400)
         self.assertFalse(TenantBranding.objects.exists())
         self.assertFalse(TenantBrandingAudit.objects.exists())
+
+    def test_light_colors_can_be_saved_with_safe_browser_text(self):
+        response=self.client.patch(self.endpoint,{
+            **self.body,"primary_color":"#FFFFFF","accent_color":"#F8F8F8"
+        },format="json")
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(response.data["branding"]["primary_color"],"#FFFFFF")
+        self.assertEqual(response.data["branding"]["accent_color"],"#F8F8F8")
+        self.assertEqual(TenantBrandingAudit.objects.count(),1)
 
     def test_values_are_private_to_their_tenant(self):
         self.client.patch(self.endpoint,self.body,format="json")
