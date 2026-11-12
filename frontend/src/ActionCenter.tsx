@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {
-  ArrowRight, BarChart3, CircleHelp, Gift, HeartHandshake,
+  ArrowRight, BarChart3, CheckCircle2, CircleHelp, Gift, HeartHandshake,
   LockKeyhole, PlugZap, ShieldCheck, Sparkles, UsersRound
 } from "lucide-react";
 import {merchantApi, type CampaignDraftList, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus} from "./api";
@@ -90,6 +90,34 @@ export default function ActionCenter({
     });
   }
 
+  const readiness = [
+    {
+      title:"Conectar a loja",
+      detail:"Produtos e integração com a plataforma.",
+      status:integrationError?"unknown":integration?.connected?"ready":"not_ready",
+      destination:"catalog" as const,action:"Ver conexão",
+    },
+    {
+      title:"Receber participantes",
+      detail:"Clientes precisam autorizar a entrada no clube.",
+      status:participantsError?"unknown":participants?.summary.total
+        ?"ready":"not_ready",
+      destination:"clients" as const,action:"Ver clientes",
+    },
+    {
+      title:"Planejar benefícios",
+      detail:"Simule rentabilidade e salve uma campanha.",
+      status:draftsError?"unknown":drafts?.items.length?"ready":"not_ready",
+      destination:"campaign" as const,action:"Planejar",
+    },
+    {
+      title:"Cashback nas compras",
+      detail:"A concessão real exige pagamento confirmado e motor aprovado.",
+      status:"locked",
+      destination:null,action:"",
+    },
+  ];
+
   return <div className="xp-action-center">
     <section className="xp-action-banner">
       <div><span className="xp-eyebrow"><Sparkles size={16}/> FIDELIZAÇÃO INTELIGENTE</span>
@@ -116,6 +144,40 @@ export default function ActionCenter({
             {action.callToAction} <ArrowRight size={17}/></button>
         </article>})}
       </div>
+    </section>
+
+    <section className="xp-journey" aria-labelledby="xp-journey-title">
+      <div className="xp-section-heading">
+        <span className="portal-eyebrow">EVOLUÇÃO DO SEU CLUBE</span>
+        <h2 id="xp-journey-title">Sua jornada, sem atalhos.</h2>
+        <p>Acompanhe os passos já disponíveis e saiba o que falta antes de oferecer cashback.</p>
+      </div>
+      <ol className="xp-journey-list">
+        {readiness.map((step,index)=><li key={step.title}
+          className={"xp-journey-item "+step.status}>
+          <span className="xp-journey-number" aria-hidden="true">
+            {step.status==="ready"?<CheckCircle2 size={20}/>:
+             step.status==="locked"?<LockKeyhole size={18}/>:String(index+1).padStart(2,"0")}
+          </span>
+          <div className="xp-journey-copy">
+            <strong>{step.title}</strong>
+            <p>{step.detail}</p>
+          </div>
+          <span className="xp-journey-state">
+            {step.status==="ready"?"Disponível":
+             step.status==="locked"?"Ainda não liberado":
+             step.status==="unknown"?"Não foi possível verificar":"A preparar"}
+          </span>
+          {step.destination&&<button type="button" className="xp-journey-link"
+            onClick={()=>onNavigate(step.destination)}>
+            {step.action}<ArrowRight size={15}/>
+          </button>}
+        </li>)}
+      </ol>
+      <p className="xp-journey-safety">
+        <ShieldCheck size={16}/> Um benefício só será aplicado quando
+        o pedido pago e a regra financeira estiverem verificados.
+      </p>
     </section>
 
     <section className="xp-ai-note">
