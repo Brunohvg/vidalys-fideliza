@@ -19,6 +19,7 @@ django.setup()
 from django.conf import settings
 from apps.campaigns.models import CampaignDraft
 from apps.nuvemshop.models import NuvemshopInstallation
+from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
 from apps.nuvemshop.scopes import has_product_access,has_customer_access,has_order_access
 from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.participants.enrollment_models import (
@@ -44,6 +45,10 @@ def inspect(slug:str)->dict:
         installed.scope,
         customer_preview_enabled=settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED,
     ))
+    order_scope = bool(connected and installed and has_order_access(
+        installed.scope, preview_enabled=True,
+    ))
+    inbox_enabled = bool(order_scope and settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED)
     terms=ProgramTerms.objects.filter(tenant=tenant,active=True).exists()
     optin=EnrollmentSubmission.objects.filter(
         tenant=tenant,email_verified_at__isnull=False,
@@ -71,10 +76,17 @@ def inspect(slug:str)->dict:
             and settings.FIDELIZA_EMAIL_DELIVERY_ENABLED
         ),
         "orders_readonly_preview_available":bool(
-            connected and installed
-            and has_order_access(installed.scope, preview_enabled=True)
-            and settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
+            order_scope and settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
         ),
+        "signed_order_inbox_available":inbox_enabled,
+        "order_event_reinspection_available":bool(
+            inbox_enabled and settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
+        ),
+        "stored_order_event_count":OrderWebhookEvent.objects.filter(
+            tenant=tenant,
+        ).count(),
+        "benefit_simulation_available":True,
+        "gamification_active":False,
         "verified_requests_count":optin,
         "linked_customers_count":EnrollmentCustomerLink.objects.filter(
             tenant=tenant,
@@ -93,7 +105,7 @@ def inspect(slug:str)->dict:
             "não validação de uma chamada real à Nuvemshop. "
             "Vínculo automático só funciona com e-mail confirmado e um cliente exato. "
             "Flags de e-mail não comprovam entrega SMTP. "
-            "A prévia de pedidos não equivale a confirmar liquidação. "
+            "A prévia ou reconsulta da inbox não equivale a confirmar liquidação. Simulação de benefícios não significa concessão, gamificação ou resgate ativo. "
             "Pedido pago reconciliado e cashback real permanecem indisponíveis."
         ),
     }
