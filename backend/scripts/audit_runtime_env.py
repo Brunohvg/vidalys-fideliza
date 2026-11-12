@@ -6,6 +6,7 @@ Sem chamadas externas, sem banco, sem impressão de valores sensíveis.
 import argparse
 import os
 from urllib.parse import urlsplit
+from cryptography.fernet import Fernet
 
 
 def inspect(env, host):
@@ -45,14 +46,34 @@ def inspect(env, host):
     if not defined:
         result.append(("NUVEMSHOP_OAUTH", "DESLIGADO", "Nenhuma credencial OAuth configurada"))
     elif len(defined) != len(oauth):
-        result.append(("NUVEMSHOP_OAUTH", "ALERTA", "Configuração parcial; manter desconectado"))
+        result.append(("NUVEMSHOP_OAUTH", "FALHA", "Configuração parcial: não habilitar integração"))
     else:
         callback = urlsplit(env["NUVEMSHOP_OAUTH_CALLBACK_URL"])
-        check("NUVEMSHOP_OAUTH", callback.scheme == "https"
+        client_id = env["NUVEMSHOP_CLIENT_ID"]
+        user_agent = env["NUVEMSHOP_API_USER_AGENT"]
+        keys = env["NUVEMSHOP_TOKEN_KEYS"].split(",")
+        key_valid = bool(keys)
+        for key in keys:
+            try:
+                if not key.strip():
+                    key_valid = False
+                    break
+                Fernet(key.strip().encode("ascii"))
+            except (ValueError, TypeError, UnicodeError):
+                key_valid = False
+                break
+        check("NUVEMSHOP_OAUTH",
+              client_id.isascii() and client_id.isdecimal()
+              and int(client_id) > 0
+              and bool(env["NUVEMSHOP_CLIENT_SECRET"].strip())
+              and 4 <= len(user_agent) <= 150
+              and not any(ord(char) < 32 for char in user_agent)
+              and key_valid and callback.scheme == "https"
               and callback.hostname == host.lower()
+              and not callback.username and not callback.password
               and callback.path == "/api/v1/oauth/nuvemshop/callback/"
               and not callback.query and not callback.fragment,
-              "OAuth completo; validar chave Fernet no backend")
+              "OAuth, callback e chave de criptografia válidos")
     signup = env.get("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "0").lower().strip()
     if signup in ("1", "true", "yes", "on"):
         result.append(("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "ALERTA",
@@ -93,6 +114,31 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", "FALHA",
                        "Valor inválido"))
+    active = ("1", "true", "yes", "on")
+    inactive = ("0", "false", "", "no", "off")
+    oauth_ok = any(name == "NUVEMSHOP_OAUTH" and status == "OK"
+                   for name, status, _ in result)
+    if any(flag in active for flag in (customer_preview, orders, webhooks)):
+        if not oauth_ok:
+            result.append(("NUVEMSHOP_FLAG_WITHOUT_VALID_OAUTH", "FALHA",
+                           "Integração ativa exige OAuth completo e validado"))
+    mail = env.get("FIDELIZA_EMAIL_DELIVERY_ENABLED", "0").strip().lower()
+    if mail in active:
+        url = urlsplit(env.get("FIDELIZA_PUBLIC_BASE_URL", ""))
+        check("FIDELIZA_EMAIL_DELIVERY_ENABLED",
+              url.scheme == "https" and url.hostname == host.lower()
+              and not url.username and not url.password and not url.query
+              and not url.fragment and not url.path.strip("/"),
+              "Email exige HTTPS canônico; SMTP deve ser conferido no worker")
+    elif mail in inactive:
+        result.append(("FIDELIZA_EMAIL_DELIVERY_ENABLED", "OK",
+                       "Envio transacional desativado no piloto"))
+    else:
+        result.append(("FIDELIZA_EMAIL_DELIVERY_ENABLED", "FALHA",
+                       "Flag de email inválida"))
+    if signup in active and mail not in active:
+        result.append(("PUBLIC_SIGNUP_WITHOUT_EMAIL", "FALHA",
+                       "Cadastro público exige confirmação por email habilitada"))
     approval = env.get("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "0").lower().strip()
     if approval in ("1", "true", "yes", "on"):
         result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "ALERTA",
@@ -124,8 +170,16 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED","FALHA",
                        "Valor inválido"))
-    if env.get("FIDELIZA_LEDGER_WRITES_ENABLED", "").lower().strip() in ("1", "true", "yes", "on"):
-        result.append(("LEDGER", "ALERTA", "Escrita do ledger exige validação separada"))
+    ledger = env.get("FIDELIZA_LEDGER_WRITES_ENABLED", "").lower().strip()
+    if ledger in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_LEDGER_WRITES_ENABLED", "FALHA",
+                       "Não configurar flag de saldo: lançamento bloqueado em código"))
+    elif ledger not in ("0", "false", "", "no", "off"):
+        result.append(("FIDELIZA_LEDGER_WRITES_ENABLED", "FALHA",
+                       "Valor inválido; remova a variável financeira herdada"))
+    else:
+        result.append(("FIDELIZA_LEDGER_WRITES_ENABLED", "OK",
+                       "Crédito financeiro bloqueado em código"))
     return result
 
 
