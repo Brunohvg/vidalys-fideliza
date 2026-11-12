@@ -20,6 +20,10 @@ from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation, OAuthAttempt
 from .privacy_models import PrivacyWebhookRequest
 from apps.wallets.models import CashbackWallet, CashbackEvent, CashbackEntry
+from apps.campaigns.models import CampaignDraft
+from apps.costs.models import CostItem
+from apps.tenants.branding_models import TenantBranding, TenantBrandingAudit
+from .privacy_erasure import sanitize_store_privacy
 
 SECRET="private-hmac-for-synthetic-tests"
 
@@ -223,6 +227,120 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         self.assertEqual(PrivacyWebhookRequest.objects.get().state,"needs_review")
         self.assertEqual(self.send("store-redact",payload).status_code,202)
         self.assertEqual(PrivacyWebhookRequest.objects.count(),1)
+
+    def test_store_automatically_scrubs_app_data_without_claiming_full_erasure(self):
+        submission,challenge,participant=self._make_submission()
+        TenantBranding.objects.create(
+            tenant=self.tenant,program_name="Clube Cliente",
+            support_email="store-owner@example.invalid",
+        )
+        TenantBrandingAudit.objects.create(
+            tenant=self.tenant,version=1,
+            before={"support_email":"old-secret@example.invalid"},
+            after={"support_email":"new-secret@example.invalid"},
+        )
+        CostItem.objects.create(
+            tenant=self.tenant,reference="ref1",name="Produto interno",
+            provenance="Fornecedor com dados privados",
+        )
+        CampaignDraft.objects.create(
+            tenant=self.tenant,title="Campanha interna",
+            goal="reactivation",cashback_rate_bps=100,
+            ticket_cents=1000,projected_paid_orders=3,budget_cents=500,
+        )
+        wallet=CashbackWallet.objects.create(
+            tenant=self.tenant,participant=participant,
+        )
+        CashbackEvent.objects.create(
+            wallet=wallet,kind="accrual",amount_cents=100,
+            rule_version="audit",source_order_id="external-order-123",
+            idempotency_key="privacy-retained-event",
+        )
+        self.assertEqual(self.send("store-redact",{"store_id":91834}).status_code,202)
+        receipt=PrivacyWebhookRequest.objects.get(
+            topic=PrivacyWebhookRequest.Topic.STORE_REDACT,
+        )
+        self.assertIsNone(receipt.sanitized_at)
+        self.assertEqual(sanitize_store_privacy(str(receipt.id)),
+                         "sanitized_pending_review")
+        self.assertEqual(sanitize_store_privacy(str(receipt.id)),
+                         "already_sanitized")
+        receipt.refresh_from_db()
+        participant.refresh_from_db()
+        submission.refresh_from_db()
+        challenge.refresh_from_db()
+        self.assertEqual(receipt.state,PrivacyWebhookRequest.State.NEEDS_REVIEW)
+        self.assertEqual(receipt.reason_code,"retention_review_required")
+        self.assertIsNotNone(receipt.sanitized_at)
+        self.assertEqual(receipt.sanitization_summary["ledger_events_retained"],1)
+        self.assertTrue(receipt.sanitization_summary["backup_review_required"])
+        self.assertEqual(submission.email,"")
+        self.assertEqual(submission.name,"")
+        self.assertFalse(submission.marketing_opt_in)
+        self.assertEqual(submission.status,"withdrawn")
+        self.assertEqual(participant.contact_email,"")
+        self.assertEqual(participant.display_name,"")
+        self.assertTrue(participant.external_customer_id.startswith("anon:"))
+        self.assertEqual(participant.status,"withdrawn")
+        self.assertEqual(EnrollmentCustomerLink.objects.get(
+            participant=participant).external_customer_id,
+            participant.external_customer_id)
+        self.assertIsNotNone(challenge.consumed_at)
+        self.assertFalse(TenantBranding.objects.filter(tenant=self.tenant).exists())
+        self.assertFalse(TenantBrandingAudit.objects.filter(tenant=self.tenant).exists())
+        self.assertFalse(CostItem.objects.filter(tenant=self.tenant).exists())
+        self.assertFalse(CampaignDraft.objects.filter(tenant=self.tenant).exists())
+        self.assertEqual(CashbackEvent.objects.filter(
+            wallet__tenant=self.tenant).count(),1)
+        # Nenhum valor pessoal em contadores/registro interno.
+        for private in ("store-owner@example.invalid","old-secret@example.invalid",
+                        "secret@example.invalid","Pessoa testada"):
+            self.assertNotIn(private,str(receipt.sanitization_summary))
+
+    def test_store_erasure_is_isolated_and_requires_revoked_connection(self):
+        foreign=Tenant.objects.create(
+            name="Loja intacta",slug="other-privacy-intact",
+            platform="nuvemshop",external_store_id="19283",
+            status=Tenant.Status.ACTIVE,
+        )
+        ProgramParticipant.objects.create(
+            tenant=foreign,external_customer_id="556",
+            display_name="Pessoa de outra loja",contact_email="safe@example.invalid",
+            consent_at=timezone.now(),consent_channel="customer_portal",
+            terms_version="v1",
+        )
+        receipt=PrivacyWebhookRequest.objects.create(
+            tenant=self.tenant,store_id="91834",
+            topic=PrivacyWebhookRequest.Topic.STORE_REDACT,
+            event_key="f"*64,state=PrivacyWebhookRequest.State.NEEDS_REVIEW,
+        )
+        self.assertEqual(sanitize_store_privacy(str(receipt.id)),"store_still_active")
+        self.tenant.status=Tenant.Status.SUSPENDED
+        self.tenant.save(update_fields=["status"])
+        self.assertEqual(sanitize_store_privacy(str(receipt.id)),"connection_still_active")
+        self.assertEqual(self.send("store-redact",{"store_id":91834}).status_code,202)
+        self.assertEqual(sanitize_store_privacy(str(receipt.id)),
+                         "sanitized_pending_review")
+        retained=ProgramParticipant.objects.get(tenant=foreign)
+        self.assertEqual(retained.display_name,"Pessoa de outra loja")
+        self.assertEqual(retained.external_customer_id,"556")
+        receipt.refresh_from_db()
+        self.assertIsNotNone(receipt.sanitized_at)
+
+    def test_store_redact_queues_cleanup_only_after_durable_commit(self):
+        with patch("apps.nuvemshop.privacy_webhooks._queue_store_sanitization") as enqueue:
+            with self.captureOnCommitCallbacks(execute=True):
+                result=self.send("store-redact",{"store_id":91834})
+            self.assertEqual(result.status_code,202)
+            self.assertEqual(enqueue.call_count,1)
+            rid=str(PrivacyWebhookRequest.objects.get().pk)
+            enqueue.assert_called_with(rid)
+            # Entrega repetida reenvia o job se a sanitização ainda não rodou.
+            with self.captureOnCommitCallbacks(execute=True):
+                replay=self.send("store-redact",{"store_id":91834})
+            self.assertEqual(replay.status_code,202)
+            self.assertEqual(enqueue.call_count,2)
+            self.assertEqual(PrivacyWebhookRequest.objects.count(),1)
 
     def test_unknown_store_and_wrong_app_do_not_touch_another_store(self):
         result=self.send("customer-redact",{
