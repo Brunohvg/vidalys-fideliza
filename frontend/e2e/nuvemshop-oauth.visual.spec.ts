@@ -102,6 +102,17 @@ test("OAuth não configurado impede conexão sem enviar segredos", async ({page}
       mode:"read_products_only",ready_for_write:false
     })
   }));
+  await page.route("**/api/v1/tenants/**/settings/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      tenant_id:tenant.id,tenant_name:tenant.name,tenant_slug:tenant.slug,
+      tenant_status:"active",can_edit:true,version:0,public_link:null,
+      branding:{program_name:"Clube Piloto",primary_color:"#087F79",
+        accent_color:"#37D5BB",support_email:"teste@example.invalid"},
+      features:{public_signup_enabled:false,email_delivery_enabled:false,
+        customer_preview_enabled:false,cashback_activation_enabled:false,
+        custom_domain_available:false},
+    }),
+  }));
   await go(page,1440);
   await expect(page.getByRole("button",{name:/Autorizar minha loja/})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Ver conexão em Configurações"})).toBeVisible();
