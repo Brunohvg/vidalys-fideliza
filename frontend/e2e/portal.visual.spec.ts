@@ -181,7 +181,9 @@ test("registro do lojista sem Nuvemshop exige confirmação e senha forte",async
   expect(submissions).toBe(0);
   await page.getByLabel("Confirmar senha").fill("SenhaTeste-2026-forte!");
   await page.getByRole("button",{name:"Criar minha conta"}).click();
-  await expect(page.getByRole("heading",{name:"Confira seu e-mail."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Verifique seu e-mail."})).toBeVisible();
+  await expect(page.getByText("Se existir um cadastro aguardando confirmação",{exact:false})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Já tenho conta: recuperar acesso"})).toBeVisible();
   expect(submissions).toBe(1);
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);

@@ -120,7 +120,7 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
   const headings:Record<View,[string,string]>={
     login:["Bem-vindo de volta.","Entre para administrar seu programa de fidelidade."],
     signup:["Crie sua conta.","Seu programa começa aqui. Não é necessário ter loja virtual."],
-    "await-email":["Confira seu e-mail.","Enviamos instruções para confirmar o endereço e liberar sua conta."],
+    "await-email":["Verifique seu e-mail.","Se existir um cadastro aguardando confirmação, um link será enviado. Se você já confirmou a conta, pode entrar normalmente."],
     confirm:["Confirme seu e-mail.","Conclua sua conta de lojista e abra seu painel."],
     forgot:["Recuperar acesso.","Informe seu e-mail para receber um link de redefinição."],
     reset:["Nova senha.","Escolha uma senha forte para proteger sua conta."],
@@ -152,8 +152,13 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
         {view==="await-email"||view==="reset-sent" ? <div className="merchant-info">
           <Mail size={22}/><strong>Proteja sua conta</strong>
           <p>Confira também a pasta de spam. O link expira em 30 minutos.</p>
-          {view==="await-email"&&<button type="button" className="merchant-text-btn"
-            onClick={()=>void resend()} disabled={pending}>Reenviar confirmação</button>}
+          {view==="await-email"&&<p>O cadastro não dispara outro e-mail quando a conta já está confirmada ou existe uma solicitação pendente. Aguarde um minuto antes de tentar reenviar.</p>}
+          {view==="await-email"&&<>
+            <button type="button" className="merchant-text-btn"
+              onClick={()=>void resend()} disabled={pending}>Reenviar confirmação</button>
+            <button type="button" className="merchant-text-btn"
+              onClick={()=>go("forgot")}>Já tenho conta: recuperar acesso</button>
+          </>}
           <button type="button" className="merchant-text-btn" onClick={()=>go("login")}>Voltar ao login</button>
         </div> :
         <form onSubmit={event=>void submit(event)}>
