@@ -47,6 +47,46 @@ class OrderNormalizationTests(SimpleTestCase):
         self.assertEqual(transport.request.get_method(), "GET")
         self.assertEqual(transport.timeout, 8)
 
+    def test_customer_reported_paid_amount_is_a_cross_check_not_psp_proof(self):
+        # Até valores iguais na API da plataforma exigem reconciliação no gateway.
+        equal = summarize_order(
+            order(total_paid_by_customer="120.90"),
+            order_id=87412, participant_verified=True,
+        )
+        self.assertEqual(equal["reported_customer_paid_cents"], 12090)
+        self.assertFalse(equal["reported_payment_differs_from_total"])
+        self.assertEqual(equal["review_status"], "reported_paid_requires_reconciliation")
+        self.assertTrue(equal["reported_paid_amount_is_not_psp_proof"])
+        self.assertFalse(equal["credit_eligible"])
+        self.assertFalse(equal["cashback_created"])
+        # Pagamento parcial, edição de pedido ou taxas geram revisão, não saldo.
+        mismatch = summarize_order(
+            order(total_paid_by_customer="110.90"),
+            order_id=87412, participant_verified=True,
+        )
+        self.assertEqual(mismatch["reported_customer_paid_cents"], 11090)
+        self.assertTrue(mismatch["reported_payment_differs_from_total"])
+        self.assertEqual(mismatch["review_status"], "reported_paid_amount_review")
+        self.assertFalse(mismatch["credit_eligible"])
+        # A prioridade de um estorno/cancelamento não pode ser escondida
+        # por uma simples divergência de valor.
+        refunded = summarize_order(
+            order(payment_status="refunded", total_paid_by_customer="100.00"),
+            order_id=87412, participant_verified=True,
+        )
+        self.assertEqual(refunded["review_status"], "blocked_refund")
+        not_provided = summarize_order(
+            order(), order_id=87412, participant_verified=True,
+        )
+        self.assertIsNone(not_provided["reported_customer_paid_cents"])
+        self.assertIsNone(not_provided["reported_payment_differs_from_total"])
+        for bad in ("NaN", "-1", "1.123", "invalido", True):
+            with self.subTest(bad=bad), self.assertRaises(OrderReadError):
+                summarize_order(
+                    order(total_paid_by_customer=bad),
+                    order_id=87412, participant_verified=True,
+                )
+
     def test_payment_status_never_creates_eligible_cashback(self):
         cases = [
             ({}, "reported_paid_requires_reconciliation"),

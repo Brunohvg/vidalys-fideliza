@@ -17,7 +17,7 @@ class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
-FIELDS = "id,status,payment_status,paid_at,cancelled_at,total,currency,gateway,customer"
+FIELDS = "id,status,payment_status,paid_at,cancelled_at,total,total_paid_by_customer,currency,gateway,customer"
 
 def safe_id(value):
     if isinstance(value, bool) or not isinstance(value, (str, int)):
@@ -87,6 +87,20 @@ def summarize_order(data, *, order_id, participant_verified=False):
             or not isinstance(currency, str) or len(currency) != 3
             or not currency.isascii() or not currency.isalpha()):
         raise OrderReadError("Montante inválido")
+    # O valor recebido informado pela própria Nuvemshop pode divergir de
+    # 'total' por pagamentos parciais, taxas, edições ou pedidos sem
+    # transação. Isso NÃO é uma confirmação independente do gateway.
+    reported_paid_cents = None
+    if data.get("total_paid_by_customer") is not None:
+        try:
+            amount_paid = Decimal(str(data["total_paid_by_customer"]))
+        except (InvalidOperation, TypeError, ValueError):
+            raise OrderReadError("Pagamento reportado inválido") from None
+        if (not amount_paid.is_finite() or amount_paid < 0
+                or amount_paid > Decimal("1000000000")
+                or amount_paid * 100 != (amount_paid * 100).to_integral_value()):
+            raise OrderReadError("Pagamento reportado inválido")
+        reported_paid_cents = int(amount_paid * 100)
     raw_date = data.get("paid_at")
     paid_at = parse_datetime(raw_date) if isinstance(raw_date, str) else None
     if paid_at is not None and paid_at.tzinfo is None:
@@ -103,6 +117,9 @@ def summarize_order(data, *, order_id, participant_verified=False):
         state = "customer_not_verified"
     elif data.get("gateway") in ("internal", "offline", "not-provided", None, ""):
         state = "manual_payment_review"
+    elif reported_paid_cents is not None and reported_paid_cents != int(amount * 100):
+        # Divergência deve ser revisada, nunca usada como base de cashback.
+        state = "reported_paid_amount_review"
     else:
         state = "reported_paid_requires_reconciliation"
     return {
@@ -110,6 +127,12 @@ def summarize_order(data, *, order_id, participant_verified=False):
         "order_status": status, "payment_status": payment,
         "paid_at": paid_at.isoformat() if paid_at else None,
         "reported_total_cents": int(amount * 100), "currency": currency.upper(),
+        "reported_customer_paid_cents": reported_paid_cents,
+        "reported_payment_differs_from_total": (
+            None if reported_paid_cents is None
+            else reported_paid_cents != int(amount * 100)
+        ),
+        "reported_paid_amount_is_not_psp_proof": True,
         "participant_verified": bool(participant_verified),
         "review_status": state, "credit_eligible": False,
         "cashback_created": False, "writes_performed": 0,
