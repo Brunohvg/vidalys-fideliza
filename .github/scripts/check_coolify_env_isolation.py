@@ -88,6 +88,15 @@ def main():
             values = services[name].get("environment", {})
             for key, allowed in ALLOW.items():
                 expected = (FIXED.get(key, synthetic[key]) if name in allowed else "")
+                if name == "worker":
+                    derived = {
+                        "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+                        "EMAIL_PORT": "587",
+                        "EMAIL_USE_TLS": "1",
+                        "EMAIL_USE_SSL": "0",
+                        "SERVER_EMAIL": synthetic["DEFAULT_FROM_EMAIL"],
+                    }
+                    expected = derived.get(key, expected)
                 if values.get(key, "") != expected:
                     failures.append(f"{name}: {key}")
             if services[name].get("ports"):

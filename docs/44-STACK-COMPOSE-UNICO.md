@@ -40,3 +40,11 @@ Script de isolamento: .github/scripts/check_coolify_env_isolation.py.
 Diagnóstico API: python scripts/audit_runtime_env.py --host fideliza-homolog.optarys.com.br
 Diagnóstico SMTP: python scripts/audit_smtp_env.py --host fideliza-homolog.optarys.com.br
 Continuar roadmap: docs/43-ROADMAP-TESTES-E-PENDENCIAS-SEM-PULAR-ETAPAS.md
+
+
+## Redução de variáveis operacionais
+
+As variáveis SMTP constantes ficaram fixas no único Compose e
+SERVER_EMAIL passou a herdar DEFAULT_FROM_EMAIL. O inventário de
+obrigatórias, opcionais, flags e nomes legados está no documento 45.
+Nada foi apagado do painel autenticado do Coolify.

@@ -139,6 +139,35 @@ def inspect(env, host):
     if signup in active and mail not in active:
         result.append(("PUBLIC_SIGNUP_WITHOUT_EMAIL", "FALHA",
                        "Cadastro público exige confirmação por email habilitada"))
+    # O SMTP é exclusivamente do worker. Nomes e estados, jamais valores.
+    smtp_api_leaks = sorted(name for name in (
+        "EMAIL_BACKEND", "EMAIL_HOST", "EMAIL_PORT",
+        "EMAIL_HOST_USER", "EMAIL_HOST_PASSWORD",
+        "EMAIL_USE_TLS", "EMAIL_USE_SSL",
+        "DEFAULT_FROM_EMAIL", "SERVER_EMAIL",
+    ) if env.get(name, "").strip())
+    if smtp_api_leaks:
+        result.append(("SMTP_API_ISOLATION", "FALHA",
+                       "Configuração SMTP chegou à API: " + ", ".join(smtp_api_leaks)))
+    else:
+        result.append(("SMTP_API_ISOLATION", "OK", "SMTP restrito ao worker"))
+    legacy = sorted(name for name in (
+        "FIDELIZA_DATABASE_URL", "FIDELIZA_DJANGO_SECRET_KEY",
+        "FIDELIZA_DB_PASSWORD", "SERVICE_PASSWORD_64_DJANGO",
+        "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD",
+        "POSTGRES_USER", "POSTGRES_DB", "POSTGRES_PASSWORD",
+        "FIDELIZA_STAGING_HOST", "FRONTEND_PORT",
+    ) if env.get(name, "").strip())
+    if legacy:
+        result.append(("LEGACY_ENV", "ALERTA",
+                       "Variáveis legadas não exigidas na API: " + ", ".join(legacy)))
+    unrecognized_oauth = sorted(name for name, value in env.items()
+                                if name.startswith("NUVEMSHOP_")
+                                and name not in oauth and str(value).strip())
+    if unrecognized_oauth:
+        result.append(("NUVEMSHOP_UNKNOWN_ENV", "ALERTA",
+                       "Configuração Nuvemshop não reconhecida: "
+                       + ", ".join(unrecognized_oauth)))
     approval = env.get("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "0").lower().strip()
     if approval in ("1", "true", "yes", "on"):
         result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "ALERTA",

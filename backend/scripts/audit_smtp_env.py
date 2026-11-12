@@ -40,6 +40,11 @@ def assess(env, public_host):
     _, server_sender = parseaddr(env.get("SERVER_EMAIL", ""))
     add("SERVER_EMAIL", server_sender.lower()==sender.lower() and bool(sender),
         "Mesmo remetente do sistema")
+    # O worker nunca precisa do token nem do segredo do aplicativo Nuvemshop.
+    oauth_leaks = sorted(name for name, value in env.items()
+                         if name.startswith("NUVEMSHOP_") and str(value).strip())
+    add("NUVEMSHOP_WORKER_ISOLATION", not oauth_leaks,
+        "Worker sem credenciais ou configuração OAuth da Nuvemshop")
     base=urlsplit(env.get("FIDELIZA_PUBLIC_BASE_URL", ""))
     add("FIDELIZA_PUBLIC_BASE_URL",
         base.scheme=="https" and base.hostname==public_host.lower()
