@@ -41,12 +41,19 @@ def _decode_order_event(body, topic):
         return None
     store_id = _positive_id(payload.get("store_id"))
     order_id = _positive_id(payload.get("id"))
-    event_launch_ts = _positive_id(payload.get("event_launch_ts"))
-    if not all((store_id, order_id, event_launch_ts)):
+    if not all((store_id, order_id)):
         return None
-    timestamp = int(event_launch_ts)
-    if timestamp > 9223372036854775807:
-        return None
+    # A documentação oficial diz que a maioria, mas não todos, inclui
+    # event_launch_ts. Ausência é aceitável; valor presente inválido não.
+    if "event_launch_ts" in payload:
+        raw_timestamp = _positive_id(payload["event_launch_ts"])
+        if raw_timestamp is None:
+            return None
+        timestamp = int(raw_timestamp)
+        if timestamp > 9223372036854775807:
+            return None
+    else:
+        timestamp = None
     return store_id, order_id, timestamp
 
 
@@ -90,9 +97,12 @@ def order_webhook(request, kind):
     client_id = _positive_id(os.getenv("NUVEMSHOP_CLIENT_ID", ""))
     if not client_id:
         return HttpResponse(status=503)
-    # A identidade do evento é semântica: atributos extras ou contador de
-    # reentregas não geram nova linha. Um update posterior tem outro timestamp.
-    canonical = f"order-webhook:v1:{client_id}:{store_id}:{topic}:{order_id}:{launched}"
+    # Sem timestamp não inventamos ID baseado na hora de chegada:
+    # retries podem chegar em qualquer ordem. Sem timestamp, o aviso é
+    # coalescido por loja+pedido+topic, servindo apenas como gatilho de
+    # releitura do estado atual, nunca como diário de eventos.
+    identity_time = str(launched) if launched is not None else "untimed"
+    canonical = f"order-webhook:v1:{client_id}:{store_id}:{topic}:{order_id}:{identity_time}"
     dedupe_key = hashlib.sha256(canonical.encode("ascii")).hexdigest()
     try:
         with transaction.atomic():

@@ -6,10 +6,10 @@ A branch homolog possui uma recepção **opcional e desativada por padrão** de 
 ## Contrato
 - Endpoint HTTPS: POST /api/v1/webhooks/orders/paid/ para order/paid; POST /api/v1/webhooks/orders/updated/ para order/updated.
 - Somente application/json, corpo de até 64 KiB e assinatura HMAC-SHA256 no header x-linkedstore-hmac-sha256 sobre os bytes brutos do corpo. Chave: NUVEMSHOP_CLIENT_SECRET do aplicativo parceiro, nunca access_token da loja.
-- Campos obrigatórios no JSON: store_id positivo, id positivo do pedido, event correspondente à rota e event_launch_ts Unix em segundos. JSON malformado, assinatura inválida ou divergência de evento não é aceito.
+- Campos obrigatórios no JSON: store_id positivo, id positivo do pedido e event correspondente à rota. event_launch_ts Unix em segundos é **opcional** no contrato oficial; quando presente deve ser válido. JSON malformado, assinatura inválida ou divergência de evento não são aceitos.
 - A API procura um tenant Nuvemshop ativo com external_store_id correspondente, instalação da mesma aplicação e scope read_orders/write_orders. Instalações de outra loja, outro app ou suspensas não geram registros locais.
 - Em sucesso: 202 com { "received": true } somente **depois** da transação. Falha do banco: HTTP 503 para provocar reentrega.
-- Recebimento duplicado do mesmo app+loja+evento+pedido+timestamp não gera outra linha, mesmo quando o corpo recebe atributos adicionais. Eventos posteriores com outro timestamp geram outra linha. Eventos distintos no mesmo segundo são coalescidos deliberadamente: essa inbox é um gatilho de releitura, não um histórico financeiro.
+- Recebimento duplicado do mesmo app+loja+evento+pedido+timestamp não gera outra linha, mesmo quando o corpo recebe atributos adicionais. Eventos posteriores com outro timestamp geram outra linha. **Sem timestamp**, os avisos são coalescidos por app+loja+pedido+tópico, sem inventar unicidade com a hora de chegada; a inspeção sempre relê o pedido atual. Eventos distintos no mesmo segundo são coalescidos deliberadamente: essa inbox é um gatilho de releitura, não um histórico financeiro.
 - O banco mantém apenas tenant_id, store_id, order_id, topic, event_launch_ts, dedupe_key e received_at; nunca persiste o JSON, nome, e-mail, endereço, token ou assinatura. Nenhum dado financeiro é contabilizado.
 - Endpoint interno de conferência: GET /api/v1/tenants/<tenant_uuid>/nuvemshop/orders/events/ (proprietário ou administrador), com últimos 20 avisos e marcador pending_reconciliation. Retorna dados mínimos, sem PII.
 - FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED=0 permanece desligado até teste completo, HTTPS válido, OAuth da loja piloto e registro autorizado das duas assinaturas de eventos no app. Somente o container API recebe a flag e os segredos do parceiro; worker e frontend não recebem credenciais.
@@ -23,7 +23,7 @@ A branch homolog possui uma recepção **opcional e desativada por padrão** de 
 - Dados pessoais e comandos LGPD continuam sob as rotas específicas já existentes, sem mudança no processamento de privacidade.
 
 ## Teste de homologação — sequência
-1. Verificar CI, migração 0005, isolamento de variáveis e execução offline dos testes sintéticos.
+1. Verificar CI, migrações 0005 e 0006, isolamento de variáveis e execução offline dos testes sintéticos.
 2. Autorizar explicitamente read_orders na loja de teste, manter secrets exclusivamente no backend API e habilitar a flag somente no recurso piloto.
 3. Registrar HTTPS para os dois eventos no portal/API da Nuvemshop, evitando duplicação de assinaturas já instaladas.
 4. Enviar um pedido fictício na loja piloto, conferir recebimento de order/paid e order/updated e verificar que reenvios não duplicam evento.

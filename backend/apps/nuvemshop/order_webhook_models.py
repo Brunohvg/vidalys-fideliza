@@ -20,7 +20,8 @@ class OrderWebhookEvent(models.Model):
     store_id = models.CharField(max_length=64)
     order_id = models.CharField(max_length=64)
     topic = models.CharField(max_length=24, choices=Topic.choices)
-    event_launch_ts = models.BigIntegerField()
+    # Nem todo evento enviado pelo provedor contém este campo.
+    event_launch_ts = models.BigIntegerField(null=True, blank=True)
     dedupe_key = models.CharField(max_length=64, unique=True)
     received_at = models.DateTimeField(auto_now_add=True)
 

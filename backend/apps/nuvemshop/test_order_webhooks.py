@@ -95,6 +95,31 @@ class OrderWebhookTests(TestCase):
         self.assertEqual(CashbackEvent.objects.count(), 0)
         self.assertEqual(CashbackEntry.objects.count(), 0)
 
+    def test_official_payload_without_optional_timestamp_is_accepted_and_coalesced(self):
+        # Em documentação oficial o timestamp é enviado na maioria, mas não
+        # em todos os webhooks. A inbox não deve transformar ausência em erro.
+        basic = {"store_id": 54321, "event": "order/paid", "id": 87412}
+        self.assertEqual(self.send(payload=basic).status_code, 202)
+        receipt = OrderWebhookEvent.objects.get()
+        self.assertIsNone(receipt.event_launch_ts)
+        # Contadores arbitrários não podem burlar a deduplicação semântica.
+        self.assertEqual(self.send(payload={**basic, "retry_count": 7}).status_code, 202)
+        self.assertEqual(OrderWebhookEvent.objects.count(), 1)
+        # Um tópico distinto ainda é conferível separadamente.
+        self.assertEqual(self.send(
+            kind="updated", payload={**basic, "event": "order/updated"},
+        ).status_code, 202)
+        self.assertEqual(OrderWebhookEvent.objects.count(), 2)
+        self.assertFalse(CashbackEvent.objects.exists())
+        self.assertFalse(CashbackEntry.objects.exists())
+
+    def test_timestamp_only_malformed_is_rejected(self):
+        for invalid in (None, False, True, -1, "oops", [], {}):
+            with self.subTest(invalid=invalid):
+                response = self.send(payload=self.payload(event_launch_ts=invalid))
+                self.assertEqual(response.status_code, 400)
+        self.assertFalse(OrderWebhookEvent.objects.exists())
+
     def test_retries_and_message_attributes_are_one_notification(self):
         self.assertEqual(self.send().status_code, 202)
         modified = self.payload(retry_count=19, nonce="second-delivery",
