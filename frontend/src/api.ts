@@ -9,6 +9,7 @@ export type PrivacyRequestsSummary = {
     type: "data_access" | "deletion";
     received_at: string;
     status: "em_analise";
+    protection_applied?: boolean;
     report_available: boolean;
     downloaded: boolean;
     can_confirm: boolean;
