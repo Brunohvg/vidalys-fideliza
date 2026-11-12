@@ -135,12 +135,13 @@ def _revoke_customer(tenant, customer_id, payload):
             email__iexact=raw_email.strip()
         ).values_list("pk", flat=True))
         submission_ids.extend(emails)
+    challenge_count = submission_count = participant_count = link_count = 0
     if submission_ids:
         ids = set(submission_ids)
-        EnrollmentEmailChallenge.objects.filter(
+        challenge_count = EnrollmentEmailChallenge.objects.filter(
             submission_id__in=ids, consumed_at__isnull=True,
         ).update(consumed_at=now)
-        EnrollmentSubmission.objects.filter(
+        submission_count = EnrollmentSubmission.objects.filter(
             tenant=tenant, pk__in=ids,
         ).update(
             name="", email="", marketing_opt_in=False,
@@ -152,7 +153,7 @@ def _revoke_customer(tenant, customer_id, payload):
             str(tenant.external_store_id), customer_id,
             os.environ["NUVEMSHOP_CLIENT_SECRET"].strip(),
         )
-        ProgramParticipant.objects.filter(
+        participant_count = ProgramParticipant.objects.filter(
             tenant=tenant, pk__in=set(participant_ids)
         ).update(
             external_customer_id=pseudonym,
@@ -160,9 +161,20 @@ def _revoke_customer(tenant, customer_id, payload):
             status=ProgramParticipant.Status.WITHDRAWN,
             last_program_activity_at=None,
         )
-        EnrollmentCustomerLink.objects.filter(
+        link_count = EnrollmentCustomerLink.objects.filter(
             tenant=tenant, external_customer_id=customer_id,
         ).update(external_customer_id=pseudonym)
+    return {
+        "email_challenges_disabled": int(challenge_count),
+        "enrollment_submissions_sanitized": int(submission_count),
+        "participants_sanitized": int(participant_count),
+        "customer_links_pseudonymized": int(link_count),
+        "unlinked_submissions_identifiable_by_email": bool(
+            isinstance(raw_email, str) and "@" in raw_email
+        ),
+        "retention_review_required": True,
+        "backup_review_required": True,
+    }
     # Mesmo depois de desativar contato/adesão, há IDs em links e eventual
     # histórico contábil; não alegar exclusão total antes da revisão.
 
@@ -268,14 +280,9 @@ def privacy_webhook(request, kind):
                 ])
                 receipt = existing
             if tenant is not None and topic == PrivacyWebhookRequest.Topic.CUSTOMER_REDACT:
-                _revoke_customer(tenant, customer_id, payload)
+                summary = _revoke_customer(tenant, customer_id, payload)
                 receipt.sanitized_at = timezone.now()
-                receipt.sanitization_summary = {
-                    "participation_and_marketing_blocked": True,
-                    "personal_contacts_scrubbed": True,
-                    "retention_review_required": True,
-                    "backup_review_required": True,
-                }
+                receipt.sanitization_summary = summary
                 receipt.save(update_fields=["sanitized_at","sanitization_summary"])
             elif tenant is not None and topic == PrivacyWebhookRequest.Topic.STORE_REDACT:
                 # Suspender contas e revogar OAuth imediatamente. O trabalho
