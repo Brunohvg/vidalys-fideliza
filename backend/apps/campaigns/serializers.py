@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 from .models import CampaignDraft
+from .benefit_engine import exposure_summary
 
 
 GOAL_LABELS = {
@@ -12,14 +13,12 @@ GOAL_LABELS = {
 
 
 def preview(draft):
-    benefit = (draft.ticket_cents * draft.cashback_rate_bps + 5000) // 10000
-    exposure = benefit * draft.projected_paid_orders
-    return {
-        "credit_per_order_cents": benefit,
-        "max_exposure_cents": exposure,
-        "exceeds_budget": exposure > draft.budget_cents,
-        "assumptions_only": True,
-    }
+    return exposure_summary(
+        draft.ticket_cents,
+        draft.cashback_rate_bps,
+        draft.projected_paid_orders,
+        draft.budget_cents,
+    )
 
 
 class CampaignDraftSerializer(serializers.ModelSerializer):
