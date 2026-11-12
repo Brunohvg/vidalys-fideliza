@@ -44,7 +44,8 @@ export default function EmailAction(){
         <div><strong>VIDALYS FIDELIZA</strong><small>SEGURANÇA E PRIVACIDADE</small></div></div>
       {result ? <div className="public-enroll-done" role="status">
         <CheckCircle2 size={42}/>
-        <h1>{withdrawing?"Solicitação retirada.":"E-mail confirmado."}</h1>
+        <h1>{withdrawing?"Solicitação retirada.":result.participant_created
+          ?"Participação confirmada.":"E-mail confirmado."}</h1>
         <p>{result.message}</p>
         <p>Este processo não concedeu cashback, pontos ou descontos.</p>
       </div> : <>
@@ -53,7 +54,7 @@ export default function EmailAction(){
           <h1>{withdrawing?"Deseja retirar sua solicitação?":"Confirme seu endereço de e-mail"}</h1>
           <p>{withdrawing
             ?"Confirmando, a solicitação será encerrada e não será promovida a participante ativo."
-            :"Esta etapa confirma o acesso ao e-mail. A validação como cliente da loja será feita separadamente."}</p>
+            :"Confirmamos seu e-mail e, quando a loja estiver habilitada, conferimos automaticamente se seu cadastro corresponde a uma única conta. Casos não encontrados ou duvidosos são revisados pela loja."}</p>
         </div>
         {error && <div role="alert" className="public-enroll-error">{error}</div>}
         {isValid && <button type="button" className="public-enroll-submit"
