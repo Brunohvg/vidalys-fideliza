@@ -230,6 +230,47 @@ class MerchantAuthFlowTests(TestCase):
 
 @override_settings(STORAGES={"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}})
 class DjangoAdminRoutingTests(TestCase):
+
+    def test_registration_audit_is_readonly_masked_and_superuser_only(self):
+        from django.contrib.auth import get_user_model
+        from apps.core.models import MerchantRegistration
+        from datetime import timedelta
+        from django.utils import timezone
+        url=reverse("admin:core_merchantregistration_changelist")
+        item=MerchantRegistration.objects.create(
+            normalized_email="teste.sigiloso@example.invalid",
+            first_name="Pessoa", store_name="Loja auditável",
+            password_hash="SECRET_PASSWORD_HASH_MUST_NEVER_APPEAR",
+            expires_at=timezone.now()+timedelta(minutes=30),
+        )
+        self.assertEqual(self.client.get(url).status_code, 302)
+        merchant=get_user_model().objects.create_user(
+            username="lojista", email="lojista@example.invalid",
+            password="SenhaSeguraTeste#2026",
+        )
+        self.client.force_login(merchant)
+        self.assertEqual(self.client.get(url).status_code, 302)
+        self.client.logout()
+        operator=get_user_model().objects.create_superuser(
+            username="adm-qa", email="admin@example.invalid",
+            password="SenhaForte#2026admin",
+        )
+        self.client.force_login(operator)
+        response=self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Loja auditável")
+        self.assertContains(response, "Aguardando confirmação")
+        self.assertNotContains(response, "SECRET_PASSWORD_HASH_MUST_NEVER_APPEAR")
+        self.assertNotContains(response, "teste.sigiloso@example.invalid")
+        self.assertEqual(
+            self.client.get(reverse("admin:core_merchantregistration_change",
+                                    args=[item.pk])).status_code,200
+        )
+        self.assertEqual(
+            self.client.post(reverse("admin:core_merchantregistration_change",
+                                     args=[item.pk]), {}).status_code,403
+        )
+
     def test_admin_is_registered_and_requires_admin_login(self):
         self.assertEqual(reverse("admin:index"), "/admin/")
         response = self.client.get("/admin/")

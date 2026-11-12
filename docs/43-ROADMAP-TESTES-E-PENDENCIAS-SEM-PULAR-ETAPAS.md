@@ -264,3 +264,8 @@ O primeiro cadastro de um lojista deve criar **um usuário**, **um Tenant própr
 A migração `tenants.0003` altera somente lojas geradas por **cadastro próprio e e-mail confirmado**, sem `external_store_id` e sem `NuvemshopInstallation`; não toca em integrações reais, lojas antigas sem prova nem dados financeiros. Django Admin mostra rótulo `Sem integração` para esse estado. A migração precisa ser executada após backup no PostgreSQL da homologação; o GitHub CI não prova o resultado do banco ao vivo.
 
 **Duplicidade:** uma tentativa HTTP 202 não equivale a uma nova conta, e o sistema não envia outra confirmação para e-mail já registrado ou confirmação pendente. Isso é proposital para impedir enumeração; reenvio é explicitamente solicitado na tela, com limitação de frequência. Um e-mail verificado identifica uma conta. Para administrar várias lojas, a evolução correta é vincular mais Tenants ao mesmo usuário, não criar contas duplicadas.
+
+
+## Visibilidade administrativa de cadastros pendentes (12/11/2026)
+
+No Django Admin, o superusuário agora dispõe de **Cadastros de lojistas**, listagem somente de leitura com loja, e-mail mascarado, horário e estado `Aguardando confirmação`, `Confirmado` ou `Expirado`. Isso explica por que o Admin Usuários mostra somente uma conta após várias tentativas HTTP 202: solicitações pendentes ainda não são usuários. A página bloqueia inserção, edição e exclusão manuais para preservar a confirmação HMAC e evitar duplicação de tenants; não revela hash de senha ou token. Um operador não-superusuário não consegue abrir a listagem.

@@ -23,6 +23,10 @@ class MerchantRegistration(models.Model):
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        verbose_name = "Cadastro de lojista"
+        verbose_name_plural = "Cadastros de lojistas"
+
 
 class MerchantPasswordReset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
