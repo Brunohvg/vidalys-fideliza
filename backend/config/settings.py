@@ -180,3 +180,7 @@ EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip()
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL).strip()
+
+# Cadastro publico de LOJISTAS; independente da adesao dos clientes dos programas.
+# OFF ate SMTP do worker validado, politica de privacidade e homologacao do fluxo.
+FIDELIZA_MERCHANT_SIGNUP_ENABLED = env_bool("FIDELIZA_MERCHANT_SIGNUP_ENABLED", False)

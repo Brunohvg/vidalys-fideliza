@@ -10,6 +10,8 @@ import json
 import logging
 
 from django.contrib.auth import authenticate, login, logout
+from .merchant_auth import account_for_email, normalize_email
+from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.cache import never_cache
@@ -88,16 +90,18 @@ def login_session(request):
     if data is None:
         return JsonResponse({"detail": "Envie um JSON válido."}, status=400)
 
-    username = data.get("username")
+    email = data.get("email")
+    # Compatibilidade temporaria: usuarios tecnicos antigos podem usar username.
+    username = data.get("username") if email is None else None
     password = data.get("password")
-    if not isinstance(username, str) or not isinstance(password, str):
-        return JsonResponse({"detail": "Informe usuário e senha."}, status=400)
-
-    username = username.strip()
-    if not 1 <= len(username) <= 150 or not 1 <= len(password) <= 4096:
+    if (not isinstance(password, str) or
+        not isinstance(email if email is not None else username, str)):
+        return JsonResponse({"detail": "Informe e-mail e senha."}, status=400)
+    identifier = email if email is not None else username
+    identifier = identifier.strip().casefold()
+    if not 1 <= len(identifier) <= 254 or not 1 <= len(password) <= 4096:
         return JsonResponse({"detail": "Credenciais inválidas."}, status=400)
-
-    key = _throttle_key(username)
+    key = _throttle_key(identifier)
     failures = cache.get(key, 0)
     if failures >= MAX_FAILURES:
         return JsonResponse(
@@ -105,7 +109,16 @@ def login_session(request):
             status=429,
         )
 
-    user = authenticate(request=request, username=username, password=password)
+    if email is not None:
+        try:
+            normalized = normalize_email(identifier)
+            matched = account_for_email(normalized)
+        except ValidationError:
+            matched = None
+        user = (authenticate(request=request, username=matched.get_username(),
+                             password=password) if matched else None)
+    else:
+        user = authenticate(request=request, username=identifier, password=password)
     if user is None or not user.is_active:
         if cache.add(key, 1, timeout=WINDOW_SECONDS) is False:
             cache.incr(key)
