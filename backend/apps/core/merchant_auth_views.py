@@ -163,7 +163,7 @@ def confirm_registration(request):
                 name=pending.store_name,
                 slug=(slugify(pending.store_name)[:35] or "loja") + "-" +
                      uuid.uuid4().hex[:12],
-                platform="nuvemshop", status=Tenant.Status.ACTIVE,
+                platform="independent", status=Tenant.Status.ACTIVE,
                 external_store_id=None,
             )
             TenantMembership.objects.create(

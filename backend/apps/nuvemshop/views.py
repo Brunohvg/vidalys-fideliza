@@ -230,7 +230,7 @@ def oauth_callback(request):
         ciphertext = encrypt_token(received["access_token"], cfg.token_keys)
         with transaction.atomic():
             tenant = Tenant.objects.select_for_update().get(pk=attempt.tenant_id)
-            if tenant.platform != "nuvemshop" or tenant.status == Tenant.Status.SUSPENDED:
+            if tenant.platform not in ("independent", "nuvemshop") or tenant.status == Tenant.Status.SUSPENDED:
                 return _safe_result("failed")
             if tenant.external_store_id and tenant.external_store_id != received["store_id"]:
                 return _safe_result("failed")
@@ -255,9 +255,12 @@ def oauth_callback(request):
                     store_id=received["store_id"], scope=received["scope"],
                     token_ciphertext=ciphertext, connected_by=request.user,
                 )
-            if not tenant.external_store_id:
+            # A plataforma só muda quando OAuth e token da própria loja
+            # foram validados e persistidos com êxito.
+            if tenant.platform != "nuvemshop" or not tenant.external_store_id:
+                tenant.platform = "nuvemshop"
                 tenant.external_store_id = received["store_id"]
-                tenant.save(update_fields=["external_store_id", "updated_at"])
+                tenant.save(update_fields=["platform", "external_store_id", "updated_at"])
         return _safe_result("connected", attempt.tenant_id)
     except (OAuthExchangeError, OAuthConfigurationError, IntegrityError, Tenant.DoesNotExist):
         return _safe_result("failed")

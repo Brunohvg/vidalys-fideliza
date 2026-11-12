@@ -198,6 +198,7 @@ class NuvemshopOAuthFlowTests(TestCase):
         self.assertEqual(self.start().status_code, 403)
 
     def test_begin_and_callback_encrypt_token_and_no_leak(self):
+        self.assertEqual(self.tenant.platform, "independent")
         started = self.start()
         self.assertEqual(started.status_code, 200, started.content)
         url = started.json()["authorize_url"]
@@ -223,6 +224,7 @@ class NuvemshopOAuthFlowTests(TestCase):
                          "opaque-test-token-without-real-privileges")
         self.tenant.refresh_from_db()
         self.assertEqual(self.tenant.external_store_id, "999")
+        self.assertEqual(self.tenant.platform, "nuvemshop")
         status = self.client.get(self.status_url(), secure=True)
         self.assertEqual(status.json()["store_id"], "999")
         self.assertEqual(status.json()["scope"], "read_products")

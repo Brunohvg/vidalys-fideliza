@@ -11,7 +11,16 @@ class MembershipInline(admin.TabularInline):
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "platform", "status", "external_store_id")
+    list_display = ("name", "slug", "integration_state", "status", "external_store_id")
+    
+    @admin.display(description="Integração")
+    def integration_state(self, obj):
+        if obj.platform == "independent":
+            return "Sem integração"
+        if obj.platform == "nuvemshop":
+            return ("Nuvemshop (autorização registrada)"
+                    if obj.external_store_id else "Nuvemshop (sem autorização)")
+        return obj.platform
     search_fields = ("name", "slug", "external_store_id")
     list_filter = ("status", "platform")
     inlines = [MembershipInline]

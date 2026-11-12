@@ -12,7 +12,8 @@ class Tenant(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=140)
     slug = models.SlugField(unique=True)
-    platform = models.CharField(max_length=32, default="nuvemshop")
+    # O canal é independente até existir instalação OAuth autorizada.
+    platform = models.CharField(max_length=32, default="independent")
     external_store_id = models.CharField(max_length=64, null=True, blank=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)

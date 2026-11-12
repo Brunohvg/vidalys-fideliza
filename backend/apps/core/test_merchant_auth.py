@@ -76,6 +76,7 @@ class MerchantAuthFlowTests(TestCase):
         tenant = Tenant.objects.get()
         self.assertIsNone(tenant.external_store_id)
         self.assertEqual(tenant.status, Tenant.Status.ACTIVE)
+        self.assertEqual(tenant.platform, "independent")
         self.assertEqual(TenantMembership.objects.get(user=user).role, "owner")
         session = self.client.get(reverse("auth-session")).json()
         self.assertTrue(session["authenticated"])
@@ -130,6 +131,21 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(self.post("auth-login", {
             "email": "LOJISTA@example.invalid", "password": "SenhaNova-2026-supersegura!"
         }).status_code, 200)
+
+    def test_signup_does_not_require_nuvemshop_or_create_duplicate_tenants(self):
+        self.assertEqual(self.register().status_code, 202)
+        pending=MerchantRegistration.objects.get()
+        self.assertFalse(Tenant.objects.exists())
+        self.assertEqual(
+            self.post("merchant-confirm", {"token":create_token("register",pending)}).status_code,
+            200,
+        )
+        self.assertEqual(Tenant.objects.get().platform, "independent")
+        self.csrf=self.client.cookies["csrftoken"].value
+        # Tentar cadastrar novamente a mesma caixa não cria outra loja/conta.
+        self.assertEqual(self.register().status_code, 202)
+        self.assertEqual(Tenant.objects.count(), 1)
+        self.assertEqual(get_user_model().objects.count(), 1)
 
     def test_gmail_alias_cannot_register_second_account(self):
         first = {**GOOD, "email": "minha.loja+um@gmail.com"}
