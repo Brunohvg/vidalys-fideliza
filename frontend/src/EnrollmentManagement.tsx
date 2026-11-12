@@ -20,6 +20,7 @@ export default function EnrollmentManagement({
   const [signupEnabled,setSignupEnabled]=useState(false);
   const [customerAccess,setCustomerAccess]=useState(false);
   const [approvalAvailable,setApprovalAvailable]=useState(false);
+  const [automaticLinking,setAutomaticLinking]=useState(false);
   const [approving,setApproving]=useState<string|null>(null);
   const [approvalTarget,setApprovalTarget]=useState<string|null>(null);
   const [customerCheckBusy,setCustomerCheckBusy]=useState<string|null>(null);
@@ -37,12 +38,13 @@ export default function EnrollmentManagement({
   useEffect(()=>{
     if(!canEdit){setLoading(false);return;}
     let active=true;setLoading(true);setError("");setLink("");
-    setCustomerAccess(false);setApprovalAvailable(false);
+    setCustomerAccess(false);setApprovalAvailable(false);setAutomaticLinking(false);
     setApprovalTarget(null);setCustomerCheckResult(null);setCustomerCheckError("");
     merchantApi.nuvemshopStatus(tenantId)
       .then(n=>{if(active){
         setCustomerAccess(Boolean(n.customer_matching?.read_only_preview_available));
         setApprovalAvailable(Boolean(n.customer_matching?.participant_approval_available));
+        setAutomaticLinking(Boolean(n.customer_matching?.automatic_linking_available));
       }})
       .catch(()=>{if(active)setCustomerAccess(false)});
     Promise.all([
@@ -125,7 +127,7 @@ export default function EnrollmentManagement({
       <div className="enroll-symbol"><HeartHandshake size={23}/></div>
       <div><span className="portal-eyebrow">ADESÃO COM CONSENTIMENTO</span>
         <h2 id="enroll-title">Prepare seu programa</h2>
-        <p>O cliente precisa aceitar voluntariamente. Convite não ativa cashback nem confirma identidade.</p>
+        <p>O cliente aceita voluntariamente e confirma o e-mail. Quando a loja autorizar, a verificação de cadastro será automática. Nenhum benefício é ativado nesta etapa.</p>
       </div>
     </div>
     {loading && <p className="enroll-muted" role="status">Consultando as regras da loja…</p>}
@@ -211,8 +213,10 @@ export default function EnrollmentManagement({
       <div className="enroll-step">
         <span className="enroll-step-number">04</span>
         <div><strong>Aceites aguardando verificação</strong>
-          <p>{pending?pending.total+" aceite(s) registrado(s) sem vínculo de cliente confirmado."
-            :"Os aceites serão exibidos aqui depois de recebidos."}</p>
+          <p>{pending?pending.total+" solicitação(ões) ainda sem vínculo confirmado."
+            :"Os aceites serão exibidos aqui depois de recebidos."}{" "}
+            {automaticLinking?"Cadastros com correspondência única são vinculados automaticamente; exceções ficam para revisão."
+              :"A equipe da loja revisa apenas os cadastros que ainda não foram vinculados."}</p>
         </div>
         <ArrowRight size={18} aria-hidden="true"/>
       </div>
@@ -224,13 +228,15 @@ export default function EnrollmentManagement({
         {pending.items.map(item=><div key={item.id}>
           <strong>{item.name}</strong><span>{item.email}</span>
           <small>Versão {item.terms_version} · {item.status==="email_verified"
-            ?"E-mail confirmado · aguardando vínculo com a loja"
+            ?(automaticLinking?"E-mail confirmado · vínculo automático não concluído, revisão disponível"
+              :"E-mail confirmado · aguardando vínculo com a loja")
             :"Aguardando confirmação do e-mail"}</small>
           {item.status==="email_verified" && customerAccess && <div className="enroll-match-action">
             <button type="button" className="enroll-secondary"
               disabled={customerCheckBusy!==null}
               onClick={()=>void previewCustomer(item.id)}>
-              {customerCheckBusy===item.id?"Consultando…":"Conferir cadastro na Nuvemshop"}
+              {customerCheckBusy===item.id?"Consultando…":automaticLinking
+                ?"Revisar cadastro na Nuvemshop":"Conferir cadastro na Nuvemshop"}
             </button>
             <span>Confirme o cadastro antes de permitir a participação.</span>
           </div>}
