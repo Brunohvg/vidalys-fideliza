@@ -56,7 +56,6 @@ def email_delivery_ready() -> bool:
         return False
     if not (settings.EMAIL_USE_TLS or settings.EMAIL_USE_SSL):
         return False
-        return False
     base = urlparse(settings.FIDELIZA_PUBLIC_BASE_URL)
     return (base.scheme == "https" and bool(base.hostname) and not base.username
             and not base.password and not base.query and not base.fragment
