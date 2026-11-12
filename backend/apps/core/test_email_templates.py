@@ -57,7 +57,7 @@ class TransactionalEmailTemplateTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]
         self.assertIn("Confirme seu e-mail", message.subject)
-        self.assertIn("Confirme meu e-mail", message.body)
+        self.assertIn("Confirmar meu e-mail", message.body)
         self.assertEqual(len(message.alternatives), 1)
         html = message.alternatives[0][0]
         self.assertIn("&lt;Pessoa&gt;", html)

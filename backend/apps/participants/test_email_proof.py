@@ -61,6 +61,43 @@ class EmailProofTests(TestCase):
             self.assertNotEqual(token, challenge.token_digest)
         return challenge, token
 
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="Vidalys Fideliza <qa@example.invalid>",
+    )
+    @patch("apps.participants.tasks.email_delivery_ready", return_value=True)
+    def test_participant_email_has_safe_html_and_text(self, _ready):
+        from .tasks import send_enrollment_email
+        challenge, token = self.issue("verify")
+        self.assertEqual(send_enrollment_email.run(str(challenge.pk)), "sent")
+        self.assertEqual(len(mail.outbox), 1)
+        message=mail.outbox[0]
+        self.assertIn(self.tenant.name, message.subject)
+        self.assertIn("Confirmar meu e-mail", message.body)
+        self.assertIn(token, message.body)
+        self.assertEqual(len(message.alternatives), 1)
+        html=message.alternatives[0][0]
+        self.assertIn("vidalys-fideliza-logo.png", html)
+        self.assertIn("Nuvemshop", html)
+        self.assertNotIn("<script", html)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="Vidalys Fideliza <qa@example.invalid>",
+    )
+    @patch("apps.participants.tasks.email_delivery_ready", return_value=True)
+    def test_withdrawal_email_branding_and_privacy(self, _ready):
+        from .tasks import send_enrollment_email
+        challenge, token = self.issue("withdraw")
+        self.assertEqual(send_enrollment_email.run(str(challenge.pk)), "sent")
+        self.assertEqual(len(mail.outbox), 1)
+        message=mail.outbox[0]
+        self.assertIn("Confirmar retirada", message.body)
+        self.assertIn(token, message.body)
+        self.assertIn("A alteração só será concluída após confirmação", message.body)
+        self.assertEqual(len(message.alternatives), 1)
+
     def test_enrollment_email_confirmation_is_once_only(self):
         challenge, token = self.issue(EnrollmentEmailChallenge.Purpose.VERIFY)
         self.assertIsNone(self.submission.email_verified_at)
