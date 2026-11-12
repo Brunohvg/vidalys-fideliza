@@ -59,7 +59,7 @@ YAMLs, wizards, mecanismos de benefício ou documentos duplicados.
 | Gate | Estado comprovado | Prova que falta | Próxima ação sem repetir trabalho |
 | --- | --- | --- | --- |
 | G0 (portal/UX) | CÓDIGO VALIDADO | Revisão visual no SHA publicado, mobile | Fazer junto ao smoke de G1 |
-| **G1 (infra)** | **CÓDIGO VALIDADO; HOMOLOGAÇÃO BLOQUEADA** | Auditoria real 12/11: configurações Django/DB/HTTPS/Redis/Celery OK, migrations Nuvemshop 0001–0006 aplicadas, porém SMTP_API_ISOLATION=FALHA e LEGACY_ENV=ALERTA; SHA, Compose Location, backup/restore e saúde efetiva não comprovados | **Comparar configuração Compose efetiva do serviço api com compose.yaml (EMAIL_* vazios e SERVICE_PASSWORD_64_DJANGO vazio), corrigir no Coolify e recriar containers após backup** |
+| **G1 (infra)** | **CÓDIGO RAW EM TESTES; HOMOLOGAÇÃO BLOQUEADA** | Managed reprovado no runtime; Raw com rotas e redes explícitas preparado, mas ainda sem prova do proxy/DB, backup/restore e deploy do SHA | **CI verde; conferir Traefik, rede Docker existente do DB, backup e opção Raw no Coolify antes de publicar** |
 | G2 (OAuth) | CÓDIGO VALIDADO | Cinco configurações oficiais, loja piloto, escopos e GET real | Executar após G1 |
 | G3 (adesão/SMTP) | CÓDIGO VALIDADO | SMTP real, consentimento, link de e-mail e vínculo único | Executar após G1/G2 |
 | G4 (webhooks) | CÓDIGO VALIDADO | Registro e entrega HMAC em loja piloto, reenvio e ordenação | Executar após G2/G3 |
@@ -215,3 +215,8 @@ explícita de que cashback ainda não está disponível.
 
 Reforço: sem acesso autenticado ao Coolify, os itens G1–G5 continuam
 **pendentes de validação real**; CI verde não comprova implantação.
+
+
+Atualização G1 12/11: a correção migrou o único Compose de Managed
+para Raw e os testes passam a reprovar injeções globais. Não implantar
+até conferir proxy Traefik e redes externas reais; ver docs/44.

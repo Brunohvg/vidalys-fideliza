@@ -60,8 +60,9 @@ FIDELIZA_LEDGER_WRITES_ENABLED=False.
 - EMAIL_BACKEND, EMAIL_PORT, EMAIL_USE_TLS, EMAIL_USE_SSL e SERVER_EMAIL
   já estão explicitados/derivados no Compose e não precisam de entrada.
 
-O Compose protege API, worker, Redis e frontend da injeção global env_file
-do Coolify. A auditoria reporta quais NOMES legados ainda aparecem,
+Atualização de segurança: o modo Managed não isolou os segredos na
+homologação real. O Compose agora exige Raw, sem sobrescritas vazias,
+para impedir a injeção global de env_file. A auditoria reporta quais NOMES legados ainda aparecem,
 sem revelar valores. Não apagar nenhuma variável do painel antes de
 confirmar o recurso, backup, SHA efetivo e ausência de consumidores
 externos. Esses nomes podem existir legitimamente em outros projetos.
@@ -77,3 +78,8 @@ Pendente: checar os nomes presentes de fato no recurso Coolify, mudar
 Compose Location para compose.yaml e validar migrações, OAuth real, SMTP
 real, consentimento, HMAC e pedidos com loja de testes. Nenhum deploy
 nem operação financeira realizada nesta entrega.
+
+
+Obrigatória no Raw: FIDELIZA_DB_NETWORK (rede Docker existente do
+PostgreSQL externo). Opcional: FIDELIZA_PROXY_NETWORK (default coolify).
+Confirmar Traefik/rotas e backup antes de trocar modo e implantar.

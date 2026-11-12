@@ -19,8 +19,8 @@ O repositório usa somente compose.yaml (API Django, Celery worker, Redis e
 frontend React/Nginx). O PostgreSQL 16 é um recurso PRIVADO e EXTERNO à
 stack no Coolify. Não há portas publicadas na aplicação.
 
-Configurar a Application Git para Compose Location compose.yaml somente
-após conferir backup/restauração, network privada do PostgreSQL, SHA e
+Configurar a Application Git para Compose Location compose.yaml e modo **Raw** somente
+após conferir backup/restauração, rede externa real do PostgreSQL, proxy Traefik, SHA e
 segredos existentes. O Git não altera automaticamente a Application Coolify.
 O arquivo .env.example é modelo; nunca levar secrets ao Git.
 

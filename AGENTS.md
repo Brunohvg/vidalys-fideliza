@@ -2,8 +2,8 @@
 
 ## Objetivo
 
-Infraestrutura vigente: apenas compose.yaml com PostgreSQL separado e
-privado (docs/44). Cronologia de homologação: docs/43. Variáveis:
+Infraestrutura vigente: apenas compose.yaml **Raw** com PostgreSQL separado e
+privado (docs/44). O modo Managed foi reprovado por vazamento real. Cronologia de homologação: docs/43. Variáveis:
 docs/45. Referências de Compose, escopos e paleta de versões antigas
 no histórico abaixo não substituem o contrato vigente.
 Criar um SaaS multi-tenant de fidelidade para e-commerce, inicialmente Nuvemshop, com pontos/cashback como crédito promocional, carteira auditável, métricas de recompra e custos. A Bibelô é a loja-piloto. É produto separado do Vidalys Flow.

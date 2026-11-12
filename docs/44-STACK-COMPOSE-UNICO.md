@@ -12,7 +12,7 @@ preserva o histórico, mas o Coolify não muda sua configuração automaticament
 ## Segurança
 Nenhuma porta publicada; Nuvemshop OAuth apenas na API, SMTP no worker,
 PostgreSQL e segredo Django na API+worker, frontend e Redis sem segredos.
-O teste de isolamento reproduz a injeção de env_file pelo Coolify. Flags
+A auditoria real reprovou o Managed do Coolify por herdar segredos globalmente. O único Compose agora exige Raw, sem x-block-inherited-credentials; o teste executa a configuração Raw e um controle negativo que denuncia a injeção do Managed. Flags
 de privacidade, associação automática, pedidos e cashback ficam fechadas
 por padrão. Banco e volumes existentes não devem ser recriados.
 
@@ -48,3 +48,44 @@ As variáveis SMTP constantes ficaram fixas no único Compose e
 SERVER_EMAIL passou a herdar DEFAULT_FROM_EMAIL. O inventário de
 obrigatórias, opcionais, flags e nomes legados está no documento 45.
 Nada foi apagado do painel autenticado do Coolify.
+
+
+## Mudança obrigatória após auditoria real — 12/11/2026
+
+No recurso `fideliza-homologacao-dbexterno`, o modo Managed gerou
+ambiente SMTP em API/frontend/Redis, além de credenciais de banco e
+Django em frontend/Redis. O Compose fonte tinha uma lista de 50
+sobrescritas vazias que o Coolify reinterpretava, mantendo variáveis
+legadas presas no painel. Essa estratégia foi removida.
+
+**Aplicar somente RAW:** Application > Advanced > Docker compose >
+Compose deployment > Raw (deploy file as-is). Não usar o modo Managed.
+
+O único `compose.yaml` agora contém rede app interna, rede database
+externa somente para API/worker, rede proxy externa somente para
+frontend, roteadores HTTP/HTTPS Traefik, TLS com certresolver letsencrypt
+e nenhum host port público. Redis não tem env e frontend não recebe
+segredos. A rede do DB **não é criada pelo Compose**.
+
+**Antes de deploy:** identificar a rede Docker existente do banco
+PostgreSQL externo e preencher FIDELIZA_DB_NETWORK; conferir se proxy
+real é Traefik, rede proxy (default coolify), entrypoints http/https e
+resolver letsencrypt. Se diferente, interromper e adaptar a configuração.
+Confirmar backup com restauração do DB e que o SHA do CI está aprovado.
+O modo Raw não cria automaticamente rotas e redes do Coolify; sem essas
+conferências, o site ou a conexão DB podem ficar indisponíveis.
+
+Depois da troca de modo e recarga da definição no painel, conferir
+Compose gerado e escopo de secrets sem mostrar valores. A lista vazia
+removida permite excluir entradas legadas do Coolify, **somente** após
+confirmar ausência de outros consumidores. Rotacionar as credenciais
+que foram expostas, de forma coordenada com o banco, separadamente.
+
+CI: testar Compose Raw sem env_file, incluir controle negativo que
+simula env_file compartilhado do Managed (precisa detectar vazamentos),
+e inspecionar env dos quatro contêineres reais. CI verde não é evidência
+de deploy no Coolify.
+
+Referências oficiais:
+https://coolify.io/docs/applications/builds/docker-compose
+https://github.com/coollabsio/coolify/issues/8219
