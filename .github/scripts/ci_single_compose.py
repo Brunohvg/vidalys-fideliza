@@ -59,9 +59,13 @@ def main():
     suffix = secrets.token_hex(4)
     project = "fideliza-ci-" + suffix
     database_container = "fideliza-ci-postgres-" + suffix
+    db_network = project + "-db-external"
+    proxy_network = project + "-proxy-external"
     password = secrets.token_hex(32)
     env = {
         **os.environ,
+        "FIDELIZA_DB_NETWORK": db_network,
+        "FIDELIZA_PROXY_NETWORK": proxy_network,
         "DJANGO_SECRET_KEY": secrets.token_hex(40),
         "DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1,frontend," + HOST,
         "DJANGO_CSRF_TRUSTED_ORIGINS": "https://" + HOST,
@@ -86,7 +90,11 @@ def main():
         env[key] = ""
     compose = ["docker", "compose", "-p", project, "-f", "compose.yaml"]
     try:
-        execute(compose + ["config", "--quiet"], env, label="compose único válido")
+        execute(["docker", "network", "create", db_network], env,
+                label="rede externa privada descartavel")
+        execute(["docker", "network", "create", proxy_network], env,
+                label="rede do proxy descartavel")
+        execute(compose + ["config", "--quiet"], env, label="compose unico Raw valido")
         execute(compose + ["up", "-d", "--wait", "--wait-timeout", "180", "redis"],
                 env, label="rede e Redis privados")
         redis_id = execute(compose + ["ps", "-q", "redis"], env,
@@ -100,7 +108,7 @@ def main():
             raise RuntimeError("Rede fora do projeto descartável")
         execute([
             "docker", "run", "-d", "--name", database_container,
-            "--network", network, "--network-alias", "fideliza-db",
+            "--network", db_network, "--network-alias", "fideliza-db",
             "--env", "POSTGRES_USER=fideliza",
             "--env", "POSTGRES_DB=fideliza",
             "--env", "POSTGRES_PASSWORD=" + password,
@@ -120,6 +128,23 @@ def main():
             raise RuntimeError("PostgreSQL externo não ficou saudável")
         execute(compose + ["up", "-d", "--build", "--wait", "--wait-timeout", "180"],
                 env, label="API, worker e frontend saudáveis")
+        # Isolamento no Docker inspect (containers de verdade), nao so YAML.
+        # NUNCA imprimir valores de ambiente.
+        import json
+        from check_coolify_env_isolation import verify_service_env
+        live = {}
+        for name in ("api", "worker", "frontend", "redis"):
+            identifier = execute(compose + ["ps", "-q", name], env,
+                                 label="identificar container " + name)
+            raw = execute(["docker", "inspect", "--format",
+                           "{{json .Config.Env}}", identifier], env,
+                          label="inspecionar env privada " + name)
+            live[name] = dict(line.split("=", 1) for line in json.loads(raw)
+                              if "=" in line)
+        violations = verify_service_env(live)
+        if violations:
+            raise RuntimeError("Segredos fora do escopo: " + ", ".join(violations))
+        print("RAW_CONTAINER_ENV_ISOLATION_OK", flush=True)
         execute(compose + [
             "exec", "-T", "frontend", "wget", "-q", "-O", "/dev/null",
             "--header=Host: " + HOST, "--header=X-Forwarded-Proto: https",
@@ -152,6 +177,9 @@ def main():
             compose + ["down", "-v", "--remove-orphans"],
             cwd=ROOT, env=env, capture_output=True, text=True,
         )
+        for name in (db_network, proxy_network):
+            subprocess.run(["docker", "network", "rm", name],
+                           cwd=ROOT, env=env, capture_output=True, text=True)
 
 
 if __name__ == "__main__":

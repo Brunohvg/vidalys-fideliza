@@ -88,7 +88,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Isolamento de env_file Coolify com dados sintéticos
+      - name: Raw Compose: isolamento + controle negativo da injeção Coolify Managed
         run: python .github/scripts/check_coolify_env_isolation.py
       - name: PostgreSQL independente, auditoria de env e autenticação
         run: python .github/scripts/ci_single_compose.py --mode full
