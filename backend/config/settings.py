@@ -147,6 +147,13 @@ FIDELIZA_PARTICIPANT_APPROVAL_ENABLED = env_bool(
     "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", False
 )
 
+# Após consentimento e confirmação do e-mail, vínculo automático só se a
+# conta exata for encontrada na própria loja Nuvemshop. Não concede cashback.
+# OFF até validação do OAuth read_customers, envio SMTP e LGPD no piloto.
+FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED = env_bool(
+    "FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED", False
+)
+
 
 # Contrato SMTP compatível com Mérito/QueroLink, isolado por aplicação no Coolify.
 # Desabilitado até que remetente Vidalys e credenciais sejam validados.
