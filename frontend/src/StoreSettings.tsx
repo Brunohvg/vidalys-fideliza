@@ -175,6 +175,20 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   </section>;
   const connected=Boolean(integration?.connected);
   const customerReady=Boolean(integration?.customer_matching?.read_only_preview_available);
+  const connectionStep=integration?.connection_check?.next_step;
+  const connectionExplanation=connectionStep==="activate_tenant"
+    ?"Sua loja precisa estar ativa para utilizar a integração."
+    :connectionStep==="configure_app"
+      ?"O aplicativo ainda precisa ser configurado pela equipe Vidalys na plataforma."
+      :connectionStep==="authorize_store"
+        ?"Autorize a conexão da sua loja pela Nuvemshop para começar."
+        :connectionStep==="grant_read_products_and_reinstall"
+          ?"Falta autorização para consultar produtos. Ajuste a permissão no Portal de Parceiros e reinstale o aplicativo nesta loja."
+          :connectionStep==="verify_catalog_with_live_get"
+            ?"A autorização está registrada. Faça uma consulta real de produtos em Conciliação para verificar se o acesso continua válido."
+            :!integration?.configured
+              ?"A conexão ainda está sendo preparada pela plataforma."
+              :"A instalação ainda não foi verificada.";
   const enrollmentReady=Boolean(settings.features.public_signup_enabled&&
     settings.tenant_status==="active");
   const programName=brand.program_name||("Clube "+settings.tenant_name);
@@ -270,13 +284,12 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
           <div className="ss-service-label"><span className="ss-service-icon"><ShoppingBag size={20}/></span>
             <div><strong>Nuvemshop</strong><small>Sua loja virtual</small></div>
           </div>
-          <Status ready={connected} label={connected?"Conectada":"Não conectada"}/>
+          <Status ready={connected} label={connected?"Autorização registrada":"Não vinculada"}/>
         </div>
-        <p className="ss-muted">{!connected
-          ?"Conecte sua loja para consultar as informações necessárias ao programa."
-          :customerReady
-            ?"A conexão está pronta para conferir cadastros de clientes que autorizaram participar."
-            :"A loja está conectada. A consulta de participantes ainda está em preparação."}</p>
+        <p className="ss-muted">{connectionExplanation}</p>
+        {connected&&<p className="ss-muted">{customerReady
+          ?"Consulta de cadastros consentidos disponível para teste, sem ativar benefícios."
+          :"A leitura de clientes permanece condicionada às permissões e à homologação."}</p>}
         {editable&&<button type="button" className="ss-secondary" onClick={()=>void reconnect()}
           disabled={connecting||!integration?.configured}>
           <RefreshCw size={16}/>{connecting?"Abrindo sua loja…":connected?"Atualizar conexão":"Conectar minha loja"}

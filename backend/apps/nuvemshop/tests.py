@@ -246,6 +246,58 @@ class NuvemshopOAuthFlowTests(TestCase):
         self.assertFalse(details["participant_approval_available"])
         self.assertFalse(details["will_credit_cashback"])
 
+    def test_status_distinguishes_registered_installation_from_live_access(self):
+        without = self.client.get(self.status_url(), secure=True)
+        self.assertEqual(without.status_code, 200)
+        self.assertEqual(without.json()["connection_check"]["next_step"], "authorize_store")
+        self.assertFalse(without.json()["connection_check"]["live_access_checked"])
+
+        self.tenant.external_store_id = "999"
+        self.tenant.status = Tenant.Status.ACTIVE
+        self.tenant.save(update_fields=["external_store_id", "status"])
+        NuvemshopInstallation.objects.create(
+            tenant=self.tenant, client_id="12345", store_id="999",
+            scope="read_products", token_ciphertext="ciphertext-only",
+        )
+        with patch("apps.nuvemshop.views.read_products_page") as reader:
+            status = self.client.get(self.status_url(), secure=True)
+        reader.assert_not_called()
+        check = status.json()["connection_check"]
+        self.assertTrue(check["installation_recorded"])
+        self.assertTrue(check["catalog_scope_granted"])
+        self.assertFalse(check["live_access_checked"])
+        self.assertTrue(check["live_access_check_available"])
+        self.assertEqual(check["next_step"], "verify_catalog_with_live_get")
+        self.assertNotIn("ciphertext-only", status.content.decode())
+
+    def test_status_reports_missing_catalog_scope_without_external_calls(self):
+        self.tenant.external_store_id = "999"
+        self.tenant.status = Tenant.Status.ACTIVE
+        self.tenant.save(update_fields=["external_store_id", "status"])
+        NuvemshopInstallation.objects.create(
+            tenant=self.tenant, client_id="12345", store_id="999",
+            scope="read_customers", token_ciphertext="secret-ciphertext",
+        )
+        res = self.client.get(self.status_url(), secure=True)
+        self.assertEqual(res.status_code, 200)
+        check = res.json()["connection_check"]
+        self.assertEqual(check["next_step"], "grant_read_products_and_reinstall")
+        self.assertFalse(check["catalog_scope_granted"])
+        self.assertTrue(check["permissions_must_be_changed_in_partner_portal"])
+        self.assertTrue(check["reinstallation_required_after_scope_change"])
+        self.assertFalse(check["live_access_check_available"])
+
+    def test_status_requires_server_configuration_or_active_tenant(self):
+        self.tenant.status = Tenant.Status.ACTIVE
+        self.tenant.save(update_fields=["status"])
+        with patch.dict(os.environ, {"NUVEMSHOP_CLIENT_SECRET": ""}):
+            state = self.client.get(self.status_url(), secure=True).json()
+        self.assertEqual(state["connection_check"]["next_step"], "configure_app")
+        self.tenant.status = Tenant.Status.SUSPENDED
+        self.tenant.save(update_fields=["status"])
+        state = self.client.get(self.status_url(), secure=True).json()
+        self.assertEqual(state["connection_check"]["next_step"], "activate_tenant")
+
     def test_state_is_one_time_even_with_same_code(self):
         started = self.start()
         nonce = self.state(started)

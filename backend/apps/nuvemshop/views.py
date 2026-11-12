@@ -72,6 +72,20 @@ class NuvemshopStatusView(APIView):
         scope_granted=bool(installed and has_customer_access(
             installed.scope,customer_preview_enabled=True,
         ))
+        catalog_scope_granted=bool(installed and has_product_access(installed.scope))
+        # Um registro de OAuth nao prova que o access_token continua aceito:
+        # a Nuvemshop pode revogar a instalacao ou substituir o token.
+        # A prova de acesso requer um GET autentico da propria loja.
+        if tenant.status != Tenant.Status.ACTIVE:
+            next_step="activate_tenant"
+        elif not configured:
+            next_step="configure_app"
+        elif not connected:
+            next_step="authorize_store"
+        elif not catalog_scope_granted:
+            next_step="grant_read_products_and_reinstall"
+        else:
+            next_step="verify_catalog_with_live_get"
         ready_for_customer_match=bool(
             connected and scope_granted
             and tenant.status==Tenant.Status.ACTIVE
@@ -106,6 +120,22 @@ class NuvemshopStatusView(APIView):
             },
             "configured":configured,
             "connected":connected,
+            "connection_check":{
+                "next_step":next_step,
+                "installation_recorded":connected,
+                "catalog_scope_granted":catalog_scope_granted,
+                "live_access_checked":False,
+                "live_access_check_available":bool(
+                    connected and tenant.status==Tenant.Status.ACTIVE
+                    and catalog_scope_granted
+                ),
+                "permissions_must_be_changed_in_partner_portal":(
+                    connected and not catalog_scope_granted
+                ),
+                "reinstallation_required_after_scope_change":(
+                    connected and not catalog_scope_granted
+                ),
+            },
             "store_id":installed.store_id if installed else None,
             "scope":installed.scope if installed else None,
             "mode":"read_products_only",

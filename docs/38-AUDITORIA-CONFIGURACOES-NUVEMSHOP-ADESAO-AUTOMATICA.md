@@ -152,3 +152,17 @@ informa conexão confirmada após consultar o status real do backend.
 Testes Playwright verificam esta separação, o perfil de analista, prévia de
 catálogo e a navegação de retorno em 390, 768 e 1440px.
 Nenhuma flag de homologação foi ligada na infraestrutura por esta alteração.
+
+
+## G2 — Status de conexão e prova de leitura (12/11/2026)
+
+A tela em Configurações **não confunde a existência de um registro OAuth com token ainda válido**. O status existente agora inclui `connection_check` com a ação concreta: ativar tenant, configurar o aplicativo, autorizar a instalação, conceder `read_products` com reinstalação ou confirmar acesso por GET de catálogo. Nenhuma nova variável ou endpoint foi criado.
+
+- `connected` significa autorização registrada para o par app/loja; não é verificação viva.
+- `live_access_checked=false` no status (a consulta de status não chama a Nuvemshop).
+- Somente um GET autenticado na loja de teste comprova que o token atual funciona. A funcionalidade existente de **Conciliação → Consultar 3 produtos** faz essa leitura com token do próprio aplicativo, sem escrita.
+- Permissões são configuradas no Portal de Parceiros e alteração de escopos exige reinstalação; nenhuma flag pode ampliar permissões OAuth por conta própria.
+- Dados sensíveis (client_secret, access_token e Fernet) não são expostos no JSON ou na tela; `FIDELIZA_LEDGER_WRITES_ENABLED=False` continua fixo.
+- Ambiente real: ainda falta usuário administrativo de homologação confirmado e credenciais oficiais do app autorizadas; o teste sintético valida somente o código. Não habilitar loja real nem cashback por este passo.
+
+Documentação oficial: https://nuvemshop.dev/docs-api/authentication .

@@ -341,6 +341,16 @@ export type ParticipantDirectoryResponse = {
 export type NuvemshopConnectionStatus = {
   configured: boolean;
   connected: boolean;
+  connection_check?: {
+    next_step: "activate_tenant" | "configure_app" | "authorize_store" |
+      "grant_read_products_and_reinstall" | "verify_catalog_with_live_get";
+    installation_recorded: boolean;
+    catalog_scope_granted: boolean;
+    live_access_checked: false;
+    live_access_check_available: boolean;
+    permissions_must_be_changed_in_partner_portal: boolean;
+    reinstallation_required_after_scope_change: boolean;
+  };
   store_id: string | null;
   scope: string | null;
   mode: "read_products_only";
