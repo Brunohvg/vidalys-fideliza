@@ -94,6 +94,15 @@ export default function Portal() {
       document.removeEventListener("keydown", onKey);
     };
   }, [drawer, compactMenu]);
+  useEffect(() => {
+    // React 18 não tipa o atributo inert, mas browsers atuais o respeitam.
+    // Menu fora da tela deixa de receber Tab / leitor de tela.
+    const el = sideRef.current;
+    if (!el) return;
+    if (compactMenu && !drawer) el.setAttribute("inert", "");
+    else el.removeAttribute("inert");
+  }, [compactMenu, drawer]);
+
   const closeDrawer = () => {
     setDrawer(false);
     if (compactMenu) menuButtonRef.current?.focus();
@@ -202,7 +211,7 @@ export default function Portal() {
   }
 
   return <div className="portal-shell">
-    <aside id="portal-sidebar" ref={sideRef} className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista" aria-hidden={compactMenu && !drawer} inert={compactMenu && !drawer}>
+    <aside id="portal-sidebar" ref={sideRef} className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista" aria-hidden={compactMenu && !drawer}>
       <div className="portal-side-brand"><Symbol small/><Wordmark/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
       <div className="portal-store">
         <div className="portal-store-mark"><ShoppingBag size={18}/></div>
