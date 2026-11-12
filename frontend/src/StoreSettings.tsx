@@ -327,6 +327,9 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
               <span>{item.type==="data_access"?"Pedido de acesso aos dados":"Pedido de exclusão de dados"}</span>
               <small>{new Date(item.received_at).toLocaleDateString("pt-BR")}
                 {" · "}Em análise</small>
+              {item.type==="deletion"&&<small>{item.protection_applied
+                ?"Dados de contato protegidos. Revisão final em andamento."
+                :"Solicitação recebida. Proteção dos dados em andamento."}</small>}
             </div>
             {item.report_available&&<div className="ss-privacy-actions">
               <button type="button" className="ss-secondary"
@@ -346,8 +349,9 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
           </li>)}
         </ul>:null}
         <p className="ss-muted">
-          A Vidalys acompanha o atendimento. Um pedido recebido ainda não significa
-          que a solicitação foi concluída.
+          O cliente faz o pedido à loja. A Vidalys protege os dados mantidos no
+          Fideliza e acompanha a eliminação. A loja responde ao cliente.
+          Registros sujeitos à retenção legal exigem análise antes da conclusão.
         </p>
       </section>}
     </div>
