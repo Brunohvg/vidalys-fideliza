@@ -28,9 +28,13 @@ class ScopeContractTests(TestCase):
                                         customer_preview_enabled=False))
         self.assertTrue(allowed_scopes("write_products,write_customers,write_orders",
                                         customer_preview_enabled=True))
-        for scope in ("read_orders", "read_customers", "write_orders", ""):
+        for scope in ("read_orders", "write_orders", ""):
             with self.subTest(scope=scope):
                 self.assertFalse(allowed_scopes(scope, customer_preview_enabled=True))
+        self.assertTrue(allowed_scopes("read_customers",customer_preview_enabled=True))
+        self.assertFalse(allowed_scopes("read_customers",customer_preview_enabled=False))
+        self.assertTrue(has_customer_access("read_customers",
+                                            customer_preview_enabled=True))
         self.assertFalse(has_customer_access("read_products", customer_preview_enabled=True))
         self.assertFalse(has_customer_access("read_products,read_customers",
                                             customer_preview_enabled=False))
@@ -56,9 +60,12 @@ class ScopeContractTests(TestCase):
             result=exchange_code("secure-code-123", "11111", "test-client-secret",
                 opener=OAuthAnswer("write_customers,write_products,write_orders"))
             self.assertIn("write_customers", result["scope"])
+            result=exchange_code("secure-code-123", "11111", "test-client-secret",
+                                 opener=OAuthAnswer("read_customers,write_orders"))
+            self.assertIn("read_customers",result["scope"])
             with self.assertRaises(OAuthExchangeError):
                 exchange_code("secure-code-123", "11111", "test-client-secret",
-                              opener=OAuthAnswer("read_customers,write_orders"))
+                              opener=OAuthAnswer("write_orders"))
 
     def test_http_reads_minimum_customer_fields(self):
         class Capture:
