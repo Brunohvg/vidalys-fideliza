@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   ArrowRight, ChevronDown, Check,
   Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
@@ -49,6 +49,55 @@ export default function Portal() {
     new URLSearchParams(window.location.search).has("nuvemshop") ? "catalog" : "overview"
   );
   const [drawer, setDrawer] = useState(false);
+  const [compactMenu, setCompactMenu] = useState(() =>
+    window.matchMedia("(max-width: 1020px)").matches
+  );
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeMenuRef = useRef<HTMLButtonElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1020px)");
+    const sync = () => { setCompactMenu(mq.matches); setDrawer(false); };
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!compactMenu || !drawer) return;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeMenuRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDrawer(false);
+        menuButtonRef.current?.focus();
+      } else if (event.key === "Tab") {
+        const items = Array.from(sideRef.current?.querySelectorAll<HTMLButtonElement>(
+          "button:not(:disabled)"
+        ) || []);
+        if (!items.length) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [drawer, compactMenu]);
+  const closeDrawer = () => {
+    setDrawer(false);
+    if (compactMenu) menuButtonRef.current?.focus();
+  };
   const [selectedId, setSelectedId] = useState<string>(() =>
     new URLSearchParams(window.location.search).get("nuvemshop_tenant") || ""
   );
@@ -153,8 +202,8 @@ export default function Portal() {
   }
 
   return <div className="portal-shell">
-    <aside className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista">
-      <div className="portal-side-brand"><Symbol small/><Wordmark/><button className="portal-mobile-close" onClick={()=>setDrawer(false)} aria-label="Fechar menu"><X size={21}/></button></div>
+    <aside id="portal-sidebar" ref={sideRef} className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista" aria-hidden={compactMenu && !drawer} inert={compactMenu && !drawer}>
+      <div className="portal-side-brand"><Symbol small/><Wordmark/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
       <div className="portal-store">
         <div className="portal-store-mark"><ShoppingBag size={18}/></div>
         <div><strong>{tenant?.name || "Nenhuma loja"}</strong><span>{tenant ? roleLabel[tenant.role] : "Sem vínculo"}</span></div>
@@ -184,10 +233,10 @@ export default function Portal() {
         <button className="portal-signout" disabled={authBusy} onClick={doLogout}><LogOut size={18}/> Sair da conta</button>
       </div>
     </aside>
-    {drawer && <button aria-label="Fechar navegação" className="portal-overlay" onClick={()=>setDrawer(false)}/>}
+    {compactMenu && drawer && <button aria-label="Fechar navegação" className="portal-overlay" onClick={closeDrawer}/>}
     <div className="portal-main">
       <header className="portal-top">
-        <div className="portal-top-title"><button onClick={()=>setDrawer(true)} className="portal-menu" aria-label="Abrir menu"><Menu size={23}/></button>
+        <div className="portal-top-title"><button onClick={()=>setDrawer(true)} ref={menuButtonRef} className="portal-menu" aria-label="Abrir menu" aria-controls="portal-sidebar" aria-expanded={compactMenu && drawer}><Menu size={23}/></button>
           <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="clients"?"Clientes":page==="campaign"?"Campanhas":page==="results"?"Resultados":page==="margin"?"Rentabilidade":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":page==="settings"?"Configurações":"Motor de benefícios"}</strong>
         </div>
         <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
