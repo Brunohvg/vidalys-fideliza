@@ -1,68 +1,9 @@
-# Stack unica: Redis, API, worker, frontend; PostgreSQL independente.
-# Coolify: selecionar o destino privado fideliza-homolog e habilitar
-# Connect to predefined network SOMENTE para esse destino.
-# CI: postgres descartavel separado, conectado a rede interna do Compose.
-# Nenhuma porta publica ou banco gerenciado pela stack.
-# Coolify gerenciado injeta env_file: .env em TODOS os serviços.
-# Valores vazios explícitos prevalecem sobre esse arquivo. Cada serviço abaixo
-# libera somente as credenciais que realmente utiliza.
-x-block-inherited-credentials: &blocked_credentials
-  # O Coolify pode injetar env_file global em TODOS os serviços.
-  # Sobrescrever explicitamente tudo que não pertence ao container.
-  DATABASE_URL: ""
-  DJANGO_SECRET_KEY: ""
-  DJANGO_ALLOWED_HOSTS: ""
-  DJANGO_CSRF_TRUSTED_ORIGINS: ""
-  DJANGO_DEBUG: ""
-  DJANGO_SECURE_SSL_REDIRECT: ""
-  DB_HOST: ""
-  DB_PORT: ""
-  DB_NAME: ""
-  DB_USER: ""
-  DB_PASSWORD: ""
-  POSTGRES_USER: ""
-  POSTGRES_DB: ""
-  POSTGRES_PASSWORD: ""
-  REDIS_URL: ""
-  CELERY_BROKER_URL: ""
-  NUVEMSHOP_CLIENT_ID: ""
-  NUVEMSHOP_CLIENT_SECRET: ""
-  NUVEMSHOP_TOKEN_KEYS: ""
-  NUVEMSHOP_OAUTH_CALLBACK_URL: ""
-  NUVEMSHOP_API_USER_AGENT: ""
-  FIDELIZA_PUBLIC_SIGNUP_ENABLED: ""
-  FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED: ""
-  FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED: ""
-  FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED: ""
-  FIDELIZA_PARTICIPANT_APPROVAL_ENABLED: ""
-  FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED: ""
-  FIDELIZA_EMAIL_DELIVERY_ENABLED: ""
-  FIDELIZA_PUBLIC_BASE_URL: ""
-  FIDELIZA_LEDGER_WRITES_ENABLED: ""
-  EMAIL_BACKEND: ""
-  EMAIL_HOST: ""
-  EMAIL_PORT: ""
-  EMAIL_HOST_USER: ""
-  EMAIL_HOST_PASSWORD: ""
-  EMAIL_USE_TLS: ""
-  EMAIL_USE_SSL: ""
-  DEFAULT_FROM_EMAIL: ""
-  SERVER_EMAIL: ""
-  # Variáveis herdadas de stacks antigas e testes, jamais usadas no runtime.
-  FIDELIZA_DATABASE_URL: ""
-  FIDELIZA_DJANGO_SECRET_KEY: ""
-  FIDELIZA_DB_PASSWORD: ""
-  SERVICE_PASSWORD_64_DJANGO: ""
-  FIDELIZA_HOMOLOG_LOGIN_PASSWORD: ""
-  FIDELIZA_TEST_ADMIN_PASSWORD: ""
-  FIDELIZA_STAGING_HOST: ""
-  FRONTEND_PORT: ""
-  FIDELIZA_SMOKE_HOMOLOG: ""
-  FIDELIZA_CI_ISOLATED: ""
-
-# Compartilhado entre API e worker sem segredos da Nuvemshop/SMTP herdados.
+# FIDELIZA: Compose unico, apenas para Coolify RAW (deploy file as-is)
+# O modo Managed injeta env_file global e foi reprovado na auditoria real.
+# Redes e rotas Traefik declaradas no arquivo. PostgreSQL externo.
+# Conferir proxy, redes Docker e backup antes de habilitar Raw e implantar.
+# Variaveis compartilhadas somente entre os processos Django.
 x-django-env: &django_env
-  <<: *blocked_credentials
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?}
   DJANGO_DEBUG: "0"
   DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?}
@@ -75,7 +16,7 @@ x-django-env: &django_env
 services:
   redis:
     image: redis:7-alpine
-    environment: *blocked_credentials
+    networks: [app]
     restart: unless-stopped
     mem_limit: 128m
     cpus: 0.15
@@ -96,6 +37,7 @@ services:
   api:
     build: ./backend
     restart: unless-stopped
+    networks: [app, database]
     mem_limit: 512m
     cpus: 0.50
     environment:
@@ -138,6 +80,7 @@ services:
   worker:
     build: ./backend
     restart: unless-stopped
+    networks: [app, database]
     mem_limit: 256m
     cpus: 0.25
     environment:
@@ -163,8 +106,24 @@ services:
 
   frontend:
     build: ./frontend
-    environment: *blocked_credentials
     restart: unless-stopped
+    networks: [app, proxy]
+    # Somente frontend tem rota publica no Traefik.
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${FIDELIZA_PROXY_NETWORK:-coolify}
+      traefik.http.services.fideliza-homolog.loadbalancer.server.port: "8080"
+      traefik.http.routers.fideliza-homolog-https.rule: "Host(`fideliza-homolog.optarys.com.br`) || Host(`www.fideliza-homolog.optarys.com.br`)"
+      traefik.http.routers.fideliza-homolog-https.entrypoints: https
+      traefik.http.routers.fideliza-homolog-https.tls: "true"
+      traefik.http.routers.fideliza-homolog-https.tls.certresolver: letsencrypt
+      traefik.http.routers.fideliza-homolog-https.service: fideliza-homolog
+      traefik.http.routers.fideliza-homolog-http.rule: "Host(`fideliza-homolog.optarys.com.br`) || Host(`www.fideliza-homolog.optarys.com.br`)"
+      traefik.http.routers.fideliza-homolog-http.entrypoints: http
+      traefik.http.routers.fideliza-homolog-http.middlewares: fideliza-homolog-redirect
+      traefik.http.routers.fideliza-homolog-http.service: fideliza-homolog
+      traefik.http.middlewares.fideliza-homolog-redirect.redirectscheme.scheme: https
+      traefik.http.middlewares.fideliza-homolog-redirect.redirectscheme.permanent: "true"
     mem_limit: 128m
     cpus: 0.10
     expose:
@@ -173,6 +132,18 @@ services:
       api:
         condition: service_healthy
     logging: *bounded_logs
+
+# Redis somente na rede app interna. DB somente API/worker.
+# Proxy publico somente frontend. Nao publicar ports no host.
+networks:
+  app:
+    internal: true
+  database:
+    external: true
+    name: ${FIDELIZA_DB_NETWORK:?Informe o nome real da rede Docker privada do PostgreSQL externo}
+  proxy:
+    external: true
+    name: ${FIDELIZA_PROXY_NETWORK:-coolify}
 
 volumes:
   fideliza_redis_data:
