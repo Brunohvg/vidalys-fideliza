@@ -171,3 +171,7 @@
   .ss-privacy-summary strong {font-size:22px;}
   .ss-privacy-actions .ss-secondary {flex:1 1 100%;}
 }
+
+@media(max-width:520px) {
+  .portal-shell .ss-form label>input:not([type="color"]) {font-size:16px;}
+}
