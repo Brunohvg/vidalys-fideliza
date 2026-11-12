@@ -624,3 +624,7 @@ button,select,textarea,input {font-family:inherit}
   .xp-journey-link{grid-column:2;justify-self:stretch;}
   .xp-journey-copy p{font-size:12px;}
 }
+
+/* Overrides de marca do onboarding apos os tokens globais. */
+.merchant-aside.portal-auth-brand{background:linear-gradient(145deg,#081B29 10%,#123B45 75%,#0C5B57 100%)}
+.merchant-aside .portal-auth-text h1 em{color:#66E7C7}

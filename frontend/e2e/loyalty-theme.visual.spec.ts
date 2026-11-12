@@ -86,14 +86,14 @@ test("Login usa identidade nova sem afirmar programa ativo",async ({page})=>{
     body:JSON.stringify({authenticated:false,user:null,tenants:[]})
   }));
   await page.goto("/");
-  await expect(page.getByText("Mais conexão.")).toBeVisible();
-  await expect(page.getByText("Mais motivos para voltar.")).toBeVisible();
+  await expect(page.getByText("Clientes voltam.")).toBeVisible();
+  await expect(page.getByText("Sua loja cresce.")).toBeVisible();
   const hero=page.locator(".portal-auth-brand");
   await expect(hero).toBeVisible();
   const colors=await hero.evaluate(el=>({
     background:getComputedStyle(el).backgroundImage,
     title:getComputedStyle(el.querySelector("h1")!).fontFamily
   }));
-  expect(colors.background).toContain("rgb(16, 37, 62)");
+  expect(colors.background).toContain("rgb(8, 27, 41)");
   expect(colors.title).toContain("Manrope");
 });
