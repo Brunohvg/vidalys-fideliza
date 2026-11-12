@@ -85,6 +85,14 @@ class NuvemshopStatusView(APIView):
                     and installed.client_id == cfg.client_id
                     and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
                 ),
+                "automatic_linking_available": bool(
+                    configured and customer_granted and installed
+                    and settings.FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED
+                    and settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
+                    and installed.client_id == cfg.client_id
+                    and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
+                    and member_for(request.user, tenant_id).tenant.status == Tenant.Status.ACTIVE
+                ),
                 "will_credit_cashback": False,
             },
             "configured": configured,
@@ -107,6 +115,8 @@ class OAuthStartView(APIView):
         member = member_for(request.user, tenant_id)
         if not _owner_admin(member):
             return Response({"detail": "Somente proprietário/administrador pode conectar a loja."}, status=403)
+        if member.tenant.status == Tenant.Status.SUSPENDED:
+            return Response({"detail": "Uma loja suspensa não pode iniciar nova conexão."}, status=409)
         try:
             cfg = config()
         except OAuthConfigurationError:
@@ -183,7 +193,7 @@ def oauth_callback(request):
         ciphertext = encrypt_token(received["access_token"], cfg.token_keys)
         with transaction.atomic():
             tenant = Tenant.objects.select_for_update().get(pk=attempt.tenant_id)
-            if tenant.platform != "nuvemshop":
+            if tenant.platform != "nuvemshop" or tenant.status == Tenant.Status.SUSPENDED:
                 return _safe_result("failed")
             if tenant.external_store_id and tenant.external_store_id != received["store_id"]:
                 return _safe_result("failed")
