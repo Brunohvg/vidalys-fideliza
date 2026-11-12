@@ -13,28 +13,45 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 SERVICES = ("api", "worker", "frontend", "redis")
+# Isolamento de TODAS as variáveis conhecidas da aplicação.
+# Mantido em sincronia com o Compose externo e com settings.py.
 ALLOW = {
-    "DATABASE_URL": {"api", "worker"},
-    "DJANGO_SECRET_KEY": {"api", "worker"},
+    **{key: {"api", "worker"} for key in (
+        "DATABASE_URL", "DJANGO_SECRET_KEY", "DJANGO_ALLOWED_HOSTS",
+        "DJANGO_CSRF_TRUSTED_ORIGINS", "DJANGO_DEBUG",
+        "DJANGO_SECURE_SSL_REDIRECT", "REDIS_URL", "CELERY_BROKER_URL",
+        "FIDELIZA_EMAIL_DELIVERY_ENABLED", "FIDELIZA_PUBLIC_BASE_URL",
+    )},
     **{key: {"api"} for key in (
         "NUVEMSHOP_CLIENT_ID", "NUVEMSHOP_CLIENT_SECRET", "NUVEMSHOP_TOKEN_KEYS",
         "NUVEMSHOP_OAUTH_CALLBACK_URL", "NUVEMSHOP_API_USER_AGENT",
+        "FIDELIZA_PUBLIC_SIGNUP_ENABLED",
+        "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED",
+        "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED",
+        "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED",
+        "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED",
+        "FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED",
     )},
-    "EMAIL_HOST_USER": {"worker"},
-    "EMAIL_HOST_PASSWORD": {"worker"},
-    "FIDELIZA_PUBLIC_SIGNUP_ENABLED": {"api"},
-    "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED": {"api"},
-    "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED": {"api"},
-    "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED": {"api"},
-    "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED": {"api"},
-    "FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED": {"api"},
-    "FIDELIZA_EMAIL_DELIVERY_ENABLED": {"api","worker"},
-    "FIDELIZA_PUBLIC_BASE_URL": {"api","worker"},
+    **{key: {"worker"} for key in (
+        "EMAIL_BACKEND", "EMAIL_HOST", "EMAIL_PORT", "EMAIL_HOST_USER",
+        "EMAIL_HOST_PASSWORD", "EMAIL_USE_TLS", "EMAIL_USE_SSL",
+        "DEFAULT_FROM_EMAIL", "SERVER_EMAIL",
+    )},
     **{key: set() for key in (
         "FIDELIZA_DATABASE_URL", "FIDELIZA_DJANGO_SECRET_KEY", "FIDELIZA_DB_PASSWORD",
-        "SERVICE_PASSWORD_64_DJANGO", "POSTGRES_PASSWORD", "DB_PASSWORD",
+        "SERVICE_PASSWORD_64_DJANGO", "POSTGRES_PASSWORD", "POSTGRES_USER",
+        "POSTGRES_DB", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD",
         "FIDELIZA_HOMOLOG_LOGIN_PASSWORD", "FIDELIZA_TEST_ADMIN_PASSWORD",
+        "FIDELIZA_STAGING_HOST", "FRONTEND_PORT", "FIDELIZA_LEDGER_WRITES_ENABLED",
+        "FIDELIZA_SMOKE_HOMOLOG", "FIDELIZA_CI_ISOLATED",
     )},
+}
+# A stack força estas definições; nunca herdar valores inseguros do arquivo .env.
+FIXED = {
+    "DJANGO_DEBUG": "0",
+    "DJANGO_SECURE_SSL_REDIRECT": "1",
+    "REDIS_URL": "redis://redis:6379/0",
+    "CELERY_BROKER_URL": "redis://redis:6379/1",
 }
 
 
@@ -70,7 +87,7 @@ def main():
         for name in SERVICES:
             values = services[name].get("environment", {})
             for key, allowed in ALLOW.items():
-                expected = synthetic[key] if name in allowed else ""
+                expected = (FIXED.get(key, synthetic[key]) if name in allowed else "")
                 if values.get(key, "") != expected:
                     failures.append(f"{name}: {key}")
             if services[name].get("ports"):
