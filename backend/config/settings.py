@@ -147,6 +147,11 @@ FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED = env_bool(
     "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED", False
 )
 
+# Recepção de eventos autenticados somente no piloto, sem crédito de saldo.
+FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED = env_bool(
+    "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", False
+)
+
 # Manual approval of verified participants; NO cashback/ledger activation.
 FIDELIZA_PARTICIPANT_APPROVAL_ENABLED = env_bool(
     "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", False

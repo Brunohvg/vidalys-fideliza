@@ -39,3 +39,6 @@ class NuvemshopInstallation(models.Model):
 
 # Registro de notificações obrigatórias LGPD.
 from .privacy_models import PrivacyWebhookRequest  # noqa: E402,F401
+
+# Recebimento mínimo dos avisos de pedido, sem efeito financeiro.
+from .order_webhook_models import OrderWebhookEvent  # noqa: E402,F401
