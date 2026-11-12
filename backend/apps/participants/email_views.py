@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from apps.tenants.models import Tenant
 from .email_proof import consume_challenge, enqueue_confirmation, email_links_enabled
+from .customer_link_auto import auto_link_after_verified_email
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
 from .enrollment_views import _limit_public, secure, valid_object
 
@@ -87,14 +88,22 @@ class PublicEmailActionView(APIView):
         status_value = consume_challenge(token, action)
         if status_value is None:
             return secure(Response({"detail": "Link inválido, usado ou expirado."}, status=410))
+        auto_linked = (action == "verify" and
+                       auto_link_after_verified_email(token) == "linked")
         return secure(Response({
             "status": status_value,
-            "identity_verified_in_nuvemshop": False,
-            "participant_created": False,
+            "identity_verified_in_nuvemshop": bool(auto_linked),
+            "participant_created": bool(auto_linked),
             "cashback_enabled": False,
             "message": (
                 "Solicitação retirada. Nenhuma recompensa foi criada."
                 if action == "withdraw"
-                else "E-mail confirmado. A loja ainda precisa validar o cadastro na Nuvemshop."
+                else (
+                    "E-mail e cadastro da loja confirmados. Sua participação "
+                    "foi registrada; não há recompensas ativas nesta etapa."
+                    if auto_linked else
+                    "E-mail confirmado. Se a verificação automática não concluir "
+                    "o vínculo, a loja poderá revisar seu cadastro."
+                )
             ),
         }))
