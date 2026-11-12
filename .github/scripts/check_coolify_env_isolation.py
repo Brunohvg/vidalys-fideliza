@@ -1,109 +1,152 @@
-"""Exercise real Compose precedence with Coolify's shared env_file injection.
+"""Validate Raw Coolify Compose (allowlist) and prove Managed injection leaks.
 
-Uses synthetic values only; never reads or prints deployment credentials.
-Requires Docker Compose, but does not start containers or contact a daemon.
+No Docker daemon required. All test credentials are fabricated. Never print
+secrets, container env, rendered Compose, or Docker inspect values.
 """
-import argparse
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SERVICES = ("api", "worker", "frontend", "redis")
-# Isolamento de TODAS as variáveis conhecidas da aplicação.
-# Mantido em sincronia com o Compose externo e com settings.py.
-ALLOW = {
-    **{key: {"api", "worker"} for key in (
-        "DATABASE_URL", "DJANGO_SECRET_KEY", "DJANGO_ALLOWED_HOSTS",
-        "DJANGO_CSRF_TRUSTED_ORIGINS", "DJANGO_DEBUG",
-        "DJANGO_SECURE_SSL_REDIRECT", "REDIS_URL", "CELERY_BROKER_URL",
-        "FIDELIZA_EMAIL_DELIVERY_ENABLED", "FIDELIZA_PUBLIC_BASE_URL",
-    )},
-    **{key: {"api"} for key in (
-        "NUVEMSHOP_CLIENT_ID", "NUVEMSHOP_CLIENT_SECRET", "NUVEMSHOP_TOKEN_KEYS",
-        "NUVEMSHOP_OAUTH_CALLBACK_URL", "NUVEMSHOP_API_USER_AGENT",
-        "FIDELIZA_PUBLIC_SIGNUP_ENABLED",
-        "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED",
-        "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED",
-        "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED",
-        "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED",
-        "FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED",
-    )},
-    **{key: {"worker"} for key in (
-        "EMAIL_BACKEND", "EMAIL_HOST", "EMAIL_PORT", "EMAIL_HOST_USER",
-        "EMAIL_HOST_PASSWORD", "EMAIL_USE_TLS", "EMAIL_USE_SSL",
-        "DEFAULT_FROM_EMAIL", "SERVER_EMAIL",
-    )},
-    **{key: set() for key in (
-        "FIDELIZA_DATABASE_URL", "FIDELIZA_DJANGO_SECRET_KEY", "FIDELIZA_DB_PASSWORD",
-        "SERVICE_PASSWORD_64_DJANGO", "POSTGRES_PASSWORD", "POSTGRES_USER",
-        "POSTGRES_DB", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD",
-        "FIDELIZA_HOMOLOG_LOGIN_PASSWORD", "FIDELIZA_TEST_ADMIN_PASSWORD",
-        "FIDELIZA_STAGING_HOST", "FRONTEND_PORT", "FIDELIZA_LEDGER_WRITES_ENABLED",
-        "FIDELIZA_SMOKE_HOMOLOG", "FIDELIZA_CI_ISOLATED",
-    )},
+SMTP = {
+    "EMAIL_BACKEND", "EMAIL_HOST", "EMAIL_PORT", "EMAIL_HOST_USER",
+    "EMAIL_HOST_PASSWORD", "EMAIL_USE_TLS", "EMAIL_USE_SSL",
+    "DEFAULT_FROM_EMAIL", "SERVER_EMAIL",
 }
-# A stack força estas definições; nunca herdar valores inseguros do arquivo .env.
-FIXED = {
-    "DJANGO_DEBUG": "0",
-    "DJANGO_SECURE_SSL_REDIRECT": "1",
-    "REDIS_URL": "redis://redis:6379/0",
-    "CELERY_BROKER_URL": "redis://redis:6379/1",
+OAUTH = {
+    "NUVEMSHOP_CLIENT_ID", "NUVEMSHOP_CLIENT_SECRET",
+    "NUVEMSHOP_TOKEN_KEYS", "NUVEMSHOP_OAUTH_CALLBACK_URL",
+    "NUVEMSHOP_API_USER_AGENT",
 }
+DJANGO = {
+    "DJANGO_SECRET_KEY", "DATABASE_URL", "DJANGO_ALLOWED_HOSTS",
+    "DJANGO_CSRF_TRUSTED_ORIGINS", "DJANGO_DEBUG",
+    "DJANGO_SECURE_SSL_REDIRECT", "REDIS_URL", "CELERY_BROKER_URL",
+    "FIDELIZA_PUBLIC_BASE_URL", "FIDELIZA_EMAIL_DELIVERY_ENABLED",
+}
+API_ONLY = {
+    "FIDELIZA_PUBLIC_SIGNUP_ENABLED",
+    "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED",
+    "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED",
+    "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED",
+    "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED",
+    "FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED",
+}
+LEGACY = {
+    "SERVICE_PASSWORD_64_DJANGO", "FIDELIZA_DATABASE_URL",
+    "FIDELIZA_DJANGO_SECRET_KEY", "FIDELIZA_DB_PASSWORD",
+    "FIDELIZA_HOMOLOG_LOGIN_PASSWORD", "FIDELIZA_TEST_ADMIN_PASSWORD",
+    "FIDELIZA_STAGING_HOST", "POSTGRES_PASSWORD", "POSTGRES_USER",
+    "POSTGRES_DB", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER",
+    "DB_PASSWORD", "FRONTEND_PORT", "FIDELIZA_LEDGER_WRITES_ENABLED",
+    "FIDELIZA_SMOKE_HOMOLOG", "FIDELIZA_CI_ISOLATED",
+}
+ALL = SMTP | OAUTH | DJANGO | API_ONLY | LEGACY
+
+
+def verify_service_env(services):
+    """Return NAMES only; do not log values."""
+    findings = []
+    for service in SERVICES:
+        env = services.get(service, {})
+        if service not in services:
+            findings.append(service + ":missing")
+            continue
+        allowed = {
+            "api": DJANGO | OAUTH | API_ONLY,
+            "worker": DJANGO | SMTP,
+            "redis": set(),
+            "frontend": set(),
+        }[service]
+        for key in sorted(ALL):
+            if key in env and key not in allowed:
+                findings.append(service + ":" + key)
+        for key in (
+            ("DATABASE_URL", "DJANGO_SECRET_KEY") if service in ("api", "worker")
+            else ()
+        ):
+            if not env.get(key, "").strip():
+                findings.append(service + ":missing_" + key)
+        for key in ("NUVEMSHOP_CLIENT_SECRET", "NUVEMSHOP_TOKEN_KEYS"):
+            if service != "api" and key in env:
+                findings.append(service + ":" + key)
+    return sorted(set(findings))
+
+
+def render(env, *, injection=None):
+    cmd = [
+        "docker", "compose", "--project-directory", str(ROOT),
+        "--env-file", env["FIDELIZA_SYNTH_ENV_FILE"],
+        "-f", str(ROOT / "compose.yaml"),
+    ]
+    if injection:
+        cmd.extend(["-f", injection])
+    result = subprocess.run(
+        cmd + ["config", "--format", "json"],
+        capture_output=True, text=True,
+        env={**os.environ, **env},
+    )
+    if result.returncode:
+        raise SystemExit("Compose Raw invalid; details intentionally suppressed.")
+    return json.loads(result.stdout)["services"]
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--compose-command", nargs="+", default=["docker", "compose"])
-    args = parser.parse_args()
-    synthetic = {key: "synthetic-isolation-" + key.lower() for key in ALLOW}
+    synthetic = {k: "synthetic-only-" + k.lower() for k in ALL}
     synthetic.update({
         "DATABASE_URL": "postgresql://synthetic:synthetic@database.invalid:5432/synthetic",
         "DJANGO_ALLOWED_HOSTS": "staging.invalid",
         "DJANGO_CSRF_TRUSTED_ORIGINS": "https://staging.invalid",
+        "FIDELIZA_DB_NETWORK": "synthetic-db-network",
+        "FIDELIZA_PROXY_NETWORK": "synthetic-proxy-network",
+        "DEFAULT_FROM_EMAIL": "Synthetic <synthetic@example.invalid>",
     })
-    with tempfile.TemporaryDirectory(prefix="fideliza-env-audit-") as directory:
-        env_file = Path(directory) / "synthetic.env"
-        env_file.write_text("".join(f"{k}={v}\n" for k, v in synthetic.items()))
-        override = Path(directory) / "coolify-injection.json"
-        override.write_text(json.dumps({
-            "services": {name: {"env_file": [str(env_file)]} for name in SERVICES}
-        }))
-        # Explicit synthetic env also prevents an inherited CI secret from winning
-        # interpolation precedence. Compose output stays captured, never logged.
-        result = subprocess.run([
-            *args.compose_command, "--project-directory", str(ROOT),
-            "--env-file", str(env_file),
-            "-f", str(ROOT / "compose.yaml"),
-            "-f", str(override), "config", "--format", "json",
-        ], env={**os.environ, **synthetic}, capture_output=True, text=True)
-        if result.returncode:
-            raise SystemExit("Compose configuration audit failed; no values logged.")
-        services = json.loads(result.stdout)["services"]
-        failures = []
+    with tempfile.TemporaryDirectory(prefix="fideliza-raw-config-") as d:
+        f = Path(d) / "synthetic.env"
+        f.write_text("".join(f"{k}={v}\n" for k, v in synthetic.items()))
+        synthetic["FIDELIZA_SYNTH_ENV_FILE"] = str(f)
+        raw = render(synthetic)
+        actual = {k: raw[k].get("environment", {}) for k in SERVICES}
+        leaks = verify_service_env(actual)
+        if leaks:
+            raise SystemExit("RAW_SCOPE_FAIL: " + ", ".join(leaks))
         for name in SERVICES:
-            values = services[name].get("environment", {})
-            for key, allowed in ALLOW.items():
-                expected = (FIXED.get(key, synthetic[key]) if name in allowed else "")
-                if name == "worker":
-                    derived = {
-                        "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
-                        "EMAIL_PORT": "587",
-                        "EMAIL_USE_TLS": "1",
-                        "EMAIL_USE_SSL": "0",
-                        "SERVER_EMAIL": synthetic["DEFAULT_FROM_EMAIL"],
-                    }
-                    expected = derived.get(key, expected)
-                if values.get(key, "") != expected:
-                    failures.append(f"{name}: {key}")
-            if services[name].get("ports"):
-                failures.append(f"{name}: public host ports")
-        if failures:
-            raise SystemExit("Unexpected credential scope: " + ", ".join(failures))
-    print("COOLIFY_SHARED_ENV_FILE_ISOLATION_OK: API, worker, frontend, Redis")
+            entry = raw[name]
+            if entry.get("env_file") or entry.get("ports"):
+                raise SystemExit("Raw contains shared env_file or public ports: " + name)
+            network_names = set(entry.get("networks", {}))
+            expected = {
+                "api": {"app", "database"},
+                "worker": {"app", "database"},
+                "frontend": {"app", "proxy"},
+                "redis": {"app"},
+            }[name]
+            if network_names != expected:
+                raise SystemExit("Invalid network scope: " + name)
+        labels = raw["frontend"].get("labels", {})
+        if labels.get("traefik.enable") != "true":
+            raise SystemExit("Traefik Raw route missing")
+        if not any("fideliza-homolog.optarys.com.br" in str(value)
+                   for value in labels.values()):
+            raise SystemExit("Public domain route missing")
+        # NEGATIVE CONTROL: managed Coolify adds an env_file to every service.
+        # The same synthetic values MUST now leak, proving detection works.
+        override = Path(d) / "managed-injection.json"
+        override.write_text(json.dumps({
+            "services": {name: {"env_file": [str(f)]} for name in SERVICES}
+        }))
+        managed = render(synthetic, injection=str(override))
+        injected = {k: managed[k].get("environment", {}) for k in SERVICES}
+        detected = verify_service_env(injected)
+        if not any("frontend:DATABASE_URL" == x for x in detected):
+            raise SystemExit("Negative control failed to detect leaked DB credentials")
+        if not any("api:EMAIL_HOST_PASSWORD" == x for x in detected):
+            raise SystemExit("Negative control failed to detect leaked SMTP credentials")
+    print("RAW_SCOPE_OK: four services, external networks, TLS labels")
+    print("MANAGED_INJECTION_DETECTED: negative control blocks leaked secrets")
 
 
 if __name__ == "__main__":
