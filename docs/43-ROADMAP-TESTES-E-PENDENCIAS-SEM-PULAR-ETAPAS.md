@@ -59,7 +59,7 @@ YAMLs, wizards, mecanismos de benefício ou documentos duplicados.
 | Gate | Estado comprovado | Prova que falta | Próxima ação sem repetir trabalho |
 | --- | --- | --- | --- |
 | G0 (portal/UX) | CÓDIGO VALIDADO | Revisão visual no SHA publicado, mobile | Fazer junto ao smoke de G1 |
-| **G1 (infra)** | **CÓDIGO VALIDADO; HOMOLOGAÇÃO BLOQUEADA** | SHA e Compose Location no Coolify; env efetiva sem segredos; backup e teste de restauração; HTTPS, API/worker/Redis | **Confirmar Application, DB e backup; realizar um único pré-voo da homologação real** |
+| **G1 (infra)** | **CÓDIGO VALIDADO; HOMOLOGAÇÃO BLOQUEADA** | Auditoria real 12/11: configurações Django/DB/HTTPS/Redis/Celery OK, migrations Nuvemshop 0001–0006 aplicadas, porém SMTP_API_ISOLATION=FALHA e LEGACY_ENV=ALERTA; SHA, Compose Location, backup/restore e saúde efetiva não comprovados | **Comparar configuração Compose efetiva do serviço api com compose.yaml (EMAIL_* vazios e SERVICE_PASSWORD_64_DJANGO vazio), corrigir no Coolify e recriar containers após backup** |
 | G2 (OAuth) | CÓDIGO VALIDADO | Cinco configurações oficiais, loja piloto, escopos e GET real | Executar após G1 |
 | G3 (adesão/SMTP) | CÓDIGO VALIDADO | SMTP real, consentimento, link de e-mail e vínculo único | Executar após G1/G2 |
 | G4 (webhooks) | CÓDIGO VALIDADO | Registro e entrega HMAC em loja piloto, reenvio e ordenação | Executar após G2/G3 |
@@ -69,6 +69,43 @@ YAMLs, wizards, mecanismos de benefício ou documentos duplicados.
 | G8 (crédito/resgate) | PENDENTE (ledger bloqueado) | Ledger/idempotência/limites e reversões auditados | Não habilitar antes de G7 |
 | G9 (gamificação) | PENDENTE | Níveis, missões, pontos, cupons e antifraude | Após G8; simulação isolada opcional |
 | G10 (IA/multicanal) | PENDENTE | Integrações Flow/PDV, métricas confiáveis | Após validações de base |
+
+### Evidência real do primeiro teste de G1 — 12/11/2026
+
+Relato sanitizado de comandos executados **dentro do contêiner api**:
+- audit_runtime_env: DATABASE_URL, DJANGO_SECRET_KEY, hosts, CSRF, DEBUG,
+  SSL redirect, REDIS_URL e CELERY_BROKER_URL = OK (validação de
+  estrutura/configuração, não teste de restauração nem prova de worker vivo).
+- Django manage.py check = 0 problemas.
+- Django showmigrations nuvemshop = [X] 0001 até 0006.
+- NUVEMSHOP_OAUTH = DESLIGADO, recursos de cliente/pedido/email e ledger
+  desligados, como esperado. Não habilitar ainda.
+- SMTP_API_ISOLATION = FALHA: DEFAULT_FROM_EMAIL, EMAIL_HOST,
+  EMAIL_HOST_USER e SERVER_EMAIL chegaram à API.
+- LEGACY_ENV = ALERTA: SERVICE_PASSWORD_64_DJANGO presente na API.
+
+**Hipótese ainda não verificada:** a configuração Compose efetiva do
+Coolify diverge de compose.yaml atual, o contêiner não foi recriado após
+atualização ou houve outra injeção de env. O Compose vigente declara
+EMAIL_* e SERVICE_PASSWORD_64_DJANGO vazios na API. A precedência do
+Docker Compose garante que environment explícito prevalece sobre
+env_file. Não remover controles da auditoria nem inserir segredos
+falsos para fazê-la passar.
+
+**Ação focal de desbloqueio:** ver em Coolify (Application homolog)
+qual foi o Compose realmente renderizado para o serviço api e seu
+deploy/SHA; confirmar que os quatro nomes SMTP acima e
+SERVICE_PASSWORD_64_DJANGO estão vazios na definição do serviço api
+(sem mostrar valores), e corrigir divergência na definição efetiva ou
+na injeção. Conservar configs SMTP somente no worker. Verificar backup
+e restauração do banco independente ANTES de recriar contêineres ou
+rotacionar segredos. Após corrigir: reiniciar/redeploy, executar UMA vez
+o mesmo audit_runtime_env e seguir para teste de health/worker/backup.
+Uma configuração OK não é evidência de serviço ou transação real.
+
+Fontes operacionais: 
+https://coolify.io/docs/applications/builds/docker-compose
+https://docs.docker.com/reference/compose-file/services/
 
 **Bloqueio conhecido de G1:** as variáveis Nuvemshop e a senha SMTP
 do inventário compartilhado estavam vazias; a URL de banco e a chave
