@@ -12,6 +12,13 @@ x-block-inherited-credentials: &blocked_credentials
   NUVEMSHOP_TOKEN_KEYS: ""
   NUVEMSHOP_OAUTH_CALLBACK_URL: ""
   NUVEMSHOP_API_USER_AGENT: ""
+  # Flags da API não devem chegar ao worker e aos serviços de infraestrutura.
+  FIDELIZA_PUBLIC_SIGNUP_ENABLED: ""
+  FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED: ""
+  FIDELIZA_PARTICIPANT_APPROVAL_ENABLED: ""
+  FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED: ""
+  FIDELIZA_EMAIL_DELIVERY_ENABLED: ""
+  FIDELIZA_PUBLIC_BASE_URL: ""
   EMAIL_HOST_USER: ""
   EMAIL_HOST_PASSWORD: ""
   # Aliases antigos e senha de acesso guardada somente no painel.
