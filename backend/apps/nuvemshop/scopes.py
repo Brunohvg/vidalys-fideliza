@@ -23,8 +23,8 @@ def has_customer_access(value: str, *, customer_preview_enabled: bool) -> bool:
     if not customer_preview_enabled:
         return False
     scopes = parse_scopes(value)
-    return (has_product_access(value) and
-            bool({"read_customers", "write_customers"} & scopes))
+    # Scopes de Customer e Product são independentes no OAuth oficial.
+    return bool({"read_customers", "write_customers"} & scopes)
 
 
 def allowed_scopes(value: str, *, customer_preview_enabled: bool) -> bool:
