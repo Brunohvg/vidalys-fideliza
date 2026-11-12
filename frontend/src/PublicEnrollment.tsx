@@ -3,6 +3,7 @@ import {CheckCircle2, HeartHandshake, LockKeyhole, ShieldCheck} from "lucide-rea
 import {ApiError, publicEnrollmentApi, type PublicInvitationPreview,
   type PublicConsentResult, type PublicStoreProgram,
   type PublicStoreJoinResult} from "./api";
+import {readableForeground} from "./brand-contrast";
 import "./public-enrollment.css";
 
 function getToken(){
@@ -74,7 +75,7 @@ export default function PublicEnrollment(){
 
   return <div className="public-enroll-shell">
     <main className="public-enroll-card">
-      <div className="public-enroll-brand"><span style={{background:accent}}><HeartHandshake size={25}/></span>
+      <div className="public-enroll-brand"><span style={{background:accent,color:readableForeground(accent)}}><HeartHandshake size={25}/></span>
         <div><strong>{publicTitle}</strong><small>PROGRAMA DE FIDELIDADE • TECNOLOGIA VIDALYS</small></div></div>
       {loading && <div role="status" className="public-enroll-state">Validando convite seguro…</div>}
       {!loading && result && <div className="public-enroll-done" role="status">
@@ -125,7 +126,7 @@ export default function PublicEnrollment(){
               onChange={e=>setMarketing(e.target.checked)}/>
             <span>Também aceito receber comunicações promocionais. Esta escolha é opcional e independente da adesão.</span>
           </label>
-          <button className="public-enroll-submit" type="submit" style={{background:primary}} disabled={!accepted||busy}>
+          <button className="public-enroll-submit" type="submit" style={{background:primary,color:readableForeground(primary)}} disabled={!accepted||busy}>
             {busy?"Registrando aceite…":"Registrar meu aceite"}
           </button>
           <div className="public-enroll-warning"><LockKeyhole size={16}/>
