@@ -241,3 +241,10 @@ A interface possui cadastro, login por e-mail, confirmar, reenvio, recuperar sen
 
 **Próxima ação operacional única:** Work revisa o CI da branch homolog, publica o SHA aprovado em Raw e valida as rotas de autenticação (admin inclusa) sem ativar cadastro; em seguida, configura SMTP autorizado com teste de caixa controlada e só depois libera signup.
 
+
+
+## Duplicidade de contas e identidade de lojistas (12/11/2026)
+
+Proteção progressiva por **caixa de e-mail verificada**, não identidade civil. Além do e-mail normalizado, o servidor atribui a cada conta nova uma `MerchantEmailClaim` com índice `UNIQUE` no PostgreSQL. Para `gmail.com`/`googlemail.com`, normaliza alias de pontos e `+tag` para a mesma caixa; em outros provedores não presume regras iguais. Migração não destrutiva `core.0002_merchant_email_claim` reserva e-mails de contas existentes, sem excluir usuários ou consolidar lojas. O registro e a confirmação verificam contas antigas, inclusive usuários inativos e endereços ambíguos, evitando que um erro de login seja interpretado como e-mail disponível. Mesmo duas confirmações concorrentes não podem criar duas reivindicações para a mesma caixa. Rate limit do cadastro e recuperação usa a chave canônica. A solicitação de recuperação via alias só envia para o e-mail da conta confirmado.
+
+Não é possível impedir totalmente a mesma pessoa de se cadastrar com dois e-mails independentes sem um segundo fator confiável (celular validado, documento etc.), e exigir documento sem necessidade aumentaria tratamento de dados pessoais. Produto previsto: um usuário pode acessar mais de uma loja usando vínculos específicos, sem registrar múltiplas contas.

@@ -9,9 +9,10 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.utils import timezone
 
-from .models import MerchantEmailIdentity
+from .models import MerchantEmailClaim, MerchantEmailIdentity, MerchantRegistration
 
 CHALLENGE_LIFETIME = timedelta(minutes=30)
 
@@ -26,8 +27,69 @@ def normalize_email(value):
     return email
 
 
+def canonical_email(email):
+    """Somente Gmail público: '+' e pontos são aliases da mesma caixa.
+
+    Outros provedores podem tratar esses caracteres como endereços distintos:
+    não normalizar além do casefold sem contrato do provedor.
+    """
+    local, domain = email.rsplit("@", 1)
+    if domain in ("gmail.com", "googlemail.com"):
+        return local.split("+", 1)[0].replace(".", "") + "@gmail.com"
+    return email
+
+
+def _gmail_matches(queryset, key, field):
+    """Compatibilidade com contas anteriores à tabela de reivindicações."""
+    for row in queryset.filter(
+        Q(**{field + "__iendswith": "@gmail.com"}) |
+        Q(**{field + "__iendswith": "@googlemail.com"})
+    ).values_list(field, flat=True):
+        if row and canonical_email(row.strip().casefold()) == key:
+            return True
+    return False
+
+
+def email_claimed(email):
+    """Falha fechada: qualquer conta existente bloqueia novo cadastro.
+
+    Não confundir 'login ambíguo' com 'email disponível'. Contas técnicas
+    ou legadas, ativas ou não, também reservam seus endereços.
+    """
+    key = canonical_email(email)
+    if MerchantEmailClaim.objects.filter(canonical_email=key).exists():
+        return True
+    if MerchantEmailIdentity.objects.filter(normalized_email=email).exists():
+        return True
+    User = get_user_model()
+    if User.objects.filter(email__iexact=email).exists():
+        return True
+    if key.endswith("@gmail.com"):
+        return (
+            _gmail_matches(User.objects.all(), key, "email") or
+            _gmail_matches(MerchantEmailIdentity.objects.all(), key, "normalized_email")
+        )
+    return False
+
+
+def pending_email_claimed(email):
+    key = canonical_email(email)
+    pending = MerchantRegistration.objects.filter(
+        consumed_at__isnull=True, expires_at__gt=timezone.now())
+    if pending.filter(normalized_email=email).exists():
+        return True
+    if key.endswith("@gmail.com"):
+        return _gmail_matches(pending, key, "normalized_email")
+    return False
+
+
 def account_for_email(email):
     """Usar identidade única; legacy só quando não houver ambiguidade."""
+    claim = MerchantEmailClaim.objects.select_related("user").filter(
+        canonical_email=canonical_email(email)
+    ).first()
+    if claim:
+        return claim.user if claim.user.is_active else None
     identity = MerchantEmailIdentity.objects.select_related("user").filter(
         normalized_email=email
     ).first()

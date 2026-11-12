@@ -32,3 +32,15 @@ class MerchantPasswordReset(models.Model):
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class MerchantEmailClaim(models.Model):
+    """Um dono por caixa postal canônica (inclui aliases conhecidos do Gmail).
+
+    Guarda atômica no PostgreSQL: duas confirmações concorrentes nunca
+    conseguem criar dois lojistas para a mesma caixa postal.
+    """
+    canonical_email = models.EmailField(max_length=254, unique=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                                related_name="merchant_email_claim")
+    created_at = models.DateTimeField(auto_now_add=True)

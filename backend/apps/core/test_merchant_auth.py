@@ -10,8 +10,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.tenants.models import Tenant, TenantMembership
-from .merchant_auth import create_token
-from .models import MerchantRegistration, MerchantPasswordReset, MerchantEmailIdentity
+from .merchant_auth import create_token, canonical_email
+from .models import MerchantRegistration, MerchantPasswordReset, MerchantEmailIdentity, MerchantEmailClaim
 
 EMAIL_SETTINGS = {
     "FIDELIZA_MERCHANT_SIGNUP_ENABLED": True,
@@ -71,6 +71,8 @@ class MerchantAuthFlowTests(TestCase):
         self.assertFalse(user.is_staff)
         self.assertEqual(MerchantEmailIdentity.objects.get().normalized_email,
                          "lojista@example.invalid")
+        self.assertEqual(MerchantEmailClaim.objects.get().canonical_email,
+                         "lojista@example.invalid")
         tenant = Tenant.objects.get()
         self.assertIsNone(tenant.external_store_id)
         self.assertEqual(tenant.status, Tenant.Status.ACTIVE)
@@ -128,6 +130,65 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(self.post("auth-login", {
             "email": "LOJISTA@example.invalid", "password": "SenhaNova-2026-supersegura!"
         }).status_code, 200)
+
+    def test_gmail_alias_cannot_register_second_account(self):
+        first = {**GOOD, "email": "minha.loja+um@gmail.com"}
+        self.assertEqual(self.post("merchant-register", first).status_code, 202)
+        pending = MerchantRegistration.objects.get()
+        token = create_token("register", pending)
+        self.assertEqual(self.post("merchant-confirm", {"token":token}).status_code, 200)
+        self.assertEqual(MerchantEmailClaim.objects.get().canonical_email,
+                         "minhaloja@gmail.com")
+        self.csrf = self.client.cookies["csrftoken"].value
+        second = {**GOOD, "email": "minhaloja+dois@googlemail.com"}
+        self.assertEqual(self.post("merchant-register", second).status_code, 202)
+        self.assertEqual(MerchantRegistration.objects.count(), 1)
+        self.assertEqual(get_user_model().objects.count(), 1)
+        self.assertEqual(Tenant.objects.count(), 1)
+        self.assertEqual(canonical_email("minha.loja+uma@gmail.com"),
+                         "minhaloja@gmail.com")
+        self.assertEqual(canonical_email("nome+segundo@outro.com"),
+                         "nome+segundo@outro.com")
+
+    def test_two_pending_gmail_aliases_cannot_confirm_both(self):
+        one = MerchantRegistration.objects.create(
+            normalized_email="loja.um+um@gmail.com", first_name="Loja",
+            store_name="Um", password_hash="hashed", expires_at=timezone.now()+timedelta(minutes=30))
+        two = MerchantRegistration.objects.create(
+            normalized_email="lojaum+dois@googlemail.com", first_name="Loja",
+            store_name="Dois", password_hash="hashed", expires_at=timezone.now()+timedelta(minutes=30))
+        self.assertEqual(self.post("merchant-confirm", {"token":create_token("register", one)}).status_code, 200)
+        self.csrf=self.client.cookies["csrftoken"].value
+        self.assertEqual(self.post("merchant-confirm", {"token":create_token("register", two)}).status_code, 409)
+        self.assertEqual(get_user_model().objects.count(), 1)
+        self.assertEqual(Tenant.objects.count(), 1)
+
+    def test_duplicate_legacy_email_blocks_signup_even_if_ambiguous(self):
+        User=get_user_model()
+        User.objects.create_user(username="legacy1", email="antigo@example.invalid", password="senha-1")
+        User.objects.create_user(username="legacy2", email="antigo@example.invalid", password="senha-2")
+        self.assertEqual(self.post("merchant-register", {
+            **GOOD, "email":"antigo@example.invalid"
+        }).status_code, 202)
+        self.assertEqual(MerchantRegistration.objects.count(), 0)
+
+    def test_gmail_alias_login_and_password_reset_target_verified_address(self):
+        self.assertEqual(self.post("merchant-register", {
+            **GOOD,"email":"nome.sobrenome@gmail.com"
+        }).status_code,202)
+        pending=MerchantRegistration.objects.get()
+        self.assertEqual(self.post("merchant-confirm", {"token":create_token("register",pending)}).status_code,200)
+        self.csrf=self.client.cookies["csrftoken"].value
+        self.assertEqual(self.post("auth-login",{
+            "email":"nomesobrenome+promo@googlemail.com",
+            "password":GOOD["password"],
+        }).status_code,200)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.post("merchant-reset-request", {
+                "email":"nomesobrenome+recuperacao@gmail.com"
+            }).status_code,202)
+        self.assertEqual(MerchantPasswordReset.objects.get().email_snapshot,
+                         "nome.sobrenome@gmail.com")
 
     def test_password_reset_unknown_email_never_discloses_account(self):
         self.assertEqual(self.post("merchant-reset-request", {

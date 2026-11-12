@@ -22,10 +22,11 @@ from django.views.decorators.http import require_POST
 
 from apps.tenants.models import Tenant, TenantMembership
 from .merchant_auth import (
-    CHALLENGE_LIFETIME, account_for_email, email_feature_ready,
-    normalize_email, parse_token, throttle_key, valid_token,
+    CHALLENGE_LIFETIME, account_for_email, canonical_email, email_claimed,
+    pending_email_claimed, email_feature_ready, normalize_email,
+    parse_token, throttle_key, valid_token,
 )
-from .models import MerchantEmailIdentity, MerchantRegistration, MerchantPasswordReset
+from .models import MerchantEmailClaim, MerchantEmailIdentity, MerchantRegistration, MerchantPasswordReset
 
 logger = logging.getLogger(__name__)
 GENERIC_ACCEPTED = {"detail": "Se o e-mail puder receber esta solicitação, enviaremos as instruções."}
@@ -85,11 +86,9 @@ def register(request):
         validate_password(password)
     except ValidationError:
         return JsonResponse({"detail": "Escolha uma senha mais forte, com 12 ou mais caracteres."}, status=400)
-    if not cache.add(throttle_key("register", email), 1, timeout=60):
+    if not cache.add(throttle_key("register", canonical_email(email)), 1, timeout=60):
         return JsonResponse(GENERIC_ACCEPTED, status=202)
-    if account_for_email(email) or MerchantEmailIdentity.objects.filter(
-        normalized_email=email
-    ).exists():
+    if email_claimed(email) or pending_email_claimed(email):
         return JsonResponse(GENERIC_ACCEPTED, status=202)
     now = timezone.now()
     try:
@@ -97,9 +96,7 @@ def register(request):
             MerchantRegistration.objects.filter(
                 normalized_email=email, expires_at__lte=now
             ).delete()
-            if not MerchantRegistration.objects.filter(
-                normalized_email=email
-            ).exists():
+            if not pending_email_claimed(email):
                 pending = MerchantRegistration.objects.create(
                     normalized_email=email, first_name=first.strip(),
                     store_name=store.strip(), password_hash=make_password(password),
@@ -120,12 +117,12 @@ def resend_registration(request):
     _, email = _email(request)
     if not email:
         return JsonResponse({"detail": "Informe um e-mail válido."}, status=400)
-    if cache.add(throttle_key("resend", email), 1, timeout=60):
+    if cache.add(throttle_key("resend", canonical_email(email)), 1, timeout=60):
         pending = MerchantRegistration.objects.filter(
             normalized_email=email, consumed_at__isnull=True,
             expires_at__gt=timezone.now(),
         ).first()
-        if pending and not account_for_email(email):
+        if pending and not email_claimed(email):
             _queue("register", pending.pk)
     return JsonResponse(GENERIC_ACCEPTED, status=202)
 
@@ -146,10 +143,7 @@ def confirm_registration(request):
             )
             if not valid_token("register", pending, token):
                 return JsonResponse({"detail": "Link inválido ou expirado."}, status=400)
-            if (account_for_email(pending.normalized_email) or
-                MerchantEmailIdentity.objects.filter(
-                    normalized_email=pending.normalized_email
-                ).exists()):
+            if email_claimed(pending.normalized_email):
                 return JsonResponse({"detail": "Este cadastro não pode ser concluído."}, status=409)
             User = get_user_model()
             # Username interno não é o identificador público; o email é único na identidade.
@@ -158,6 +152,9 @@ def confirm_registration(request):
                         is_active=True, is_staff=False, is_superuser=False)
             user.password = pending.password_hash
             user.save()
+            MerchantEmailClaim.objects.create(
+                user=user, canonical_email=canonical_email(pending.normalized_email),
+            )
             MerchantEmailIdentity.objects.create(
                 user=user, normalized_email=pending.normalized_email,
                 verified_at=timezone.now(),
@@ -191,15 +188,18 @@ def request_password_reset(request):
     _, email = _email(request)
     if not email:
         return JsonResponse({"detail": "Informe um e-mail válido."}, status=400)
-    if not cache.add(throttle_key("reset", email), 1, timeout=60):
+    if not cache.add(throttle_key("reset", canonical_email(email)), 1, timeout=60):
         return JsonResponse(GENERIC_ACCEPTED, status=202)
     user = account_for_email(email)
     if user and user.has_usable_password():
+        # Enviar sempre ao endereço confirmado, mesmo se pedido via alias.
+        identity = MerchantEmailIdentity.objects.filter(user=user).first()
+        destination = identity.normalized_email if identity else user.email.strip().casefold()
         with transaction.atomic():
             MerchantPasswordReset.objects.filter(user=user,
                 consumed_at__isnull=True).update(consumed_at=timezone.now())
             reset = MerchantPasswordReset.objects.create(
-                user=user, email_snapshot=email,
+                user=user, email_snapshot=destination,
                 expires_at=timezone.now() + CHALLENGE_LIFETIME
             )
             _queue("reset", reset.pk)
