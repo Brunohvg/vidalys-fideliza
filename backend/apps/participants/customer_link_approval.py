@@ -6,7 +6,6 @@ na Nuvemshop. Feature flag desligada até homologação e revisão LGPD.
 """
 from django.conf import settings
 from django.core.cache import cache
-from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -16,12 +15,12 @@ from apps.nuvemshop.customer_lookup import (
     CustomerReadError, exact_email_match, read_customer_candidates,
 )
 from apps.nuvemshop.models import NuvemshopInstallation
-from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.nuvemshop.scopes import has_customer_access
 from apps.nuvemshop.security import OAuthConfigurationError, config, decrypt_token
 from apps.tenants.models import Tenant, TenantMembership
 
 from .enrollment_models import EnrollmentCustomerLink, EnrollmentSubmission
+from .customer_link_service import CustomerLinkConflict, link_verified_submission
 from .enrollment_views import secure
 from .models import ProgramParticipant
 
@@ -104,50 +103,17 @@ class CustomerLinkApproveView(APIView):
             return secure(Response({"detail": "O cadastro mudou ou não pôde ser confirmado. Consulte novamente."},
                                    status=409))
 
-        # Lock da loja serializa tentativas concorrentes de contas/aceites diferentes.
-        with transaction.atomic():
-            Tenant.objects.select_for_update().get(pk=tenant_id)
-            fresh=EnrollmentSubmission.objects.select_for_update().get(
-                pk=submission_id,tenant_id=tenant_id)
-            if fresh.status==EnrollmentSubmission.Status.LINKED:
-                link=EnrollmentCustomerLink.objects.filter(submission=fresh).first()
-                if link and link.external_customer_id==requested_id and (
-                    link.participant.status==ProgramParticipant.Status.ACTIVE):
-                    return _result(link,already_linked=True)
-                return secure(Response({"detail": "A solicitação já foi encerrada."},status=409))
-            if fresh.status!=EnrollmentSubmission.Status.EMAIL_VERIFIED or (
-                    fresh.email_verified_at is None or fresh.withdrawn_at):
-                return secure(Response({"detail": "Esta solicitação não pode mais ser aprovada."},
-                                       status=409))
-            if PrivacyWebhookRequest.objects.filter(
-                store_id=installed.store_id,
+        try:
+            link, created = link_verified_submission(
+                tenant_id=tenant_id,
+                submission_id=submission_id,
                 customer_id=requested_id,
-                topic=PrivacyWebhookRequest.Topic.CUSTOMER_REDACT,
-            ).exists():
-                return secure(Response({
-                    "detail": "Este cliente tem uma solicitação de privacidade pendente."
-                }, status=409))
-            # Registros anteriores não são adotados silenciosamente.
-            if (EnrollmentCustomerLink.objects.filter(
-                    tenant_id=tenant_id,external_customer_id=requested_id).exists()
-                or ProgramParticipant.objects.filter(
-                    tenant_id=tenant_id,external_customer_id=requested_id).exists()):
-                return secure(Response({
-                    "detail": "Este cliente já participa ou possui vínculo anterior. Revise o cadastro."
-                },status=409))
-            participant=ProgramParticipant.objects.create(
-                tenant_id=tenant_id,external_customer_id=requested_id,
-                display_name=fresh.name,contact_email=fresh.email,
-                consent_at=fresh.accepted_at,
-                consent_channel=ProgramParticipant.ConsentChannel.CUSTOMER_PORTAL,
-                terms_version=fresh.terms.version,
-                status=ProgramParticipant.Status.ACTIVE,
+                client_id=cfg.client_id,
+                store_id=installed.store_id,
+                actor=request.user,
             )
-            link=EnrollmentCustomerLink.objects.create(
-                tenant_id=tenant_id,submission=fresh,
-                participant=participant,external_customer_id=requested_id,
-                confirmed_by=request.user,
-            )
-            fresh.status=EnrollmentSubmission.Status.LINKED
-            fresh.save(update_fields=["status"])
-        return _result(link)
+        except (CustomerLinkConflict, EnrollmentSubmission.DoesNotExist):
+            return secure(Response({
+                "detail": "A solicitação foi alterada ou requer revisão antes do vínculo."
+            }, status=409))
+        return _result(link, already_linked=not created)
