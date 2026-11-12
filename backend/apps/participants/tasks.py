@@ -5,7 +5,8 @@ recipient, credencial ou link em logs.
 """
 import logging
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
+from apps.core.email_templates import transactional_message
 from django.utils import timezone
 from celery import shared_task
 from .email_proof import digest, email_delivery_ready, make_token
@@ -36,36 +37,46 @@ def send_enrollment_email(self, challenge_id: str):
     submission = challenge.submission
     purpose = challenge.purpose
     if purpose == EnrollmentEmailChallenge.Purpose.VERIFY:
-        subject = f"Confirme seu e-mail | {submission.tenant.name}"
-        intro = (
-            f"Você solicitou participar do programa de fidelidade de {submission.tenant.name}.\n"
-            "Confirme que este e-mail pertence a você para continuar a análise da solicitação.\n"
+        subject = "Confirme seu e-mail | Clube " + submission.tenant.name
+        title = "Sua participação começa por aqui."
+        description = (
+            "Você solicitou participar do programa de fidelidade de " +
+            submission.tenant.name + ". Para continuar com segurança, "
+            "precisamos confirmar que este endereço de e-mail pertence a você."
         )
-        label = "Confirmar meu e-mail"
+        action_label = "Confirmar meu e-mail"
+        context = "Confirmação de participação"
+        footer = ("Este e-mail é enviado pelo Vidalys Fideliza a pedido de " +
+                  submission.tenant.name +
+                  ". Confirmar o endereço não ativa cashback, pontos ou compras automaticamente.")
     else:
-        subject = f"Retirar minha solicitação | {submission.tenant.name}"
-        intro = (
-            f"Foi solicitada a retirada da adesão ao programa de {submission.tenant.name}.\n"
-            "Use o link para encerrar a solicitação. Nenhuma retirada ocorre sem confirmação.\n"
+        subject = "Confirme sua solicitação de retirada | " + submission.tenant.name
+        title = "Você tem o controle."
+        description = (
+            "Recebemos um pedido de retirada da sua solicitação no programa de " +
+            submission.tenant.name +
+            ". Se deseja prosseguir, confirme pelo botão abaixo."
         )
-        label = "Retirar minha solicitação"
+        action_label = "Confirmar retirada"
+        context = "Privacidade e preferências"
+        footer = ("Se não pediu a retirada, ignore esta mensagem. "
+                  "A alteração só será concluída após confirmação.")
     url = (settings.FIDELIZA_PUBLIC_BASE_URL.rstrip("/") +
            "/confirmar#acao=" + purpose + "&token=" + token)
-    content = (
-        "VIDALYS FIDELIZA — Confirmação de segurança\n\n"
-        + intro + "\n" + label + ":\n" + url
-        + "\n\nEste link expira em 30 minutos e pode ser usado apenas uma vez."
-        + "\nSe não solicitou isso, ignore esta mensagem."
-        + "\n\nA confirmação de e-mail não ativa cashback nem confirma compras na Nuvemshop."
-        + "\nTecnologia Vidalys."
+    plain, html = transactional_message(
+        title=title, greeting="Olá, " + submission.name + "!",
+        description=description, action_label=action_label,
+        action_url=url, context=context,
+        safety_note="Este link é individual, válido por 30 minutos e pode ser utilizado uma única vez. Não encaminhe para outras pessoas.",
+        footer_note=footer,
     )
     try:
-        EmailMessage(
-            subject=subject,
-            body=content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+        message = EmailMultiAlternatives(
+            subject=subject, body=plain, from_email=settings.DEFAULT_FROM_EMAIL,
             to=[submission.email],
-        ).send(fail_silently=False)
+        )
+        message.attach_alternative(html, "text/html")
+        message.send(fail_silently=False)
         return "sent"
     except Exception as exc:
         logger.warning("Envio transacional falhou (tipo=%s, tentativa=%d)",

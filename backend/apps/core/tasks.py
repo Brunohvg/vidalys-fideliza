@@ -3,7 +3,8 @@ import logging
 
 from celery import shared_task
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
+from .email_templates import transactional_message
 
 from .merchant_auth import create_token, email_feature_ready, valid_token
 from .models import MerchantRegistration, MerchantPasswordReset
@@ -31,25 +32,44 @@ def send_merchant_auth_email(self, purpose, record_id):
     token = create_token(purpose, record)
     if not valid_token(purpose, record, token):
         return "expired"
-    subject = ("Confirme seu cadastro | Vidalys Fideliza" if purpose == "register"
-               else "Redefina sua senha | Vidalys Fideliza")
-    route = "confirmar-conta" if purpose == "register" else "redefinir-senha"
     recipient = (record.normalized_email if purpose == "register"
                  else record.email_snapshot)
+    if purpose == "register":
+        subject = "Confirme seu e-mail e comece no Vidalys Fideliza"
+        title = "Sua loja está quase pronta."
+        greeting = "Olá, " + record.first_name + "!"
+        description = (
+            "Você iniciou o cadastro da loja " + record.store_name +
+            " no Vidalys Fideliza. Confirme seu e-mail para criar sua conta "
+            "e acessar o painel. A conexão com a Nuvemshop é opcional."
+        )
+        action_label = "Confirmar meu e-mail"
+        context = "Seu primeiro acesso"
+        footer = "Esta mensagem confirma somente sua identidade de lojista. Nenhum benefício ou compra será ativado."
+    else:
+        subject = "Redefina sua senha com segurança | Vidalys Fideliza"
+        title = "Vamos recuperar seu acesso."
+        greeting = "Olá!"
+        description = (
+            "Recebemos uma solicitação para criar uma nova senha de acesso ao Vidalys Fideliza. "
+            "Para continuar, use o botão abaixo. Sua senha atual permanecerá válida até a confirmação."
+        )
+        action_label = "Criar nova senha"
+        context = "Segurança da sua conta"
+        footer = "Se você não solicitou a redefinição, ignore esta mensagem; nenhuma alteração será feita."
+    route = "confirmar-conta" if purpose == "register" else "redefinir-senha"
     link = settings.FIDELIZA_PUBLIC_BASE_URL.rstrip("/") + "/" + route + "#token=" + token
-    text = (
-        "VIDALYS FIDELIZA\n\n"
-        + ("Confirme seu e-mail para concluir o cadastro do seu acesso de lojista."
-           if purpose == "register" else
-           "Você solicitou redefinir a senha da sua conta de lojista.")
-        + "\n\nAbra o link:\n" + link
-        + "\n\nO link expira em 30 minutos e só funciona uma vez."
-        + "\nSe você não fez a solicitação, ignore esta mensagem."
+    safety = "Este link é pessoal, pode ser utilizado uma única vez e expira em 30 minutos. Nunca compartilhe seu link ou senha."
+    plain, html = transactional_message(
+        title=title, greeting=greeting, description=description,
+        action_label=action_label, action_url=link, context=context,
+        safety_note=safety, footer_note=footer,
     )
     try:
-        EmailMessage(subject, text, settings.DEFAULT_FROM_EMAIL, [recipient]).send(
-            fail_silently=False
-        )
+        message = EmailMultiAlternatives(subject, plain, settings.DEFAULT_FROM_EMAIL,
+                                         [recipient])
+        message.attach_alternative(html, "text/html")
+        message.send(fail_silently=False)
         return "sent"
     except Exception as exc:
         # Não imprimir token, endereço, URL nem credenciais.
