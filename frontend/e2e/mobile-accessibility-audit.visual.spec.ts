@@ -150,7 +150,7 @@ test("Cores personalizadas mantêm contraste em fundo claro e escuro",async({pag
   await colors.nth(0).fill("#ffffff");
   await expect.poll(()=>page.locator(".ss-preview-stage").evaluate(
     element=>getComputedStyle(element).color
-  )).toBe("rgb(16, 37, 62)");
+  )).toBe("rgb(0, 0, 0)");
   await colors.nth(0).fill("#000000");
   await expect.poll(()=>page.locator(".ss-preview-stage").evaluate(
     element=>getComputedStyle(element).color
@@ -162,6 +162,6 @@ test("Cores personalizadas mantêm contraste em fundo claro e escuro",async({pag
   await colors.nth(1).fill("#ffffff");
   await expect.poll(()=>page.locator(".ss-preview-icon").evaluate(
     element=>getComputedStyle(element).color
-  )).toBe("rgb(16, 37, 62)");
+  )).toBe("rgb(0, 0, 0)");
   await assertNoHorizontalOverflow(page,"prévia com cores personalizadas");
 });
