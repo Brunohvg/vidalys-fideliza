@@ -166,3 +166,17 @@ A tela em Configurações **não confunde a existência de um registro OAuth com
 - Ambiente real: ainda falta usuário administrativo de homologação confirmado e credenciais oficiais do app autorizadas; o teste sintético valida somente o código. Não habilitar loja real nem cashback por este passo.
 
 Documentação oficial: https://nuvemshop.dev/docs-api/authentication .
+
+
+## G2 — prova de leitura sob demanda em Configurações (12/11/2026)
+
+O proprietário/admin pode usar **Verificar acesso à Nuvemshop** em Configurações, sem abrir outra página. A ação reutiliza a rota já implementada `GET /api/v1/tenants/:id/nuvemshop/catalog/preview/?page=1`, que consulta até três produtos com o token cifrado do próprio aplicativo. Não cria endpoint, variável, migração, credencial ou rotina de sincronização.
+
+- A verificação só ocorre por clique explícito de proprietário/admin e loja ativa com instalação registrada e escopo de catálogo disponível.
+- GET de uma página vazia é sucesso de comunicação/autorização; não representa ausência de produtos no catálogo todo.
+- Estado de êxito é **temporário nesta sessão**, não persistido nem reusado após troca de loja; não afirma que o token nunca será revogado.
+- Falha de API mantém estado **não verificado**, com mensagem genérica e sem vazamento de tokens, IDs ou resposta bruta do provedor.
+- Endpoint existente protege tenant, autenticação, throttling e recusa gravações na loja. O flag de crédito real continua false.
+- Testes Playwright cobrem sucesso, falha e ausência do botão para analista; callback OAuth apenas afirma autorização registrada até um GET vivo.
+
+**Próxima prova externa:** usando a conta QA recém-criada em homologação, testar login/sessão/logout, auditar SMTP do worker e só então autorizar a instalação do aplicativo oficial em loja piloto autorizada. Nenhuma loja externa foi conectada por esta alteração.

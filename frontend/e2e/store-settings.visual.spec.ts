@@ -190,3 +190,48 @@ test("Relatório de dados exige download e confirmação explícita, sem segredo
   await expect(page.getByRole("button",{name:"Baixar relatório"})).toHaveCount(0);
   await expect(page.getByText("Nenhuma solicitação pendente",{exact:false})).toHaveCount(0);
 });
+
+// O botão de verificação deve usar o GET existente, sem API ou segredo novo.
+test("Verificação de acesso reutiliza catálogo somente leitura e é explícita",async ({page})=>{
+  await setup(page);
+  let reads=0;
+  await page.route("**/api/v1/tenants/**/nuvemshop/catalog/preview/**",route=>{
+    reads++;
+    expect(route.request().method()).toBe("GET");
+    expect(route.request().url()).toContain(tenant.id);
+    expect(route.request().headers()["authorization"]).toBeUndefined();
+    return route.fulfill({contentType:"application/json",body:JSON.stringify({
+      mode:"read_only",source:"nuvemshop_live_read_only",page:1,empty:true,
+      automatically_approved:false,writes_performed:0,items:[],
+      summary:{products:0,variants:0,matched:0,review_required:0,
+        unmapped:0,missing_api_cost:0,missing_sku:0},warnings:[]
+    })});
+  });
+  await goSettings(page,1440);
+  await expect(page.getByText("A autorização salva ainda não comprova acesso atual.",{exact:false})).toBeVisible();
+  await page.getByRole("button",{name:"Verificar acesso à Nuvemshop"}).click();
+  await expect(page.getByText("Acesso verificado agora.",{exact:false})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Conferir acesso novamente"})).toBeVisible();
+  await expect(page.getByText("Conectada",{exact:true})).toHaveCount(0);
+  expect(reads).toBe(1);
+  const view=await page.locator(".portal-content").innerText();
+  expect(view).not.toContain("PRIVATE-123");
+});
+
+test("Falha do GET não é apresentada como conexão válida",async ({page})=>{
+  await setup(page);
+  await page.route("**/api/v1/tenants/**/nuvemshop/catalog/preview/**",
+    route=>route.fulfill({status:502,contentType:"application/json",
+      body:JSON.stringify({detail:"Não foi possível verificar o pedido."})}));
+  await goSettings(page,390);
+  await page.getByRole("button",{name:"Verificar acesso à Nuvemshop"}).click();
+  await expect(page.getByText("Acesso não verificado.",{exact:false})).toBeVisible();
+  await expect(page.getByText("Não foi possível verificar o acesso.",{exact:false})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Conferir acesso novamente"})).toHaveCount(0);
+});
+
+test("Analista não pode solicitar verificação de conexão no painel",async ({page})=>{
+  await setup(page,"analyst");
+  await goSettings(page,1440);
+  await expect(page.getByRole("button",{name:"Verificar acesso à Nuvemshop"})).toHaveCount(0);
+});

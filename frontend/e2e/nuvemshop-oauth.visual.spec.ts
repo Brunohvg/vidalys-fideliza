@@ -157,7 +157,7 @@ test("Retorno do OAuth não exibe code ou token", async ({page})=>{
   }));
   await page.goto("/?nuvemshop=connected&nuvemshop_tenant="+tenant.id);
   await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
-  await expect(page.getByText("Conexão confirmada.",{exact:false})).toBeVisible();
+  await expect(page.getByText("Autorização registrada.",{exact:false})).toBeVisible();
   await expect(page).toHaveURL("http://127.0.0.1:4173/");
   await expect(page.locator("body")).not.toContainText("access_token");
 });

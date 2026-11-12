@@ -1,4 +1,4 @@
-import {useEffect,useState,type FormEvent} from "react";
+import {useEffect,useRef,useState,type FormEvent} from "react";
 import {
   ArrowRight,BookOpen,Check,CheckCircle2,Globe2,HeartHandshake,
   LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
@@ -41,6 +41,9 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [connecting,setConnecting]=useState(false);
+  // Resultado temporario: nunca confundir teste pontual com prova persistida.
+  const [liveCheck,setLiveCheck]=useState<"idle"|"running"|"verified"|"failed">("idle");
+  const checkSequence=useRef(0);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
   const editable=role==="owner"||role==="admin";
@@ -48,6 +51,8 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
 
   useEffect(()=>{
     let current=true;
+    checkSequence.current++;
+    setLiveCheck("idle");
     setLoading(true);setSettings(null);setIntegration(null);setPrivacy(null);
     setReportDownloads({});
     setBrand(null);setError("");setNotice("");
@@ -74,7 +79,7 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
         }else if(result==="failed"){
           setError("A autorização não foi concluída. Tente novamente em Configurações.");
         }else if(link?.connected){
-          setNotice("Conexão confirmada. Você já pode consultar os produtos em Conciliação.");
+          setNotice("Autorização registrada. Verifique o acesso à Nuvemshop antes de usar o catálogo.");
         }else{
           setError("A autorização retornou, mas a conexão não foi confirmada. Atualize a página.");
         }
@@ -116,6 +121,29 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
     }catch(cause){
       setError(friendlyError(cause,"Não foi possível atualizar a conexão com sua loja."));
       setConnecting(false);
+    }
+  };
+
+  const verifyReadAccess=async()=>{
+    if(!editable||!integration?.connected||
+       integration.connection_check?.catalog_scope_granted===false||
+       liveCheck==="running")return;
+    const sequence=++checkSequence.current;
+    setLiveCheck("running");setError("");setNotice("");
+    try{
+      // Reutiliza a consulta GET oficial, ja protegida por RBAC,
+      // tenant, rate-limit e token server-side. Sem endpoint duplicado.
+      const preview=await merchantApi.previewLiveNuvemshop(tenantId,1);
+      if(preview.source!=="nuvemshop_live_read_only"||
+         preview.writes_performed!==0)throw new Error("Resposta inesperada");
+      if(sequence!==checkSequence.current)return;
+      setLiveCheck("verified");
+      setNotice("Acesso de leitura confirmado nesta sessão. A Nuvemshop respondeu à consulta sem alterar produtos.");
+    }catch(cause){
+      if(sequence!==checkSequence.current)return;
+      setLiveCheck("failed");
+      setError(friendlyError(cause,
+        "Não foi possível verificar o acesso. Confira a autorização da loja e tente novamente."));
     }
   };
 
@@ -176,7 +204,9 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   const connected=Boolean(integration?.connected);
   const customerReady=Boolean(integration?.customer_matching?.read_only_preview_available);
   const connectionStep=integration?.connection_check?.next_step;
-  const connectionExplanation=connectionStep==="activate_tenant"
+  const connectionExplanation=liveCheck==="verified"
+    ?"Consulta real concluída nesta sessão. O acesso de leitura foi confirmado, sem alterar a loja."
+    :connectionStep==="activate_tenant"
     ?"Sua loja precisa estar ativa para utilizar a integração."
     :connectionStep==="configure_app"
       ?"O aplicativo ainda precisa ser configurado pela equipe Vidalys na plataforma."
@@ -297,6 +327,25 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
         </button>}
         {editable&&!integration?.configured&&<p className="ss-muted">
           A conexão estará disponível assim que a plataforma concluir a preparação da sua loja.</p>}
+        {editable&&connected&&integration?.connection_check?.catalog_scope_granted!==false&&
+          settings.tenant_status==="active"&&<>
+            <button type="button" className="ss-secondary"
+              disabled={liveCheck==="running"} onClick={()=>void verifyReadAccess()}>
+              <ShieldCheck size={16}/>{liveCheck==="running"
+                ?"Conferindo acesso…":liveCheck==="verified"
+                  ?"Conferir acesso novamente":"Verificar acesso à Nuvemshop"}
+            </button>
+            <p className="ss-muted" role="status" aria-live="polite">
+              {liveCheck==="verified"
+                ?"Acesso verificado agora. Esta confirmação vale apenas para esta sessão."
+                :liveCheck==="failed"
+                  ?"Acesso não verificado. A autorização pode precisar ser atualizada."
+                  :liveCheck==="running"
+                    ?"Consultando a Nuvemshop sem modificar seus produtos…"
+                    :"A autorização salva ainda não comprova acesso atual. Faça uma consulta de leitura."}
+            </p>
+          </>}
+
         <div className="ss-divider"/>
         <div className="ss-integration">
           <div className="ss-service-label"><span className="ss-service-icon"><Mail size={20}/></span>
