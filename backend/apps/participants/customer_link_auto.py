@@ -5,6 +5,7 @@ repassa token de acesso ou PII ao Redis/worker. Falhas preservam o estado
 email_verified, para revisão manual sem criar benefícios.
 """
 from django.conf import settings
+from django.db import DatabaseError
 
 from apps.nuvemshop.customer_lookup import (
     CustomerReadError, exact_email_match, read_customer_candidates,
@@ -26,7 +27,8 @@ def auto_link_after_verified_email(token: str) -> str:
     sucesso, nunca por token não verificado ou por solicitação de retirada.
     """
     if not (settings.FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED
-            and settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED):
+            and settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
+            and settings.FIDELIZA_EMAIL_DELIVERY_ENABLED):
         return "pending_review"
     challenge=EnrollmentEmailChallenge.objects.select_related(
         "submission__tenant"
@@ -68,6 +70,6 @@ def auto_link_after_verified_email(token: str) -> str:
         )
     except (CustomerReadError, OAuthConfigurationError, ValueError,
             CustomerLinkConflict, EnrollmentSubmission.DoesNotExist,
-            Tenant.DoesNotExist):
+            Tenant.DoesNotExist, DatabaseError):
         return "pending_review"
     return "linked" if created else "pending_review"
