@@ -17,6 +17,9 @@ def inspect(env, host):
     check("DATABASE_URL", url.scheme in ("postgresql", "postgres")
           and bool(url.hostname and url.path.strip("/") and url.username and url.password),
           "PostgreSQL externo com URI completa")
+    if database and env.get("DB_HOST", "").strip():
+        result.append(("DATABASE_CONFIGURATION_DUPLICATED", "ALERTA",
+                       "DATABASE_URL tem precedência; remova DB_HOST legado do recurso"))
     check("DJANGO_SECRET_KEY", len(env.get("DJANGO_SECRET_KEY", "")) >= 32,
           "Chave Django presente e não trivial")
     allowed = [x.strip().lower() for x in env.get("DJANGO_ALLOWED_HOSTS", "").split(",")]
@@ -83,6 +86,24 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "FALHA",
                        "Valor de habilitação inválido"))
+    automatic = env.get("FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED","0").strip().lower()
+    enabled_values=("1","true","yes","on")
+    disabled_values=("0","false","","no","off")
+    if automatic in enabled_values:
+        result.append(("FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED","ALERTA",
+                       "Vínculo automático em piloto; validar e-mail, consentimento, OAuth e LGPD"))
+        if customer_preview not in enabled_values:
+            result.append(("FIDELIZA_AUTO_CUSTOMER_LINK_DEPENDENCY","FALHA",
+                           "Vínculo automático exige leitura de clientes habilitada"))
+        if env.get("FIDELIZA_EMAIL_DELIVERY_ENABLED","0").strip().lower() not in enabled_values:
+            result.append(("FIDELIZA_AUTO_EMAIL_DEPENDENCY","FALHA",
+                           "Vínculo automático requer fluxo de confirmação de e-mail ativo"))
+    elif automatic in disabled_values:
+        result.append(("FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED","OK",
+                       "Vínculo automático desativado até piloto autorizado"))
+    else:
+        result.append(("FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED","FALHA",
+                       "Valor inválido"))
     if env.get("FIDELIZA_LEDGER_WRITES_ENABLED", "").lower().strip() in ("1", "true", "yes", "on"):
         result.append(("LEDGER", "ALERTA", "Escrita do ledger exige validação separada"))
     return result
