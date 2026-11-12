@@ -117,7 +117,11 @@ def consume_challenge(token: str, purpose: str):
     ).first()
     if not challenge:
         return None
-    submission = EnrollmentSubmission.objects.select_for_update().get(pk=challenge.submission_id)
+    submission = EnrollmentSubmission.objects.select_for_update().select_related(
+        "tenant"
+    ).get(pk=challenge.submission_id)
+    if submission.tenant.status != "active":
+        return None
     if submission.status == EnrollmentSubmission.Status.WITHDRAWN:
         return None
     if purpose == EnrollmentEmailChallenge.Purpose.VERIFY:
