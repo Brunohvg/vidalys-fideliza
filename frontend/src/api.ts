@@ -322,6 +322,7 @@ export type NuvemshopConnectionStatus = {
     customer_scope_granted: boolean;
     read_only_preview_available: boolean;
     participant_approval_available?: boolean;
+    automatic_linking_available?: boolean;
     requires_partner_portal_scope_and_reinstallation: boolean;
     will_activate_participants: false;
     will_credit_cashback: false;
@@ -502,8 +503,8 @@ export const merchantApi = {
 
 export type EmailActionResult = {
   status: "email_verified" | "withdrawn";
-  identity_verified_in_nuvemshop: false;
-  participant_created: false;
+  identity_verified_in_nuvemshop: boolean;
+  participant_created: boolean;
   cashback_enabled: false;
   message: string;
 };
