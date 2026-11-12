@@ -5,7 +5,7 @@ Data: 11/11/2026. Ambiente identificado por histórico:
 `fideliza-homolog`. Não alterar outros recursos do Coolify.
 
 ## Contrato de variáveis
-**Compose recomendado:** `compose.coolify.external-db.yaml`
+**Compose único:** compose.yaml
 
 ### Isolamento no Coolify gerenciado
 
@@ -22,8 +22,8 @@ Ao adicionar uma credencial, atualizar esse contrato e executar
 injeção global do Coolify usando apenas valores sintéticos, resolve a configuração
 com Docker Compose e falha se um serviço receber credenciais fora do seu escopo.
 Não inicia containers, não consulta serviços externos e não imprime valores.
-**NÃO usar:** `compose.coolify.yaml` (legado com DB embutido; mantido
-exclusivamente para smoke de regressão no CI).
+Não usar os Compose legados: foram removidos da branch homolog. O CI usa
+somente compose.yaml e mantém o PostgreSQL descartável fora da stack.
 
 | Nome no Coolify | Status | Destino |
 |---|---|---|
@@ -71,7 +71,7 @@ auditoria autenticada no recurso certo, sem mostrar credenciais.
 
 ## Checklist de atualização no Coolify
 1. Abrir o recurso de homologação existente e confirmar branch `homolog`,
-   compose `compose.coolify.external-db.yaml` e banco separado.
+   Compose Location compose.yaml e banco separado.
 2. Conferir contexto de variáveis do deploy efetivo (Production), sem
    copiar segredos para chat/repositório.
 3. Executar auditoria no container `api`; corrigir somente nomes e

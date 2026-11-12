@@ -1,50 +1,58 @@
-# Vidalys Fideliza — SaaS de fidelidade e cashback
+# Vidalys Fideliza — SaaS de fidelidade e cashback com controle de margem
 
-Produto independente do Vidalys Flow, inicialmente para Nuvemshop. A Bibelô será a primeira loja-piloto após validação e autorização. **Neste momento é uma fundação técnica mais protótipo visual; não existe cashback, pontos ou integração Nuvemshop em funcionamento.**
+Plataforma multitenant independente do Vidalys Flow, com integração inicial
+à Nuvemshop. A loja Bibelô só poderá entrar num piloto após validação e
+autorização. Não existe cashback financeiro, pontos, cupons nem resgate real.
 
-## Stack
-- Backend: Python 3.12, Django 5.2 LTS, DRF, PostgreSQL, Redis e Celery.
-- Dependências Python: uv 0.10.0 com backend/pyproject.toml e backend/uv.lock versionados.
-- Frontend: React, TypeScript e Vite com tokens Vidalys; telas ilustrativas (dados fictícios).
-- Homologação: Docker Compose isolado, preparado para adaptação ao Coolify.
-- Qualidade: CI com testes backend, build do frontend e smoke test da stack Docker.
+## Implementado na branch homolog
+- Portal do lojista versão v2 (navy, jade, mint e dourado).
+- Login seguro, preferências, rascunhos de campanhas e participantes.
+- OAuth Nuvemshop e prévias GET de catálogo, clientes e pedidos, sob flags.
+- Inbox HMAC idempotente de pedidos e conferência atual somente leitura.
+- Carteira/ledger interno sem concessão real; motor de benefícios só simula
+  objetivos e orçamento sobre dados hipotéticos.
+- Não estão ativos: missões, níveis VIP, indicação, conciliação financeira,
+  cashback, resgate ou integrações com PDV e WhatsApp.
 
-## Comece pelo uv
-1. Instale Python 3.12 e uv seguindo a documentação oficial Astral.
-2. Entre na pasta backend.
-3. Execute: uv sync --locked --python 3.12
-4. O uv cria backend/.venv. Não inclua essa pasta no Git.
-5. Configure DJANGO_DEBUG=1 e use uv run --locked python manage.py migrate e uv run --locked python manage.py test.
-6. Execute uv run --locked python manage.py runserver.
+## Único Docker Compose
+O repositório usa somente compose.yaml (API Django, Celery worker, Redis e
+frontend React/Nginx). O PostgreSQL 16 é um recurso PRIVADO e EXTERNO à
+stack no Coolify. Não há portas publicadas na aplicação.
 
-Atenção: sem DB_HOST e DATABASE_URL e com DEBUG=1, a base local de desenvolvimento será SQLite. Homologação e produção usam PostgreSQL.
+Configurar a Application Git para Compose Location compose.yaml somente
+após conferir backup/restauração, network privada do PostgreSQL, SHA e
+segredos existentes. O Git não altera automaticamente a Application Coolify.
+O arquivo .env.example é modelo; nunca levar secrets ao Git.
 
-## Executar a stack por Docker Compose
-1. Na raiz, copie .env.example para .env.
-2. Substitua TODOS os placeholders por senhas e chaves fortes. Nunca versione o .env.
-3. Execute docker compose config para validar o arquivo.
-4. Execute docker compose up -d --build.
-5. Abra http://127.0.0.1:8080 e http://127.0.0.1:8080/api/health/.
+## Desenvolvimento local
+Requisitos: Python 3.12, uv 0.10.0 e Node.js 22.
+Django com DJANGO_DEBUG=1 e sem DATABASE_URL/DB_HOST usa SQLite local.
 
-O servidor frontend escuta apenas na interface local em 127.0.0.1; o tráfego externo para homologação deve usar o proxy HTTPS do Coolify e uma configuração de rede revisada.
+    cd backend
+    uv sync --locked --python 3.12
+    uv run --locked python manage.py migrate
+    uv run --locked pytest -q
+    uv run --locked python manage.py runserver
 
-## Identidade visual P0
-A experiência do lojista usa grafite #0B1120, azul #1263FF e ciano #00D1E6 como acento. Telas para consumidor usam a marca da loja; protótipos precisam de aprovação em 390/768/1440px e WCAG AA. O Django Admin não é interface comercial.
+Frontend: cd frontend; npm install; npm run dev.
 
-## Documentação
-Leia AGENTS.md e docs/01-PRD.md até docs/08-UX-UI-CRITERIOS.md. Instruções de execução estão em docs/09-UV-EXECUCAO-COOLIFY.md. Handoff inicial: codex/PRIMEIRA_TAREFA.md.
+Para CI Docker, .github/scripts/ci_single_compose.py inicializa PostgreSQL
+efêmero fora da stack, executa smoke tests e remove tudo. Não executar no
+Coolify: o script requer GITHUB_ACTIONS=true. O CI verde não demonstra
+que a mesma versão foi implantada na hospedagem.
 
-Notion (hub privado): https://app.notion.com/p/4148f612deaf8143b7d2c27f0623fa61
+## Segurança
+NUVEMSHOP_CLIENT_SECRET, tokens e chaves ficam somente na API.
+Usuário/senha SMTP ficam somente no worker. Redis e frontend não recebem
+segredos. FIDELIZA_LEDGER_WRITES_ENABLED é fixamente False no código.
+Sem alterações automáticas na main, produção ou Nuvemshop da Bibelô.
 
-## Restrições
-Não conectar produção Nuvemshop, alterar tema Ipanema, instalar scripts, ativar cashback ou editar produtos/pedidos neste estágio. Credenciais e dados pessoais nunca vão ao GitHub.
+## Próximo passo sem perder histórico
+- docs/43-ROADMAP-TESTES-E-PENDENCIAS-SEM-PULAR-ETAPAS.md
+- docs/44-STACK-COMPOSE-UNICO.md
+- docs/45-CHECKLIST-VARIAVEIS-E-REDUNDANCIAS.md
+- docs/42-MOTOR-DE-BENEFICIOS-SIMULACAO.md
+- docs/35-ARQUITETURA-MULTICANAL-E-TESTE-PONTA-A-PONTA.md
+- AGENTS.md
 
-
-## Portal do lojista — etapa atual
-A rota / usa autenticação de sessão Django, com proteção CSRF e isolamento por associação a lojas. A rota /demo contém apenas exemplos ilustrativos sem API comercial. A calculadora da área autenticada chama a API por tenant; não cria ou concede cashback. Consulte docs/11-PORTAL-LOJISTA-ACESSO.md para provisionamento de usuários/lojas no staging, configurações seguras e limitações.
-
-## Homologação no Coolify
-Use `compose.coolify.yaml` e [o plano de homologação](docs/12-HOMOLOGACAO-COOLIFY.md).
-A configuração remove portas fixas, separa volumes, limita recursos e exige HTTPS.
-O recurso deve permanecer parado, sem domínio e sem deploy automático durante a
-preparação; os gates e limitações estão registrados no plano.
+Notion: https://app.notion.com/p/4168f612deaf813393bdc30e1d79d2f5

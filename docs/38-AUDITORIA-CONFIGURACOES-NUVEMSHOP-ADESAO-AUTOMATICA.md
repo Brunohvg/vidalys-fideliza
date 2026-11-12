@@ -15,7 +15,7 @@ A ideia da integração com Vidalys Flow permanece em `docs/36`;
 | Frontend validava cores claras, backend rejeitava | **Inconsistência concreta de configuração**, não mero CSS | Frontend usa `brand-contrast.ts` no preview/página pública; backend aceita hex válido e os testes checam contraste |
 | SMTP tinha um `return False` repetido | Código redundante sem efeito | Removido |
 | `DB_HOST` e `DATABASE_URL` | Dois caminhos legado/novo; Django dá precedência ao `DATABASE_URL` | Auditoria em runtime alerta se ambos forem informados |
-| `compose.coolify.yaml` e `compose.coolify.external-db.yaml` | O primeiro é legado/CI (banco embutido); segundo é homologação atual com PostgreSQL separado | Manter legado para regressões; **não selecionar a stack antiga no Coolify** |
+| `compose.yaml` único | A stack do Coolify e o CI usam a mesma definição e banco externo | Não restaurar Compose antigo; conferir Deployable Compose no servidor |
 | `.env.example` e `.env.coolify.external-db.example` | Ambientes distintos; não são duas fontes de verdade da mesma implantação | Local x referência de deploy; fonte real da hospedagem é a Application do Coolify |
 | Flags em API/worker/Redis/frontend | Coolify pode herdar `env_file` por serviço; flags e segredos poderiam atravessar limites | Bloqueio explícito de flags API nos outros serviços, inspeção de precedência no CI |
 | Preferências do lojista e ambiente | Nome/cores/e-mail de contato são **dados por tenant**; permissões OAuth, SMTP e scripts são **config de infraestrutura** | Manter separados: não entregar credenciais ao lojista, não duplicar setting por cliente |
@@ -70,7 +70,8 @@ Antes da ativação:
    `https://fideliza-homolog.optarys.com.br/api/v1/oauth/nuvemshop/callback/`.
    Conceder no mínimo `read_customers` para vínculo de contas e
    `read_products` se a prévia de catálogo também for utilizada.
-   **Não pedir escrita nem `read_orders` sem etapa implementada.**
+   A leitura de pedidos read_orders já está implementada em prévia e inbox,
+   sempre sob flags desligadas; não autorizar para produção sem piloto.
 2. Reinstalar o aplicativo **na loja de TESTES** após qualquer mudança
    de escopos, permitindo obter token com as permissões atualizadas.
 3. Verificar na Application de homologação do Coolify as variáveis

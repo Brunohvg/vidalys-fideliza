@@ -1,6 +1,11 @@
 # Regras persistentes para Codex — Vidalys Fideliza
 
 ## Objetivo
+
+Infraestrutura vigente: apenas compose.yaml com PostgreSQL separado e
+privado (docs/44). Cronologia de homologação: docs/43. Variáveis:
+docs/45. Referências de Compose, escopos e paleta de versões antigas
+no histórico abaixo não substituem o contrato vigente.
 Criar um SaaS multi-tenant de fidelidade para e-commerce, inicialmente Nuvemshop, com pontos/cashback como crédito promocional, carteira auditável, métricas de recompra e custos. A Bibelô é a loja-piloto. É produto separado do Vidalys Flow.
 
 ## Fonte de verdade e precedência
@@ -19,7 +24,7 @@ Criar um SaaS multi-tenant de fidelidade para e-commerce, inicialmente Nuvemshop
 - Ver `docs/10-DIFERENCIAL-MARGIN-FIRST.md` e os testes de `apps.margin`. Não implementar IA de recomendação enquanto não houver dados confiáveis, feedback e limites.
 
 ## UI/UX é requisito P0, NÃO polimento posterior
-- O produto deve ter qualidade visual profissional, distintiva e consistente com a marca Vidalys (grafite `#0B1120`, azul `#1263FF`, ciano `#00D1E6` apenas como acento).
+- O produto deve ter qualidade visual profissional, distintiva e consistente com a marca Vidalys (navy, jade, mint e dourado do design v2 aprovado (docs/20)).
 - Antes de implementar telas de negócio, criar mapa de navegação, wireframes, protótipos de alta fidelidade e componentes/tokens reutilizáveis. Requisito visual tem a mesma importância que testes financeiros.
 - Django Admin é apenas ferramenta interna de suporte; NÃO é a interface comercial do lojista.
 - Sem telas genéricas de template, paletas arbitrárias nem CSS global alterando o tema Nuvemshop.
@@ -86,7 +91,8 @@ Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (
 
 ## OAuth Nuvemshop de leitura P0
 - OAuth é iniciado pelo proprietário/admin autenticado na própria loja tenant, requer sessão + CSRF, HTTPS e state de uso único; não aceitar callback anônimo sem state.
-- Authorization code expira em 5 minutos. Token pertence ao par app + loja, usa user_id como store ID e scope read_products **exato** para o piloto.
+- Authorization code expira em 5 minutos. Token pertence ao par app + loja, usa user_id como store ID e read_products para catálogo; read_customers e read_orders opcionais,
+  independentes e somente após autorização/flags de homologação.
 - Guardar somente token cifrado com Fernet em banco, com NUVEMSHOP_TOKEN_KEYS exclusivo da API em secrets Coolify. Nunca publicar chaves/token ou permitir secrets no worker/frontend.
 - Rejeitar vinculação cruzada entre lojas; consulta GET da amostra usa store_id derivado da instalação autorizada, jamais parâmetro do cliente.
 - Redigir logs de callback (Nginx e Gunicorn sem query); verificar proxy do Coolify.

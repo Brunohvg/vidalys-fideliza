@@ -5,6 +5,13 @@ branch homolog. Não confundir código, CI, implantação e aprovação real.
 A conexão Nuvemshop já disponível no ChatGPT não substitui a instalação
 OAuth do aplicativo Fideliza no servidor de testes. Não usar TinyFish.
 
+## Infraestrutura e contrato de variáveis
+
+Uma única fonte Compose: compose.yaml, banco privado externo. Exemplo de
+variáveis: .env.example. O painel Coolify continua sendo a fonte real dos
+segredos; mudar o arquivo Git não altera Compose Location no servidor.
+Conferir documentos 44 e 45 antes do Gate G1.
+
 ## Bloqueios globais
 
 - Apenas a branch homolog. Main, produção e loja Bibelô preservadas.

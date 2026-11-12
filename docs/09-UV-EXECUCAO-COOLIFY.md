@@ -1,42 +1,37 @@
-# Execução do projeto com uv e Coolify
+# Desenvolvimento local, uv e Compose único
 
-**Etapa atual:** scaffold executável e protótipo visual React, SEM conexão Nuvemshop, SEM carteira financeira e SEM descontos reais.
+## Local — sem alterar Coolify
+Instale Python 3.12, uv 0.10.0 e Node.js 22. Configure
+DJANGO_DEBUG=1 no ambiente de desenvolvimento e remova DATABASE_URL
+e DB_HOST para usar o SQLite local. Execute:
 
-## Como o uv funciona
-O backend usa backend/pyproject.toml e Python 3.12. O comando uv sync instala dependências e cria automaticamente backend/.venv. A pasta .venv é local, nunca entra no Git. O arquivo uv.lock é versionado para fixar versões e tornar as instalações previsíveis. O CI gera o primeiro uv.lock no GitHub Actions; após isso, executar uv sync --locked e manter lock atualizado quando dependências mudarem.
+1. cd backend
+2. uv sync --locked --python 3.12
+3. uv run --locked python manage.py migrate
+4. uv run --locked python manage.py check
+5. uv run --locked pytest -q
+6. uv run --locked python manage.py runserver
 
-## Rodar em desenvolvimento
-Requisitos: uv, Python 3.12, Node.js 22 (ou Docker).
-1. Copie .env.example para .env na raiz e substitua os valores de exemplo. Nunca faça commit de segredos.
-2. Entre em backend e rode uv sync --python 3.12.
-3. Para desenvolvimento sem PostgreSQL, configure DJANGO_DEBUG=1 e DATABASE_URL=sqlite:///:memory: apenas para check; para persistência local use DJANGO_DEBUG=1 sem DB_HOST/DATABASE_URL e o Django criará local.sqlite3.
-4. Rode uv run python manage.py migrate.
-5. Rode uv run python manage.py check e uv run pytest.
-6. Rode uv run python manage.py runserver (URL local /api/health/).
-7. Em outro terminal, entre em frontend e execute npm install e npm run dev.
+No frontend: npm install e npm run dev. Banco local não substitui
+migrações/testes do PostgreSQL externo de homologação.
 
-Observação: o frontend é um protótipo visual com dados declaradamente fictícios. Ele não autentica usuários nem controla cashback.
+## Docker / Coolify
+Somente compose.yaml contém a stack do Fideliza: api, worker, redis e
+frontend. O banco PostgreSQL é recurso privado separado. Não existem
+portas públicas fixas no Compose. Para implantar, selecionar a rede
+privada do banco e permitir conexão ao destino predefinido somente lá.
 
-## Docker Compose (homologação isolada)
-Na raiz:
-1. cp .env.example .env e substitua senhas/chaves por valores fortes.
-2. docker compose config.
-3. docker compose up --build -d.
-4. Verifique http://localhost:8080 e http://localhost:8080/api/health/.
-5. docker compose logs -f api e docker compose logs -f frontend.
+Não executar docker compose up sem um PostgreSQL externo e as variáveis
+da Application devidamente preparadas. Não é uma stack de desenvolvimento
+com banco embutido. O template .env.example não tem credenciais reais.
 
-O frontend publica apenas em 127.0.0.1:8080; db, redis e api não publicam portas. Para Coolify, substituir publicação local por roteamento HTTPS via proxy do Coolify depois de verificar suas redes e configuração de domínio. NÃO expor PostgreSQL ou Redis na internet.
+## CI
+Os seis jobs incluem backend, frontend, QA visual e três smoke tests
+com o MESMO compose.yaml. O script .github/scripts/ci_single_compose.py
+inicia PostgreSQL separado descartável no runner CI, sem arquivo de
+override Compose e sem contato com Coolify.
 
-## O que ainda deve ser validado antes do Coolify
-- Construção de ambas as imagens Docker em servidor com acesso a imagens e índices de pacotes.
-- Banco persistente, backup e restauração; não compartilhar banco com Vidalys Flow.
-- Serviço web acessível por domínio de homologação, com HTTPS e headers corretos de proxy.
-- Variáveis DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS e DJANGO_SECURE_SSL_REDIRECT conforme TLS.
-- uv.lock gerado e CI verde; migrações controladas; testagem ponta a ponta de /api/ready/.
-- Política de acesso de staging: autenticação ou restrição de tráfego; não publicar como aplicativo comercial.
+Segurança: HTTPS, CSRF, sessão Secure, dados isolados por loja;
+sem tokens, clientes ou cashback real.
 
-## Segurança
-Nunca incluir token OAuth, credencial Coolify, chave real, senha, dump do banco ou .env no repositório. O projeto não altera o tema Ipanema, estoque, pedidos ou descontos reais.
-
-## Critérios de aceite técnico
-CI executa uv sync e valida check/makemigrations/pytest; frontend executa npm run build. Esses resultados validam o build básico e testes automatizados, NÃO demonstram checkout, deploy real ou geração de cashback.
+Continuidade: docs/43, docs/44 e docs/45.

@@ -15,7 +15,7 @@ PR #5 (base e111a2600d019e5248987146e28b7f718e69a27f).
   publicadas no host e sem volumes de outros produtos.
 - Coolify nao troca o destino de um recurso existente: clonar a configuracao para o
   novo destino; preservar a preparacao anterior parada e sem dominio.
-- Compose ativo: /compose.coolify.external-db.yaml, base /, commit fixado.
+- Compose único atual: /compose.yaml, base /, SHA validado.
 
 Separar o banco permite reiniciar/atualizar a aplicacao sem recriar o recurso de
 dados e facilita backups proprios no Coolify. Isso nao torna o host dedicado nem
@@ -47,10 +47,10 @@ proxy isso pode agregar usuarios do staging; e uma guarda conservadora, nao uma
 identificacao confiavel do IP individual. O backend tambem limita por conta.
 O host emite X-Robots-Tag noindex/nofollow; isso nao e controle de acesso.
 
-O CI external_database_smoke sobe PostgreSQL em container separado e rede privada,
-executa migracoes na aplicacao, verifica readiness atraves do Nginx, rejeicao de
-login sem CSRF e ping Celery. O override .github/compose.external-db-test.yaml e
-apenas do runner; o Coolify injeta a rede escolhida, sem esse override.
+O CI utiliza exclusivamente compose.yaml e executa um PostgreSQL separado
+no runner, conectando-o temporariamente à rede de teste via Docker CLI.
+Não há arquivos Compose de override. A homologação Coolify permanece
+na rede privada selecionada e não é alterada pelo CI.
 
 Antes de considerar o deploy aceito: banco e quatro servicos saudaveis no host,
 readiness 200, HTTPS valido, ausencia de portas publicas no banco, login/CSRF e
