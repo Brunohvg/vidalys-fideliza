@@ -14,6 +14,23 @@ type Props={
   tenantId:string;role:Store["role"];
   onGoToClients:()=>void;
 };
+function Status({ready,label}:{ready:boolean;label:string}){
+  return <span className={"ss-state "+(ready?"is-ready":"is-pending")}>
+    {ready?<CheckCircle2 size={14}/>:<LockKeyhole size={14}/>}
+    {label}
+  </span>;
+}
+function friendlyError(error:unknown,defaultMessage:string){
+  // Esconder detalhes técnicos de falhas de integração do painel do lojista.
+  if(error instanceof ApiError){
+    if(error.status===409)return "Essas informações mudaram. Atualize a página antes de tentar novamente.";
+    if(error.status===403)return "Seu usuário não tem autorização para realizar esta ação.";
+    if(error.status===429)return "Já houve uma tentativa recente. Tente novamente em alguns instantes.";
+    if(error.status===503)return "Conexão temporariamente indisponível. Tente novamente mais tarde.";
+  }
+  return defaultMessage;
+}
+
 export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   const [settings,setSettings]=useState<TenantPreferences|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
