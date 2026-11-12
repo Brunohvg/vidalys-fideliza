@@ -247,6 +247,8 @@ class NuvemshopOAuthFlowTests(TestCase):
         self.assertFalse(details["will_credit_cashback"])
 
     def test_status_distinguishes_registered_installation_from_live_access(self):
+        self.tenant.status = Tenant.Status.ACTIVE
+        self.tenant.save(update_fields=["status"])
         without = self.client.get(self.status_url(), secure=True)
         self.assertEqual(without.status_code, 200)
         self.assertEqual(without.json()["connection_check"]["next_step"], "authorize_store")
