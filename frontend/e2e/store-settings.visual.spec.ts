@@ -104,7 +104,8 @@ for(const width of [390,768,1440]){
     await expect(page.getByText("Pedido de acesso aos dados")).toBeVisible();
     await expect(page.getByText("Clube Exemplo",{exact:true})).toBeVisible();
     await expect(page.getByText("Nuvemshop",{exact:true})).toBeVisible();
-    await expect(page.getByText("Conectada",{exact:true})).toBeVisible();
+    await expect(page.getByText("Autorização registrada",{exact:true})).toBeVisible();
+    await expect(page.getByText("Conectada",{exact:true})).toHaveCount(0);
     const main=page.locator(".portal-content");
     const text=await main.innerText();
     for(const forbidden of [

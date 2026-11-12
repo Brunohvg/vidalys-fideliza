@@ -72,7 +72,8 @@ for (const width of [390, 768, 1440]) {
       return route.fulfill({contentType: "application/json", body: JSON.stringify(livePreview)});
     });
     await go(page, width);
-    await expect(page.getByText("Conectada", {exact:true})).toBeVisible();
+    await expect(page.getByText("Autorizada", {exact:true})).toBeVisible();
+    await expect(page.locator(".nuv-connection")).toContainText("validade atual do acesso");
     await expect(page.locator(".nuv-connection")).not.toContainText("54321");
     await expect(page.locator(".nuv-connection")).not.toContainText("read_products");
     await expect(page.getByRole("button", {name:"Autorizar minha loja"})).toHaveCount(0);
