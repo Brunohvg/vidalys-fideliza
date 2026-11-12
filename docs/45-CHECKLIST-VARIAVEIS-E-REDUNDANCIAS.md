@@ -39,7 +39,8 @@ Para mudar provedor/transporte, alterar o contrato e os testes antes de
 migração; não alterar silenciosamente valores já utilizados em produção.
 
 ## Recursos opcionais, todos desligados por padrão
-- FIDELIZA_PUBLIC_SIGNUP_ENABLED
+- FIDELIZA_PUBLIC_SIGNUP_ENABLED (clientes que participam do clube)
+- FIDELIZA_MERCHANT_SIGNUP_ENABLED (novos lojistas, API somente)
 - FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
 - FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
 - FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED
@@ -83,3 +84,8 @@ nem operação financeira realizada nesta entrega.
 Obrigatória no Raw: FIDELIZA_DB_NETWORK (rede Docker existente do
 PostgreSQL externo). Opcional: FIDELIZA_PROXY_NETWORK (default coolify).
 Confirmar Traefik/rotas e backup antes de trocar modo e implantar.
+
+
+## Acesso do lojista sem Nuvemshop
+
+A autenticação de comerciantes funciona por e-mail após confirmação. O controle `FIDELIZA_MERCHANT_SIGNUP_ENABLED` só habilita o cadastro de comerciantes e nunca abre o cadastro de clientes. Reutiliza `FIDELIZA_EMAIL_DELIVERY_ENABLED` e a mesma fila SMTP restrita ao worker; não criar novas credenciais SMTP. O app Nuvemshop é opcional, nunca bloqueia login, tenant ou simulação sem escrita financeira. Django Admin permanece separado em `/admin/` e só aceita staff com permissão.

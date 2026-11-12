@@ -82,6 +82,25 @@ class RuntimeEnvAuditTests(SimpleTestCase):
             ], "FALHA",
         )
 
+    def test_merchant_signup_is_separate_from_consumer_signup_and_needs_email(self):
+        base = environment()
+        status = statuses(base)
+        self.assertEqual(status["FIDELIZA_MERCHANT_SIGNUP_ENABLED"], "OK")
+        self.assertEqual(statuses({
+            **base, "FIDELIZA_MERCHANT_SIGNUP_ENABLED": "1"
+        })["MERCHANT_SIGNUP_WITHOUT_EMAIL"], "FALHA")
+        self.assertEqual(statuses({
+            **base, "FIDELIZA_MERCHANT_SIGNUP_ENABLED": "invalid"
+        })["FIDELIZA_MERCHANT_SIGNUP_ENABLED"], "FALHA")
+        enabled = {
+            **base,
+            "FIDELIZA_MERCHANT_SIGNUP_ENABLED": "1",
+            "FIDELIZA_EMAIL_DELIVERY_ENABLED": "1",
+            "FIDELIZA_PUBLIC_BASE_URL": f"https://{HOST}",
+        }
+        self.assertEqual(statuses(enabled)["FIDELIZA_MERCHANT_SIGNUP_ENABLED"], "ALERTA")
+        self.assertNotIn("MERCHANT_SIGNUP_WITHOUT_EMAIL", statuses(enabled))
+
     def test_stale_db_host_and_financial_override_detected(self):
         self.assertEqual(
             statuses({**environment(), "DB_HOST": "old-db.invalid"})[

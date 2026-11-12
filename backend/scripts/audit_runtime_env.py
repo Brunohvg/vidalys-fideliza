@@ -136,6 +136,19 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_EMAIL_DELIVERY_ENABLED", "FALHA",
                        "Flag de email inválida"))
+    merchant_signup = env.get("FIDELIZA_MERCHANT_SIGNUP_ENABLED", "0").strip().lower()
+    if merchant_signup in active:
+        result.append(("FIDELIZA_MERCHANT_SIGNUP_ENABLED", "ALERTA",
+                       "Cadastro de lojistas habilitado; exigir SMTP validado e política de dados"))
+        if mail not in active:
+            result.append(("MERCHANT_SIGNUP_WITHOUT_EMAIL", "FALHA",
+                           "Cadastro de lojistas exige confirmação por e-mail"))
+    elif merchant_signup in inactive:
+        result.append(("FIDELIZA_MERCHANT_SIGNUP_ENABLED", "OK",
+                       "Cadastro de lojistas fechado até homologação SMTP"))
+    else:
+        result.append(("FIDELIZA_MERCHANT_SIGNUP_ENABLED", "FALHA",
+                       "Valor inválido"))
     if signup in active and mail not in active:
         result.append(("PUBLIC_SIGNUP_WITHOUT_EMAIL", "FALHA",
                        "Cadastro público exige confirmação por email habilitada"))

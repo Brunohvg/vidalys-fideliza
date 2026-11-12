@@ -226,3 +226,18 @@ até conferir proxy Traefik e redes externas reais; ver docs/44.
 offline sem credenciais nem IO (docs/46); mantém provas de origem
 independentes como pendência. A prioridade operacional segue G1 no
 Coolify; nenhum gate financeiro foi liberado nem cliente real envolvido.
+
+## Cadastro de lojistas, autenticação por e-mail e canais opcionais — 12/11/2026
+
+**Decisão de produto:** Nuvemshop é um canal opcional. O lojista pode abrir conta, criar a loja interna e explorar planejamento/campanhas em modo seguro sem instalação OAuth. Integrações futuras por WhatsApp, Vidalys Flow e ponto de venda são arquitetura planejada, não sincronizações já disponíveis.
+
+O login público deve usar **e-mail + senha**, preservando temporariamente username legado somente no backend e no Django Admin. O signup de lojistas é distinto da adesão de clientes dos programas. Criação automática do tenant ativo e membership OWNER ocorre **somente após confirmação de e-mail por token de uso único**; usuários novos nunca são staff/superuser. E-mail verificado tem unicidade case-insensitive por identidade normalizada, com rejeição a ambiguidades legadas. Senhas ficam apenas como hash. Recuperação usa novo desafio de uso único e respostas genéricas anti-enumeração; links usam fragmento de URL para não expor tokens em logs HTTP. Tokens expiram em 30 minutos.
+
+A interface possui cadastro, login por e-mail, confirmar, reenvio, recuperar senha, redefinir senha e estados de erro. O Django Admin é interface **interna**, com URL `/admin/`; no proxy, `/admin` sem barra redireciona para `/admin/`. O superusuário NÃO é criado automaticamente nem sua senha é armazenada no repositório.
+
+**Flag nova estritamente necessária:** `FIDELIZA_MERCHANT_SIGNUP_ENABLED` apenas na API, default 0; diferente de `FIDELIZA_PUBLIC_SIGNUP_ENABLED`, que controla a adesão de consumidores. Ambas dependem de e-mail confiável quando ativadas; `FIDELIZA_EMAIL_DELIVERY_ENABLED` tem o contrato único existente no worker. `FIDELIZA_LEDGER_WRITES_ENABLED=False` permanece em código.
+
+**Pendente para homologação:** confirmar CI SHA e deploy real; revisar política de privacidade/termos do serviço para o lojista; validar SMTP do worker (o último relatório informou `EMAIL_HOST_PASSWORD` ausente); testar cadastro em caixa controlada e link real, login/logout/CSRF no navegador e migração do banco somente após backup existente. **Não ligar a flag de cadastro público antes desses itens.** No Coolify, somente após validação, `FIDELIZA_MERCHANT_SIGNUP_ENABLED=1` na API. O modo Raw, volumes e redes atuais devem permanecer.
+
+**Próxima ação operacional única:** Work revisa o CI da branch homolog, publica o SHA aprovado em Raw e valida as rotas de autenticação (admin inclusa) sem ativar cadastro; em seguida, configura SMTP autorizado com teste de caixa controlada e só depois libera signup.
+
