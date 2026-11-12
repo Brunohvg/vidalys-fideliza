@@ -35,6 +35,10 @@ class PrivacyWebhookRequest(models.Model):
                              default=State.PENDING)
     received_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
+    # Evidência de minimização automática; não é comprovante de eliminação total.
+    sanitized_at = models.DateTimeField(null=True, blank=True)
+    sanitization_summary = models.JSONField(default=dict, blank=True)
+
     report_digest = models.CharField(max_length=64, blank=True, default="")
     report_accessed_at = models.DateTimeField(null=True, blank=True)
     report_accessed_by = models.ForeignKey(
