@@ -228,6 +228,22 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         self.assertEqual(self.send("store-redact",payload).status_code,202)
         self.assertEqual(PrivacyWebhookRequest.objects.count(),1)
 
+    def test_suspended_store_cannot_send_queued_emails_or_use_old_proofs(self):
+        submission,challenge,_=self._make_submission()
+        from apps.participants.tasks import send_enrollment_email
+        from apps.participants.email_proof import make_token, digest, consume_challenge
+        # O token foi emitido antes de a plataforma enviar store_redact.
+        issued=make_token(challenge.pk,"withdraw")
+        challenge.token_digest=digest(issued)
+        challenge.save(update_fields=["token_digest"])
+        self.assertEqual(self.send("store-redact",{"store_id":91834}).status_code,202)
+        with patch("apps.participants.tasks.email_delivery_ready",return_value=True), \
+             patch("apps.participants.tasks.EmailMessage") as outgoing:
+            result=send_enrollment_email.apply(args=(str(challenge.pk),)).get()
+        self.assertEqual(result,"expired")
+        outgoing.assert_not_called()
+        self.assertIsNone(consume_challenge(issued,"withdraw"))
+
     def test_store_automatically_scrubs_app_data_without_claiming_full_erasure(self):
         submission,challenge,participant=self._make_submission()
         TenantBranding.objects.create(
