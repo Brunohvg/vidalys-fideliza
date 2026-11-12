@@ -10,6 +10,7 @@ from django.utils import timezone
 from celery import shared_task
 from .email_proof import digest, email_delivery_ready, make_token
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
+from apps.tenants.models import Tenant
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ def send_enrollment_email(self, challenge_id: str):
     if (challenge.token_digest != digest(token)
             or challenge.consumed_at is not None
             or challenge.expires_at <= timezone.now()
-            or challenge.submission.status == EnrollmentSubmission.Status.WITHDRAWN):
+            or challenge.submission.status == EnrollmentSubmission.Status.WITHDRAWN
+            or challenge.submission.tenant.status != Tenant.Status.ACTIVE):
         return "expired"
     submission = challenge.submission
     purpose = challenge.purpose
