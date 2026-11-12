@@ -137,3 +137,27 @@ não comprovam vendas ou cashback real.
 Sem migração de canais, sem atualização de `main`, sem deploy Coolify,
 sem alteração na loja Bibelô e sem habilitar recursos financeiros.
 Primeiro estabilizar a UX e validar os fluxos da homologação.
+
+## Pré-voo read-only disponível na homologação
+
+Após implantar o commit aprovado em um ambiente de teste, executar
+dentro do container de API:
+
+```sh
+python scripts/inspect_loyalty_journey.py --slug loja-piloto
+```
+
+Substituir `loja-piloto` pelo **slug da loja de homologação** que já
+existe no sistema. O comando não cria dados, não chama APIs externas,
+não ativa recursos e não revela nome/e-mail de participantes,
+segredos, saldos, pedidos ou tokens. Ele lista somente estados
+verificáveis e contagens internas daquele tenant.
+
+Atenção: `email_delivery_flag_enabled=true` não comprova recebimento
+no SMTP2GO; o envio deve ser testado com caixa de e-mail controlada.
+`paid_order_verification_available=false`,
+`live_cashback_granting_available=false` e
+`live_redemption_available=false` permanecerão falsos nesta etapa.
+
+O script não deve ser usado como substituto para o teste humano e
+integração ponta a ponta na Nuvemshop.
