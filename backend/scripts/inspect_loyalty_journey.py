@@ -66,6 +66,10 @@ def inspect(slug:str)->dict:
         "customer_approval_enabled":bool(
             settings.FIDELIZA_PARTICIPANT_APPROVAL_ENABLED
         ),
+        "automatic_customer_link_available":bool(
+            connected and customer_access and settings.FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED
+            and settings.FIDELIZA_EMAIL_DELIVERY_ENABLED
+        ),
         "verified_requests_count":optin,
         "linked_customers_count":EnrollmentCustomerLink.objects.filter(
             tenant=tenant,
@@ -82,6 +86,7 @@ def inspect(slug:str)->dict:
         "note":(
             "Conexão e permissões significam registros OAuth locais, "
             "não validação de uma chamada real à Nuvemshop. "
+            "Vínculo automático só funciona com e-mail confirmado e um cliente exato. "
             "Flags de e-mail não comprovam entrega SMTP. "
             "Pedido pago e cashback real permanecem indisponíveis."
         ),
