@@ -448,3 +448,77 @@ button,select,textarea,input {font-family:inherit}
   /* O atalho é redundante com Campanhas; preservar todos os menus e Sair. */
   .portal-side-guide { display: none; }
 }
+
+
+/* Revisão visual R3 — consistência, foco, contraste e dispositivos reais. */
+.portal-shell,.portal-main,.portal-content,
+.portal-content-head,.portal-tenant-bar { min-width:0; }
+.portal-content-head>div:first-child {min-width:0;}
+.portal-content-head h1,.portal-content-head p,
+.portal-footer,.portal-step p,.xp-panel-title p {
+  overflow-wrap:anywhere;
+}
+.portal-side button:focus-visible,.portal-top button:focus-visible,
+.portal-tenant-bar select:focus-visible {
+  outline:3px solid #37D5BB;
+  outline-offset:2px;
+}
+.portal-nav button:focus-visible {
+  background:rgba(55,213,187,.18);
+  color:#FFFFFF;
+}
+.portal-footer {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  color:#577085;
+}
+.portal-primary,.portal-secondary,.xp-link-btn,
+.cost-modal-header>button,.cost-pagination button {
+  min-height:44px;
+}
+.cost-modal-scrim {
+  padding:max(10px,env(safe-area-inset-top))
+          max(10px,env(safe-area-inset-right))
+          max(10px,env(safe-area-inset-bottom))
+          max(10px,env(safe-area-inset-left));
+}
+.cost-modal {
+  max-height:calc(100vh - 20px);
+  max-height:calc(100dvh - 20px);
+  overscroll-behavior:contain;
+}
+@media(max-width:1020px) {
+  .portal-side {
+    width:min(300px,calc(100vw - 44px));
+    padding-bottom:max(16px,env(safe-area-inset-bottom));
+  }
+  .portal-main {min-width:0;}
+}
+@media(max-width:520px) {
+  .portal-shell input,.portal-shell select,.portal-shell textarea,
+  .portal-auth-layout input,.portal-auth-layout select,
+  .public-enroll-shell input,.public-enroll-shell textarea,
+  .public-enroll-shell select {
+    font-size:16px; /* iOS Safari: não ampliar o zoom ao focar um campo. */
+  }
+  .portal-content-head p,.portal-coming p,.portal-empty p,
+  .ss-muted,.ss-advisory,.ss-security-note {font-size:13px;line-height:1.65;}
+  .portal-content,.portal-content>* {min-width:0;}
+  .xp-panel,.portal-panel,.cost-panel,.ss-card {max-width:100%;}
+  .portal-footer {font-size:12px;}
+}
+@media(max-width:360px) {
+  .portal-top {gap:5px;}
+  .portal-top-right {gap:5px;flex-shrink:0;}
+  .portal-test-label {font-size:9px;padding:7px 8px;gap:5px;}
+  .portal-avatar {display:none;}
+  .portal-top-title strong {
+    display:block;max-width:95px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .portal-content {padding-inline:13px;}
+  .portal-content-head h1 {font-size:24px;}
+  .xp-action-banner,.xp-hero,.campaign-hero,.cost-hero {padding:21px 16px;}
+  .xp-action-banner h2,.xp-hero h2 {font-size:25px;}
+}
