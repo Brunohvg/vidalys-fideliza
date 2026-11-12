@@ -429,8 +429,19 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         self.assertEqual(response.json()["access_requests"],1)
         self.assertEqual(response.json()["deletion_requests"],0)
         self.assertEqual(response["Cache-Control"],"private, no-store")
-        for secret in ("556","801","private@example.invalid","+55","91834"):
+        for secret in ("private@example.invalid","+55"):
             self.assertNotIn(secret,response.content.decode())
+        # UUIDs aleatórios podem conter os dígitos 556/801/91834 por acaso;
+        # verificar o esquema impede falso positivo e testa o vazamento real.
+        self.assertEqual(set(response.json()["items"][0]), {
+            "id","type","received_at","status","report_available",
+            "downloaded","can_confirm","protection_applied",
+        })
+        for item in response.json()["items"]:
+            self.assertNotIn("customer_id",item)
+            self.assertNotIn("store_id",item)
+            self.assertNotIn("email",item)
+            self.assertNotIn("phone",item)
         # Nenhum vazamento cruzado, inclusive para membro da loja errada.
         foreign=Tenant.objects.create(
             name="Outra loja",slug="privacy-foreign",platform="nuvemshop",
