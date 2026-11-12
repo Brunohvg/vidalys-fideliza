@@ -171,7 +171,8 @@ FIDELIZA_EMAIL_DELIVERY_ENABLED = env_bool("FIDELIZA_EMAIL_DELIVERY_ENABLED", Fa
 FIDELIZA_PUBLIC_BASE_URL = os.getenv("FIDELIZA_PUBLIC_BASE_URL", "").strip()
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+# Containers sem SMTP recebem EMAIL_PORT vazio por isolamento do Coolify.
+EMAIL_PORT = int(os.getenv("EMAIL_PORT") or "587")
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
