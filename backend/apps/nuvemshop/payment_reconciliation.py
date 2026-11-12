@@ -38,7 +38,8 @@ class PaymentFact:
                 raise PaymentReconciliationError("Identificador financeiro inválido")
         if not isinstance(self.provider, str) or not SAFE_PROVIDER.fullmatch(self.provider):
             raise PaymentReconciliationError("Provedor inválido")
-        if self.kind not in KINDS or self.currency != "BRL":
+        if (not isinstance(self.kind, str) or self.kind not in KINDS
+                or not isinstance(self.currency, str) or self.currency != "BRL"):
             raise PaymentReconciliationError("Tipo ou moeda inválida")
         if (type(self.amount_cents) is not int or
                 not 0 < self.amount_cents <= MAX_CENTS):
@@ -73,6 +74,7 @@ def reconcile_payment_facts(snapshot, facts, *, tenant_id, store_id):
 
     unique_events = {}
     captures = {}
+    unique_operations = set()
     for fact in facts:
         if not isinstance(fact, PaymentFact):
             raise PaymentReconciliationError("Evidência financeira não normalizada")
@@ -87,19 +89,31 @@ def reconcile_payment_facts(snapshot, facts, *, tenant_id, store_id):
                 raise PaymentReconciliationError("Evento repetido com conteúdo diferente")
             continue
         unique_events[event_key] = fact
+        operation_key = (fact.provider, fact.kind, fact.transaction_id)
+        if operation_key in unique_operations:
+            # Alguns gateways emitem IDs de evento diferentes para a mesma
+            # operação; sem contrato específico isso exige revisão.
+            raise PaymentReconciliationError("Operação financeira duplicada")
+        unique_operations.add(operation_key)
         if fact.kind == "capture":
             capture_key = (fact.provider, fact.transaction_id)
             if capture_key in captures:
-                # Outra notificação de captura não pode duplicar a venda.
                 raise PaymentReconciliationError("Captura duplicada da mesma transação")
             captures[capture_key] = fact.amount_cents
 
     refunded = 0
     charged_back = 0
+    reversal_by_capture = {}
     for fact in unique_events.values():
         if fact.kind in ("refund", "chargeback"):
-            if (fact.provider, fact.original_capture_id) not in captures:
+            capture_key = (fact.provider, fact.original_capture_id)
+            if capture_key not in captures:
                 raise PaymentReconciliationError("Reversão sem captura correspondente")
+            reversal_by_capture[capture_key] = (
+                reversal_by_capture.get(capture_key, 0) + fact.amount_cents
+            )
+            if reversal_by_capture[capture_key] > captures[capture_key]:
+                raise PaymentReconciliationError("Reversões excedem captura de origem")
             if fact.kind == "refund":
                 refunded += fact.amount_cents
             else:

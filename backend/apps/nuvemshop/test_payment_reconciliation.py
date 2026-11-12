@@ -100,6 +100,21 @@ class PaymentReconciliationTests(SimpleTestCase):
                 self.run_report([c, malformed])
         with self.assertRaises(PaymentReconciliationError):
             self.run_report([c, replace(refund, amount_cents=13000)])
+        with self.assertRaises(PaymentReconciliationError):
+            self.run_report([
+                c, refund,
+                replace(refund, event_id="another-event-same-refund-operation"),
+            ])
+        # Mesmo com duas capturas, a soma de reversões não pode exceder
+        # a transação original, ainda que fique abaixo do total geral.
+        second = self.fact(event_id="capture-2", transaction_id="tx-2",
+                           amount_cents=3000)
+        first = self.fact(amount_cents=9090)
+        bad_refund = replace(
+            refund, amount_cents=10000,
+        )
+        with self.assertRaises(PaymentReconciliationError):
+            self.run_report([second, first, bad_refund])
 
     def test_platform_disagreements_identity_and_manual_payment(self):
         self.assertEqual(self.run_report([], self.snapshot())["review_status"],
