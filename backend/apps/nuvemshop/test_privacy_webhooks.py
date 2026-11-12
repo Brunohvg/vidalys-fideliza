@@ -238,7 +238,7 @@ class NuvemshopPrivacyWebhookTests(TestCase):
         challenge.save(update_fields=["token_digest"])
         self.assertEqual(self.send("store-redact",{"store_id":91834}).status_code,202)
         with patch("apps.participants.tasks.email_delivery_ready",return_value=True), \
-             patch("apps.participants.tasks.EmailMessage") as outgoing:
+             patch("apps.participants.tasks.EmailMultiAlternatives") as outgoing:
             result=send_enrollment_email.apply(args=(str(challenge.pk),)).get()
         self.assertEqual(result,"expired")
         outgoing.assert_not_called()
