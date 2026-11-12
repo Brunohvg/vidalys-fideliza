@@ -46,6 +46,21 @@ Django + DRF no backend; PostgreSQL; Redis/Celery para tarefas; React+TypeScript
 ## Escopo aprovado para o primeiro ciclo
 Somente Fase 0 (validação técnica/documental, UX/UI) e fundação da Fase 1 (projeto, estrutura, testes e ambiente de desenvolvimento), separando a prova de conceito de descontos. Não instalar na Bibelô, publicar app, ativar benefício, alterar produção, editar Ipanema ou Vidalys Flow. Não usar credenciais reais sem autorização explícita.
 
+## Protocolo obrigatório anti-retrabalho (aplica-se a TODAS as próximas tarefas)
+
+A fonte única de andamento é docs/43. Antes de executar qualquer demanda:
+1. Ler HEAD de homolog, resultado do CI desse SHA, docs/43, situação efetiva da homologação e últimos commits. Identificar mudanças feitas por outro agente antes de editar. Não recomeçar um recurso já implementado.
+2. Escolher **um único gate desbloqueado** (G0–G10) e definir um resultado observável e critérios de aceite; vincular ao gate, não criar uma trilha paralela. Limite: uma prioridade operacional aberta de cada vez.
+3. Usar quatro estados distintos e sempre reportá-los: **PENDENTE** (não implementado), **CÓDIGO VALIDADO** (commit + CI/testes), **HOMOLOGAÇÃO VALIDADA** (mesmo SHA executando, serviços/DB e testes no Coolify), **INTEGRAÇÃO REAL VALIDADA** (loja/PSP de teste e fluxo verificável). Opcional **BLOQUEADO** com dependência, responsável e teste exato que falta. Nunca elevar o estado sem evidência.
+4. Cada alteração deve trazer o caminho de prova (commit SHA, job CI e conclusão, deploy SHA, comando/resultado sanitizado, fluxo testado, falhas) e um próximo passo acionável. CI aprovado NÃO equivale a publicação, OAuth funcional, SMTP entregue ou benefício real.
+5. Fechar o gate só quando todos os critérios de saída forem demonstrados. Se faltar credencial, acesso, confirmação humana, backup ou consentimento, registrar **BLOQUEADO** e a ação externa específica. Não produzir outra auditoria, script, documentação ou flag para parecer progresso.
+6. Quando um gate estiver bloqueado por terceiros, é permitido trabalhar no próximo item de código seguro **somente se for independente**, explicitando que ele continua CÓDIGO VALIDADO, sem pular critérios de homologação.
+7. Manter um Compose único (compose.yaml), um modelo de env (.env.example) e um roteiro (docs/43). Não duplicar telas, regras, configurações, scripts de diagnóstico ou documentos. Alterar os arquivos existentes em vez de criar versões concorrentes.
+8. Não expor ou reutilizar segredos compartilhados no chat. Rotação no provedor, backup antes de alterar BD, autorização explícita antes de alteração em infraestrutura, terceiros ou clientes reais. **Não usar TinyFish**. Não ativar ledger até pagamento, estorno, orçamento e resgate auditados.
+9. No fechamento de cada tarefa, comunicar apenas: **gate atual, estado anterior → estado comprovado, evidência, bloqueio restante e próxima ação**. Não reiniciar o planejamento completo nem inventar percentuais novos sem critérios.
+
+**Próxima prioridade operacional obrigatória:** G1 (Coolify + PostgreSQL privado + backup/restauração + SHA e env efetivos). Situação inicial: código/CI validados; runtime e backup ainda NÃO comprovados. Depois G2 OAuth, G3 adesão/SMTP, G4 webhooks, G5 leitura de pedidos, G6 simulação revisada, G7 conciliação PSP, G8 benefício real, G9 gamificação, G10 multicanal/IA. A ordem de gates e a segurança não são substituídas por novos commits de código.
+
 ## Processo para cada tarefa
 1. Inspecione o repo, branch e documentos antes de escrever.
 2. Apresente escopo curto, riscos e critérios de aceite antes de mudanças importantes.

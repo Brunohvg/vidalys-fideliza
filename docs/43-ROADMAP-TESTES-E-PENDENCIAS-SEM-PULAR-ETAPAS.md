@@ -24,6 +24,63 @@ Conferir documentos 44 e 45 antes do Gate G1.
   recompensa é concedida sem pagamento, identidade, regra, idempotência,
   orçamento e capacidade de estorno verificáveis.
 
+## Protocolo de entrega e prova — obrigatório, para evitar trabalho circular
+
+Esta página é a **única fonte de verdade do andamento**. O AGENTS.md
+ordena aplicar este processo em toda tarefa nova. Não reabrir uma etapa
+concluída por teste verificável nem acumular checklists paralelos.
+
+**Estados padronizados (sempre separados):**
+- **PENDENTE:** ainda não implementado/testado.
+- **CÓDIGO VALIDADO:** SHA da homolog e CI/testes identificados.
+- **HOMOLOGAÇÃO VALIDADA:** exatamente aquele SHA está em execução no
+  Coolify, banco/serviços saudáveis e testes de runtime aprovados.
+- **INTEGRAÇÃO REAL VALIDADA:** OAuth, SMTP, pedidos e demais operações
+  necessárias passaram no provedor/loja de teste autorizados.
+- **BLOQUEADO:** registrar dependência e ação de desbloqueio; não
+  maquiar como concluído nem criar mais uma auditoria equivalente.
+
+**Contrato de qualquer entrega:** gate Gx; estado anterior → estado
+comprovado; SHA e CI (se mudou código); resultado do deploy e da
+verificação (se existe); fluxo efetivamente exercitado; risco e bloqueio
+restante; **uma única próxima ação executável**. Sem prova, manter
+estado anterior. Não usar porcentagem como substituto dos gates.
+
+**Regra de fluxo:** trabalhar no gate operacional mais antigo aberto.
+Nenhum salto G1→G7 por conveniência. Se o gate depender de acesso
+externo e ficar bloqueado, desenvolver offline apenas código isolado,
+com rótulo CÓDIGO VALIDADO; nunca anunciar que foi homologado.
+No máximo uma pendência operacional prioritária. Revisar alterações
+de outros commits/agentes antes de escrever. Não recriar variáveis,
+YAMLs, wizards, mecanismos de benefício ou documentos duplicados.
+
+**Quadro de controle verificado em 12/11/2026:**
+
+| Gate | Estado comprovado | Prova que falta | Próxima ação sem repetir trabalho |
+| --- | --- | --- | --- |
+| G0 (portal/UX) | CÓDIGO VALIDADO | Revisão visual no SHA publicado, mobile | Fazer junto ao smoke de G1 |
+| **G1 (infra)** | **CÓDIGO VALIDADO; HOMOLOGAÇÃO BLOQUEADA** | SHA e Compose Location no Coolify; env efetiva sem segredos; backup e teste de restauração; HTTPS, API/worker/Redis | **Confirmar Application, DB e backup; realizar um único pré-voo da homologação real** |
+| G2 (OAuth) | CÓDIGO VALIDADO | Cinco configurações oficiais, loja piloto, escopos e GET real | Executar após G1 |
+| G3 (adesão/SMTP) | CÓDIGO VALIDADO | SMTP real, consentimento, link de e-mail e vínculo único | Executar após G1/G2 |
+| G4 (webhooks) | CÓDIGO VALIDADO | Registro e entrega HMAC em loja piloto, reenvio e ordenação | Executar após G2/G3 |
+| G5 (reconsulta) | CÓDIGO VALIDADO | GET real, cancelamento e estorno sem crédito | Executar após G4 |
+| G6 (benefício simulado) | CÓDIGO VALIDADO | UX e teto em homologação com dados sintéticos | Conferir na revisão do portal |
+| G7 (conciliação financeira) | PENDENTE (código preliminar de divergências) | Captura PSP/ERP independente, estorno parcial e total | Implementar após prova dos pedidos |
+| G8 (crédito/resgate) | PENDENTE (ledger bloqueado) | Ledger/idempotência/limites e reversões auditados | Não habilitar antes de G7 |
+| G9 (gamificação) | PENDENTE | Níveis, missões, pontos, cupons e antifraude | Após G8; simulação isolada opcional |
+| G10 (IA/multicanal) | PENDENTE | Integrações Flow/PDV, métricas confiáveis | Após validações de base |
+
+**Bloqueio conhecido de G1:** as variáveis Nuvemshop e a senha SMTP
+do inventário compartilhado estavam vazias; a URL de banco e a chave
+Django compartilhadas exigem rotação segura. Sem acesso autenticado ao
+recurso do Coolify não há como verificar seu SHA ou backup; não afirmar
+que G1 passou só porque GitHub Actions ficou verde.
+
+**Não alterar a plataforma ou o banco por suposição.** Os critérios
+de G1 exigem backup recuperável, proteção de segredos, conferência
+da rede privada, Compose e SHA realmente publicados, auditorias
+sanitizadas e healthchecks. Não usar TinyFish.
+
 ## Gates em sequência (não avançar o status sem evidência)
 
 | Gate | Item | Código homolog | Evidência real ainda pendente |
