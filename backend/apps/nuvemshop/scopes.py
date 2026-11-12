@@ -29,4 +29,5 @@ def has_customer_access(value: str, *, customer_preview_enabled: bool) -> bool:
 
 def allowed_scopes(value: str, *, customer_preview_enabled: bool) -> bool:
     """Aceita permissões concedidas além das usadas; nunca concede poderes de escrita."""
-    return has_product_access(value, customer_preview_enabled=customer_preview_enabled)
+    return (has_product_access(value)
+            or has_customer_access(value, customer_preview_enabled=customer_preview_enabled))
