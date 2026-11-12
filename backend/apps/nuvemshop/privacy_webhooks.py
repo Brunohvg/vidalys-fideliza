@@ -7,6 +7,7 @@ somente após transação; concluir exclusão/relatório é etapa distinta.
 import hashlib
 import hmac
 import json
+import logging
 import os
 import re
 
@@ -33,6 +34,18 @@ TOPICS = {
     "customers-data-request": PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST,
     "store-redact": PrivacyWebhookRequest.Topic.STORE_REDACT,
 }
+logger=logging.getLogger(__name__)
+
+
+def _queue_store_sanitization(receipt_id: str):
+    try:
+        from .tasks import sanitize_store_after_redact
+        sanitize_store_after_redact.delay(receipt_id)
+    except Exception:
+        # O protocolo segue persistido. O comando interno reenvia a fila.
+        logger.warning("A fila de limpeza de loja está indisponível; revisão pendente")
+
+
 HMAC_PATTERN = re.compile(r"[0-9a-fA-F]{64}\Z")
 
 
@@ -219,11 +232,18 @@ def privacy_webhook(request, kind):
                 tenant is not None
                 and existing.state == PrivacyWebhookRequest.State.UNKNOWN_STORE
             ):
+                if (topic == PrivacyWebhookRequest.Topic.STORE_REDACT
+                        and existing.tenant_id
+                        and existing.sanitized_at is None
+                        and existing.state == PrivacyWebhookRequest.State.NEEDS_REVIEW):
+                    transaction.on_commit(
+                        lambda rid=str(existing.pk): _queue_store_sanitization(rid)
+                    )
                 return _limited_response()
             state = (PrivacyWebhookRequest.State.NEEDS_REVIEW
                      if tenant is not None else PrivacyWebhookRequest.State.UNKNOWN_STORE)
             if existing is None:
-                PrivacyWebhookRequest.objects.create(
+                receipt = PrivacyWebhookRequest.objects.create(
                     tenant=tenant, store_id=store_id, topic=topic, event_key=key,
                     customer_id=customer_id, request_id=request_id,
                     customer_email_digest=email_hash,
@@ -246,10 +266,24 @@ def privacy_webhook(request, kind):
                 existing.save(update_fields=[
                     "tenant", "state", "reason_code", "customer_email_digest"
                 ])
+                receipt = existing
             if tenant is not None and topic == PrivacyWebhookRequest.Topic.CUSTOMER_REDACT:
                 _revoke_customer(tenant, customer_id, payload)
+                receipt.sanitized_at = timezone.now()
+                receipt.sanitization_summary = {
+                    "participation_and_marketing_blocked": True,
+                    "personal_contacts_scrubbed": True,
+                    "retention_review_required": True,
+                    "backup_review_required": True,
+                }
+                receipt.save(update_fields=["sanitized_at","sanitization_summary"])
             elif tenant is not None and topic == PrivacyWebhookRequest.Topic.STORE_REDACT:
+                # Suspender contas e revogar OAuth imediatamente. O trabalho
+                # volumoso de limpeza de dados é executado no worker.
                 _revoke_store(tenant)
+                transaction.on_commit(
+                    lambda rid=str(receipt.pk): _queue_store_sanitization(rid)
+                )
             # Nunca marcar COMPLETED aqui: 202 comprova apenas aceitação.
             # Sem publicação externa, e-mail ou escrita na API Nuvemshop.
         return _limited_response()
