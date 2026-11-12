@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  ArrowRight, ChevronDown, Check,
+  ArrowRight, ChevronDown,
   Gift, LayoutDashboard, LoaderCircle, LockKeyhole,
   LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, Target, UsersRound, X, BarChart3, HeartHandshake, Settings2
 } from "lucide-react";

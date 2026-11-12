@@ -57,7 +57,9 @@ def session_info(request):
     return JsonResponse({
         "authenticated": True,
         "user": {
-            "username": request.user.get_username(),
+            "username": (request.user.email if
+                hasattr(request.user, "merchant_email_identity") else
+                request.user.get_username()),
             "display_name": request.user.get_full_name() or request.user.get_username(),
         },
         "tenants": _public_tenants(request.user),

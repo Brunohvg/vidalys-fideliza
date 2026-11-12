@@ -78,6 +78,7 @@ class MerchantAuthFlowTests(TestCase):
         session = self.client.get(reverse("auth-session")).json()
         self.assertTrue(session["authenticated"])
         self.assertEqual(len(session["tenants"]), 1)
+        self.csrf = self.client.cookies["csrftoken"].value
         self.assertEqual(self.post("merchant-confirm", {"token": token}).status_code, 400)
         self.assertEqual(get_user_model().objects.count(), 1)
         self.assertEqual(Tenant.objects.count(), 1)
@@ -148,6 +149,7 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(get_user_model().objects.count(), 1)
 
 
+@override_settings(STORAGES={"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}})
 class DjangoAdminRoutingTests(TestCase):
     def test_admin_is_registered_and_requires_admin_login(self):
         self.assertEqual(reverse("admin:index"), "/admin/")
