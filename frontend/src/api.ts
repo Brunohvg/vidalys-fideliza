@@ -122,6 +122,34 @@ export type CampaignDraft = CampaignDraftInput & {
   };
 };
 
+export type BenefitScenarioInput = {
+  order_amount_cents: number;
+  prior_paid_orders: number;
+  days_since_last_paid_order?: number;
+  committed_budget_cents?: number;
+};
+
+export type BenefitScenarioResult = {
+  draft_id: string;
+  draft_title: string;
+  mode: "simulation_only";
+  benefit_type: "cashback";
+  goal: CampaignDraftInput["goal"];
+  rule_version: number;
+  state: "hypothetical_match" | "goal_not_met" | "budget_insufficient" | "reward_below_one_cent";
+  goal_failure_code: string | null;
+  hypothetical_goal_met: boolean;
+  estimated_reward_cents: number;
+  uncapped_reward_cents: number;
+  remaining_budget_cents: number;
+  forecast: CampaignDraft["preview"];
+  activation_available: false;
+  requires_verified_purchase_and_identity: true;
+  requires_independent_payment_reconciliation: true;
+  credit_eligible: false;
+  ledger_writes_performed: 0;
+};
+
 export type CampaignDraftList = {
   mode: "draft_only";
   activation_available: false;
@@ -489,6 +517,11 @@ export const merchantApi = {
     writeJson<CampaignDraft>("PATCH",
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-drafts/" +
       encodeURIComponent(draftId) + "/", {...input, expected_version: expectedVersion}),
+  simulateBenefit: (tenantId: string, draftId: string, input: BenefitScenarioInput) =>
+    postJson<BenefitScenarioResult>(
+      "/api/v1/tenants/" + encodeURIComponent(tenantId) +
+      "/campaign-drafts/" + encodeURIComponent(draftId) + "/simulate/", input
+    ),
   previewCampaign: (tenantId: string, input: CampaignPlanInput) =>
     postJson<CampaignPlanResult>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-plans/preview/",

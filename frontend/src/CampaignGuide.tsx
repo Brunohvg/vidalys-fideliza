@@ -7,6 +7,7 @@ import {
 import CampaignPlanner from "./CampaignPlanner";
 import "./campaign-drafts.css";
 import RewardPreview from "./RewardPreview";
+import BenefitScenario from "./BenefitScenario";
 import { brl, parseBrl, parsePercent } from "./finance";
 import { ApiError, merchantApi, type CampaignDraft, type CampaignDraftInput, type Store } from "./api";
 
@@ -239,8 +240,15 @@ export default function CampaignGuide({tenantId, role}:{tenantId:string;role:Sto
           <div><span><ShieldCheck size={16}/> Orçamento informado</span><strong>{brl(result.budget)}</strong><small>Não é saldo disponível real</small></div>
         </div>
         <RewardPreview creditCents={result.creditPerOrder} goal={chosen.label}/>
+        {selectedDraft && selectedDraft.goal===goal &&
+          selectedDraft.ticket_cents===result.ticket &&
+          selectedDraft.cashback_rate_bps===result.rate &&
+          selectedDraft.budget_cents===result.budget &&
+          selectedDraft.projected_paid_orders===result.orders &&
+          <BenefitScenario tenantId={tenantId} draft={selectedDraft}
+            orderAmountCents={result.ticket}/> }
         <div className="xp-budget-hint"><AlertTriangle size={19}/>
-          <p><b>Ativação indisponível:</b> ainda não existe motor de concessão, carteira, aceite do cliente nem custo confiável por pedido. Esta prévia não garante rentabilidade.</p></div>
+          <p><b>Ativação indisponível:</b> o motor apenas simula regras. Ainda faltam conciliação financeira, orçamento verificado e concessão controlada, estornos e resgate. Esta prévia não garante rentabilidade.</p></div>
         <div className="xp-draft-save-zone">
           <div><strong>{selectedDraft?"Atualizar rascunho":"Guardar esta campanha para depois"}</strong>
             <p>O planejamento ficará na sua loja, sem publicar promoções ou enviar mensagens.</p></div>

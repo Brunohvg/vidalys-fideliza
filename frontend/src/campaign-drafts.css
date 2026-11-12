@@ -27,3 +27,42 @@
  .xp-draft-save-zone {align-items:stretch;flex-direction:column}
  .xp-draft-save-zone .portal-primary {justify-content:center}
 }
+
+/* Novo painel de cenário: mantém a identidade navy/jade da versão v2. */
+.xp-benefit-scenario {margin:20px 0;padding:20px;border:1px solid #C9E3DA;background:#F6FCF9;
+  border-radius:17px;min-width:0}
+.xp-benefit-scenario-head {display:flex;gap:13px;align-items:flex-start;margin-bottom:15px}
+.xp-benefit-mark {display:grid;place-items:center;min-width:42px;height:42px;color:#087F79;
+  background:#DDF5EB;border-radius:12px}
+.xp-benefit-scenario-head h3 {font-size:18px;color:#10253E;margin:3px 0 5px}
+.xp-benefit-scenario-head p,.xp-benefit-fixed small {color:#577085;font-size:12.5px;line-height:1.6;margin:0}
+.xp-benefit-scenario-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));
+  gap:12px;margin-bottom:13px}
+.xp-benefit-scenario-fields label {display:flex;flex-direction:column;gap:7px;color:#10253E;
+  font-weight:650;font-size:12.5px;min-width:0}
+.xp-benefit-scenario-fields select,.xp-benefit-scenario-fields input {width:100%;min-width:0;
+  padding:11px 12px;min-height:44px;border:1px solid #C8DDD9;border-radius:10px;background:#fff;
+  font:inherit;font-size:16px;color:#10253E}
+.xp-benefit-fixed {display:flex;flex-direction:column;gap:5px;padding:11px 12px;border-radius:10px;
+  background:#E9F5F0;color:#49687A;font-size:12px;min-width:0}
+.xp-benefit-fixed strong {color:#087F79;font-size:19px}
+.xp-benefit-try {display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.xp-benefit-try:disabled {opacity:.6;cursor:progress}
+.xp-benefit-scenario-result {display:flex;gap:10px;margin-top:14px;padding:15px;
+  background:#fff;border:1px solid #DDE7EF;border-radius:12px;min-width:0}
+.xp-benefit-result-icon {color:#087F79;min-width:20px}
+.xp-benefit-scenario-result strong {font-size:13px;color:#10253E}
+.xp-benefit-scenario-result p {font-size:12.5px;line-height:1.5;color:#577085;margin:5px 0 9px}
+.xp-benefit-numbers {display:flex;gap:12px;flex-wrap:wrap}
+.xp-benefit-numbers span {font-size:12px;color:#587086;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.xp-benefit-numbers b {color:#087F79;font-size:13px}
+.xp-benefit-warning,.xp-benefit-note {display:flex;align-items:flex-start;gap:8px;font-size:11.8px;
+  color:#577085;line-height:1.6;margin:13px 0 0}
+.xp-benefit-warning svg,.xp-benefit-note svg {flex:0 0 auto;margin-top:2px}
+.xp-benefit-scenario select:focus-visible,.xp-benefit-scenario input:focus-visible,
+.xp-benefit-try:focus-visible {outline:3px solid #37D5BB;outline-offset:3px}
+@media(max-width:480px) {
+ .xp-benefit-scenario {padding:14px}
+ .xp-benefit-scenario-head h3 {font-size:16px}
+ .xp-benefit-try {width:100%}
+}
