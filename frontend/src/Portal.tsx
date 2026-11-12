@@ -67,6 +67,8 @@ export default function Portal() {
     if (!compactMenu || !drawer) return;
     const oldOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Abrir o foco somente depois de reabilitar controles invisíveis.
+    sideRef.current?.removeAttribute("inert");
     closeMenuRef.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -152,7 +154,12 @@ export default function Portal() {
     }
   };
 
-  const navigate = (next: Screen) => { setPage(next); setDrawer(false); if (next !== "margin") setSeedItem(null); };
+  const navigate = (next: Screen) => {
+    setPage(next);
+    setDrawer(false);
+    if (compactMenu && drawer) menuButtonRef.current?.focus();
+    if (next !== "margin") setSeedItem(null);
+  };
   const simulateProduct = (item: CostItem) => { setSeedItem(item); setPage("margin"); setDrawer(false); };
   const tenants = session?.authenticated ? session.tenants : [];
   const tenant = tenants.find(value => value.id === selectedId) || tenants[0];
