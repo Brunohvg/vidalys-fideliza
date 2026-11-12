@@ -139,3 +139,15 @@ sessão CSRF, fila e credenciais **por indicadores e sem revelá-las**.
 
 **Escopo desta mudança:** código e documentação na `homolog`;
 sem mexer na `main`, no Flow, em uma loja real ou no Coolify.
+
+
+## Auditoria da interface: conexão em um só lugar
+
+A autorização e reautorização OAuth são administradas apenas em **Configurações**.
+A área **Conciliação** mantém a amostra oficial somente leitura e um atalho
+para Configurações, sem repetir botão de autorização, IDs técnicos ou scopes.
+O retorno do OAuth abre Configurações, limpa os parâmetros da URL e só
+informa conexão confirmada após consultar o status real do backend.
+Testes Playwright verificam esta separação, o perfil de analista, prévia de
+catálogo e a navegação de retorno em 390, 768 e 1440px.
+Nenhuma flag de homologação foi ligada na infraestrutura por esta alteração.

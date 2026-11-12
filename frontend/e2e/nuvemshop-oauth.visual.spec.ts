@@ -28,7 +28,7 @@ async function go(page: Page, width: number) {
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
   await page.locator(".portal-nav").getByRole("button", { name: /Conciliação/ }).click();
-  await expect(page.getByRole("heading", { name: "Conecte sua Nuvemshop" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Consulte produtos da sua Nuvemshop" })).toBeVisible();
 }
 
 const livePreview = {
@@ -73,8 +73,9 @@ for (const width of [390, 768, 1440]) {
     });
     await go(page, width);
     await expect(page.getByText("Conectada", {exact:true})).toBeVisible();
-    await expect(page.getByText("54321", {exact:false})).toBeVisible();
-    await expect(page.getByText("read_products", {exact:true})).toBeVisible();
+    await expect(page.locator(".nuv-connection")).not.toContainText("54321");
+    await expect(page.locator(".nuv-connection")).not.toContainText("read_products");
+    await expect(page.getByRole("button", {name:"Autorizar minha loja"})).toHaveCount(0);
     await page.getByRole("button", {name:"Consultar 3 produtos"}).click();
     await expect(page.getByText("Prévia oficial carregada.")).toBeVisible();
     await expect(page.getByText("Linha de demonstração")).toBeVisible();
@@ -102,8 +103,10 @@ test("OAuth não configurado impede conexão sem enviar segredos", async ({page}
     })
   }));
   await go(page,1440);
-  await expect(page.getByRole("button",{name:/Autorizar minha loja/})).toBeDisabled();
-  await expect(page.getByText("Integração ainda não configurada")).toBeVisible();
+  await expect(page.getByRole("button",{name:/Autorizar minha loja/})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Ver conexão em Configurações"})).toBeVisible();
+  await page.getByRole("button",{name:"Ver conexão em Configurações"}).click();
+  await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
 });
 
 test("Analista não pode começar OAuth", async ({page})=>{
@@ -116,8 +119,8 @@ test("Analista não pode começar OAuth", async ({page})=>{
     })
   }));
   await go(page,1440);
-  await expect(page.getByRole("button",{name:/Autorizar minha loja/})).toBeDisabled();
-  await expect(page.getByText("Somente proprietário ou administrador")).toBeVisible();
+  await expect(page.getByRole("button",{name:/Autorizar minha loja/})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Ver conexão em Configurações"})).toBeVisible();
 });
 
 test("Retorno do OAuth não exibe code ou token", async ({page})=>{
@@ -129,8 +132,20 @@ test("Retorno do OAuth não exibe code ou token", async ({page})=>{
       mode:"read_products_only",ready_for_write:false
     })
   }));
-  await page.goto("/?nuvemshop=connected");
-  await expect(page.getByText("Loja autorizada. A leitura está disponível")).toBeVisible();
+  await page.route("**/api/v1/tenants/**/settings/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      tenant_id:tenant.id,tenant_name:tenant.name,tenant_slug:tenant.slug,
+      tenant_status:"active",can_edit:true,version:0,public_link:null,
+      branding:{program_name:"Clube Piloto",primary_color:"#087F79",
+        accent_color:"#37D5BB",support_email:"teste@example.invalid"},
+      features:{public_signup_enabled:false,email_delivery_enabled:false,
+        customer_preview_enabled:false,cashback_activation_enabled:false,
+        custom_domain_available:false},
+    }),
+  }));
+  await page.goto("/?nuvemshop=connected&nuvemshop_tenant="+tenant.id);
+  await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
+  await expect(page.getByText("Conexão confirmada.",{exact:false})).toBeVisible();
   await expect(page).toHaveURL("http://127.0.0.1:4173/");
   await expect(page.locator("body")).not.toContainText("access_token");
 });

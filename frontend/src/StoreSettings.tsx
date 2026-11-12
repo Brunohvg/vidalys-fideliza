@@ -59,6 +59,26 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
       if(!current)return;
       setSettings(prefs);setBrand(prefs.branding);setIntegration(link);
       setPrivacy(requests);
+      // O callback da loja retorna aqui, não à consulta do catálogo.
+      // Nunca confiar apenas no parâmetro da URL para afirmar conexão.
+      const query=new URLSearchParams(window.location.search);
+      const result=query.get("nuvemshop");
+      if(result==="connected"||result==="failed"){
+        const sourceTenant=query.get("nuvemshop_tenant");
+        query.delete("nuvemshop");query.delete("nuvemshop_tenant");
+        const remaining=query.toString();
+        window.history.replaceState(null,"",window.location.pathname+
+          (remaining?"?"+remaining:"")+window.location.hash);
+        if(sourceTenant && sourceTenant!==tenantId){
+          setError("A autorização retornou para outra loja. Confira a loja selecionada.");
+        }else if(result==="failed"){
+          setError("A autorização não foi concluída. Tente novamente em Configurações.");
+        }else if(link?.connected){
+          setNotice("Conexão confirmada. Você já pode consultar os produtos em Conciliação.");
+        }else{
+          setError("A autorização retornou, mas a conexão não foi confirmada. Atualize a página.");
+        }
+      }
     }).catch(()=>{
       if(current)setError("Não foi possível carregar as configurações da loja.");
     }).finally(()=>{if(current)setLoading(false)});

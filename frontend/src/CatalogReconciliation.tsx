@@ -102,7 +102,7 @@ function extractPayload(input: string): unknown[] {
   });
 }
 
-export default function CatalogReconciliation({ tenantId, role }: { tenantId: string; role: Store["role"] }) {
+export default function CatalogReconciliation({ tenantId, role, onOpenSettings }: { tenantId: string; role: Store["role"]; onOpenSettings: () => void }) {
   const [json, setJson] = useState("");
   const [origin, setOrigin] = useState("");
   const [result, setResult] = useState<CatalogPreview | null>(null);
@@ -177,7 +177,7 @@ export default function CatalogReconciliation({ tenantId, role }: { tenantId: st
       <span className="reconcile-art" aria-hidden="true"><ScanSearch size={64} strokeWidth={1.2}/></span>
     </section>
 
-    <NuvemshopConnection tenantId={tenantId} role={role} onLivePreview={live => {
+    <NuvemshopConnection tenantId={tenantId} role={role} onOpenSettings={onOpenSettings} onLivePreview={live => {
       setResult(live); setError(""); setFilter("all");
       setOrigin("Consulta oficial somente leitura — página " + (live.page || 1));
     }}/>

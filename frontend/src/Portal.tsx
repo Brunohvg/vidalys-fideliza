@@ -46,7 +46,7 @@ export default function Portal() {
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [page, setPage] = useState<Screen>(() =>
-    new URLSearchParams(window.location.search).has("nuvemshop") ? "catalog" : "overview"
+    new URLSearchParams(window.location.search).has("nuvemshop") ? "settings" : "overview"
   );
   const [drawer, setDrawer] = useState(false);
   const [compactMenu, setCompactMenu] = useState(() =>
@@ -290,7 +290,7 @@ export default function Portal() {
             </section>}
             {page==="margin" && <MarginSimulator tenantId={tenant.id} initialItem={seedItem} key={tenant.id+":"+(seedItem?.id||"")}/>}
             {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
-            {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
+            {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} onOpenSettings={()=>navigate("settings")} key={tenant.id}/>}
             {page==="campaign" && <CampaignGuide tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="roadmap" && <section className="portal-panel portal-coming">
               <Gift size={37}/><h2>Programas, do jeito certo.</h2>
