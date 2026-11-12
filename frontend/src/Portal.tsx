@@ -95,13 +95,12 @@ export default function Portal() {
     };
   }, [drawer, compactMenu]);
   useEffect(() => {
-    // React 18 não tipa o atributo inert, mas browsers atuais o respeitam.
-    // Menu fora da tela deixa de receber Tab / leitor de tela.
+    // O sidebar monta APÓS a sessão: reavaliar o atributo no login.
     const el = sideRef.current;
     if (!el) return;
     if (compactMenu && !drawer) el.setAttribute("inert", "");
     else el.removeAttribute("inert");
-  }, [compactMenu, drawer]);
+  }, [compactMenu, drawer, session?.authenticated]);
 
   const closeDrawer = () => {
     setDrawer(false);
