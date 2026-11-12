@@ -99,8 +99,8 @@ test("a tela de login não expõe números demonstrativos", async ({ page }) => 
   }));
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Bem-vindo de volta." })).toBeVisible();
-  await expect(page.getByLabel("Usuário")).toBeVisible();
-  await expect(page.getByLabel("Senha")).toHaveAttribute("type", "password");
+  await expect(page.getByLabel("E-mail")).toBeVisible();
+  await expect(page.getByLabel("Senha",{exact:true})).toHaveAttribute("type", "password");
   await expect(page.getByText("Créditos emitidos")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Conhecer demonstração visual" })).toHaveAttribute("href", "/demo");
 });
@@ -119,7 +119,7 @@ test("login e logout respeitam sessão e CSRF de frontend", async ({ page }) => 
   await page.route("**/api/v1/auth/login/", async route => {
     expect(route.request().headers()["x-csrftoken"]).toBe("csrf-e2e");
     expect(route.request().postDataJSON()).toEqual({
-      username: "pilot", password: "example-only"
+      email: "pilot@example.invalid", password: "example-only"
     });
     authenticated = true;
     await route.fulfill({
@@ -137,11 +137,116 @@ test("login e logout respeitam sessão e CSRF de frontend", async ({ page }) => 
   });
 
   await page.goto("/");
-  await page.getByLabel("Usuário").fill("pilot");
-  await page.getByLabel("Senha").fill("example-only");
-  await page.getByRole("button", { name: "Acessar minha loja" }).click();
+  await page.getByLabel("E-mail").fill("pilot@example.invalid");
+  await page.getByLabel("Senha",{exact:true}).fill("example-only");
+  await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   await expect(page.getByText("Bibelô — ambiente piloto").first()).toBeVisible();
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect(page.getByRole("heading", { name: "Bem-vindo de volta." })).toBeVisible();
+});
+
+
+test("registro do lojista sem Nuvemshop exige confirmação e senha forte",async ({page})=>{
+  await page.context().addCookies([
+    {name:"csrftoken",value:"csrf-merchant-test",domain:"127.0.0.1",path:"/"}
+  ]);
+  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      authenticated:false,user:null,tenants:[]
+    })
+  }));
+  let submissions=0;
+  await page.route("**/api/v1/auth/register/",route=>{
+    submissions++;
+    expect(route.request().headers()["x-csrftoken"]).toBe("csrf-merchant-test");
+    const data=route.request().postDataJSON();
+    expect(data.email).toBe("lojista@example.invalid");
+    expect(data.store_name).toBe("Armarinho");
+    return route.fulfill({status:202,contentType:"application/json",
+      body:JSON.stringify({detail:"Verifique o e-mail."})});
+  });
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/");
+  await page.getByRole("button",{name:"Criar conta grátis"}).click();
+  await expect(page).toHaveURL(/\/cadastrar$/);
+  await expect(page.getByRole("heading",{name:"Crie sua conta."})).toBeVisible();
+  await page.getByLabel("Seu nome").fill("Lojista");
+  await page.getByLabel("Nome da loja").fill("Armarinho");
+  await page.getByLabel("E-mail").fill("lojista@example.invalid");
+  await page.getByLabel("Senha",{exact:true}).fill("SenhaTeste-2026-forte!");
+  await page.getByLabel("Confirmar senha").fill("SenhaDiferente-2026!");
+  await page.getByRole("button",{name:"Criar minha conta"}).click();
+  await expect(page.getByRole("alert")).toContainText("não conferem");
+  expect(submissions).toBe(0);
+  await page.getByLabel("Confirmar senha").fill("SenhaTeste-2026-forte!");
+  await page.getByRole("button",{name:"Criar minha conta"}).click();
+  await expect(page.getByRole("heading",{name:"Confira seu e-mail."})).toBeVisible();
+  expect(submissions).toBe(1);
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("recuperação envia instrução genérica sem revelar se e-mail existe",async ({page})=>{
+  await page.context().addCookies([
+    {name:"csrftoken",value:"csrf-reset",domain:"127.0.0.1",path:"/"}
+  ]);
+  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({authenticated:false,user:null,tenants:[]})
+  }));
+  await page.route("**/api/v1/auth/password-reset/request/",route=>{
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().postDataJSON()).toEqual({email:"nobody@example.invalid"});
+    return route.fulfill({status:202,contentType:"application/json",
+      body:JSON.stringify({detail:"Se existir, enviaremos instruções."})});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:"Esqueci minha senha"}).click();
+  await page.getByLabel("E-mail").fill("nobody@example.invalid");
+  await page.getByRole("button",{name:"Enviar link de recuperação"}).click();
+  await expect(page.getByRole("heading",{name:"Confira seu e-mail."})).toBeVisible();
+  await expect(page.locator(".portal-login-card")).not.toContainText("não existe");
+});
+
+test("confirmação de e-mail apaga token da URL e entra na loja",async ({page})=>{
+  await page.context().addCookies([
+    {name:"csrftoken",value:"csrf-confirm",domain:"127.0.0.1",path:"/"}
+  ]);
+  let confirmed=false;
+  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify(confirmed?{
+      authenticated:true,user:{username:"internal",display_name:"Lojista"},
+      tenants:[{...store,name:"Loja criada pelo lojista"}]
+    }:{authenticated:false,user:null,tenants:[]})
+  }));
+  await page.route("**/api/v1/auth/register/confirm/",route=>{
+    expect(route.request().postDataJSON()).toEqual({token:"synthetic-token-only"});
+    confirmed=true;
+    return route.fulfill({contentType:"application/json",
+      body:JSON.stringify({authenticated:true,detail:"Conta confirmada."})});
+  });
+  await page.goto("/confirmar-conta#token=synthetic-token-only");
+  await expect(page).toHaveURL(/\/confirmar-conta$/);
+  await page.getByRole("button",{name:"Confirmar e acessar"}).click();
+  await expect(page.getByText("Loja criada pelo lojista").first()).toBeVisible();
+});
+
+test("rota de redefinição não vaza token na URL nem ao confirmar",async ({page})=>{
+  await page.context().addCookies([{name:"csrftoken",value:"csrf-new",domain:"127.0.0.1",path:"/"}]);
+  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({authenticated:false,user:null,tenants:[]})
+  }));
+  await page.route("**/api/v1/auth/password-reset/confirm/",route=>{
+    expect(route.request().postDataJSON()).toEqual({
+      token:"reset-synthetic",password:"NovaSenhaSegura-2026!"
+    });
+    return route.fulfill({contentType:"application/json",body:JSON.stringify({detail:"Senha atualizada."})});
+  });
+  await page.goto("/redefinir-senha#token=reset-synthetic");
+  await expect(page).toHaveURL(/\/redefinir-senha$/);
+  await page.getByLabel("Nova senha").fill("NovaSenhaSegura-2026!");
+  await page.getByLabel("Confirmar senha").fill("NovaSenhaSegura-2026!");
+  await page.getByRole("button",{name:"Salvar nova senha"}).click();
+  await expect(page.getByText("Senha redefinida.")).toBeVisible();
+  await expect(page).toHaveURL("/");
 });

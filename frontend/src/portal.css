@@ -667,3 +667,49 @@
 @media(max-width:780px){.xp-action-banner,.xp-hero{padding:28px 23px}.xp-action-decoration,.xp-hero-graphic{display:none}.xp-goal-grid{grid-template-columns:1fr}.xp-goal-card{min-height:135px}.xp-action-cards{grid-template-columns:1fr}.xp-form-grid{grid-template-columns:1fr}.xp-preview-grid{grid-template-columns:1fr}.xp-advanced-section{align-items:flex-start;flex-direction:column}.xp-panel-title{align-items:flex-start;flex-direction:column}.xp-ai-note{align-items:flex-start;flex-wrap:wrap}.xp-ai-stage{margin-left:57px}}
 @media(max-width:520px){.xp-action-banner h2,.xp-hero h2{font-size:28px}.xp-action-section,.xp-panel,.xp-wizard-panel{padding:19px}.xp-stats{gap:10px}.xp-stat{padding:14px}.xp-stat>span{font-size:10px}.xp-stat strong{font-size:25px}.xp-stat .xp-pending-value{font-size:13px}.xp-wizard-step{padding:11px;gap:6px}.xp-wizard-step strong{font-size:10px}.xp-wizard-step>span{width:26px;height:26px}.xp-toolbar{flex-direction:column;align-items:stretch}.xp-search{max-width:none}.xp-filter{justify-content:space-between}.xp-table{min-width:0;display:block}.xp-table thead{display:none}.xp-table tbody{display:grid;gap:11px}.xp-table tr{display:grid;gap:10px;padding:14px;border:1px solid #E0EAF3;border-radius:11px}.xp-table td{padding:0;border:0}.xp-table td:not(:first-child){padding-left:46px}.xp-wizard-actions{justify-content:stretch;flex-wrap:wrap}.xp-wizard-actions button{flex:1}.xp-ai-stage{margin-left:0}.xp-selection-summary{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.xp-goal-card,.xp-action-link{transition:none}}
+
+/* Acesso do lojista: estados de autenticação, cadastro e recuperação. */
+.merchant-aside{background:linear-gradient(145deg,#081B29 10%,#123B45 75%,#0C5B57 100%)}
+.merchant-aside .portal-auth-text h1 em{color:#66E7C7}
+.merchant-aside .portal-auth-features svg{color:#6DE5C4}
+.merchant-brand{display:flex;align-items:center;gap:10px;z-index:1}
+.merchant-logo{width:41px;height:41px;border-radius:12px;background:#099681;
+  display:grid;place-items:center;color:#fff;font-size:26px;font-weight:850}
+.merchant-wordmark{color:#fff;font-size:23px;font-weight:800;letter-spacing:-.05em}
+.merchant-wordmark span{color:#65E7C7;margin-left:3px}
+.merchant-login-card{padding:13px 0}
+.merchant-login-card .portal-login-icon{background:#E6F8F2;color:#087F79}
+.merchant-login-card .portal-primary{background:#087F79}
+.merchant-login-card .portal-primary:hover{background:#066E69}
+.merchant-login-card input:focus{border-color:#087F79;outline:3px solid #087F7920}
+.merchant-password{position:relative}
+.merchant-password input{padding-right:55px}
+.merchant-password button{position:absolute;right:8px;top:7px;width:42px;height:38px;
+  border:0;background:transparent;color:#687B91;display:grid;place-items:center;border-radius:8px}
+.merchant-password button:hover{background:#EFF8F5}
+.merchant-password button:focus-visible,.merchant-access-nav button:focus-visible,
+.merchant-forgot:focus-visible,.merchant-text-btn:focus-visible{outline:3px solid #087F79;outline-offset:3px}
+.merchant-forgot,.merchant-text-btn{border:0;background:none;color:#087F79;
+  cursor:pointer;font-size:12px;font-weight:700;text-decoration:underline;
+  text-underline-offset:3px}
+.merchant-forgot{justify-self:end;margin:-10px 0 17px;padding:6px 0}
+.merchant-access-nav{display:flex;align-items:center;justify-content:center;
+  gap:7px;margin-top:18px;font-size:12px;color:#61738B}
+.merchant-access-nav button{border:0;background:none;color:#087F79;font-size:12px;
+  font-weight:800;cursor:pointer;padding:8px}
+.merchant-hint{font-size:11px;color:#687B91;margin:-11px 0 16px}
+.merchant-info{display:grid;gap:9px;padding:20px;border:1px solid #D5EFE6;
+  border-radius:14px;background:#F3FCF9;color:#1D544D}
+.merchant-info p{font-size:12px;line-height:1.6;color:#4A6F69}
+.merchant-info svg{color:#087F79}
+.merchant-info .merchant-text-btn{text-align:left;padding:6px 0}
+.merchant-success{padding:12px 14px;border:1px solid #BFE5D4;border-radius:10px;
+  background:#EFFAF4;color:#226345;font-size:12px;margin-bottom:13px}
+@media(max-width:760px){
+  .merchant-access{grid-template-columns:1fr}
+  .merchant-aside{min-height:unset;padding:20px 24px}
+  .merchant-aside .portal-auth-text{display:none}
+  .merchant-aside .portal-auth-foot{display:none}
+  .merchant-access .portal-login-panel{padding:30px 22px;min-height:calc(100vh - 85px)}
+  .merchant-access .portal-login-card{width:min(100%,430px)}
+}

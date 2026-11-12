@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight, ChevronDown, Check,
-  Gift, KeyRound, LayoutDashboard, LoaderCircle, LockKeyhole,
+  Gift, LayoutDashboard, LoaderCircle, LockKeyhole,
   LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, Target, UsersRound, X, BarChart3, HeartHandshake, Settings2
 } from "lucide-react";
 import MarginSimulator from "./MarginSimulator";
+import MerchantAccess from "./MerchantAccess";
 import CampaignGuide from "./CampaignGuide";
 import ParticipantsBoard from "./ParticipantsBoard";
 import StoreSettings from "./StoreSettings";
@@ -41,9 +42,7 @@ export default function Portal() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [sessionError, setSessionError] = useState("");
   const [refresh, setRefresh] = useState(0);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [authError, setAuthError] = useState("");
+   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [page, setPage] = useState<Screen>(() =>
     new URLSearchParams(window.location.search).has("nuvemshop") ? "settings" : "overview"
@@ -123,13 +122,11 @@ export default function Portal() {
     return () => { current = false; };
   }, [refresh]);
 
-  const doLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const doLogin = async (email:string,password:string) => {
     setAuthBusy(true); setAuthError("");
     try {
-      await merchantApi.login(username, password);
+      await merchantApi.login(email, password);
       const value = await merchantApi.getSession();
-      setPassword("");
       setSession(value);
       setPage("overview");
       setSelectedId("");
@@ -138,6 +135,11 @@ export default function Portal() {
     } finally {
       setAuthBusy(false);
     }
+  };
+  const afterEmailConfirmation = async () => {
+    const value=await merchantApi.getSession();
+    if(!value.authenticated)throw new Error("A conta não foi autenticada.");
+    setSession(value);setAuthError("");setPage("overview");setSelectedId("");
   };
 
   const doLogout = async () => {
@@ -174,46 +176,8 @@ export default function Portal() {
   }
 
   if (!session.authenticated) {
-    return <div className="portal-auth-layout">
-      <section className="portal-auth-brand">
-        <div className="portal-auth-logo"><Symbol/><Wordmark/></div>
-        <div className="portal-auth-text">
-          <span className="portal-eyebrow">FIDELIDADE INTELIGENTE</span>
-          <h1>Mais conexão.<br/><em>Mais motivos para voltar.</em></h1>
-          <p>Uma experiência simples para fortalecer a recompra, acompanhar benefícios e tomar decisões responsáveis.</p>
-          <div className="portal-auth-features">
-            <span><Check size={18}/> Benefícios planejados com limites claros</span>
-            <span><Check size={18}/> Campanhas guiadas e transparentes</span>
-            <span><Check size={18}/> Relacionamento com clientes como prioridade</span>
-          </div>
-        </div>
-        <span className="portal-auth-foot">VIDALYS • AMBIENTE DE HOMOLOGAÇÃO</span>
-      </section>
-      <section className="portal-login-panel">
-        <div className="portal-login-card">
-          <div className="portal-login-icon"><KeyRound size={24}/></div>
-          <div className="portal-eyebrow">ACESSO À PLATAFORMA</div>
-          <h2>Bem-vindo de volta.</h2>
-          <p>Entre com sua conta de lojista para acessar suas ferramentas.</p>
-          <form onSubmit={doLogin}>
-            <label htmlFor="portal-username">Usuário</label>
-            <input id="portal-username" value={username} autoComplete="username" required
-              onChange={e=>setUsername(e.target.value)} placeholder="Seu usuário"/>
-            <label htmlFor="portal-password">Senha</label>
-            <input id="portal-password" type="password" value={password} autoComplete="current-password" required
-              onChange={e=>setPassword(e.target.value)} placeholder="Sua senha"/>
-            {authError && <div className="portal-auth-error" role="alert">{authError}</div>}
-            <button className="portal-primary" disabled={authBusy} type="submit">
-              {authBusy ? "Entrando…" : "Acessar minha loja"} <ArrowRight size={18}/>
-            </button>
-          </form>
-          <div className="portal-login-help"><LockKeyhole size={16}/>
-            Contas são criadas pelo administrador nesta fase. Nenhum acesso público está liberado.
-          </div>
-          <a href="/demo" className="portal-demo-link">Conhecer demonstração visual <ArrowRight size={15}/></a>
-        </div>
-      </section>
-    </div>;
+    return <MerchantAccess onLogin={doLogin} onVerified={afterEmailConfirmation}
+      busy={authBusy} authError={authError}/>;
   }
 
   return <div className="portal-shell">

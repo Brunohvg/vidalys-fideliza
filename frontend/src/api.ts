@@ -516,8 +516,18 @@ export const merchantApi = {
       "/api/v1/tenants/" + encodeURIComponent(tenantId) +
       "/cost-items/" + encodeURIComponent(itemId) + "/history/"
     ),
-  login: (username: string, password: string) =>
-    postJson<{ authenticated: true; tenants: Store[] }>("/api/v1/auth/login/", { username, password }),
+  login: (email: string, password: string) =>
+    postJson<{ authenticated: true; tenants: Store[] }>("/api/v1/auth/login/", { email, password }),
+  registerMerchant: (data:{name:string;store_name:string;email:string;password:string}) =>
+    postJson<{detail:string}>("/api/v1/auth/register/",data),
+  resendMerchantEmail: (email:string) =>
+    postJson<{detail:string}>("/api/v1/auth/register/resend/",{email}),
+  confirmMerchant: (token:string) =>
+    postJson<{authenticated:true;detail:string}>("/api/v1/auth/register/confirm/",{token}),
+  requestMerchantReset: (email:string) =>
+    postJson<{detail:string}>("/api/v1/auth/password-reset/request/",{email}),
+  confirmMerchantReset: (token:string,password:string) =>
+    postJson<{detail:string}>("/api/v1/auth/password-reset/confirm/",{token,password}),
   logout: () => postJson<{ authenticated: false }>("/api/v1/auth/logout/", {}),
   listCampaignDrafts: (tenantId: string) =>
     getJson<CampaignDraftList>("/api/v1/tenants/" + encodeURIComponent(tenantId) + "/campaign-drafts/"),
