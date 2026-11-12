@@ -43,37 +43,11 @@ jobs:
 
   docker_smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      POSTGRES_PASSWORD: ci-not-real-password-choose-another-in-production
-      DJANGO_SECRET_KEY: ci-only-key-not-for-real-deployment-123456789
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,frontend
-      DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:8080
-      DJANGO_DEBUG: "0"
-      FRONTEND_PORT: "8080"
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose config --quiet
-      - run: docker compose up --build -d
-      - name: Check health and readiness through nginx
-        shell: bash
-        run: |
-          for attempt in $(seq 1 25); do
-            if curl --fail --silent http://127.0.0.1:8080/api/ready/ | grep -q '"ready"'; then
-              curl --fail --silent http://127.0.0.1:8080/api/health/
-              curl --fail --silent http://127.0.0.1:8080/ > /dev/null
-              echo "Compose smoke test passed."
-              exit 0
-            fi
-            sleep 3
-          done
-          docker compose ps
-          docker compose logs --no-color --tail=70
-          exit 1
-      - name: Shutdown test stack
-        if: always()
-        run: docker compose down -v --remove-orphans
-
+      - name: Compose único, banco externo e healthchecks
+        run: python .github/scripts/ci_single_compose.py --mode basic
 
   visual_qa:
     # Playwright 1.56 é suportado em Ubuntu 24.04; ubuntu-latest pode usar 26.04.
@@ -103,97 +77,18 @@ jobs:
 
   coolify_compose_smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      FIDELIZA_STAGING_HOST: staging.invalid
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Generate ephemeral test credentials
-        run: |
-          python - <<'PY'
-          import os, secrets
-          with open(os.environ["GITHUB_ENV"], "a") as output:
-              for key in ("FIDELIZA_DB_PASSWORD", "FIDELIZA_DJANGO_SECRET_KEY"):
-                  output.write(f"{key}={secrets.token_hex(32)}\n")
-          PY
-      - run: docker compose -f compose.coolify.yaml config --quiet
-      - run: docker compose -f compose.coolify.yaml up --build -d --wait --wait-timeout 180
-      - name: Check private proxy readiness and secure session settings
-        run: |
-          docker compose -f compose.coolify.yaml exec -T frontend wget -q -O /dev/null --header='Host: staging.invalid' --header='X-Forwarded-Proto: https' http://127.0.0.1:8080/api/ready/
-          docker compose -f compose.coolify.yaml exec -T api python - <<'PY'
-          import http.client
-          connection = http.client.HTTPConnection("127.0.0.1", 8000, timeout=5)
-          connection.request("GET", "/api/v1/auth/session/", headers={"Host": "staging.invalid"})
-          response = connection.getresponse()
-          assert response.status == 301, response.status
-          assert response.getheader("Location").startswith("https://staging.invalid/")
-          response.read()
-          connection.request("GET", "/api/v1/auth/session/", headers={"Host": "staging.invalid", "X-Forwarded-Proto": "https"})
-          response = connection.getresponse()
-          assert response.status == 200, response.status
-          assert "Secure" in response.getheader("Set-Cookie", "")
-          response.read()
-          connection.close()
-          PY
-          docker compose -f compose.coolify.yaml exec -T worker celery -A config inspect ping --timeout 5
-      - name: Shutdown isolated test stack
-        if: always()
-        run: docker compose -f compose.coolify.yaml down -v --remove-orphans
+      - name: HTTPS, sessão, CSRF e worker no Compose único
+        run: python .github/scripts/ci_single_compose.py --mode proxy
 
   external_database_smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,frontend,staging.invalid
-      DJANGO_CSRF_TRUSTED_ORIGINS: https://staging.invalid
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Check credential isolation with Coolify shared env_file injection
+      - name: Isolamento de env_file Coolify com dados sintéticos
         run: python .github/scripts/check_coolify_env_isolation.py
-      - name: Generate ephemeral isolated credentials
-        run: |
-          python - <<'PY'
-          import os, secrets
-          with open(os.environ["GITHUB_ENV"], "a") as output:
-              password = secrets.token_hex(32)
-              output.write(f"POSTGRES_PASSWORD={password}\n")
-              output.write(f"DJANGO_SECRET_KEY={secrets.token_hex(32)}\n")
-              output.write(f"DATABASE_URL=postgresql://fideliza:{password}@fideliza-db:5432/fideliza\n")
-          PY
-      - name: Start an independent private PostgreSQL
-        run: |
-          docker network create fideliza-external-db-ci
-          docker run -d --name fideliza-db --network fideliza-external-db-ci --network-alias fideliza-db --env POSTGRES_USER=fideliza --env POSTGRES_DB=fideliza --env POSTGRES_PASSWORD --health-cmd='pg_isready -U fideliza -d fideliza' --health-interval=5s --health-timeout=3s --health-retries=20 postgres:16-alpine
-          for attempt in $(seq 1 30); do
-            if [ "$(docker inspect --format '{{.State.Health.Status}}' fideliza-db)" = healthy ]; then exit 0; fi
-            sleep 2
-          done
-          exit 1
-      - run: docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml config --quiet
-      - run: docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml up --build -d --wait --wait-timeout 180
-      - name: Verify external database runtime variable contract without printing secrets
-        run: |
-          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T api python scripts/audit_runtime_env.py --host staging.invalid
-      - name: Verify readiness with external database and CSRF
-        run: |
-          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T frontend wget -q -O /dev/null --header='Host: staging.invalid' --header='X-Forwarded-Proto: https' http://127.0.0.1:8080/api/ready/
-          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T api python - <<'PY'
-          import http.client
-          connection = http.client.HTTPConnection("frontend", 8080, timeout=5)
-          connection.request("POST", "/api/v1/auth/login/", body='{}', headers={"Host": "staging.invalid", "X-Forwarded-Proto": "https", "Content-Type": "application/json"})
-          response = connection.getresponse()
-          assert response.status == 403, response.status
-          response.read()
-          connection.close()
-          PY
-          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T worker celery -A config inspect ping --timeout 5
-      - name: Full private auth, CSRF and tenant integration smoke
-        run: |
-          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml exec -T -e FIDELIZA_CI_ISOLATED=1 api python - < .github/scripts/smoke_real_auth.py
-      - name: Remove ephemeral resources only
-        if: always()
-        run: |
-          docker compose -f compose.coolify.external-db.yaml -f .github/compose.external-db-test.yaml down -v --remove-orphans
-          docker rm -fv fideliza-db
-          docker network rm fideliza-external-db-ci
+      - name: PostgreSQL independente, auditoria de env e autenticação
+        run: python .github/scripts/ci_single_compose.py --mode full

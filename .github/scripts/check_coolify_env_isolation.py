@@ -77,7 +77,7 @@ def main():
         result = subprocess.run([
             *args.compose_command, "--project-directory", str(ROOT),
             "--env-file", str(env_file),
-            "-f", str(ROOT / "compose.coolify.external-db.yaml"),
+            "-f", str(ROOT / "compose.yaml"),
             "-f", str(override), "config", "--format", "json",
         ], env={**os.environ, **synthetic}, capture_output=True, text=True)
         if result.returncode:
