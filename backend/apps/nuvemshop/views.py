@@ -55,56 +55,52 @@ class NuvemshopStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, tenant_id):
-        member_for(request.user, tenant_id)
-        installed = NuvemshopInstallation.objects.filter(tenant_id=tenant_id).first()
+        member=member_for(request.user, tenant_id)
+        tenant=member.tenant
+        installed=NuvemshopInstallation.objects.filter(tenant=tenant).first()
         try:
-            cfg = config()
-            configured = True
+            cfg=config()
+            configured=True
         except OAuthConfigurationError:
-            cfg, configured = None, False
-        customer_preview_enabled = settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
-        # Distinguir "scope recebido" de "recurso habilitado" no backend.
-        customer_granted = bool(installed and has_customer_access(
-            installed.scope, customer_preview_enabled=True
+            cfg,configured=None,False
+        # Um único cálculo para todos os indicadores do painel.
+        connected=bool(
+            configured and installed
+            and installed.client_id==cfg.client_id
+            and installed.store_id==tenant.external_store_id
+        )
+        scope_granted=bool(installed and has_customer_access(
+            installed.scope,customer_preview_enabled=True,
         ))
-        response = Response({
-            "customer_matching": {
-                "preview_enabled": customer_preview_enabled,
-                "customer_scope_granted": customer_granted,
-                "read_only_preview_available": bool(
-                    configured and customer_preview_enabled and customer_granted and installed
-                    and installed.client_id == cfg.client_id
-                    and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
+        ready_for_customer_match=bool(
+            connected and scope_granted
+            and tenant.status==Tenant.Status.ACTIVE
+            and settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
+        )
+        response=Response({
+            "customer_matching":{
+                "preview_enabled":settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED,
+                "customer_scope_granted":scope_granted,
+                "read_only_preview_available":ready_for_customer_match,
+                "requires_partner_portal_scope_and_reinstallation":not scope_granted,
+                "will_activate_participants":False,
+                "participant_approval_available":bool(
+                    ready_for_customer_match and settings.FIDELIZA_PARTICIPANT_APPROVAL_ENABLED
                 ),
-                "requires_partner_portal_scope_and_reinstallation": not customer_granted,
-                "will_activate_participants": False,
-                "participant_approval_available": bool(
-                    configured and customer_granted and installed
-                    and settings.FIDELIZA_PARTICIPANT_APPROVAL_ENABLED
-                    and settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
-                    and installed.client_id == cfg.client_id
-                    and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
+                "automatic_linking_available":bool(
+                    ready_for_customer_match and settings.FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED
+                    and settings.FIDELIZA_EMAIL_DELIVERY_ENABLED
                 ),
-                "automatic_linking_available": bool(
-                    configured and customer_granted and installed
-                    and settings.FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED
-                    and settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED
-                    and installed.client_id == cfg.client_id
-                    and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id
-                    and member_for(request.user, tenant_id).tenant.status == Tenant.Status.ACTIVE
-                ),
-                "will_credit_cashback": False,
+                "will_credit_cashback":False,
             },
-            "configured": configured,
-            "connected": installed is not None and cfg is not None
-                         and installed.client_id == cfg.client_id
-                         and installed.store_id == member_for(request.user, tenant_id).tenant.external_store_id,
-            "store_id": installed.store_id if installed else None,
-            "scope": installed.scope if installed else None,
-            "mode": "read_products_only",
-            "ready_for_write": False,
+            "configured":configured,
+            "connected":connected,
+            "store_id":installed.store_id if installed else None,
+            "scope":installed.scope if installed else None,
+            "mode":"read_products_only",
+            "ready_for_write":False,
         })
-        response["Cache-Control"] = "no-store"
+        response["Cache-Control"]="no-store"
         return response
 
 
