@@ -79,7 +79,7 @@ class EmailProofTests(TestCase):
         self.assertEqual(len(message.alternatives), 1)
         html=message.alternatives[0][0]
         self.assertIn("vidalys-fideliza-logo.png", html)
-        self.assertIn("Nuvemshop", html)
+        self.assertNotIn("Nuvemshop", html)  # Canal opcional, não exigir integração
         self.assertNotIn("<script", html)
 
     @override_settings(
