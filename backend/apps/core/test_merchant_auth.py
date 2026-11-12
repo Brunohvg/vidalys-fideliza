@@ -183,6 +183,8 @@ class MerchantAuthFlowTests(TestCase):
             "email":"nomesobrenome+promo@googlemail.com",
             "password":GOOD["password"],
         }).status_code,200)
+        # Login Django roda rotate_token(): sempre ler CSRF atualizado.
+        self.csrf=self.client.cookies["csrftoken"].value
         with self.captureOnCommitCallbacks(execute=True):
             self.assertEqual(self.post("merchant-reset-request", {
                 "email":"nomesobrenome+recuperacao@gmail.com"
