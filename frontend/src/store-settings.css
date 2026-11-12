@@ -125,3 +125,49 @@
   .ss-privacy-actions{width:100%}
   .ss-privacy-actions .ss-secondary{flex:1;justify-content:center}
 }
+
+
+/* Revisão mobile e acessibilidade: preservar a marca sem perder leitura. */
+.ss-root,.ss-card,.ss-intro,.ss-brand-layout,.ss-privacy-list li {
+  min-width:0;
+}
+.ss-card-heading>div:nth-child(2){min-width:0;}
+.ss-card-heading h3,.ss-intro h2,.ss-service-label strong,
+.ss-privacy-entry span,.ss-privacy-entry small {
+  overflow-wrap:anywhere;
+}
+.ss-service-label {min-width:0;flex:1;}
+.ss-service-label>div:last-child {min-width:0;}
+.ss-preview-stage>span {font-size:11px;opacity:1;letter-spacing:.1em;}
+.ss-preview-stage p {opacity:1;}
+.ss-color-control input[type="color"] {
+  width:44px;
+  height:44px;
+  cursor:pointer;
+}
+.ss-privacy-list li {
+  align-items:flex-start;
+  border-top-color:#e5eeed;
+}
+.ss-privacy-actions .ss-secondary {
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.4;
+  min-width:0;
+}
+.ss-privacy-summary span,.ss-form label small,.ss-muted {
+  font-size:12px;
+}
+@media(max-width:620px){
+  .ss-preview-stage {padding:22px 18px;}
+  .ss-privacy-actions .ss-secondary {flex:1 1 170px;}
+  .ss-privacy-summary {gap:8px;}
+}
+@media(max-width:360px){
+  .ss-color-grid {grid-template-columns:1fr;}
+  .ss-privacy-summary {grid-template-columns:1fr;}
+  .ss-privacy-summary>div:first-child {grid-column:auto;}
+  .ss-privacy-summary>div {padding:12px;}
+  .ss-privacy-summary strong {font-size:22px;}
+  .ss-privacy-actions .ss-secondary {flex:1 1 100%;}
+}
