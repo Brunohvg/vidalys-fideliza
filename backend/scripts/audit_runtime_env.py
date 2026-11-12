@@ -83,6 +83,16 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED", "FALHA",
                        "Valor inválido"))
+    webhooks = env.get("FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", "0").strip().lower()
+    if webhooks in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", "ALERTA",
+                       "Inbox assinada habilitada; confirmar app, read_orders e webhooks registrados"))
+    elif webhooks in ("0", "false", "", "off", "no"):
+        result.append(("FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", "OK",
+                       "Recepção de pedidos desligada no piloto"))
+    else:
+        result.append(("FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", "FALHA",
+                       "Valor inválido"))
     approval = env.get("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "0").lower().strip()
     if approval in ("1", "true", "yes", "on"):
         result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "ALERTA",

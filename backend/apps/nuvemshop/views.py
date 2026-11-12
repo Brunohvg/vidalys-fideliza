@@ -101,6 +101,8 @@ class NuvemshopStatusView(APIView):
                     has_order_access(installed.scope, preview_enabled=True)
                 ),
                 "live_cashback_enabled":False,
+                "signed_event_inbox_enabled":settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED,
+                "event_receipt_does_not_verify_payment":True,
             },
             "configured":configured,
             "connected":connected,
