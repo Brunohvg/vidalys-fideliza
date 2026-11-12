@@ -32,13 +32,15 @@ Conferir documentos 44 e 45 antes do Gate G1.
 | G1 | Infraestrutura Coolify e DB externo seguro | Compose/CI isolado | SHA em execução, backup e restore testados |
 | G2 | OAuth da Nuvemshop, escopos read_products, read_customers, read_orders | Implementado | Reautorização em loja piloto e GET externo comprovado |
 | G3 | Regulamento, adesão, email verificado e vínculo automático | Implementado sob flags desligadas | Teste SMTP, consentimento, cliente exato e revogação |
-| G4 | Inbox HMAC e deduplicação de order/paid e order/updated | Implementado sob flag desligada | Eventos reais de piloto, duplicação e retenção |
+| G4 | Inbox HMAC e deduplicação de order/paid e order/updated | Implementado sob flag desligada; timestamp opcional (migração 0006) | Eventos reais de piloto, duplicação e retenção |
 | G5 | Inspeção de evento contra pedido atual, sem PII | Implementado sob flags de leitura | Testar na loja piloto, cancelamento, reembolso e manual |
 | G6 | Simulador do motor de benefícios com CampanhaDraft existente | Implementado, não financeiro | Revisão de UX, regra e orçamento em homologação |
-| G7 | Pedido financeiramente reconciliado, elegibilidade e estornos | Não implementado | PSP ou ERP autorizado + contrato de conciliação |
+| G7 | Pedido financeiramente reconciliado, elegibilidade e estornos | **Parcial:** prévia compara total e valor pago reportado, sem provar captura | PSP ou ERP autorizado + contrato de conciliação e reversões |
 | G8 | Versões de regra, orçamento atômico, ledger de concessão e resgate | Ledger interno sob bloqueio; motor real não implementado | Revisão LGPD/fiscal, antifraude, teste e autorização |
 | G9 | Níveis VIP e missões, pontos e vouchers, indicação e brindes | Planejado | Implementação e testes com benefícios comprovados |
 | G10 | IA com fallback, indicadores de retenção, canais Flow/PDV | Planejado | Integrações homologadas, sem presumir aumento de vendas |
+
+A comparação parcial de valores no G7 apenas detecta divergência na Nuvemshop. NÃO dá crédito, não verifica PSP e não elimina os demais bloqueios.
 
 O gate G6 é uma **simulação independente do financeiro**, por isso pode
 ser construído enquanto G1–G5 aguardam acesso real. Isso não autoriza
@@ -46,7 +48,7 @@ pular G7 ou G8 para produzir benefício real.
 
 ## Entregas técnicas na sequência deste ciclo
 
-- 40 — Webhooks assinados com inbox persistente, deduplicação e zero crédito.
+- 40 — Webhooks assinados com inbox persistente, timestamp opcional, deduplicação e zero crédito.
 - 41 — Reconsulta manual GET por UUID do evento recebido, reutiliza
   prévia de pedido, sem escrever no ledger.
 - 42 — Motor puro de simulação conectado ao rascunho já existente:
@@ -54,6 +56,7 @@ pular G7 ou G8 para produzir benefício real.
   estimativa de cashback em centavos; zero recompensa real.
 - Interface do lojista: teste de elegibilidade hipotética a partir da
   campanha salva, sem repetir cadastros e sem confundir com venda real.
+- 46 — Leitura do campo de valor pago reportado pela Nuvemshop; divergência em revisão, nenhuma conciliação PSP concluída.
 - Pré-voo: inclui estado da inbox, quantidade de eventos, inspeção
   habilitada, existência do simulador e gamificação ainda inativa.
 
@@ -90,3 +93,31 @@ Esse comando é somente leitura e usa o slug da loja de teste. Nunca
 executar diretamente na produção para inferir recursos ainda não validados.
 
 Referências: docs 35, 38, 39, 40, 41, 42 e página Notion 24.
+
+
+## Progresso estimado para pilotos — 12/11/2026
+
+**Estimativas operacionais, não progresso medido por tarefas concluídas:**
+- Testes internos com clientes sintéticos: **~75%** de prontidão. Código
+  implementado, CI e testes com DB descartável; não substituem deploy real.
+- Piloto controlado de fidelização com **clientes reais**: **~45%**
+  de prontidão. Demanda G1–G8 com evidência de pagamento, crédito,
+  resgate e estorno; não iniciar promessa de recompensa antes disso.
+- Produto completo com gamificação, multicanal e IA: **~35%**.
+  G9/G10 permanecem conceituais ou documentados, não ativos.
+
+As porcentagens representam julgamento técnico ponderado por risco,
+não conclusão linear de G0 a G10 nem venda ou adoção comprovada.
+
+**A ordem de teste em produção não muda:** (a) confirmar SHA publicado,
+Compose e banco privado; (b) backup e restauração; (c) OAuth de loja
+piloto e escopos; (d) SMTP e aceite LGPD; (e) webhooks assinados;
+(f) leitura de pedidos/reembolsos; (g) PSP/ERP e identificação
+verificados; (h) limite de orçamento, ledger, reversões e resgate;
+(i) auditoria antes de envolver grupo voluntário real. Um piloto
+somente de adesão, sem benefício financeiro, pode ser analisado
+separadamente após G1–G3 e avaliação de privacidade, com comunicação
+explícita de que cashback ainda não está disponível.
+
+Reforço: sem acesso autenticado ao Coolify, os itens G1–G5 continuam
+**pendentes de validação real**; CI verde não comprova implantação.
