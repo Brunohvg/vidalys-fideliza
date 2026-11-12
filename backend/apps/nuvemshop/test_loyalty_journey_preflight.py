@@ -41,6 +41,8 @@ class JourneyPreflightTests(TestCase):
         )
         result=inspect("journey-lab")
         self.assertTrue(result["nuvemshop_connected"])
+        self.assertTrue(result["products_read_permission_recorded"])
+        self.assertTrue(result["customers_read_permission_recorded"])
         self.assertTrue(result["public_signup_enabled"])
         self.assertTrue(result["email_delivery_flag_enabled"])
         self.assertTrue(result["customer_approval_enabled"])
