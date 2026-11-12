@@ -40,6 +40,7 @@ class PrivacyRequestsView(APIView):
                              else "deletion"),
                     "received_at": row.received_at.isoformat(),
                     "status": "em_analise",
+                    "protection_applied": bool(row.sanitized_at),
                     "report_available": row.topic ==
                         PrivacyWebhookRequest.Topic.CUSTOMER_DATA_REQUEST,
                     "downloaded": bool(row.report_accessed_at),
@@ -49,7 +50,11 @@ class PrivacyRequestsView(APIView):
                         and bool(row.report_digest)
                         and row.report_accessed_by_id == request.user.pk
                     ),
-                } for row in events.only("id","topic","received_at")[:10]],
+                } for row in events.only(
+                    "id","topic","received_at","sanitized_at",
+                    "report_accessed_at","report_digest","customer_email_digest",
+                    "report_accessed_by",
+                )[:10]],
                 "note": "Pedidos recebidos são acompanhados pela Vidalys. "
                         "O registro não significa que a solicitação já foi concluída.",
             })
