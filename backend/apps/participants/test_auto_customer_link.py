@@ -179,8 +179,10 @@ class AutoCustomerLinkTests(TestCase):
                     self.tenant.save(update_fields=["status"])
                 with patch("apps.participants.customer_link_auto.read_customer_candidates") as read:
                     result=self.action()
-                self.assertEqual(result.status_code,200,result.data)
-                self.assertFalse(result.data["participant_created"])
+                expected=410 if case.get("status") else 200
+                self.assertEqual(result.status_code,expected,result.data)
+                if expected==200:
+                    self.assertFalse(result.data["participant_created"])
                 read.assert_not_called()
                 self.assertFalse(ProgramParticipant.objects.exists())
                 self.install.scope=original_scope
@@ -188,11 +190,15 @@ class AutoCustomerLinkTests(TestCase):
                 self.install.save(update_fields=["scope","store_id"])
                 self.tenant.status=original_status
                 self.tenant.save(update_fields=["status"])
-                self.submission.status=EnrollmentSubmission.Status.PENDING_VERIFICATION
-                self.submission.email_verified_at=None
-                self.submission.save(update_fields=["status","email_verified_at"])
-                self.challenge.consumed_at=None
-                self.challenge.save(update_fields=["consumed_at"])
+                EnrollmentSubmission.objects.filter(pk=self.submission.pk).update(
+                    status=EnrollmentSubmission.Status.PENDING_VERIFICATION,
+                    email_verified_at=None,
+                )
+                EnrollmentEmailChallenge.objects.filter(pk=self.challenge.pk).update(
+                    consumed_at=None,
+                )
+                self.submission.refresh_from_db()
+                self.challenge.refresh_from_db()
 
     def test_privacy_redact_blocks_automatic_link(self):
         PrivacyWebhookRequest.objects.create(
