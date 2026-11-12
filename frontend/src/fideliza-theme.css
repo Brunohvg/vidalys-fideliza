@@ -522,3 +522,105 @@ button,select,textarea,input {font-family:inherit}
   .xp-action-banner,.xp-hero,.campaign-hero,.cost-hero {padding:21px 16px;}
   .xp-action-banner h2,.xp-hero h2 {font-size:25px;}
 }
+
+
+/* Jornada de implantação: status real sem confundir prévia com cashback ativo. */
+.xp-journey {
+  min-width:0;
+  display:grid;
+  gap:18px;
+  background:var(--vf-surface);
+  border:1px solid var(--vf-border);
+  box-shadow:var(--vf-shadow-card);
+  border-radius:19px;
+  padding:clamp(19px,3vw,28px);
+}
+.xp-journey .xp-section-heading {margin:0;}
+.xp-journey .xp-section-heading h2 {margin:7px 0 5px;}
+.xp-journey .xp-section-heading p {margin:0;}
+.xp-journey-list {
+  padding:0;margin:0;list-style:none;
+  display:grid;gap:0;
+}
+.xp-journey-item {
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) auto auto;
+  gap:13px;
+  align-items:center;
+  padding:16px 0;
+  border-top:1px solid #e7eeec;
+  min-width:0;
+}
+.xp-journey-number {
+  display:grid;place-items:center;
+  width:42px;height:42px;
+  border-radius:12px;
+  background:#F0F5F5;color:#43706B;
+  font:800 12px var(--vf-font-display);
+}
+.xp-journey-item.ready .xp-journey-number {
+  background:var(--vf-mint-soft);color:var(--vf-primary);
+}
+.xp-journey-item.locked .xp-journey-number{
+  background:#F3F4F6;color:#72808C;
+}
+.xp-journey-copy{display:grid;gap:5px;min-width:0;}
+.xp-journey-copy strong{
+  color:var(--vf-ink);font:800 14px var(--vf-font-display);
+  overflow-wrap:anywhere;
+}
+.xp-journey-copy p{
+  margin:0;color:var(--vf-muted);
+  font-size:12px;line-height:1.6;
+}
+.xp-journey-state {
+  color:#587085;
+  background:#F4F7F8;
+  border:1px solid #E3EAED;
+  border-radius:100px;
+  padding:7px 10px;
+  font-size:11px;font-weight:750;
+  white-space:nowrap;
+}
+.xp-journey-item.ready .xp-journey-state {
+  color:#176F55;background:#E8F8F2;border-color:#C9E8DC;
+}
+.xp-journey-item.locked .xp-journey-state{
+  color:#755920;background:#FFF7E9;border-color:#F0DFB7;
+}
+.xp-journey-link{
+  min-height:44px;
+  border:1px solid #CBE6DD;border-radius:10px;
+  background:#F4FCF9;color:var(--vf-primary);
+  font-size:12px;font-weight:800;
+  padding:10px 13px;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  white-space:nowrap;
+}
+.xp-journey-link:hover:not(:disabled){
+  border-color:var(--vf-primary);background:#E9F8F3;
+}
+.xp-journey-safety{
+  margin:0;padding:12px 14px;
+  border:1px solid #DDEAE5;border-radius:10px;
+  background:#F7FBF9;color:#446C61;
+  font-size:12px;line-height:1.65;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.xp-journey-safety svg{flex:none;margin-top:2px;}
+@media(max-width:960px){
+  .xp-journey-item{grid-template-columns:42px minmax(0,1fr) auto;}
+  .xp-journey-link{grid-column:2/-1;justify-self:start;}
+}
+@media(max-width:560px){
+  .xp-journey {gap:15px;}
+  .xp-journey-item{
+    grid-template-columns:40px minmax(0,1fr);
+    align-items:start;column-gap:11px;
+    row-gap:8px;padding:14px 0;
+  }
+  .xp-journey-number{width:40px;height:40px;}
+  .xp-journey-state{grid-column:2;justify-self:start;white-space:normal;}
+  .xp-journey-link{grid-column:2;justify-self:stretch;}
+  .xp-journey-copy p{font-size:12px;}
+}
