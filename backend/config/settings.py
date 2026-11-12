@@ -142,6 +142,11 @@ FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED = env_bool(
     "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", False
 )
 
+# Consulta de pedidos só para auditoria, nunca para conceder saldo.
+FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED = env_bool(
+    "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED", False
+)
+
 # Manual approval of verified participants; NO cashback/ledger activation.
 FIDELIZA_PARTICIPANT_APPROVAL_ENABLED = env_bool(
     "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", False

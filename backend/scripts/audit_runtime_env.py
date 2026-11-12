@@ -73,6 +73,16 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "FALHA",
                        "Valor de habilitação inválido"))
+    orders = env.get("FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED", "0").lower().strip()
+    if orders in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED", "ALERTA",
+                       "Prévia restrita read_orders, sem concessão financeira"))
+    elif orders in ("0", "false", "", "no", "off"):
+        result.append(("FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED", "OK",
+                       "Consulta de pedidos desligada"))
+    else:
+        result.append(("FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED", "FALHA",
+                       "Valor inválido"))
     approval = env.get("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "0").lower().strip()
     if approval in ("1", "true", "yes", "on"):
         result.append(("FIDELIZA_PARTICIPANT_APPROVAL_ENABLED", "ALERTA",

@@ -55,7 +55,8 @@ def exchange_code(code: str, client_id: str, client_secret: str, *, opener=None)
         raise OAuthExchangeError("Escopos OAuth inválidos.")
     # Nunca armazenar credencial com poderes de escrita sem aprovação do escopo.
     if not allowed_scopes(scopes, customer_preview_enabled=(
-            settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED)) or token_type != "bearer":
+            settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED),
+            orders_preview_enabled=settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED) or token_type != "bearer":
         raise OAuthExchangeError("Permissões inesperadas; somente leituras aprovadas são permitidas.")
     if data.get("user_id") is not None and data.get("store_id") is not None:
         if str(data["user_id"]) != str(data["store_id"]):

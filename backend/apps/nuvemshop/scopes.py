@@ -27,7 +27,15 @@ def has_customer_access(value: str, *, customer_preview_enabled: bool) -> bool:
     return bool({"read_customers", "write_customers"} & scopes)
 
 
-def allowed_scopes(value: str, *, customer_preview_enabled: bool) -> bool:
-    """Aceita permissões concedidas além das usadas; nunca concede poderes de escrita."""
+def has_order_access(value: str, *, preview_enabled: bool) -> bool:
+    if not preview_enabled:
+        return False
+    return bool({"read_orders", "write_orders"} & parse_scopes(value))
+
+
+def allowed_scopes(value: str, *, customer_preview_enabled: bool,
+                   orders_preview_enabled: bool = False) -> bool:
+    """Scopes adicionais não ativam funções sem flag correspondente."""
     return (has_product_access(value)
-            or has_customer_access(value, customer_preview_enabled=customer_preview_enabled))
+            or has_customer_access(value, customer_preview_enabled=customer_preview_enabled)
+            or has_order_access(value, preview_enabled=orders_preview_enabled))
