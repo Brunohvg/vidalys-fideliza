@@ -13,6 +13,22 @@ type Props={
   tenantId:string;role:Store["role"];
   onGoToClients:()=>void;
 };
+/** Escolhe automaticamente a cor com maior contraste para qualquer cor da loja. */
+function readableForeground(background:string):string {
+  const hex=background.replace("#","");
+  if(!/^[0-9a-f]{6}$/i.test(hex))return "#FFFFFF";
+  const weights=[0.2126,0.7152,0.0722];
+  const luminance=weights.reduce((total,weight,index)=>{
+    const srgb=parseInt(hex.slice(index*2,index*2+2),16)/255;
+    const linear=srgb<=0.04045?srgb/12.92:Math.pow((srgb+0.055)/1.055,2.4);
+    return total+linear*weight;
+  },0);
+  const whiteContrast=1.05/(luminance+0.05);
+  const navyLuma=0.018;
+  const navyContrast=(luminance+0.05)/(navyLuma+0.05);
+  return whiteContrast>=navyContrast?"#FFFFFF":"#10253E";
+}
+
 function Status({ready,label}:{ready:boolean;label:string}){
   return <span className={"ss-state "+(ready?"is-ready":"is-pending")}>
     {ready?<CheckCircle2 size={14}/>:<LockKeyhole size={14}/>}
@@ -219,8 +235,14 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
             {!editable&&<p className="ss-readonly">Você pode consultar estas opções. Um administrador da loja pode alterá-las.</p>}
           </form>
           <aside className="ss-live-card" aria-label="Prévia da página do clube">
-            <div className="ss-preview-stage" style={{background:programColor}}>
-              <div className="ss-preview-icon" style={{background:accent}}><HeartHandshake size={21}/></div>
+            <div className="ss-preview-stage" style={{
+              background:programColor,
+              color:readableForeground(programColor),
+            }}>
+              <div className="ss-preview-icon" style={{
+                background:accent,
+                color:readableForeground(accent),
+              }}><HeartHandshake size={21}/></div>
               <span>COMO SEU CLIENTE VAI VER</span>
               <strong>{programName}</strong>
               <p>Uma relação que vale mais. Conheça as vantagens do seu clube.</p>
