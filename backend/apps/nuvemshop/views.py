@@ -1,7 +1,7 @@
 """OAuth restrito e leitura de amostra: não cria nem altera produtos ou créditos."""
 import secrets
 from django.conf import settings
-from .scopes import has_product_access, has_customer_access
+from .scopes import has_product_access, has_customer_access, has_order_access
 from datetime import timedelta
 from urllib.parse import quote, urlsplit
 
@@ -92,6 +92,15 @@ class NuvemshopStatusView(APIView):
                     and settings.FIDELIZA_EMAIL_DELIVERY_ENABLED
                 ),
                 "will_credit_cashback":False,
+            },
+            "order_verification":{
+                "preview_enabled":settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED,
+                "read_only_preview_available":bool(
+                    connected and tenant.status==Tenant.Status.ACTIVE and
+                    settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED and
+                    has_order_access(installed.scope, preview_enabled=True)
+                ),
+                "live_cashback_enabled":False,
             },
             "configured":configured,
             "connected":connected,

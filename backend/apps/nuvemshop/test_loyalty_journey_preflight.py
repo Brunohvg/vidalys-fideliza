@@ -23,6 +23,7 @@ class JourneyPreflightTests(TestCase):
         self.assertEqual(result["active_participants_count"],0)
         self.assertFalse(result["live_cashback_granting_available"])
         self.assertFalse(result["paid_order_verification_available"])
+        self.assertFalse(result["orders_readonly_preview_available"])
         self.assertFalse(result["live_redemption_available"])
         self.tenant.refresh_from_db()
         self.assertEqual(self.tenant.updated_at,before)
@@ -52,6 +53,18 @@ class JourneyPreflightTests(TestCase):
         self.assertNotIn("read_customers",exported)
         self.assertNotIn("client_id",exported)
         self.assertNotIn("customer_id",exported)
+
+    @override_settings(FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True)
+    def test_orders_scope_supports_readonly_preview_but_not_cashback(self):
+        NuvemshopInstallation.objects.create(
+            tenant=self.tenant, client_id="456", store_id="123",
+            token_ciphertext="encrypted-secret-never-output",
+            scope="read_orders",
+        )
+        result = inspect("journey-lab")
+        self.assertTrue(result["orders_readonly_preview_available"])
+        self.assertFalse(result["paid_order_verification_available"])
+        self.assertFalse(result["live_cashback_granting_available"])
 
     def test_does_not_mistake_wrong_store_installation_for_connection(self):
         NuvemshopInstallation.objects.create(

@@ -19,7 +19,7 @@ django.setup()
 from django.conf import settings
 from apps.campaigns.models import CampaignDraft
 from apps.nuvemshop.models import NuvemshopInstallation
-from apps.nuvemshop.scopes import has_product_access,has_customer_access
+from apps.nuvemshop.scopes import has_product_access,has_customer_access,has_order_access
 from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.participants.enrollment_models import (
     EnrollmentSubmission,ProgramTerms,EnrollmentCustomerLink,
@@ -70,6 +70,11 @@ def inspect(slug:str)->dict:
             connected and customer_access and settings.FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED
             and settings.FIDELIZA_EMAIL_DELIVERY_ENABLED
         ),
+        "orders_readonly_preview_available":bool(
+            connected and installed
+            and has_order_access(installed.scope, preview_enabled=True)
+            and settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
+        ),
         "verified_requests_count":optin,
         "linked_customers_count":EnrollmentCustomerLink.objects.filter(
             tenant=tenant,
@@ -88,7 +93,8 @@ def inspect(slug:str)->dict:
             "não validação de uma chamada real à Nuvemshop. "
             "Vínculo automático só funciona com e-mail confirmado e um cliente exato. "
             "Flags de e-mail não comprovam entrega SMTP. "
-            "Pedido pago e cashback real permanecem indisponíveis."
+            "A prévia de pedidos não equivale a confirmar liquidação. "
+            "Pedido pago reconciliado e cashback real permanecem indisponíveis."
         ),
     }
 

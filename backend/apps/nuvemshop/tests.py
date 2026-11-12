@@ -91,6 +91,13 @@ class TokenSecurityTests(SimpleTestCase):
                 opener=FakeOpener({**good,"scope":"read_customers"}),
             )
             self.assertEqual(received["scope"],"read_customers")
+        # Orders podem ser autorizados independentemente, sem liberar créditos.
+        with override_settings(FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True):
+            received=exchange_code(
+                "synthetic-code-123","12345","synthetic-secret",
+                opener=FakeOpener({**good,"scope":"read_orders"}),
+            )
+            self.assertEqual(received["scope"],"read_orders")
 
 
     def test_provider_rejects_bad_store_ids(self):
