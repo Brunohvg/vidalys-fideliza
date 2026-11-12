@@ -38,11 +38,11 @@ class ParticipantApprovalTests(TestCase):
         self.other_user=User.objects.create_user(username="approval-other")
         self.tenant=Tenant.objects.create(
             name="Loja com fidelização",slug="approval-test",status="active",
-            external_store_id="8731",
+            platform="nuvemshop", external_store_id="8731",
         )
         self.other=Tenant.objects.create(
             name="Outra loja",slug="approval-foreign",status="active",
-            external_store_id="9786",
+            platform="nuvemshop", external_store_id="9786",
         )
         for user,tenant,role in (
             (self.owner,self.tenant,"owner"),

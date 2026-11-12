@@ -109,11 +109,11 @@ class CustomerLinkPreviewTests(TestCase):
         self.outsider = User.objects.create_user(username="scope-outsider")
         self.tenant = Tenant.objects.create(
             name="Loja teste vínculo", slug="scope-loja", status="active",
-            external_store_id="1234",
+            platform="nuvemshop", external_store_id="1234",
         )
         self.other = Tenant.objects.create(
             name="Outra loja", slug="scope-outra", status="active",
-            external_store_id="9876",
+            platform="nuvemshop", external_store_id="9876",
         )
         for user, tenant, role in [
             (self.owner, self.tenant, "owner"),
