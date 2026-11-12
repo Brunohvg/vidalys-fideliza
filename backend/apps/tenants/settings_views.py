@@ -39,12 +39,6 @@ def _display(tenant, branding):
     return data
 
 
-def _luminance(value):
-    rgb = [int(value[i:i+2], 16) / 255 for i in (1, 3, 5)]
-    linear = [v/12.92 if v<=0.04045 else ((v+0.055)/1.055)**2.4 for v in rgb]
-    return sum(a*b for a,b in zip(linear, (0.2126,0.7152,0.0722)))
-
-
 def _normalize(raw):
     if not isinstance(raw, dict) or set(raw) != set(BRANDING_FIELDS)|{"expected_version"}:
         raise ValueError("Envie apenas os campos da identidade e a versão esperada.")
@@ -65,9 +59,8 @@ def _normalize(raw):
         if not re.fullmatch(r"#[A-Fa-f0-9]{6}", color):
             raise ValueError("Cores devem usar formato hexadecimal de 6 dígitos.")
         values[color_field] = color.upper()
-    # A cor principal será usada atrás de textos brancos no botão.
-    if (1.05/(_luminance(values["primary_color"])+0.05)) < 4.5:
-        raise ValueError("Escolha uma cor principal com contraste suficiente para texto branco.")
+    # O frontend usa texto preto ou branco conforme o contraste WCAG.
+    # Não recusar uma cor que a própria prévia e o botão suportam.
     address=values["support_email"]
     if address:
         if len(address)>254:
