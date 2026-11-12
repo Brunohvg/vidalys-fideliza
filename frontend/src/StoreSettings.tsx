@@ -125,7 +125,7 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
   };
 
   const verifyReadAccess=async()=>{
-    if(!editable||!integration?.connected||
+    if(!editable||!integration?.connected||settings?.tenant_status!=="active"||
        integration.connection_check?.catalog_scope_granted===false||
        liveCheck==="running")return;
     const sequence=++checkSequence.current;

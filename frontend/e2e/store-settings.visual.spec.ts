@@ -219,6 +219,7 @@ test("Verificação de acesso reutiliza catálogo somente leitura e é explícit
 });
 
 test("Falha do GET não é apresentada como conexão válida",async ({page})=>{
+  await page.setViewportSize({width:390,height:844});
   await setup(page);
   await page.route("**/api/v1/tenants/**/nuvemshop/catalog/preview/**",
     route=>route.fulfill({status:502,contentType:"application/json",
