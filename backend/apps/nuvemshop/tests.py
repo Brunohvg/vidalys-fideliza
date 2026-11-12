@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.test import Client, SimpleTestCase, TestCase
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -84,6 +84,14 @@ class TokenSecurityTests(SimpleTestCase):
             with self.subTest(scope=scopes), self.assertRaises(OAuthExchangeError):
                 exchange_code("synthetic-code-123", "12345", "synthetic-secret",
                     opener=FakeOpener({**good, "scope": scopes}))
+        # Customer é independente de Product; a feature precisa estar ativa.
+        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=True):
+            received=exchange_code(
+                "synthetic-code-123","12345","synthetic-secret",
+                opener=FakeOpener({**good,"scope":"read_customers"}),
+            )
+            self.assertEqual(received["scope"],"read_customers")
+
 
     def test_provider_rejects_bad_store_ids(self):
         for user_id in (None, 0, "-10", "https://invalid.example", True):
