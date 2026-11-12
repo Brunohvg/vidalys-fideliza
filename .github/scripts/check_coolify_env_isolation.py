@@ -126,6 +126,39 @@ def main():
             }[name]
             if network_names != expected:
                 raise SystemExit("Invalid network scope: " + name)
+        # Regressao do parser Coolify: o arquivo FONTE precisa ter labels
+        # como lista de strings. Mapeamentos podem virar 0: key=value
+        # na etapa de geracao, rejeitados no deploy real.
+        original = (ROOT / "compose.yaml").read_text()
+        frontend_source = original.split("\n  frontend:\n", 1)
+        if len(frontend_source) != 2:
+            raise SystemExit("Missing unique frontend source service")
+        labels_source = frontend_source[1].split("\n    labels:\n", 1)
+        if len(labels_source) != 2:
+            raise SystemExit("Missing unique frontend labels")
+        block = labels_source[1].split("\n    mem_limit:", 1)[0]
+        label_lines = block.strip("\n").splitlines()
+        if (len(label_lines) < 8 or
+                any(not line.startswith("      - ") for line in label_lines)):
+            raise SystemExit("COOLIFY_LABELS_SOURCE_FAIL: use string sequence, not key mapping")
+        if any("0:" in line[:9] or "1:" in line[:9] for line in label_lines):
+            raise SystemExit("COOLIFY_LABELS_NUMERIC_KEY_FAIL")
+        source_label_names = [
+            line.strip()[2:].strip().strip(chr(34)).split("=", 1)[0]
+            for line in label_lines
+        ]
+        if len(source_label_names) != len(set(source_label_names)):
+            raise SystemExit("COOLIFY_DUPLICATE_TRAEFIK_LABELS")
+        if "traefik.enable" not in source_label_names:
+            raise SystemExit("COOLIFY_TRAEFIK_DISABLED")
+        if not any(name.endswith(".tls.certresolver") for name in source_label_names):
+            raise SystemExit("COOLIFY_TLS_RESOLVER_MISSING")
+        # Controle negativo: preserva cobertura para regressao de labels
+        # com chaves numericas, exatamente o erro reportado no Coolify.
+        broken = "    labels:\\n      0: traefik.enable=true\\n"
+        if not any(not line.startswith("      - ")
+                   for line in broken.replace("\\n", "\n").splitlines()[1:]):
+            raise SystemExit("COOLIFY_LABELS_NEGATIVE_CONTROL_MISSED")
         labels = raw["frontend"].get("labels", {})
         if labels.get("traefik.enable") != "true":
             raise SystemExit("Traefik Raw route missing")

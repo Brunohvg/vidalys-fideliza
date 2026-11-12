@@ -110,20 +110,20 @@ services:
     networks: [app, proxy]
     # Somente frontend tem rota publica no Traefik.
     labels:
-      traefik.enable: "true"
-      traefik.docker.network: ${FIDELIZA_PROXY_NETWORK:-coolify}
-      traefik.http.services.fideliza-homolog.loadbalancer.server.port: "8080"
-      traefik.http.routers.fideliza-homolog-https.rule: "Host(`fideliza-homolog.optarys.com.br`) || Host(`www.fideliza-homolog.optarys.com.br`)"
-      traefik.http.routers.fideliza-homolog-https.entrypoints: https
-      traefik.http.routers.fideliza-homolog-https.tls: "true"
-      traefik.http.routers.fideliza-homolog-https.tls.certresolver: letsencrypt
-      traefik.http.routers.fideliza-homolog-https.service: fideliza-homolog
-      traefik.http.routers.fideliza-homolog-http.rule: "Host(`fideliza-homolog.optarys.com.br`) || Host(`www.fideliza-homolog.optarys.com.br`)"
-      traefik.http.routers.fideliza-homolog-http.entrypoints: http
-      traefik.http.routers.fideliza-homolog-http.middlewares: fideliza-homolog-redirect
-      traefik.http.routers.fideliza-homolog-http.service: fideliza-homolog
-      traefik.http.middlewares.fideliza-homolog-redirect.redirectscheme.scheme: https
-      traefik.http.middlewares.fideliza-homolog-redirect.redirectscheme.permanent: "true"
+      - "traefik.enable=true"
+      - "traefik.docker.network=${FIDELIZA_PROXY_NETWORK:-coolify}"
+      - "traefik.http.services.fideliza-homolog.loadbalancer.server.port=8080"
+      - "traefik.http.routers.fideliza-homolog-https.rule=Host(`fideliza-homolog.optarys.com.br`) || Host(`www.fideliza-homolog.optarys.com.br`)"
+      - "traefik.http.routers.fideliza-homolog-https.entrypoints=https"
+      - "traefik.http.routers.fideliza-homolog-https.tls=true"
+      - "traefik.http.routers.fideliza-homolog-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.fideliza-homolog-https.service=fideliza-homolog"
+      - "traefik.http.routers.fideliza-homolog-http.rule=Host(`fideliza-homolog.optarys.com.br`) || Host(`www.fideliza-homolog.optarys.com.br`)"
+      - "traefik.http.routers.fideliza-homolog-http.entrypoints=http"
+      - "traefik.http.routers.fideliza-homolog-http.middlewares=fideliza-homolog-redirect"
+      - "traefik.http.routers.fideliza-homolog-http.service=fideliza-homolog"
+      - "traefik.http.middlewares.fideliza-homolog-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.fideliza-homolog-redirect.redirectscheme.permanent=true"
     mem_limit: 128m
     cpus: 0.10
     expose:
