@@ -15,8 +15,8 @@ logger=logging.getLogger(__name__)
 def sanitize_store_after_redact(self, receipt_id: str):
     try:
         return sanitize_store_privacy(receipt_id)
-    except Exception as exc:
+    except Exception:
         # Não serializar a exceção ou detalhes de dados/tenant no log.
         logger.warning("Limpeza de dados da loja pendente, tentativa=%s",
                        self.request.retries+1)
-        raise self.retry(exc=exc) from None
+        raise self.retry(exc=RuntimeError("privacy_cleanup_failed")) from None
