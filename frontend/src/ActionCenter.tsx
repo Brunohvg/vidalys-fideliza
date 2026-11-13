@@ -46,7 +46,7 @@ export default function ActionCenter({
         ?"Autorize a Nuvemshop para analisar uma amostra de produtos e variantes, sem alterar seu catálogo."
         :"A conexão será liberada depois da configuração segura do aplicativo na homologação.",
       reason:"O Fideliza ainda não recebe dados dessa loja.",
-      target:"settings",callToAction:"Conectar em Configurações",icon:PlugZap,
+      target:"settings",callToAction:"Iniciar conexão",icon:PlugZap,
     });
   } else if (integration?.connected) {
     actions.push({
