@@ -70,3 +70,46 @@ for(const width of [390,1440]){
   await page.screenshot({path:info.outputPath("rewards-draft-"+width+".png"),fullPage:true});
  });
 }
+
+
+test("Recompensa existente pode ser editada e excluída com confirmação",async({page})=>{
+ await page.setViewportSize({width:390,height:850});
+ await setup(page);
+ const id="b78f99bd-cbc0-4eaf-8f73-558e54b72a93";
+ let reward={id,title:"R$ 5 de desconto",points_cost:200,
+  discount_cents:500,min_order_cents:3000,max_redemptions:50,
+  status:"draft",published:false,redemption_enabled:false};
+ let deleted=false,patched=false;
+ await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   mode:"draft_only",activation_available:false,items:deleted?[]:[reward],
+  }),
+ }));
+ await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/"+id+"/",r=>{
+  expect(r.request().headers()["x-csrftoken"]).toBe("reward-csrf-test");
+  if(r.request().method()==="PATCH"){
+   patched=true;reward={...reward,...r.request().postDataJSON()};
+   return r.fulfill({contentType:"application/json",body:JSON.stringify({
+    mode:"draft_only",reward,coupon_created:false,
+   })});
+  }
+  expect(r.request().method()).toBe("DELETE");
+  deleted=true;
+  return r.fulfill({contentType:"application/json",body:JSON.stringify({
+   deleted:true,id,coupon_created:false,
+  })});
+ });
+ await page.goto("/");
+ await page.getByRole("button",{name:"Abrir menu"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+ await page.getByRole("button",{name:"Editar",exact:true}).click();
+ await page.getByPlaceholder("Ex.: R$ 5 de desconto").fill("R$ 10 de desconto");
+ await page.getByRole("button",{name:"Salvar alterações"}).click();
+ await expect(page.getByText("R$ 10 de desconto",{exact:true})).toBeVisible();
+ expect(patched).toBe(true);
+ page.once("dialog",dialog=>dialog.accept());
+ await page.getByRole("button",{name:"Excluir",exact:true}).click();
+ await expect(page.getByText("Nenhuma recompensa definida.",{exact:false})).toBeVisible();
+ expect(deleted).toBe(true);
+ await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
+});
