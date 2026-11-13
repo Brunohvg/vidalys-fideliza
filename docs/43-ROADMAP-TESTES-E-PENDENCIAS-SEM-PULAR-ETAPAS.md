@@ -668,3 +668,21 @@ Prioridade de desenvolvimento após homologar a base: G7 prova e conciliação d
 **Melhoria de G0 isolada entregue nesta rodada:** tela Custo dos Benefícios ganhou opção de estimar contribuição por compra com custo de produtos, taxas/impostos, frete subsidiado e outras despesas variáveis. Campos vazios não significam zero; o cálculo continua local, não é lucro líquido, não importa ERP e não concede pontos. Acrescentado teste visual em 390 px para custo ausente, cenário sintético e ausência de overflow. PRD v0.1 ganhou aviso de precedência da v0.4, sem apagar histórico.
 
 **Estado:** somente commits na branch homolog; CI, testes executados, deploy e transações externas NÃO confirmados nesta sessão. Ação operacional prioritária permanece executar CI do HEAD, revisar backup e SHA, publicar somente no Coolify Raw de homologação e exercitar G3 cadastro/SMTP + smoke G0. Não tocar em clientes nem checkout real.
+
+
+## Auditoria visual transversal — 13/11/2026, ciclo adicional
+
+Pedido: pente-fino da UI e correções de CSS quebrado; a validação completa de navegador permanece obrigatória antes de homologação.
+
+**Arquivos de CSS inspecionados (código):** styles.css, portal.css, fideliza-theme.css, program-hub.css, benefit-studio.css, campaign-points.css, wallet-details.css, member-club.css, results-overview.css e sales-workspace.css. Verificado o conflito potencial entre portal.css e fideliza-theme.css: o segundo carrega depois do primeiro; não usar zoom CSS nem redimensionar toda a aplicação por transform. Checagem estática de balanceamento de chaves dos cinco arquivos centrais executada sem erro detectado (não comprova renderização).
+
+**Problemas e alterações com evidência no código:**
+- Participantes: cartões mobile eram renderizados com tabela desktop e não possuíam conjunto completo de estilos. Criadas regras explícitas para cartão, identidade, status, metadados e quebra em 360 px; somente cartões abaixo de 760 px e somente tabela em desktop. Removido bloco antigo de regras redundantes.
+- Recompensas: textos auxiliares pequenos e controles de rascunho sem alvo mínimo consistente; ajustados textos e ações para melhor legibilidade e alvos de toque de 44 px.
+- Resultados: cartões com muito espaço e botões curtos; reduzidos paddings, ampliada legibilidade dos rótulos, proteção de min-width, quebra de títulos e dimensões intermediárias.
+- Campanhas e estrutura do portal: densidade desktop já ajustada em ciclo anterior; preservada escala de navegador e responsividade.
+- Testes Playwright acrescentados para assegurar que Clientes não exiba duas representações simultâneas em 390/1440 px e que Resultados não provoque rolagem horizontal nessas larguras.
+
+**Limitação:** não houve execução de Playwright/build nem comparação real de screenshots nesta sessão, porque o checkout/contêiner Coolify não foi acessado. O diagnóstico é por inspeção do código e das capturas fornecidas pelo usuário. Ainda não se pode afirmar que *todo CSS* do sistema está corrigido. Os componentes não auditados visualmente exigem smoke por rotas em 320, 390, 768 e 1440 px.
+
+**Estado de gate:** mudanças na branch homolog, PENDENTE DE VALIDAÇÃO; nenhuma produção/loja alterada. Gate operacional G3 (SMTP e adesão) permanece anterior a crédito e resgate. A próxima ação é executar build frontend e smoke Playwright do HEAD no pipeline, corrigir falhas concretas, só depois implantar o SHA testado no Coolify Raw de homologação e comparar capturas com zoom 100%.
