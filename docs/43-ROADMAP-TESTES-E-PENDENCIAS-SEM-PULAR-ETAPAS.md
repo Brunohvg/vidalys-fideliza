@@ -700,3 +700,8 @@ Objetivo desta intervenção: corrigir um erro de estado entre tentativas do mes
 **Gate atual:** G3. Estado anterior: CÓDIGO VALIDADO de revisão prévia, homologação real pendente. Estado desta alteração: commit em homolog, testes ainda não executados (PENDENTE DE VALIDAÇÃO). Não converter automaticamente para HOMOLOGAÇÃO VALIDADA.
 
 **Uma próxima ação:** executar a suíte Django apps.core.tests (incluindo EmailDispatchLifecycleTests) no CI do HEAD e, após verde, conferir backup e publicar no Coolify Raw de homologação. Confirmar as migrações core.0004_email_dispatch, o SHA e o ciclo de cadastro → Redis → worker → SMTP com um endereço de teste autorizado. accepted significa aceitação SMTP, não entrega final.
+
+
+## G0 — Revisão pontual da captura de Clientes em 13/11/2026
+
+A captura do painel no desktop mostra somente uma tabela de participantes e contagem coerente 1/1/0; duplicação anterior não se reproduz nessa imagem. Problema visível: ação "Gerenciar adesões" sem estilização da identidade Vidalys. Corrigido em program-hub.css com barra de orientação, botão consistente, altura mínima de 44px, foco e layout mobile. Playwright de merchant-experience ganhou checagem de aparência e alvo de toque para a ação. Alterações restritas à branch homolog; ainda sem CI, screenshot novo ou deploy comprovados. Não transformar esta correção isolada em conclusão de todo o G0 nem do G3.
