@@ -167,7 +167,12 @@ def confirm_registration(request):
             pending.save(update_fields=["consumed_at", "password_hash"])
         # Confirmado: sessão real e loja criada, sem depender de Nuvemshop.
         login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        return JsonResponse({"authenticated": True, "detail": "Conta confirmada."})
+        return JsonResponse({
+            "authenticated": True,
+            "store_linked": True,
+            "store_id": str(tenant.pk),
+            "detail": "Conta e empresa confirmadas.",
+        })
     except (MerchantRegistration.DoesNotExist, IntegrityError):
         return JsonResponse({"detail": "Link inválido ou expirado."}, status=400)
 
