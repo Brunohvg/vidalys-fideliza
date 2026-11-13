@@ -51,9 +51,17 @@ for(const width of [390,768,1440]){
     await page.goto("/");
     if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.getByRole("complementary",{name:"Menu do lojista"}).getByRole("button",{name:"Clientes",exact:true}).click();
-    await expect(page.getByText("Pessoa QA")).toBeVisible();
-    await page.getByText("Registros internos de teste").click();
-    await page.getByRole("button",{name:"Ver extrato técnico"}).click();
+    if(width<=1020){
+      const list=page.getByRole("list",{name:"Participantes encontrados"});
+      await expect(list.getByText("Pessoa QA")).toBeVisible();
+      await list.getByText("Dados internos de teste").click();
+      await list.getByRole("button",{name:"Ver extrato técnico"}).click();
+    }else{
+      const table=page.locator(".xp-table");
+      await expect(table.getByText("Pessoa QA")).toBeVisible();
+      await table.getByText("Registros internos de teste").click();
+      await table.getByRole("button",{name:"Ver extrato técnico"}).click();
+    }
     await expect(page.getByRole("heading",{name:"Histórico de Pessoa QA"})).toBeVisible();
     await expect(page.getByText("Pendente",{exact:true})).toBeVisible();
     await expect(page.getByText("Resgate desativado.",{exact:false})).toBeVisible();

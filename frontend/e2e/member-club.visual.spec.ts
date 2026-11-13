@@ -48,14 +48,12 @@ for(const width of [390,768,1440]){
     await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
     await expect(page.getByRole("heading",{name:"Confirme seu acesso"})).toBeVisible();
     await page.getByRole("button",{name:"Confirmar e entrar"}).click();
-    await expect(page.getByRole("heading",{name:"Olá, Cliente."})).toBeVisible();
-    await expect(page.getByText("O programa de pontos ainda não está ativo.",{exact:false})).toBeVisible();
-    await expect(page.getByText("Ainda não disponíveis")).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Troque seus pontos por descontos"}))
-      .toBeVisible();
-    await expect(page.getByRole("heading",{name:"Do clube para sua próxima compra"}))
-      .toBeVisible();
-    await expect(page.getByText("Esse fluxo está em preparação.",{exact:false}))
+    await expect(page.getByRole("heading",{name:"Olá, Cliente!"})).toBeVisible();
+    await expect(page.getByText("O clube ainda não liberou a pontuação.",{exact:false})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Recompensas em preparação"})).toBeVisible();
+    await page.getByText("Como vou usar meus pontos no site?").click();
+    await expect(page.getByText("Esse resgate ainda não está disponível.",{exact:false}))
       .toBeVisible();
     await expect(page.getByRole("button",{name:/Resgatar/})).toHaveCount(0);
     await expect(page).toHaveURL("http://127.0.0.1:4173/clube/loja-jardim");

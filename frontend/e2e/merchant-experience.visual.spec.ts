@@ -41,9 +41,9 @@ for(const width of [390,768,1440]) {
       await expect(page.getByText(/sugestões com IA/i)).toBeVisible();
 
       await nav(page,"Clientes",width);
-      await expect(page.getByRole("heading",{name:"Participantes",exact:true})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Pessoas no clube",exact:true})).toBeVisible();
       await expect(page.getByText("Sua comunidade começa com o primeiro aceite")).toBeVisible();
-      await expect(page.getByText("Não ativados")).toBeVisible();
+      await expect(page.getByText("Somente quem confirmou a adesão ao clube aparece aqui.",{exact:false})).toBeVisible();
       expect(await page.getByRole("button",{name:/Cadastrar cliente/}).count()).toBe(0);
       const clientsGeometry=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(clientsGeometry.doc).toBeLessThanOrEqual(clientsGeometry.width+1);
