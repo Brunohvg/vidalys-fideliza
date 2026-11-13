@@ -22,6 +22,9 @@ class MerchantRegistration(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True, blank=True)
+    # Moderação feita pelo superusuário; não elimina contas já confirmadas.
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    blocked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Cadastro de lojista"
