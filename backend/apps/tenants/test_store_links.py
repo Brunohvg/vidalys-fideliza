@@ -86,6 +86,12 @@ class StoreLinkAuditTests(TestCase):
         self.assertContains(stores_page, "Proprietários")
         members_url = reverse("admin:tenants_tenantmembership_changelist")
         self.assertEqual(self.client.get(members_url).status_code, 200)
+        identities_url = reverse("admin:core_merchantemailidentity_changelist")
+        identities_page = self.client.get(identities_url)
+        self.assertEqual(identities_page.status_code, 200)
+        self.assertContains(identities_page, "SEM VÍNCULO")
+        self.assertContains(identities_page, "Loja Confirmada")
+        self.assertNotContains(identities_page, "orphan@example.invalid")
         self.assertEqual(
             self.client.post(
                 reverse("admin:tenants_tenantmembership_change",
@@ -96,3 +102,4 @@ class StoreLinkAuditTests(TestCase):
         )
         self.client.force_login(self.linked)
         self.assertEqual(self.client.get(members_url).status_code, 302)
+        self.assertEqual(self.client.get(identities_url).status_code, 302)
