@@ -389,6 +389,16 @@ timestamp; CI `ec04c1b5` 6/6 aprovado para limite Nginx. A validação da
 mudança de UID do worker e commits posteriores deve ser conferida no
 HEAD antes de implantar. **Sem prova de deploy novo no Coolify**.
 
+**Alerta real adicional nos logs Redis de 12/11/2026:** o serviço
+iniciou e carregou AOF normalmente, porém emitiu aviso de
+`vm.overcommit_memory` desabilitado no host. Esse parâmetro pertence ao
+kernel do servidor, **não** ao Compose da aplicação; não alterar servidor
+nem redes a partir do Git. Conferir com o administrador em manutenção
+autorizada e validar persistência do ajuste; o aviso não comprova falha
+na fila observada nem deve bloquear artificialmente a continuidade do
+cadastro. Os logs da API/frontend desse recorte não mostraram 5xx, e os
+cinco jobs Celery observados foram concluídos com `sent`.
+
 **Próxima ação:** depois do CI final aprovado, implantar somente o HEAD
 em homologação Raw com backup disponível e verificar migração
 `core.0004`, `celery inspect ping`, UID não-root, sessão/CSRF,
