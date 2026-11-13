@@ -16,6 +16,12 @@ import { ApiError, merchantApi, type CostItem, type SessionInfo, type Store } fr
 
 type Screen = "overview" | "clients" | "campaign" | "results" | "margin" | "costs" | "catalog" | "roadmap" | "settings";
 
+// Links de conta são rotas públicas mesmo com OUTRO lojista autenticado.
+// A ação só troca a sessão quando a confirmação explícita for concluída.
+const isMerchantAuthPage = (path: string) =>
+  ["/confirmar-conta", "/redefinir-senha", "/cadastrar", "/esqueci-senha"]
+    .includes(path.replace(/\/+$/, "") || "/");
+
 const roleLabel: Record<Store["role"], string> = {
   owner: "Proprietário", admin: "Administrador", analyst: "Analista"
 };
@@ -41,6 +47,14 @@ function StatusPill({ children }: { children: ReactNode }) {
 export default function Portal() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [sessionError, setSessionError] = useState("");
+  const [authRoute, setAuthRoute] = useState(() => isMerchantAuthPage(window.location.pathname));
+
+  useEffect(() => {
+    const syncRoute = () => setAuthRoute(isMerchantAuthPage(window.location.pathname));
+    window.addEventListener("popstate", syncRoute);
+    return () => window.removeEventListener("popstate", syncRoute);
+  }, []);
+
   const [refresh, setRefresh] = useState(0);
    const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
@@ -138,8 +152,22 @@ export default function Portal() {
   };
   const afterEmailConfirmation = async () => {
     const value=await merchantApi.getSession();
-    if(!value.authenticated)throw new Error("A conta não foi autenticada.");
+    if(!value.authenticated || value.tenants.length === 0)
+      throw new Error("Cadastro confirmado, mas a empresa não apareceu na sessão. Contate o suporte.");
+    // Somente depois do backend confirmar o token e autenticar a nova conta.
+    window.history.replaceState(null, "", "/");
+    setAuthRoute(false);
     setSession(value);setAuthError("");setPage("overview");setSelectedId("");
+  };
+
+  const switchAccount = async () => {
+    // Não encerrar a sessão anterior apenas por abrir um link recebido por e-mail.
+    // Encerramento acontece quando a pessoa escolhe explicitamente trocar conta.
+    await merchantApi.logout();
+    setSession({ authenticated: false, user: null, tenants: [] });
+    setSelectedId("");
+    setPage("overview");
+    setAuthError("");
   };
 
   const doLogout = async () => {
@@ -175,8 +203,13 @@ export default function Portal() {
     </div>;
   }
 
-  if (!session.authenticated) {
-    return <MerchantAccess onLogin={doLogin} onVerified={afterEmailConfirmation}
+  if (!session.authenticated || authRoute) {
+    return <MerchantAccess
+      onLogin={doLogin}
+      onVerified={afterEmailConfirmation}
+      onSwitchAccount={switchAccount}
+      onNavigate={path => setAuthRoute(isMerchantAuthPage(path))}
+      activeAccount={session.authenticated ? session.user.display_name : null}
       busy={authBusy} authError={authError}/>;
   }
 
