@@ -96,6 +96,16 @@ async function writeJson<T>(method: "POST" | "PATCH", url: string, body: object)
   return readResponse<T>(response);
 }
 
+
+async function deleteJson<T>(url: string): Promise<T> {
+  const csrf = cookie("csrftoken");
+  if (!csrf) throw new ApiError("Sessão de segurança não iniciada. Atualize a página.", 403);
+  return readResponse<T>(await fetch(url, {
+    method: "DELETE", credentials: "same-origin", cache: "no-store",
+    headers: { "X-CSRFToken": csrf }
+  }));
+}
+
 async function postJson<T>(url: string, body: object): Promise<T> {
   return writeJson<T>("POST", url, body);
 }
@@ -455,6 +465,12 @@ export const merchantApi = {
   saveDiscountRewardDraft:(tenantId:string,payload:DiscountRewardDraftInput)=>
     postJson<{mode:"draft_only";reward:DiscountRewardDraft;coupon_created:false}>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/reward-drafts/",payload),
+  updateDiscountRewardDraft:(tenantId:string,id:string,payload:DiscountRewardDraftInput)=>
+    writeJson<{mode:"draft_only";reward:DiscountRewardDraft;coupon_created:false}>(
+      "PATCH", "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/reward-drafts/"+encodeURIComponent(id)+"/", payload),
+  deleteDiscountRewardDraft:(tenantId:string,id:string)=>
+    deleteJson<{deleted:true;id:string}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/reward-drafts/"+encodeURIComponent(id)+"/"),
   listPointCampaignDrafts:(tenantId:string)=>getJson<{
     mode:"draft_only";activation_available:false;items:PointCampaignDraft[]
   }>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"),
