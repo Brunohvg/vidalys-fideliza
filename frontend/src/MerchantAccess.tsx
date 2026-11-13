@@ -2,7 +2,7 @@ import {useEffect,useState,type FormEvent} from "react";
 import {ArrowRight,CheckCircle2,Eye,EyeOff,Gift,KeyRound,LockKeyhole,Mail,ShieldCheck} from "lucide-react";
 import {ApiError,merchantApi} from "./api";
 
-type View="login"|"signup"|"await-email"|"confirm"|"forgot"|"reset"|"reset-sent";
+type View="login"|"signup"|"await-email"|"confirm"|"forgot"|"reset"|"reset-sent"|"reset-complete";
 const pathView=():View=>{
   const path=window.location.pathname;
   if(path==="/cadastrar")return "signup";
@@ -14,6 +14,7 @@ const pathView=():View=>{
 const viewPath:Record<View,string>={
   login:"/",signup:"/cadastrar","await-email":"/cadastrar",confirm:"/confirmar-conta",
   forgot:"/esqueci-senha",reset:"/redefinir-senha","reset-sent":"/esqueci-senha",
+  "reset-complete":"/redefinir-senha",
 };
 
 function Brand(){
@@ -23,9 +24,14 @@ function Brand(){
   </div>;
 }
 
-export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
+export default function MerchantAccess({
+  onLogin, onVerified, onSwitchAccount, onNavigate, activeAccount, busy, authError,
+}:{
   onLogin:(email:string,password:string)=>Promise<void>;
   onVerified:()=>Promise<void>;
+  onSwitchAccount:()=>Promise<void>;
+  onNavigate:(path:string)=>void;
+  activeAccount:string|null;
   busy:boolean;
   authError:string;
 }){
@@ -44,6 +50,11 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
 
+  const clearForm=()=>{
+    setName("");setStore("");setEmail("");setPassword("");setConfirm("");
+    setShowPassword(false);setToken("");
+  };
+
   useEffect(()=>{
     // Remove a prova do endereco visivel apos capturar a fragment URL.
     if(window.location.hash.startsWith("#token=")){
@@ -51,6 +62,8 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
     }
     const sync=()=>{
       const next=pathView();
+      setName("");setStore("");setEmail("");setPassword("");setConfirm("");
+      setShowPassword(false);setToken("");
       setView(next);setError("");setMessage("");
       if(next==="confirm"||next==="reset"){
         setToken(new URLSearchParams(window.location.hash.replace(/^#/,"")).get("token")||"");
@@ -62,9 +75,20 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
   },[]);
 
   const go=(next:View)=>{
-    setError("");setMessage("");setPassword("");setConfirm("");
+    setError("");setMessage("");clearForm();
     window.history.pushState(null,"",viewPath[next]);
     setView(next);
+    onNavigate(viewPath[next]);
+  };
+
+  const switchAccount=async()=>{
+    if(pending||busy)return;
+    setPending(true);setError("");
+    try{
+      await onSwitchAccount();
+    }catch(cause){
+      setError(cause instanceof ApiError?cause.message:"Não foi possível sair da conta atual.");
+    }finally{setPending(false);}
   };
 
   const submit=async(event:FormEvent)=>{
@@ -72,7 +96,8 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
     if(pending||busy)return;
     setError("");setMessage("");
     if(view==="login"){
-      await onLogin(email.trim(),password);
+      try{await onLogin(email.trim(),password);}
+      finally{setPassword("");}
       return;
     }
     if((view==="signup"||view==="reset")&&password!==confirm){
@@ -84,21 +109,23 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
         await merchantApi.registerMerchant({
           name:name.trim(),store_name:store.trim(),email:email.trim(),password
         });
-        setPassword("");setConfirm("");setView("await-email");
+        setName("");setStore("");setPassword("");setConfirm("");
+        setShowPassword(false);setView("await-email");
       }else if(view==="confirm"){
         if(!token)throw new Error("Link de confirmação inválido. Solicite outro e-mail.");
         await merchantApi.confirmMerchant(token);
-        setToken("");
+        clearForm();
         await onVerified();
       }else if(view==="forgot"){
         await merchantApi.requestMerchantReset(email.trim());
-        setView("reset-sent");
+        clearForm();setView("reset-sent");
       }else if(view==="reset"){
         if(!token)throw new Error("Link inválido. Solicite uma nova redefinição de senha.");
         await merchantApi.confirmMerchantReset(token,password);
-        setToken("");setPassword("");setConfirm("");
-        go("login");
-        setMessage("Senha redefinida. Entre usando seu e-mail.");
+        clearForm();
+        window.history.replaceState(null,"","/redefinir-senha");
+        setView("reset-complete");
+        setMessage("Senha redefinida. Você já pode entrar com a nova senha.");
       }
     }catch(cause){
       setError(cause instanceof ApiError?cause.message:
@@ -125,6 +152,7 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
     forgot:["Recuperar acesso.","Informe seu e-mail para receber um link de redefinição."],
     reset:["Nova senha.","Escolha uma senha forte para proteger sua conta."],
     "reset-sent":["Confira seu e-mail.","Se houver uma conta correspondente, enviaremos instruções de recuperação."],
+    "reset-complete":["Senha atualizada.","Sua nova senha foi salva com segurança."],
   };
   return <div className="portal-auth-layout merchant-access">
     <aside className="portal-auth-brand merchant-aside">
@@ -147,11 +175,23 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
         <span className="portal-eyebrow">ACESSO À PLATAFORMA</span>
         <h2>{headings[view][0]}</h2>
         <p>{headings[view][1]}</p>
+        {activeAccount&&<div className="merchant-info" role="status">
+          <ShieldCheck size={19}/>
+          <p>Existe outra sessão aberta: <strong>{activeAccount}</strong>.
+            {view==="confirm"
+              ? " Ao confirmar o e-mail, você entrará na nova conta. A sessão anterior será substituída."
+              : " Esta operação pertence ao link aberto, não à conta atualmente conectada."}
+          </p>
+          <button type="button" className="merchant-text-btn"
+            disabled={pending||busy} onClick={()=>void switchAccount()}>
+            Sair da sessão atual
+          </button>
+        </div>}
         {(error||authError&&view==="login")&&<div className="portal-auth-error" role="alert">{error||(view==="login"?authError:"")}</div>}
         {message&&<div className="merchant-success" role="status">{message}</div>}
-        {view==="await-email"||view==="reset-sent" ? <div className="merchant-info">
+        {view==="await-email"||view==="reset-sent"||view==="reset-complete" ? <div className="merchant-info">
           <Mail size={22}/><strong>Proteja sua conta</strong>
-          <p>Confira também a pasta de spam. O link expira em 30 minutos.</p>
+          {view!=="reset-complete"&&<p>Confira também a pasta de spam. O link expira em 30 minutos.</p>}
           {view==="await-email"&&<p>O cadastro não dispara outro e-mail quando a conta já está confirmada ou existe uma solicitação pendente. Aguarde um minuto antes de tentar reenviar.</p>}
           {view==="await-email"&&<>
             <button type="button" className="merchant-text-btn"
@@ -159,7 +199,9 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
             <button type="button" className="merchant-text-btn"
               onClick={()=>go("forgot")}>Já tenho conta: recuperar acesso</button>
           </>}
-          <button type="button" className="merchant-text-btn" onClick={()=>go("login")}>Voltar ao login</button>
+          <button type="button" className="merchant-text-btn" onClick={()=>go("login")}>
+            {activeAccount?"Voltar à conta conectada":"Voltar ao login"}
+          </button>
         </div> :
         <form onSubmit={event=>void submit(event)}>
           {view==="signup"&&<>
@@ -211,8 +253,10 @@ export default function MerchantAccess({onLogin, onVerified, busy, authError}:{
           {view==="login" ? <>
             <span>Primeiro acesso?</span>
             <button type="button" onClick={()=>go("signup")}>Criar conta grátis</button>
-          </> : view!=="await-email"&&view!=="reset-sent" ?
-            <button type="button" onClick={()=>go("login")}>Voltar ao login</button>:null}
+          </> : view!=="await-email"&&view!=="reset-sent"&&view!=="reset-complete" ?
+            <button type="button" onClick={()=>go("login")}>
+              {activeAccount?"Voltar à conta conectada":"Voltar ao login"}
+            </button>:null}
         </div>
         <div className="portal-login-help"><LockKeyhole size={16}/>
           Cadastro protegido por confirmação de e-mail. O programa não exige conexão com a Nuvemshop para começar.
