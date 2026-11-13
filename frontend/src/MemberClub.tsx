@@ -7,7 +7,7 @@ import "./member-club.css";
 const slug = decodeURIComponent(window.location.pathname.match(/^\/clube\/([a-z0-9-]+)\/?$/i)?.[1] || "");
 
 export default function MemberClub(){
-  const [token] = useState(()=>
+  const [token,setToken] = useState(()=>
     new URLSearchParams(window.location.hash.replace(/^#/,"")).get("acesso") || "");
   const [club,setClub] = useState<MemberClubPublic|null>(null);
   const [me,setMe] = useState<MemberClubPrivate|null>(null);
@@ -17,6 +17,23 @@ export default function MemberClub(){
   const [busy,setBusy] = useState(false);
   const [sent,setSent] = useState(false);
   const [error,setError] = useState("");
+
+  useEffect(()=>{
+    // Links recebidos no mesmo navegador também precisam ser reconhecidos,
+    // inclusive quando o SPA já está aberto nesta rota.
+    const readIncomingLink = () => {
+      const next = new URLSearchParams(window.location.hash.replace(/^#/,""))
+        .get("acesso") || "";
+      if(next){
+        setMe(null);
+        setSent(false);
+        setError("");
+        setToken(next);
+      }
+    };
+    window.addEventListener("hashchange", readIncomingLink);
+    return ()=>window.removeEventListener("hashchange", readIncomingLink);
+  },[]);
 
   useEffect(()=>{
     if(token)window.history.replaceState(null,"",window.location.pathname);
