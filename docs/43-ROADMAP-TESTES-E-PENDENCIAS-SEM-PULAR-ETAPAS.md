@@ -405,3 +405,63 @@ em homologação Raw com backup disponível e verificar migração
 cadastro novo de lojista e reenvio, painel `EmailDispatch` e
 aceitação versus entrega no SMTP escolhido. Preservar main, Bibelô,
 OAuth não homologado e carteira financeira bloqueada.
+
+## Diagnóstico de empresa não vinculada a lojista — 13/11/2026
+
+**Situação verificada no código:** o cadastro público de lojista só cria uma
+conta após confirmar o e-mail. Na mesma `transaction.atomic()`, cria
+`User`, `MerchantEmailClaim`, `MerchantEmailIdentity`, `Tenant` como
+`independent` e `TenantMembership(role=owner)`. Uma falha na criação
+da membership reverte usuário, empresa e identidade em conjunto; há teste
+de regressão com falha sintética. A confirmação retorna
+`store_linked=true` e `store_id`; a sessão autenticada retorna
+`store_link_status=linked|missing`. A interface não inventa empresa
+quando a conta não possui membership.
+
+**Hipótese forte para o relato:** contas técnicas criadas diretamente no
+Django Admin (incluindo superusuários QA), ou contas antigas importadas,
+podem autenticar sem `TenantMembership`; criar o usuário por si só nunca
+autorizou vínculo com qualquer empresa. Este comportamento não prova que
+um usuário/empresa específico do banco atual esteja órfão, porque
+ainda falta auditoria autenticada nesse PostgreSQL.
+
+**Auditoria incorporada (somente leitura, sem migração):**
+```bash
+python manage.py audit_store_links
+# QA: status nao-zero apenas para lojista com e-mail confirmado sem membership
+python manage.py audit_store_links --strict
+```
+Retorna somente contagens: `verified_merchants`,
+`verified_without_store`, `stores_without_owner`,
+`staff_without_store` e `pending_confirmations`. Não expõe emails,
+IDs de usuário, nomes de lojas nem senhas; não cria vínculos.
+
+**Django Admin (superusuário somente):**
+- `Core → Cadastros de lojistas`: pendentes/confirmados e, para registros
+  confirmados, sinal de empresa vinculada ou `SEM VÍNCULO`;
+- `Core → Identidades de e-mail dos lojistas`: e-mail mascarado e
+  empresas/papéis reais de cada conta confirmada, sem permissão de alterar;
+- `Tenants → Lojas`: contador de proprietários. Editar a loja e
+  revisar `TenantMembership` no inline, com prova administrativa;
+- `Tenants → Vínculos`: listagem read-only das relações usuário/loja/papel.
+
+**Não executar reparo automático por e-mail, nome da empresa, homonímia,
+status de superusuário ou um login bem-sucedido.** A presença de uma
+empresa homônima ou de uma instalação Nuvemshop sem ID externo também
+não comprova propriedade. Uma conta pode ser de staff QA sem loja de
+propósito. Para registros confirmados órfãos, investigar auditoria e
+provar a titularidade antes de adicionar a membership no Admin.
+
+**Validação:** testes sintéticos de criação e rollback, isolamento de
+tenant, sessão com e sem loja, auditoria sem PII, Admin somente para
+superusuários, tela de conta sem empresa e jornada de confirmação.
+A CI do último SHA precisa de verificação específica; isso não
+confirma ainda o vínculo no banco de homologação.
+
+**Uma única próxima ação operacional depois do CI:** publicar HEAD
+`homolog` na aplicação Coolify Raw já existente, confirmar backup e
+migração `core.0004`, executar `python manage.py audit_store_links`
+no container API **sem alterar registros**, identificar qualquer
+divergência no Admin e realizar um cadastro de teste com nova caixa
+postal; confirmar vínculo do proprietário na sessão e no Django Admin.
+Apenas depois retomar G2 (OAuth Nuvemshop) e G3 (participantes/SMTP).
