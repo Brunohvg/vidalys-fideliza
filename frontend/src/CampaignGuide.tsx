@@ -1,7 +1,7 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {
   ArrowRight,CheckCircle2,Clock3,Gift,HeartHandshake,
-  LockKeyhole,Save,ShieldCheck,UsersRound,
+  LockKeyhole,Save,ShieldCheck,UsersRound,Pencil,Trash2,X,
 } from "lucide-react";
 import {
   ApiError,merchantApi,type PointCampaignDraft,type PointCampaignDraftInput,
@@ -30,6 +30,7 @@ export default function CampaignGuide({tenantId,role}:{
   const [bonus,setBonus]=useState("20");
   const [limit,setLimit]=useState("50");
   const [step,setStep]=useState<1|2|3>(1);
+  const [editingId,setEditingId]=useState<string|null>(null);
   const [drafts,setDrafts]=useState<PointCampaignDraft[]>([]);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
@@ -46,6 +47,27 @@ export default function CampaignGuide({tenantId,role}:{
     }).finally(()=>{if(active)setLoading(false)});
     return()=>{active=false};
   },[tenantId]);
+  const reset=()=>{
+    setEditingId(null);setGoal("second_purchase");setBonus("20");
+    setLimit("50");setStep(1);
+  };
+  const edit=(draft:PointCampaignDraft)=>{
+    setEditingId(draft.id);setGoal(draft.goal);
+    setBonus(String(draft.bonus_points));setLimit(String(draft.max_customers));
+    setError("");setMessage("");setStep(1);
+    window.scrollTo({top:0,behavior:"smooth"});
+  };
+  const remove=async(draft:PointCampaignDraft)=>{
+    if(!canSave||busy||!window.confirm("Excluir este rascunho de campanha? Esta ação não pode ser desfeita."))return;
+    setBusy(true);setError("");setMessage("");
+    try{
+      await merchantApi.deletePointCampaignDraft(tenantId,draft.id);
+      setDrafts(v=>v.filter(x=>x.id!==draft.id));
+      if(editingId===draft.id)reset();
+      setMessage("Campanha excluída. Nenhum ponto ou mensagem foi enviado.");
+    }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível excluir o rascunho.");}
+    finally{setBusy(false)}
+  };
   const plannedPoints=Number(bonus)*Number(limit);
   const valid=Number.isSafeInteger(plannedPoints)
     &&Number.isInteger(Number(bonus))&&Number.isInteger(Number(limit))
@@ -62,12 +84,13 @@ export default function CampaignGuide({tenantId,role}:{
     if(!canSave||busy||!valid)return;
     setBusy(true);setError("");setMessage("");
     try{
-      const result=await merchantApi.savePointCampaignDraft(tenantId,{
-        goal,bonus_points:Number(bonus),max_customers:Number(limit),
-      });
-      setDrafts(v=>[result.campaign,...v]);
-      setMessage("Campanha guardada como rascunho. Nenhuma mensagem foi enviada e nenhum ponto foi concedido.");
-      setStep(1);
+      const payload={goal,bonus_points:Number(bonus),max_customers:Number(limit)};
+      const result=editingId
+        ?await merchantApi.updatePointCampaignDraft(tenantId,editingId,payload)
+        :await merchantApi.savePointCampaignDraft(tenantId,payload);
+      setDrafts(v=>editingId?v.map(x=>x.id===editingId?result.campaign:x):[result.campaign,...v]);
+      setMessage("Rascunho salvo. Nenhuma mensagem foi enviada e nenhum ponto foi concedido.");
+      reset();
     }catch(e){setError(e instanceof ApiError?e.message:"Falha ao guardar rascunho.")}
     finally{setBusy(false)}
   };
@@ -81,6 +104,7 @@ export default function CampaignGuide({tenantId,role}:{
     </header>
     {error&&<p role="alert" className="vf-benefit-error">{error}</p>}
     {message&&<p role="status" className="vf-benefit-success">{message}</p>}
+    {editingId&&<div className="vf-benefit-success" role="status">Editando campanha salva <button type="button" className="vf-benefit-advanced" onClick={reset} disabled={busy}><X size={15}/> Cancelar edição</button></div>}
     <nav className="vf-campaign-steps" aria-label="Etapas do planejamento">
       <span className={step===1?"current":""}>1 · Objetivo</span>
       <span className={step===2?"current":""}>2 · Benefício</span>
@@ -140,7 +164,7 @@ export default function CampaignGuide({tenantId,role}:{
           <button type="button" className="secondary" onClick={()=>setStep(2)}>Ajustar</button>
           {canSave&&<button type="button" disabled={busy}
             onClick={()=>void save()}><Save size={17}/>
-            {busy?"Guardando…":"Guardar rascunho"}</button>}
+            {busy?"Guardando…":editingId?"Salvar alterações":"Guardar rascunho"}</button>}
         </div>
       </>}
     </section>
@@ -155,6 +179,11 @@ export default function CampaignGuide({tenantId,role}:{
           <strong>{item.bonus_points.toLocaleString("pt-BR")} pontos extras</strong>
           <p>Até {item.max_customers.toLocaleString("pt-BR")} clientes</p>
           <small>Nenhum cliente foi contatado ou pontuado.</small>
+          {canSave&&<div className="vf-draft-actions">
+            <button type="button" onClick={()=>edit(item)} disabled={busy}><Pencil size={16}/> Editar</button>
+            <button type="button" onClick={()=>void remove(item)} disabled={busy}><Trash2 size={16}/> Excluir</button>
+            <button type="button" disabled title="A publicação depende do motor de pontos e da validação financeira"><LockKeyhole size={16}/> Publicar indisponível</button>
+          </div>}
         </article>)}</div>}
     </section>
     <p className="vf-campaign-bottom-note">
