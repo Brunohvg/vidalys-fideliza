@@ -97,7 +97,7 @@ for(const width of [390,1440]){
     await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
     await expect(page.getByRole("heading",{name:"Informações da compra"})).toBeVisible();
     await expect(page.getByRole("button",{name:"Nova venda"})).toBeVisible();
-    await expect(page.getByLabel("A compra foi em outra data?")).toHaveAttribute("aria-expanded","false");
+    await expect(page.getByRole("button",{name:"A compra foi em outra data?"})).toHaveAttribute("aria-expanded","false");
     await page.getByLabel("Qual foi o valor?").fill("100,00");
     await page.getByLabel("Número do cupom ou recibo").fill("0042");
     await page.locator("#vf-sale-client").selectOption(member.id);
