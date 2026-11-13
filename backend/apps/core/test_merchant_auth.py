@@ -69,6 +69,7 @@ class MerchantAuthFlowTests(TestCase):
         result = self.post("merchant-confirm", {"token": token})
         self.assertEqual(result.status_code, 200, result.content)
         self.assertTrue(result.json()["authenticated"])
+        self.assertTrue(result.json()["store_linked"])
         user = get_user_model().objects.get()
         self.assertTrue(user.check_password(GOOD["password"]))
         self.assertFalse(user.is_staff)
@@ -81,13 +82,41 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(tenant.status, Tenant.Status.ACTIVE)
         self.assertEqual(tenant.platform, "independent")
         self.assertEqual(TenantMembership.objects.get(user=user).role, "owner")
+        self.assertEqual(result.json()["store_id"], str(tenant.pk))
         session = self.client.get(reverse("auth-session")).json()
         self.assertTrue(session["authenticated"])
         self.assertEqual(len(session["tenants"]), 1)
+        self.assertEqual(session["store_link_status"], "linked")
         self.csrf = self.client.cookies["csrftoken"].value
         self.assertEqual(self.post("merchant-confirm", {"token": token}).status_code, 400)
         self.assertEqual(get_user_model().objects.count(), 1)
         self.assertEqual(Tenant.objects.count(), 1)
+
+    def test_confirmation_rolls_back_user_and_store_when_membership_fails(self):
+        from django.db import IntegrityError
+
+        self.assertEqual(self.register().status_code, 202)
+        pending = MerchantRegistration.objects.get()
+        token = create_token("register", pending)
+        with patch(
+            "apps.core.merchant_auth_views.TenantMembership.objects.create",
+            side_effect=IntegrityError("synthetic error"),
+        ):
+            response = self.post("merchant-confirm", {"token": token})
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(get_user_model().objects.exists())
+        self.assertFalse(Tenant.objects.exists())
+        self.assertFalse(TenantMembership.objects.exists())
+        self.assertFalse(MerchantEmailIdentity.objects.exists())
+        self.assertFalse(MerchantEmailClaim.objects.exists())
+        pending.refresh_from_db()
+        self.assertIsNone(pending.consumed_at)
+        self.assertNotEqual(pending.password_hash, "!")
+        # Uma nova confirmação válida cria exatamente uma loja e seu dono.
+        recovered = self.post("merchant-confirm", {"token": token})
+        self.assertEqual(recovered.status_code, 200)
+        self.assertTrue(recovered.json()["store_linked"])
+        self.assertEqual(TenantMembership.objects.count(), 1)
 
     def test_registration_validation_throttle_duplicates_and_expiration(self):
         bad = {**GOOD, "password": "123"}
