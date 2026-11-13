@@ -31,6 +31,11 @@ for(const width of [320,390,768,1440]){
   await expect(page.getByText("Isso não é um valor em reais",{exact:false})).toHaveCount(0);
   await expect(page.getByText("A campanha não envia e-mail",{exact:false})).toBeVisible();
   await expect(page.getByRole("button",{name:/Publicar campanha|Ativar campanha/})).toHaveCount(0);
+  if(width===1440){
+   const goalHeight=await page.locator(".vf-campaign-goals button").first().evaluate(
+    el=>el.getBoundingClientRect().height);
+   expect(goalHeight,"cards de campanha compactos no desktop").toBeLessThan(150);
+  }
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
   expect(overflow,"viewport "+width).toBeLessThanOrEqual(1);
   await page.screenshot({path:testInfo.outputPath("campaign-points-"+width+".png"),fullPage:true});
