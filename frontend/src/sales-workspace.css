@@ -40,3 +40,109 @@
 .vf-rule-form .vf-sales-form-bottom{grid-column:1/-1}
 .vf-rule-form .vf-sales-form-bottom p{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 @media(max-width:740px){.vf-sales-hero{display:grid;padding:21px}.vf-sales-label{justify-self:start}.vf-sales-form,.vf-rule-form{grid-template-columns:1fr}.vf-sales-form-bottom{display:grid}.vf-sales-form-bottom button{width:100%}.vf-sales-card{padding:18px}.vf-rule-draft-label{white-space:normal}.vf-sales-review-actions button{flex:1}}
+
+
+/* Balcão v2 — experiência operacional em três campos. */
+.vf-sales-page{max-width:1040px;margin:0 auto;gap:20px}
+.vf-sale-intro{display:flex;align-items:center;gap:17px;min-width:0;padding:10px 0 7px}
+.vf-sale-intro-icon{width:59px;height:59px;flex:none;border-radius:18px;background:#e6f5ef;color:#136c61;display:grid;place-items:center;border:1px solid #cbe6da}
+.vf-sale-intro .portal-eyebrow{font-size:10px;letter-spacing:.13em;font-weight:850;color:#178274}
+.vf-sale-intro h2{font:800 clamp(22px,2.4vw,31px)/1.18 Manrope,Inter,system-ui,sans-serif;letter-spacing:-.04em;color:#183b3b;margin:6px 0 7px}
+.vf-sale-intro p{color:#5b7773;font-size:13px;line-height:1.55;margin:0}
+.vf-sale-tabs{display:flex;gap:7px;align-items:center;padding:5px;width:fit-content;max-width:100%;border:1px solid #dfebe6;border-radius:14px;background:#f2f7f4}
+.vf-sale-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:0;background:transparent;color:#4d6b67;border-radius:10px;padding:12px 18px;min-height:46px;font-size:13px;font-weight:800;cursor:pointer;transition:background .16s ease,color .16s ease}
+.vf-sale-tabs button.is-active{background:#fff;color:#126c60;box-shadow:0 2px 8px #0f473116}
+.vf-sale-tabs button:hover:not(.is-active){background:#e3f1eb}
+.vf-sale-tabs button:focus-visible,.vf-sale-card button:focus-visible,.vf-sales-success button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+.vf-sale-tab-count{font-size:11px;background:#f9e7cc;border-radius:99px;color:#956225;padding:2px 7px}
+.vf-sale-card{background:#fff;border:1px solid #dae9e2;border-radius:21px;padding:clamp(20px,2.5vw,33px);box-shadow:0 13px 36px #0d493408;min-width:0}
+.vf-sale-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:26px}
+.vf-sale-overline{color:#0a8374;font-weight:850;letter-spacing:.14em;font-size:10px}
+.vf-sale-card-heading h3{font:800 clamp(20px,2.2vw,26px)/1.22 Manrope,Inter,system-ui,sans-serif;color:#153a38;letter-spacing:-.032em;margin:7px 0 0}
+.vf-sale-step{font-size:11px;color:#2e665d;background:#f2faf5;padding:9px 11px;border:1px solid #cce8db;border-radius:11px;white-space:nowrap;font-weight:800}
+.vf-sale-simple-form{max-width:670px;display:grid;gap:24px}
+.vf-sale-field{display:grid;gap:10px;min-width:0}
+.vf-sale-field>label{display:flex;align-items:center;gap:11px;color:#173f3b;font-size:15px;font-weight:850}
+.vf-sale-number{width:29px;height:29px;display:grid;place-items:center;flex:none;border-radius:9px;color:#126e62;background:#e9f7f0;border:1px solid #c9e7d9;font-size:12px}
+.vf-sale-field>input,.vf-sale-field>select,.vf-sale-search-field input,.vf-sale-advanced input,.vf-sale-review textarea{width:100%;min-height:53px;padding:12px 15px;border:1px solid #cbded5;border-radius:13px;background:#fff;color:#173e3a;font:600 15px/1.4 Inter,system-ui,sans-serif;min-width:0}
+.vf-sale-field>input:focus-visible,.vf-sale-field>select:focus-visible,.vf-sale-search-field input:focus-visible,.vf-sale-advanced input:focus-visible,.vf-sale-review textarea:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+.vf-sale-field>input::placeholder,.vf-sale-search-field input::placeholder{color:#96a8a3}
+.vf-sale-field small{color:#738883;font-size:11px;line-height:1.6}
+.vf-sale-field-notice{background:#f2f8f5;border:1px solid #d7eae0;padding:10px 13px;border-radius:11px;margin:0;color:#406f65;font-size:12px;line-height:1.5}
+.vf-sale-inline-help{display:flex;align-items:center}
+.vf-sale-inline-help button,.vf-sale-advanced>button{display:inline-flex;gap:7px;align-items:center;padding:5px 2px;border:0;background:transparent;color:#0b796d;font-weight:800;font-size:12px;cursor:pointer}
+.vf-sale-inline-help button:hover,.vf-sale-advanced>button:hover{text-decoration:underline}
+.vf-sale-search-field{display:grid;gap:7px;color:#466a62;font-size:12px;font-weight:700}
+.vf-sale-amount-input{display:flex;align-items:center;gap:0;border:1px solid #cbded5;border-radius:13px;overflow:hidden;background:#fff}
+.vf-sale-amount-input:focus-within{outline:3px solid #37d5bb;outline-offset:2px}
+.vf-sale-amount-input>span{padding:14px 16px;color:#247163;background:#f1faf6;font-size:17px;font-weight:900;border-right:1px solid #e1eee7}
+.vf-sale-amount-input input{flex:1;width:100%;min-width:0;padding:12px 15px;min-height:56px;border:0!important;outline:0!important;background:#fff;font:750 24px/1.2 Manrope,Inter,system-ui,sans-serif;letter-spacing:-.02em;color:#153a38}
+.vf-sale-amount-input input::placeholder{color:#b0c0b8}
+.vf-sale-advanced{padding-top:2px}
+.vf-sale-advanced>label{margin-top:12px;display:grid;gap:8px;font-size:12px;color:#42665e;font-weight:750;max-width:330px}
+.vf-sale-form-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;border-top:1px solid #edf3ee;padding-top:24px}
+.vf-sale-guard{display:flex;align-items:flex-start;gap:9px;max-width:335px;color:#617d75;font-size:12px;line-height:1.55}
+.vf-sale-guard svg{flex:none;color:#16917f}
+.vf-sale-submit{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:12px;padding:14px 19px;min-height:49px;color:#fff;background:#087f79;font-size:13px;font-weight:850;cursor:pointer;transition:background .15s ease}
+.vf-sale-submit:hover:not(:disabled){background:#076660}
+.vf-sale-submit:disabled{opacity:.55;cursor:not-allowed}
+.vf-sale-refresh{display:inline-flex;align-items:center;gap:7px;padding:10px 12px;border:1px solid #cbded5;border-radius:10px;background:#fff;color:#226d62;font-size:12px;font-weight:750;cursor:pointer;min-height:42px}
+.vf-sale-loading{color:#617b76;font-size:13px}
+.vf-sale-empty{display:grid;justify-items:center;gap:11px;text-align:center;padding:38px 12px;color:#327668}
+.vf-sale-empty strong{color:#204943;font-size:15px}.vf-sale-empty p{color:#718c82;margin:0;font-size:12px}
+.vf-sale-empty button{border:1px solid #c9e4d7;background:#eef9f3;color:#197061;border-radius:10px;padding:10px 15px;cursor:pointer;font-weight:750}
+.vf-sale-record-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.vf-sale-record{border:1px solid #dfede6;border-radius:15px;padding:17px 19px;background:#fff}
+.vf-sale-record-top{display:flex;justify-content:space-between;gap:15px;min-width:0}
+.vf-sale-record-top>div{display:grid;gap:6px;min-width:0}
+.vf-sale-record-top>div>strong{font-size:14px;color:#183d39;overflow-wrap:anywhere}
+.vf-sale-record-top span:not(.vf-sale-state){color:#54766d;font-size:12px}
+.vf-sale-record-top small{color:#718b81;font-size:11px}
+.vf-sale-record-right{text-align:right;justify-items:end}
+.vf-sale-record-right>strong{font-size:18px!important}
+.vf-sale-state{display:inline-flex;border-radius:99px;padding:5px 9px;font-size:10px!important;font-weight:850;white-space:nowrap}
+.vf-sale-state-muted{color:#51716b;background:#edf3f0}
+.vf-sale-state-pending{color:#866227;background:#fff2dd}
+.vf-sale-state-reviewed{color:#16755f;background:#e6f8ec}
+.vf-sale-state-rejected{color:#ab4050;background:#fff0f0}
+.vf-sale-record-actions{border-top:1px solid #ecf2ed;padding-top:12px;margin-top:13px;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#72877f;font-size:11px}
+.vf-sale-record-actions button{display:inline-flex;align-items:center;gap:6px;background:#edf8f3;border:1px solid #c6e5d5;padding:8px 11px;border-radius:9px;color:#116c5d;font-size:11px;font-weight:800;cursor:pointer}
+.vf-sale-review{border:1px solid #cbe7d9;background:#f6fbf8;border-radius:13px;padding:18px;margin-top:17px}
+.vf-sale-review h4{font-size:15px;color:#1c5447;margin:0 0 6px}
+.vf-sale-review p{font-size:12px;color:#5c756d;line-height:1.65}
+.vf-sale-review label{display:grid;gap:8px;color:#345f54;font-size:12px;font-weight:800}
+.vf-sale-review textarea{resize:vertical;font-size:14px}
+.vf-sale-review-buttons{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:9px;margin-top:14px}
+.vf-sale-review-buttons>button:not(.vf-sale-submit){padding:9px 13px;border:1px solid #cbded5;border-radius:10px;background:#fff;color:#315f55;font-size:12px;font-weight:800;cursor:pointer}
+.vf-sale-review-footnote{font-size:11px!important;margin-bottom:0}
+.vf-sales-success{display:flex;align-items:center;gap:10px}
+.vf-sales-success>svg{flex:none}
+.vf-sales-success button{margin-left:auto;display:inline-flex;align-items:center;gap:6px;color:#126a5a;border:0;background:transparent;font-weight:850;font-size:12px;cursor:pointer}
+@media(max-width:740px){
+  .vf-sale-intro{gap:11px}
+  .vf-sale-intro-icon{width:46px;height:46px;border-radius:14px}
+  .vf-sale-tabs{width:100%}
+  .vf-sale-tabs button{flex:1;padding:12px 10px}
+  .vf-sale-card{padding:20px 16px}
+  .vf-sale-card-heading{margin-bottom:23px}
+  .vf-sale-step{font-size:10px}
+  .vf-sale-simple-form{gap:22px}
+  .vf-sale-field>input,.vf-sale-field>select,.vf-sale-search-field input,.vf-sale-advanced input{font-size:16px}
+  .vf-sale-form-footer{display:grid;gap:18px}
+  .vf-sale-submit{width:100%}
+  .vf-sale-record{padding:14px}
+  .vf-sale-record-top{align-items:start}
+  .vf-sale-record-right>strong{font-size:15px!important}
+  .vf-sale-record-actions{align-items:start;flex-direction:column;gap:9px}
+  .vf-sale-review-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .vf-sale-review-buttons .vf-sale-submit{grid-column:1/-1}
+  .vf-sales-success{flex-wrap:wrap}
+  .vf-sales-success button{margin-left:28px}
+}
+@media(max-width:360px){
+  .vf-sale-intro h2{font-size:21px}
+  .vf-sale-intro p{font-size:12px}
+  .vf-sale-step{padding:7px 8px}
+  .vf-sale-record-top{flex-direction:column}
+  .vf-sale-record-right{text-align:left;justify-items:start}
+}
