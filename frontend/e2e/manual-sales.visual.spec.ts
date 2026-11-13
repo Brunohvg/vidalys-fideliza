@@ -134,3 +134,44 @@ test("Regra configurável é apenas rascunho e pertence ao Programa",async ({pag
   await expect(page.getByText("Regra salva como rascunho.",{exact:false})).toBeVisible();
   expect(submitted).toBe(1);
 });
+
+test("Segundo administrador confere venda sem gerar pontos",async ({page})=>{
+  await mock(page);
+  await page.route("**/api/v1/tenants/**/sales/manual/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      mode:"manual_review_only",points_credited:false,items:[{
+        id:"0cb247c3-0cc5-499b-834a-8870c9328d41",channel:"counter",
+        reference:"VENDA-0042",participant_id:member.id,
+        participant_name:"Cliente Confirmado",eligible_amount_cents:10000,
+        reported_paid_at:"2026-11-13T16:00:00Z",
+        evidence_reference:"CUPOM-0042",state:"awaiting_review",
+        submitted_by_me:false,created_at:"2026-11-13T16:00:00Z",
+        reviewed_at:null,points_credited:false,cashback_credited:false,
+      }],
+    }),
+  }));
+  let reviewed=0;
+  await page.route("**/api/v1/tenants/**/sales/manual/**/review/",async route=>{
+    reviewed+=1;
+    expect(route.request().postDataJSON()).toEqual({
+      decision:"approve",note:"Cupom e pagamento conferidos no caixa.",
+    });
+    await route.fulfill({contentType:"application/json",body:JSON.stringify({
+      sale:{id:"0cb247c3-0cc5-499b-834a-8870c9328d41",
+        state:"verified_manual",points_credited:false},
+      manual_evidence_reviewed:true,independent_payment_proof:false,
+      points_credited:false,
+    })});
+  });
+  await page.goto("/");
+  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+  await expect(page.getByText("Aguardando conferência")).toBeVisible();
+  await page.getByRole("button",{name:"Conferir",exact:true}).click();
+  await expect(page.getByText("CUPOM-0042",{exact:false})).toBeVisible();
+  await page.getByPlaceholder("Descreva como conferiu o cupom e o pagamento.")
+    .fill("Cupom e pagamento conferidos no caixa.");
+  await page.getByRole("button",{name:"Confirmar conferência"}).click();
+  await expect(page.getByText("Conferência registrada. O motor de pontos continua desativado."))
+    .toBeVisible();
+  expect(reviewed).toBe(1);
+});
