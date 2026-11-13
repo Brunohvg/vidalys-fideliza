@@ -19,7 +19,8 @@ export default function BenefitCostOverview({initialItem,onOpenProgram}:{
  const [reward,setReward]=useState("");
  const [uses,setUses]=useState("10");
  const [details,setDetails]=useState(false);
- const [cost,setCost]=useState(initialItem?.unit_cost_cents!=null?(initialItem.unit_cost_cents/100).toFixed(2).replace(".",","):"");
+ // O custo de um SKU não equivale ao custo total de uma cesta. Não preencha automaticamente.
+ const [cost,setCost]=useState("");
  const [taxes,setTaxes]=useState("");
  const [shipping,setShipping]=useState("");
  const [misc,setMisc]=useState("");
@@ -42,7 +43,8 @@ export default function BenefitCostOverview({initialItem,onOpenProgram}:{
    </div>
   </header>
   {initialItem&&<p className="vf-benefit-success">
-   Produto de referência: {initialItem.name}. O cálculo abaixo não confirma margem ou lucro.</p>}
+   Produto de referência: {initialItem.name}. Seu custo unitário não é o custo total da compra:
+   informe manualmente todos os itens para estimar a contribuição.</p>}
   <div className="vf-benefit-form">
    <label>Valor da próxima compra (R$)
     <input aria-label="Valor da próxima compra" inputMode="decimal" placeholder="100,00"
