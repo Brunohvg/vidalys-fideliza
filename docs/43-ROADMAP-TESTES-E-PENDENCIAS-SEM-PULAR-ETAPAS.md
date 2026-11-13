@@ -563,3 +563,49 @@ confirmação e redefinição de senha. Arquivos versionados em `/assets/`
 mantêm cache próprio. O smoke de Compose passa a verificar cabeçalhos
 das três rotas principais sob HTTPS. Isso reduz o risco de interface antiga
 após deploy, mas não prova que o cache foi a causa do teste real do usuário.
+
+
+## G4 — Canal multicanal de vendas · Fase 1 (13/11/2026)
+
+**Decisão ratificada pelo lojista:** Nuvemshop é canal de aquisição/venda,
+assim como futuramente WhatsApp e balcão. Somente adesões verificadas
+e compras pagas elegíveis poderão receber pontos. Compra de não membro
+não gera benefício, mas pode abrir oportunidade de convite autorizado.
+
+**Entregas no código em `homolog`:**
+- app `apps.sales` e migração `sales.0001_initial`;
+- `SaleRecord` por tenant + canal + referência única, valor elegível em
+  centavos, participante opcional e comprovante referenciado;
+- endpoints admin autenticados para registrar e listar vendas de balcão e
+  revisar evidências sem criar saldo;
+- dupla conferência por outro owner/admin antes de marcar venda manual
+  como revisada; revisão de caixa **não é prova independente PSP**;
+- regra de pontos versionada só como rascunho (`PointRuleDraft`),
+  com simulação determinística (base em centavos no banco, reais na UI),
+  carência e validade, sem publicação;
+- telas **Vendas** e **Programa → Rascunho de pontos**, separadas das
+  configurações técnicas e do diretório de clientes;
+- novos testes de backend e navegador para isolamento multi-tenant,
+  CSRF, idempotência, ausência de cashback, data de adesão,
+  conferência por outro operador e responsividade.
+
+**O que ainda não existe:** correlação automática
+Nuvemshop.Order → SaleRecord → pontos, prova financeira independente,
+ledger de pontos distinto do cashback BRL, resgate validado. Não declarar
+esta entrega como sistema de pontuação funcionando em loja real.
+
+**Próxima sequência:**
+1. Validar HEAD + seis checks, publicar `homolog` somente após backup e
+   confirmar migração `sales.0001_initial`.
+2. Criar e revisar 1 venda de balcão com dois usuários administrativos e
+   1 venda sem participante; provar que nenhuma recebe crédito.
+3. Implementar **ledger de pontos** em inteiros e `PointRule` publicada,
+   com prova de pedido pago, reembolso, expiração e idempotência.
+4. Reutilizar o `order/paid` e `order/updated` existentes da Nuvemshop:
+   webhook como gatilho de GET/concilição, não pagamento comprovado em si.
+5. Abrir no Meu Clube o extrato com saldos reais pendente/disponível e
+   implementar resgate que aplique recompensa ao canal de verdade.
+6. Definir tratamento de loja com um único operador (autoatestado de owner
+   com limite e prova adicional), sem remover trilha de auditoria.
+
+**Runbook completo:** `docs/50-MOTOR-MULTICANAL-VENDAS-PONTOS-FASE-1.md`.
