@@ -165,3 +165,45 @@ class PointCampaignDraftsView(APIView):
         )
         return safe_reply({"mode":"draft_only","campaign":_campaign(obj),
                            "points_credited":False,"messages_sent":False},201)
+
+
+class PointCampaignDraftDetailView(APIView):
+    """Manutenção local de planejamento. Nunca publica nem envia mensagens."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["patch", "delete", "options"]
+
+    @transaction.atomic
+    def patch(self, request, tenant_id, campaign_id):
+        member, err = _allowed(request, tenant_id, writing=True)
+        if err is not None:
+            return err
+        obj = get_object_or_404(
+            PointCampaignDraft.objects.select_for_update(),
+            pk=campaign_id, tenant_id=tenant_id,
+        )
+        data = request.data
+        if not isinstance(data, dict) or set(data) != {"goal", "bonus_points", "max_customers"}:
+            return safe_reply({"detail": "Informe objetivo, pontos e limite de participantes."}, 400)
+        if (data["goal"] not in PointCampaignDraft.Goal.values
+                or not _int(data["bonus_points"], 1, 100_000)
+                or not _int(data["max_customers"], 1, 50_000)
+                or data["bonus_points"] * data["max_customers"] > 100_000_000):
+            return safe_reply({"detail": "Objetivo ou limites de pontos inválidos."}, 400)
+        obj.goal = data["goal"]
+        obj.bonus_points = data["bonus_points"]
+        obj.max_customers = data["max_customers"]
+        obj.updated_by = request.user
+        obj.save(update_fields=["goal", "bonus_points", "max_customers", "updated_by"])
+        return safe_reply({"mode": "draft_only", "campaign": _campaign(obj), "messages_sent": False})
+
+    @transaction.atomic
+    def delete(self, request, tenant_id, campaign_id):
+        member, err = _allowed(request, tenant_id, writing=True)
+        if err is not None:
+            return err
+        obj = get_object_or_404(
+            PointCampaignDraft.objects.select_for_update(),
+            pk=campaign_id, tenant_id=tenant_id,
+        )
+        obj.delete()
+        return safe_reply({"deleted": True, "id": str(campaign_id), "messages_sent": False})
