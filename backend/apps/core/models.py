@@ -60,6 +60,7 @@ class EmailDispatch(models.Model):
         RESET = "reset", "Redefinição de senha"
         VERIFY = "verify", "Confirmação de participante"
         WITHDRAW = "withdraw", "Retirada de participante"
+        MEMBER = "member", "Acesso ao clube do consumidor"
 
     class State(models.TextChoices):
         QUEUED = "queued", "Aguardando publicação"

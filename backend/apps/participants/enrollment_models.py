@@ -78,6 +78,27 @@ class EnrollmentSubmission(models.Model):
         ordering = ["-accepted_at", "-id"]
 
 
+class MemberAccessChallenge(models.Model):
+    """Autorização temporária para o consumidor consultar SOMENTE seu programa.
+
+    Um e-mail confirmado é necessário antes de criar o desafio.
+    Nunca armazenar URL/token em claro.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    submission = models.ForeignKey(
+        EnrollmentSubmission, on_delete=models.CASCADE, related_name="member_access_challenges"
+    )
+    token_digest = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["submission", "expires_at"], name="member_access_exp_idx"),
+        ]
+
+
 class EnrollmentEmailChallenge(models.Model):
     """Token de verificação/retirada, apenas digest persistido, sem dados extras de contato."""
 
