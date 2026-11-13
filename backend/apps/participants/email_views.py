@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import Tenant
-from .email_proof import consume_challenge, enqueue_confirmation, email_links_enabled
+from .email_proof import consume_challenge, enqueue_confirmation, email_links_enabled, digest
 from .customer_link_auto import auto_link_after_verified_email
 from .standalone_activation import activate_standalone_after_email
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
@@ -95,11 +95,26 @@ class PublicEmailActionView(APIView):
         standalone_linked = (action == "verify" and not auto_linked and
                              activate_standalone_after_email(token))
         participant_created = bool(auto_linked or standalone_linked)
+        # A URL do próprio clube só é liberada após token válido consumido.
+        # Não identifica o consumidor nem inclui tokens/PII na resposta.
+        verified_challenge = (
+            EnrollmentEmailChallenge.objects.select_related("submission__tenant")
+            .filter(token_digest=digest(token),
+                    purpose=EnrollmentEmailChallenge.Purpose.VERIFY,
+                    consumed_at__isnull=False)
+            .first()
+            if action == "verify" else None
+        )
+        club_slug = (
+            verified_challenge.submission.tenant.slug if verified_challenge
+            else None
+        )
         return secure(Response({
             "status": status_value,
             "identity_verified_in_nuvemshop": bool(auto_linked),
             "participant_created": participant_created,
             "cashback_enabled": False,
+            "club_slug": club_slug,
             "message": (
                 "Solicitação retirada. Nenhuma recompensa foi criada."
                 if action == "withdraw"
