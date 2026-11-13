@@ -128,3 +128,35 @@ class BenefitDraftTests(TestCase):
         self.assertEqual(self.send(self.reward,self.reward_data).status_code,409)
         self.assertEqual(self.send(self.campaign,self.campaign_data).status_code,409)
         self.assert_no_effects()
+
+    def test_reward_draft_can_be_edited_and_deleted_without_financial_effects(self):
+        created=self.send(self.reward,self.reward_data)
+        self.assertEqual(created.status_code,201)
+        detail=reverse("discount-reward-draft-detail",kwargs={
+            "tenant_id":self.tenant.id,"reward_id":created.data["reward"]["id"],
+        })
+        self.client.get(reverse("auth-session"))
+        edited=self.client.patch(detail,{**self.reward_data,"title":"R$ 10 em descontos","discount_cents":1000},
+            format="json",HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value)
+        self.assertEqual(edited.status_code,200,edited.data)
+        self.assertFalse(edited.data["reward"]["published"])
+        self.assertFalse(edited.data["reward"]["redemption_enabled"])
+        self.assertEqual(DiscountRewardDraft.objects.get().discount_cents,1000)
+        self.assertEqual(self.client.delete(detail,
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,200)
+        self.assertFalse(DiscountRewardDraft.objects.exists())
+        self.assert_no_effects()
+
+    def test_reward_draft_detail_is_tenant_scoped_and_permissioned(self):
+        created=self.send(self.reward,self.reward_data)
+        detail=reverse("discount-reward-draft-detail",kwargs={
+            "tenant_id":self.tenant.id,"reward_id":created.data["reward"]["id"],
+        })
+        self.client.force_login(self.analyst)
+        self.client.get(reverse("auth-session"))
+        self.assertEqual(self.client.delete(detail,HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,403)
+        self.client.force_login(self.stranger)
+        self.client.get(reverse("auth-session"))
+        self.assertEqual(self.client.delete(detail,HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,404)
+        self.assertEqual(DiscountRewardDraft.objects.count(),1)
+        self.assert_no_effects()
