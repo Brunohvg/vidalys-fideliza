@@ -111,5 +111,5 @@ test("Recompensa existente pode ser editada e excluída com confirmação",async
  await page.getByRole("button",{name:"Excluir",exact:true}).click();
  await expect(page.getByText("Nenhuma recompensa definida.",{exact:false})).toBeVisible();
  expect(deleted).toBe(true);
- await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Publicar/})).toBeDisabled();
 });
