@@ -29,3 +29,8 @@
   .vf-wallet-close {align-self:flex-start}
   .vf-wallet-events li {align-items:flex-start}
 }
+
+.vf-wallet-technical{margin-top:8px;font-size:11px;color:#58756c}
+.vf-wallet-technical summary{cursor:pointer;font-weight:700;color:#577269}
+.vf-wallet-technical p{font-size:11px;line-height:1.6;color:#688178;max-width:230px}
+.vf-wallet-technical .vf-wallet-open{font-size:11px;margin-top:3px}

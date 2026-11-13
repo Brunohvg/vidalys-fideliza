@@ -139,14 +139,17 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
               <span><strong>{displayName(item)}</strong><small>{item.contact_email || "Contato não informado"}</small></span></div></td>
             <td><strong>{dateString(item.consented_at)}</strong><small>{item.consent_channel==="customer_portal"?"Portal do participante":"Aceite na loja"}</small></td>
             <td><span className={"xp-tag "+item.status}>{item.status==="active"?"Participando":"Pausado"}</span></td>
-            <td>{item.balance_status === "ledger_only" && item.cashback_balance_cents !== null
-              ? <><strong>{money(item.cashback_balance_cents)}</strong>
-                  <small>Registro interno · não resgatável</small>
+            <td><span className="xp-unavailable">Pontos ainda não ativados</span>
+              <small>Atividade: {dateString(item.last_program_activity_at)}</small>
+              {item.balance_status === "ledger_only" && item.cashback_balance_cents !== null &&
+                <details className="vf-wallet-technical">
+                  <summary>Registros internos de teste</summary>
+                  <p>Este ledger em reais não representa pontos nem benefício disponível.</p>
                   <button type="button" className="vf-wallet-open" onClick={() => void openWallet(item)}>
-                    Ver extrato
-                  </button></>
-              : <span className="xp-unavailable">Pontos ainda não ativados</span>}
-              <small>Atividade: {dateString(item.last_program_activity_at)}</small></td>
+                    Ver extrato técnico
+                  </button>
+                </details>}
+            </td>
           </tr>)}</tbody></table>
         </div>}
       {!loading && !error && response && response.total_filtered>0 && <div className="xp-pagination">
@@ -161,7 +164,7 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
       <div className="vf-wallet-heading">
         <div><span className="portal-eyebrow">CARTEIRA EM HOMOLOGAÇÃO</span>
           <h3>Histórico de {displayName(selected)}</h3>
-          <p>Extrato contábil interno. Não representa crédito resgatável na Nuvemshop.</p>
+          <p>Dados contábeis em reais, exclusivos para verificação interna. Não representam pontos e não permitem resgate.</p>
         </div>
         <button type="button" className="vf-wallet-close"
           onClick={() => {setSelected(null);setWallet(null);setWalletError("");}}>Fechar</button>

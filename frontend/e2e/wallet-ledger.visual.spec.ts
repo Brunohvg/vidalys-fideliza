@@ -52,7 +52,8 @@ for(const width of [390,768,1440]){
     if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.getByRole("complementary",{name:"Menu do lojista"}).getByRole("button",{name:"Clientes",exact:true}).click();
     await expect(page.getByText("Pessoa QA")).toBeVisible();
-    await page.getByRole("button",{name:"Ver extrato"}).click();
+    await page.getByText("Registros internos de teste").click();
+    await page.getByRole("button",{name:"Ver extrato técnico"}).click();
     await expect(page.getByRole("heading",{name:"Histórico de Pessoa QA"})).toBeVisible();
     await expect(page.getByText("Pendente",{exact:true})).toBeVisible();
     await expect(page.getByText("Resgate desativado.",{exact:false})).toBeVisible();
