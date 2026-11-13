@@ -205,7 +205,7 @@ for(const width of [320,390,768,1440]){
       ["Vendas","Vendas do balcão."],
       ["Campanhas","Uma campanha em poucos passos."],
       ["Resultados","Resultados que importam."],
-      ["Rentabilidade","Inteligência de margem."],
+      ["Custo dos benefícios","Quanto custa meu programa?"],
       ["Custos por SKU","Conheça o custo antes do benefício."],
       ["Conciliação","Valide variantes antes de importar."],
       ["Configurações","Sua loja, do seu jeito."],
