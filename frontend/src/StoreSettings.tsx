@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState,type FormEvent} from "react";
 import {
-  ArrowRight,BookOpen,Check,CheckCircle2,Globe2,HeartHandshake,
+  ArrowRight,Check,CheckCircle2,Globe2,HeartHandshake,
   LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
 } from "lucide-react";
 import {
