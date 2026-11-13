@@ -555,3 +555,11 @@ Configurações → Conectar Nuvemshop → OAuth → Verificar acesso (GET),
 confirmando app ID, loja e escopos sem revelar tokens. Se o app
 não estiver configurado no Coolify, não há como comprovar OAuth real.
 Não mexer em loja Bibelô, `main` nem habilitar cashback.
+
+
+**Atualização de cache do SPA:** o frontend Nginx passou a enviar
+`Cache-Control: no-store, max-age=0` para HTML de navegação, login,
+confirmação e redefinição de senha. Arquivos versionados em `/assets/`
+mantêm cache próprio. O smoke de Compose passa a verificar cabeçalhos
+das três rotas principais sob HTTPS. Isso reduz o risco de interface antiga
+após deploy, mas não prova que o cache foi a causa do teste real do usuário.
