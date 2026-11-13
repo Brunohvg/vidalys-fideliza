@@ -609,3 +609,22 @@ esta entrega como sistema de pontuação funcionando em loja real.
    com limite e prova adicional), sem remover trilha de auditoria.
 
 **Runbook completo:** `docs/50-MOTOR-MULTICANAL-VENDAS-PONTOS-FASE-1.md`.
+
+
+## Revisão de experiência v0.4 — 13/11/2026 (ciclo de código, sem homologação)
+
+Com base nas capturas da homologação, problemas observáveis:
+- Recompensas tinham somente criação/listagem, sem editar e excluir.
+- Publicar/despublicar ainda não existe: não habilitar sem motor de pontos, pagamento e resgate auditados (G7–G9).
+- Diretório de clientes renderizava cartões mobile e tabela desktop simultaneamente; CSS corrigido para mostrar apenas o formato correspondente.
+- Custos por SKU eram apresentados como etapa obrigatória e com jargão técnico; textos esclarecidos como ferramenta avançada, opcional e manual até importação autorizada de custos.
+
+Código na branch homolog:
+- CRUD seguro **somente de rascunhos**: PATCH/DELETE no item de recompensa com sessão, CSRF, tenant, perfil de administração e validação dos cinco campos. Exclusão exige confirmação visual.
+- Editor React com editar, excluir, cancelar edição e botão Publicar visivelmente indisponível.
+- Testes Django adicionados de edição, exclusão, isolamento e ausência de efeitos no ledger.
+- Cópias de UX atualizadas na tela de custos por SKU e correção de responsividade da lista.
+
+**Estado:** alterações versionadas; CI para HEAD não confirmado nesta sessão, sem validação de browser ou implantação Coolify. Não afirmar que as capturas refletem o código novo. G3 continua operacional prioritário e G8/G9 seguem bloqueados. O próximo passo é executar CI, verificar publicação SHA e percorrer o fluxo de rascunho com usuário owner/analyst no Coolify de homologação, sem ativação financeira.
+
+Pendências de UX ainda abertas: simplificação de Campanhas/Resultados/Custo dos Benefícios, melhorias de ações em vendas de balcão, ações de publicação e suspensão quando o domínio financeiro estiver validado, importação assistida de SKU pelo ERP/loja. Não duplicar configurações de regras e recompensas em outras telas.
