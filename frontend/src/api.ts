@@ -238,6 +238,21 @@ export type CostHistoryEntry = {
   after: Record<string, unknown>;
 };
 
+export type DiscountRewardDraft = {
+  id:string;title:string;points_cost:number;discount_cents:number;
+  min_order_cents:number;max_redemptions:number;
+  status:"draft";published:false;redemption_enabled:false;
+};
+export type DiscountRewardDraftInput = Omit<DiscountRewardDraft,
+  "id"|"status"|"published"|"redemption_enabled">;
+export type PointCampaignDraft = {
+  id:string;goal:"second_purchase"|"reactivation"|"recurrence";
+  bonus_points:number;max_customers:number;maximum_bonus_points:number;
+  status:"draft";published:false;sending_enabled:false;
+};
+export type PointCampaignDraftInput = Pick<PointCampaignDraft,
+  "goal"|"bonus_points"|"max_customers">;
+
 export type ManualSaleRecord = {
   id:string;channel:"counter";reference:string;participant_id:string|null;
   participant_name:string|null;eligible_amount_cents:number;reported_paid_at:string;
@@ -434,6 +449,18 @@ export type CatalogPreview = {
 };
 
 export const merchantApi = {
+  listDiscountRewardDrafts:(tenantId:string)=>getJson<{
+    mode:"draft_only";activation_available:false;items:DiscountRewardDraft[]
+  }>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/reward-drafts/"),
+  saveDiscountRewardDraft:(tenantId:string,payload:DiscountRewardDraftInput)=>
+    postJson<{mode:"draft_only";reward:DiscountRewardDraft;coupon_created:false}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/reward-drafts/",payload),
+  listPointCampaignDrafts:(tenantId:string)=>getJson<{
+    mode:"draft_only";activation_available:false;items:PointCampaignDraft[]
+  }>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"),
+  savePointCampaignDraft:(tenantId:string,payload:PointCampaignDraftInput)=>
+    postJson<{mode:"draft_only";campaign:PointCampaignDraft;messages_sent:false}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/",payload),
   listManualSales: (tenantId:string)=>getJson<ManualSaleList>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"),
   createManualSale: (tenantId:string,data:ManualSaleInput)=>postJson<ManualSaleResult>(
