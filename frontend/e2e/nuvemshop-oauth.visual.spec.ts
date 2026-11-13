@@ -94,6 +94,49 @@ for (const width of [390, 768, 1440]) {
   });
 }
 
+test("visão geral encaminha Nuvemshop sem conexão para Configurações", async ({page})=>{
+  await session(page);
+  await page.route("**/api/v1/tenants/**/nuvemshop/status/", route=>route.fulfill({
+    contentType:"application/json", body:JSON.stringify({
+      configured:true, connected:false, store_id:null, scope:null,
+      mode:"read_products_only",ready_for_write:false,
+      connection_check:{next_step:"authorize_store",live_access_checked:false},
+    }),
+  }));
+  await page.route("**/api/v1/tenants/**/settings/", route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      tenant_id:tenant.id,tenant_name:tenant.name,tenant_slug:tenant.slug,
+      tenant_status:"active",can_edit:true,version:0,public_link:null,
+      branding:{program_name:"Clube Piloto",primary_color:"#087F79",
+        accent_color:"#37D5BB",support_email:"teste@example.invalid"},
+      features:{public_signup_enabled:false,email_delivery_enabled:false,
+        customer_preview_enabled:false,cashback_activation_enabled:false,
+        custom_domain_available:false},
+    }),
+  }));
+  await page.goto("/");
+  await page.getByRole("button",{name:"Conectar em Configurações"}).click();
+  await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Conectar minha loja"})).toBeVisible();
+});
+
+test("autorização OAuth não é rotulada como acesso verificado no início",async ({page})=>{
+  await session(page);
+  await page.route("**/api/v1/tenants/**/nuvemshop/status/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+      configured:true,connected:true,store_id:"42123",scope:"read_products",
+      mode:"read_products_only",ready_for_write:false,
+      connection_check:{next_step:"verify_catalog_with_live_get",
+        catalog_scope_granted:true,live_access_checked:false},
+    }),
+  }));
+  await page.goto("/");
+  await expect(page.getByText("Autorizada; verificar",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Verificar conexão"})).toBeVisible();
+  await expect(page.getByText("Autorização registrada não prova que o token continua válido.")).toBeVisible();
+});
+
 test("OAuth não configurado impede conexão sem enviar segredos", async ({page})=>{
   await session(page);
   await page.route("**/api/v1/tenants/**/nuvemshop/status/", route => route.fulfill({
