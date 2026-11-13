@@ -48,6 +48,13 @@ export default function EmailAction(){
           ?"Participação confirmada.":"E-mail confirmado."}</h1>
         <p>{result.message}</p>
         <p>Este processo não concedeu cashback, pontos ou descontos.</p>
+        {!withdrawing && result.club_slug &&
+          <a className="public-enroll-submit public-enroll-club-link"
+            href={"/clube/"+encodeURIComponent(result.club_slug)}>
+            Conhecer meu clube e acompanhar minha participação
+          </a>}
+        {!withdrawing && <p>Para consultar dados pessoais do clube, solicite um link de acesso
+          ao e-mail que você confirmou. Não é necessário criar outra conta.</p>}
       </div> : <>
         <div className="public-enroll-top">
           <span className="public-enroll-eyebrow"><ShieldCheck size={16}/> ETAPA DE SEGURANÇA</span>

@@ -52,3 +52,6 @@
 
 .public-enroll-privacy-link {margin-top:24px;color:#526B7D;font-size:12px;line-height:1.6}
 .public-enroll-privacy-link a {display:inline-block;margin-left:6px;color:#087F79;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+
+.public-enroll-club-link{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:12px 16px;line-height:1.4}
+.public-enroll-club-link:hover,.public-enroll-club-link:focus-visible{background:#075f59}

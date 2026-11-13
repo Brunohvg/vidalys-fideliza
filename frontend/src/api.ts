@@ -575,6 +575,7 @@ export type EmailActionResult = {
   identity_verified_in_nuvemshop: boolean;
   participant_created: boolean;
   cashback_enabled: false;
+  club_slug?: string | null;
   message: string;
 };
 
