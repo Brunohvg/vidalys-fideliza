@@ -28,6 +28,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
   <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
    tenantStatus={tenantStatus}/>
   <PointRuleDraftEditor tenantId={tenantId} role={role} />
+  <RewardDraftEditor tenantId={tenantId} role={role}/>
   <p className="vf-program-status-note">
     A pontuação e os resgates ainda não estão disponíveis.
     As regras são apenas rascunhos e nenhuma compra é pontuada nesta fase.
