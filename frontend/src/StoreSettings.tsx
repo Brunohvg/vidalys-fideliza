@@ -215,7 +215,7 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
         :connectionStep==="grant_read_products_and_reinstall"
           ?"Falta autorização para consultar produtos. Ajuste a permissão no Portal de Parceiros e reinstale o aplicativo nesta loja."
           :connectionStep==="verify_catalog_with_live_get"
-            ?"A autorização está registrada. Faça uma consulta real de produtos em Conciliação para verificar se o acesso continua válido."
+            ?"A autorização está registrada. Use o botão de verificação abaixo para confirmar o acesso."
             :!integration?.configured
               ?"A conexão ainda está sendo preparada pela plataforma."
               :"A instalação ainda não foi verificada.";
@@ -230,7 +230,7 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
       <div className="ss-intro-icon"><Settings2 size={23}/></div>
       <div><span className="portal-eyebrow">SUA LOJA, SUA IDENTIDADE</span>
         <h2>Configurações</h2>
-        <p>Escolha como seus clientes vão conhecer seu programa e acompanhe o que já está disponível.</p>
+        <p>Personalize a identidade do clube e administre os canais. Regras e convites ficam no menu Programa.</p>
       </div>
     </div>
     {error&&<div className="ss-feedback ss-error" role="alert"><TriangleAlert size={17}/>{error}</div>}
@@ -308,7 +308,7 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
         <div className="ss-card-heading">
           <div className="ss-card-icon"><ShoppingBag size={20}/></div>
           <div><h3 id="ss-store-connection">Conexão com a loja</h3>
-            <p>Conecte sua loja para aproveitar os recursos do Fideliza.</p></div>
+            <p>A Nuvemshop é um canal opcional. O clube também funciona com vendas de balcão.</p></div>
         </div>
         <div className="ss-integration">
           <div className="ss-service-label"><span className="ss-service-icon"><ShoppingBag size={20}/></span>
@@ -356,45 +356,32 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
           <Status ready={settings.features.email_delivery_enabled}
             label={settings.features.email_delivery_enabled?"Configurada":"Em preparação"}/>
         </div>
-        <p className="ss-muted">As mensagens de confirmação serão usadas quando o cadastro de participantes estiver disponível.</p>
-      </section>
-      <section className="ss-card" aria-labelledby="ss-program-title">
-        <div className="ss-card-heading">
-          <div className="ss-card-icon"><BookOpen size={20}/></div>
-          <div><h3 id="ss-program-title">Regras do clube</h3>
-            <p>Defina as condições antes de convidar seus clientes.</p></div>
-        </div>
-        <div className="ss-config-row"><div>
-            <strong>Cadastro de participantes</strong>
-            <p>Seus clientes poderão solicitar adesão depois que as regras estiverem prontas.</p>
-          </div>
-          <Status ready={enrollmentReady} label={enrollmentReady?"Disponível":"Em preparação"}/>
-        </div>
-        <div className="ss-config-row"><div>
-            <strong>Recompensas</strong>
-            <p>Os benefícios serão liberados quando o programa estiver pronto para funcionar.</p>
-          </div>
-          <Status ready={false} label="Em breve"/>
-        </div>
-        <button type="button" className="ss-secondary" onClick={onGoToProgram}>
-          <BookOpen size={16}/> Gerenciar no Programa <ArrowRight size={15}/>
-        </button>
+        <p className="ss-muted">Os e-mails confirmam a adesão e permitem o acesso privado ao Meu Clube quando habilitados.</p>
       </section>
       <section className="ss-card" aria-labelledby="ss-domains-title">
         <div className="ss-card-heading">
           <div className="ss-card-icon"><Globe2 size={20}/></div>
           <div><h3 id="ss-domains-title">Página do clube</h3>
-            <p>Um espaço exclusivo para seus clientes conhecerem o programa.</p></div>
+            <p>Acesso do participante, separado da integração com a loja.</p></div>
         </div>
         <div className="ss-domain">
-          <div><small>Seu endereço do programa</small>
+          <div><small>Endereço do Meu Clube</small>
+            <strong>{window.location.origin+"/clube/"+encodeURIComponent(settings.tenant_slug)}</strong>
+            <a className="ss-secondary" href={"/clube/"+encodeURIComponent(settings.tenant_slug)}
+              target="_blank" rel="noopener noreferrer">
+              Abrir página do cliente <ArrowRight size={15}/>
+            </a>
+          </div>
+          <div><small>Cadastro público de participantes</small>
             <strong>{enrollmentReady
-              ?"A página ficará disponível após a aprovação das regras."
-              :"Estamos preparando a página do seu clube."}</strong></div>
-          <div><small>Usar o endereço da sua própria loja</small>
-            <strong>Em breve você poderá escolher um endereço personalizado.</strong></div>
+              ?"Pode ser divulgado após aprovar o regulamento no Programa."
+              :"Aguardando liberação ou ativação da loja."}</strong>
+            <button className="ss-secondary" type="button" onClick={onGoToProgram}>
+              Gerenciar regulamento e convites <ArrowRight size={15}/>
+            </button>
+          </div>
         </div>
-        <p className="ss-muted">Você não precisa alterar o site da sua loja para personalizar o clube.</p>
+        <p className="ss-muted">O Meu Clube tem página pública, mas dados pessoais exigem e-mail confirmado. A adesão requer regulamento e autorização.</p>
       </section>
       {editable&&<section className="ss-card" aria-labelledby="ss-privacy-title">
         <div className="ss-card-heading">

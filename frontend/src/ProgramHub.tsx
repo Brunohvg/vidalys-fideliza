@@ -1,4 +1,4 @@
-import {ArrowRight, Gift, HeartHandshake, ShieldCheck, UsersRound} from "lucide-react";
+import {ArrowRight, HeartHandshake, UsersRound} from "lucide-react";
 import EnrollmentManagement from "./EnrollmentManagement";
 import PointRuleDraftEditor from "./PointRuleDraftEditor";
 import type {Store} from "./api";
@@ -27,19 +27,9 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
   <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
    tenantStatus={tenantStatus}/>
   <PointRuleDraftEditor tenantId={tenantId} role={role} />
-  <div className="vf-program-next-grid">
-   <article><Gift size={21}/><h3>Pontos por compra</h3>
-    <p>O acúmulo dependerá de compras pagas e verificadas. O programa ainda não concede pontos automaticamente.</p>
-    <span>Motor em desenvolvimento</span>
-   </article>
-   <article><ShieldCheck size={21}/><h3>Resgate com segurança</h3>
-    <p>O cliente só poderá trocar pontos quando a recompensa e sua aplicação no checkout ou caixa estiverem validadas.</p>
-    <span>Resgate não habilitado</span>
-   </article>
-   <article><HeartHandshake size={21}/><h3>Uma identidade, vários canais</h3>
-    <p>Nuvemshop é o primeiro canal; o clube terá participantes próprios para atender também vendas físicas e WhatsApp.</p>
-    <span>Próxima evolução</span>
-   </article>
-  </div>
+  <p className="vf-program-status-note">
+    A pontuação e os resgates ainda não estão disponíveis.
+    As regras são apenas rascunhos e nenhuma compra é pontuada nesta fase.
+  </p>
  </div>;
 }

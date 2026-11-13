@@ -95,7 +95,7 @@ export default function MemberClub(){
   const accent=club?.branding.accent_color || "#37D5BB";
   const program=club?.branding.program_name || (club ? "Clube "+club.store_name : "Meu Clube");
   const firstName=me?.display_name.split(" ")[0] || "participante";
-  const state=me?.status==="active"?"Participando":me?.status==="paused"?"Pausado":"Aguardando vínculo";
+  const state=me?.status==="active"?"Participando":me?.status==="paused"?"Pausado":"Adesão confirmada · aguardando ativação";
 
   return <div className="member-club-shell">
     <header className="member-club-top">

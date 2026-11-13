@@ -97,8 +97,12 @@ for(const width of [390,768,1440]){
     await goSettings(page,width);
     await expect(page.getByRole("heading",{name:"Aparência do programa"})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Regras do clube"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Regras do clube"})).toHaveCount(0);
     await expect(page.getByRole("heading",{name:"Página do clube"})).toBeVisible();
+    await expect(page.getByRole("link",{name:"Abrir página do cliente"}))
+      .toHaveAttribute("href","/clube/loja-exemplo");
+    await expect(page.getByRole("button",{name:/Gerenciar regulamento e convites/}))
+      .toBeVisible();
     await expect(page.getByRole("heading",{name:"Privacidade dos participantes"})).toBeVisible();
     await expect(page.getByText("Solicitações em análise")).toBeVisible();
     await expect(page.getByText("Pedido de acesso aos dados")).toBeVisible();
