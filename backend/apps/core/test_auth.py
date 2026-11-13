@@ -57,8 +57,22 @@ class SessionApiTests(TestCase):
         session = self.client.get(reverse("auth-session")).json()
         self.assertEqual(session["user"]["username"], "lojista")
         self.assertEqual(len(session["tenants"]), 1)
+        self.assertEqual(session["store_link_status"], "linked")
         self.assertEqual(session["tenants"][0]["name"], "Bibelô Piloto")
         self.assertNotIn("Outra Loja", str(session))
+
+    def test_legacy_staff_account_is_not_silently_linked_to_a_store(self):
+        staff = get_user_model().objects.create_superuser(
+            username="technical-admin", email="technical@example.invalid",
+            password="strong-synthetic-2026",
+        )
+        self.client.force_login(staff)
+        session = self.client.get(reverse("auth-session")).json()
+        self.assertTrue(session["authenticated"])
+        self.assertEqual(session["store_link_status"], "missing")
+        self.assertEqual(session["tenants"], [])
+        self.assertFalse(TenantMembership.objects.filter(user=staff).exists())
+        self.assertEqual(TenantMembership.objects.count(), 2)
 
     def test_bad_password_and_bruteforce_limit(self):
         for _ in range(8):
