@@ -277,7 +277,7 @@ export default function Portal() {
               </select><ChevronDown size={17}/></div>
               {tenant.status!=="active" && <span className="portal-unlinked">Cadastro {tenant.status==="draft"?"em preparação":"suspenso"}</span>}
             </div>
-            {page==="overview" && <ActionCenter tenantId={tenant.id} key={tenant.id}
+            {page==="overview" && <ActionCenter tenantId={tenant.id} role={tenant.role} key={tenant.id}
               onNavigate={destination=>navigate(destination)}/>}
             {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} onViewClients={()=>navigate("clients")} key={tenant.id}/>}
             {page==="clients" && <ParticipantsBoard tenantId={tenant.id} onOpenProgram={()=>navigate("program")} key={tenant.id}/>}
