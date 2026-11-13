@@ -26,70 +26,38 @@ async function enterMargin(page: Page, width: number) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
-  await page.getByRole("button", { name: "Rentabilidade" }).click();
+  await page.getByRole("button", { name: "Custo dos benefícios" }).click();
   if (width <= 1020) {
     await expect.poll(async () => page.locator(".portal-side").evaluate(
       node => node.getBoundingClientRect().right
     )).toBeLessThan(2);
   }
-  await expect(page.getByRole("heading", { name: "Simulador de rentabilidade" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Quanto pode custar uma recompensa?" })).toBeVisible();
 }
 
 for (const width of [390, 768, 1440]) {
-  test("portal real é responsivo e calcula na API: " + width, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-    await mockAuthenticated(page);
-    let called = false;
-    await page.route("**/api/v1/tenants/**/margin-simulations/", async route => {
-      called = true;
-      const payload = route.request().postDataJSON();
-      expect(payload.eligible_subtotal_cents).toBe(20000);
-      expect(payload.existing_discounts_cents).toBe(1000);
-      expect(payload.cost_of_goods_cents).toBe(11000);
-      expect(route.request().headers()["x-csrftoken"]).toBe("csrf-for-ui-test");
-      expect(route.request().url()).toContain(store.id);
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          status: "within_target",
-          eligible_net_revenue_cents: 19000,
-          estimated_cashback_exposure_cents: 380,
-          contribution_before_cents: 5800,
-          contribution_after_cents: 5420,
-          margin_after_bps: 2852,
-          safe_cashback_budget_cents: 2950,
-          maximum_safe_cashback_bps: 1552,
-          minimum_margin_bps: 1500,
-          automatically_approved: false
-        })
-      });
-    });
-
-    await enterMargin(page, width);
-    await expect(page.getByText("Pronto para calcular")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Calcular no servidor" })).toBeVisible();
-
-    const scroll = await page.evaluate(() =>
-      ({ doc: document.documentElement.scrollWidth, viewport: window.innerWidth })
-    );
-    expect(scroll.doc, "overflow horizontal: " + JSON.stringify(scroll)).toBeLessThanOrEqual(scroll.viewport + 1);
-
-    await page.getByRole("button", { name: "Calcular no servidor" }).click();
-    await expect(page.getByText("Dentro da meta simulada")).toBeVisible();
-    expect(called).toBe(true);
-    // O botão fica abaixo da primeira dobra; capture após voltar ao topo
-    // para evitar posicionamento deslocado do menu fixo no screenshot fullPage.
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-    await page.screenshot({
-      path: testInfo.outputPath("portal-margin-" + width + ".png"), fullPage: true
-    });
-
-    await page.getByRole("button", { name: "Custo ausente" }).click();
-    await expect(page.getByText("Pronto para calcular")).toBeVisible();
-    await expect(page.getByText("Dentro da meta simulada")).toHaveCount(0);
+ test("portal simula custo dos pontos sem pedir acesso financeiro em "+width+"px",
+ async({page},testInfo)=>{
+  await page.setViewportSize({width,height:width===390?844:900});
+  await mockAuthenticated(page);
+  let attempts=0;
+  await page.route("**/api/v1/tenants/**/margin-simulations/",route=>{
+   attempts+=1;
+   return route.fulfill({status:405,contentType:"application/json",
+    body:JSON.stringify({detail:"Simulação não permitida."})});
   });
+  await enterMargin(page,width);
+  await expect(page.getByText("Isso não é o lucro da loja.",{exact:false})).toBeVisible();
+  await page.getByRole("textbox",{name:"Valor da próxima compra"}).fill("200,00");
+  await page.getByRole("textbox",{name:"Desconto por recompensa"}).fill("5,00");
+  await page.getByRole("spinbutton",{name:"Quantidade máxima de resgates"}).fill("20");
+  await expect(page.getByText("R$ 100,00",{exact:false})).toBeVisible();
+  await expect(page.getByText("R$ 195,00",{exact:false})).toBeVisible();
+  expect(attempts).toBe(0);
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await page.screenshot({path:testInfo.outputPath("simple-cost-"+width+".png"),fullPage:true});
+ });
 }
 
 test("a tela de login não expõe números demonstrativos", async ({ page }) => {
