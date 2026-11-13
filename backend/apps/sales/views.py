@@ -1,5 +1,6 @@
 """Entrada de venda de balcão e simulação. Nunca escreve na carteira."""
 import re
+import uuid
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
@@ -86,7 +87,10 @@ class ManualSalesView(APIView):
                 or not is_int(amount) or not 1 <= amount <= MAX_AMOUNT_CENTS
                 or not isinstance(raw_paid, str)):
             return safe_reply({"detail": "Valor ou referência inválidos."}, 400)
-        paid_at = parse_datetime(raw_paid)
+        try:
+            paid_at = parse_datetime(raw_paid)
+        except (TypeError, ValueError, OverflowError):
+            paid_at = None
         if (paid_at is None or timezone.is_naive(paid_at)
                 or paid_at > timezone.now() + timedelta(minutes=5)
                 or paid_at < timezone.now() - timedelta(days=365)):
@@ -95,8 +99,12 @@ class ManualSalesView(APIView):
         if participant_id is not None:
             if not isinstance(participant_id, str):
                 return safe_reply({"detail": "Participante inválido."}, 400)
+            try:
+                participant_uuid = uuid.UUID(participant_id)
+            except (ValueError, TypeError, AttributeError):
+                return safe_reply({"detail": "Identificador do participante inválido."}, 400)
             participant = ProgramParticipant.objects.filter(
-                pk=participant_id, tenant_id=tenant_id,
+                pk=participant_uuid, tenant_id=tenant_id,
                 status=ProgramParticipant.Status.ACTIVE,
             ).first()
             if not participant:
