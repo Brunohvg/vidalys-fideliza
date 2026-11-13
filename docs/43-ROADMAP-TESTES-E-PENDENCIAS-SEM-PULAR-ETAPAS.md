@@ -716,3 +716,12 @@ Defeito identificado na checagem estática: após excluir a última recompensa, 
 Estado: alteração gravada na branch homolog; execução de build, pytest ou Playwright ainda NÃO comprovada. O conector GitHub disponível filtra consultas de workflow runs a PRs, não permitindo confirmar runs de push; status vazio não significa sucesso. A tentativa de clonar o repositório no contêiner local falhou por falta de resolução de DNS, portanto não informar testes executados. Nenhum deploy.
 
 Próxima ação única: conferir em GitHub Actions a execução de quality associada ao HEAD de homolog, seis jobs, logs e artefatos. Corrigir falhas verificadas antes de conferir backup e implantar o mesmo SHA no Coolify Raw para testar cadastro e SMTP G3.
+
+
+## G0/G6 — Correção pontual de simulação financeira (13/11/2026)
+
+Ao preparar a validação do HEAD, identificado erro real de semântica em BenefitCostOverview: quando aberto com produto de referência, o componente preenchia o campo "Custo total dos produtos" com unit_cost_cents de um SKU. Isso pode superestimar contribuição em pedidos com vários produtos.
+
+Corrigido: custos da cesta sempre começam desconhecidos; referência ao SKU é somente identificação, com alerta explícito de que não equivale ao custo da compra. Teste de regressão visual ampliado para exigir custos vazios antes do preenchimento, com cálculo financeiro ainda somente local e sem crédito.
+
+**Estado:** mudança na homolog; testes não executados nem CI confirmada; sem deploy. Uma única ação necessária antes de Coolify: verificar o resultado da workflow quality (seis jobs) do novo HEAD. Não presumir funcionamento baseado apenas em commits.
