@@ -1,0 +1,72 @@
+import {expect,test,type Page,type Route} from "@playwright/test";
+
+const store={id:"95eb6b31-27cf-4adb-af35-642ac8767385",
+ name:"Loja Resgate QA",slug:"loja-resgate-qa",status:"active",role:"owner"};
+
+async function setup(page:Page){
+ await page.context().addCookies([{
+  name:"csrftoken",value:"reward-csrf-test",url:"http://127.0.0.1:4173",
+ }]);
+ await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   authenticated:true,user:{username:"reward-owner",display_name:"Lojista QA"},
+   tenants:[store],
+  }),
+ }));
+ await page.route("**/api/v1/tenants/**/participants/**",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   source:"verified_opt_in_only",data_status:"consent_verified",
+   summary:{total:0,active:0,paused:0},total_filtered:0,limit:20,offset:0,
+   items:[],note:"Sem adesões",
+  }),
+ }));
+ await page.route("**/api/v1/tenants/**/loyalty/point-rule-draft/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   mode:"draft_only",activation_available:false,rule:null,
+  }),
+ }));
+}
+
+for(const width of [390,1440]){
+ test("Rascunho de desconto sem criar cupom ou pontos em "+width+"px",async({page},info)=>{
+  await page.setViewportSize({width,height:850});
+  await setup(page);
+  const saved:Array<Record<string,unknown>>=[];
+  let calls=0;
+  await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",async(route:Route)=>{
+   if(route.request().method()==="GET")return route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+     mode:"draft_only",activation_available:false,items:saved,
+    }),
+   });
+   calls++;
+   const data=route.request().postDataJSON();
+   expect(data).toEqual({
+    title:"R$ 5 de desconto",points_cost:200,discount_cents:500,
+    min_order_cents:3000,max_redemptions:50,
+   });
+   expect(route.request().headers()["x-csrftoken"]).toBe("reward-csrf-test");
+   const reward={...data,id:"b78f99bd-cbc0-4eaf-8f73-558e54b72a93",
+    status:"draft",published:false,redemption_enabled:false};
+   saved.unshift(reward);
+   return route.fulfill({status:201,contentType:"application/json",
+    body:JSON.stringify({mode:"draft_only",reward,
+      coupon_created:false,points_credited:false}),
+   });
+  });
+  await page.goto("/");
+  if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+  await expect(page.getByRole("heading",{name:"O que o cliente pode conquistar?"})).toBeVisible();
+  await page.getByPlaceholder("Ex.: R$ 5 de desconto").fill("R$ 5 de desconto");
+  await page.getByRole("spinbutton",{name:"Pontos necessários"}).fill("200");
+  await page.getByRole("textbox",{name:"Valor do desconto (R$)"}).fill("5,00");
+  await page.getByRole("button",{name:"Guardar recompensa"}).click();
+  await expect(page.getByText("Recompensa guardada como rascunho.",{exact:false})).toBeVisible();
+  await expect(page.getByText("Sem cupom, sem resgate e sem consumo de pontos.")).toBeVisible();
+  expect(calls).toBe(1);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  await page.screenshot({path:info.outputPath("rewards-draft-"+width+".png"),fullPage:true});
+ });
+}
