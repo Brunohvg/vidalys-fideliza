@@ -107,6 +107,35 @@ class StorePublicEnrollmentTests(TestCase):
         self.assertEqual(EnrollmentSubmission.objects.count(),1)
         self.assertEqual(EnrollmentInvite.objects.count(),1)
 
+    @override_settings(
+        FIDELIZA_EMAIL_DELIVERY_ENABLED=True,
+        FIDELIZA_PUBLIC_BASE_URL="https://fideliza-homolog.optarys.com.br",
+    )
+    def test_repeat_signup_retries_failed_dispatch_without_duplicate_submission(self):
+        from unittest.mock import patch
+        from apps.core.models import EmailDispatch
+        from .enrollment_models import EnrollmentEmailChallenge
+
+        self.terms()
+        with patch("apps.participants.tasks.send_enrollment_email.delay") as delayed:
+            with self.captureOnCommitCallbacks(execute=True):
+                first = self.client.post(self.join(), self.data, format="json")
+            self.assertEqual(first.status_code, 202)
+            self.assertEqual(delayed.call_count, 1)
+            event = EmailDispatch.objects.get()
+            event.state = EmailDispatch.State.PUBLISH_FAILED
+            event.save(update_fields=["state"])
+            with self.captureOnCommitCallbacks(execute=True):
+                repeated = self.client.post(
+                    self.join(), {**self.data, "email": "TESTE@example.invalid"}, format="json"
+                )
+            self.assertEqual(repeated.status_code, 202)
+            self.assertEqual(repeated.data, first.data)
+            self.assertEqual(delayed.call_count, 2)
+        self.assertEqual(EnrollmentSubmission.objects.count(), 1)
+        self.assertEqual(EnrollmentEmailChallenge.objects.count(), 1)
+        self.assertEqual(EmailDispatch.objects.count(), 2)
+
     def test_no_accept_no_record(self):
         self.terms()
         for data in [
