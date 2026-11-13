@@ -19,12 +19,20 @@ export default function BenefitCostOverview({initialItem,onOpenProgram}:{
  const [reward,setReward]=useState("");
  const [uses,setUses]=useState("10");
  const [details,setDetails]=useState(false);
+ const [cost,setCost]=useState(initialItem?.unit_cost_cents!=null?(initialItem.unit_cost_cents/100).toFixed(2).replace(".",","):"");
+ const [taxes,setTaxes]=useState("");
+ const [shipping,setShipping]=useState("");
+ const [misc,setMisc]=useState("");
+ const [marginOpen,setMarginOpen]=useState(false);
  const info=useMemo(()=>{
   const amount=cents(sale),discount=cents(reward),n=Number(uses);
   if(amount===null||discount===null||amount<=0||discount<=0||discount>=amount
    ||!Number.isInteger(n)||n<1||n>100000)return null;
   return {amount,discount,n,cost:discount*n};
  },[sale,reward,uses]);
+ const expenses=[cost,taxes,shipping,misc].map(cents);
+ const marginReady=marginOpen&&info!==null&&expenses.every(value=>value!==null);
+ const marginValue=marginReady&&info?info.amount-info.discount-expenses.reduce<number>((sum,v)=>sum+(v??0),0):null;
  return <div className="vf-benefit-panel">
   <header className="vf-benefit-head">
    <span className="vf-benefit-icon"><Calculator size={23}/></span>
@@ -56,6 +64,19 @@ export default function BenefitCostOverview({initialItem,onOpenProgram}:{
     :<span>Preencha o valor da compra, o desconto e a quantidade de resgates.
       O desconto deve ser menor que o valor da compra.</span>}
    </div>
+   <button className="vf-benefit-advanced" type="button" aria-expanded={marginOpen}
+    onClick={()=>setMarginOpen(v=>!v)}>{marginOpen?"Ocultar cálculo de margem":"Ver impacto na margem (opcional)"}</button>
+   {marginOpen&&<>
+    <p className="vf-benefit-wide" style={{fontSize:12,color:"#526e65",margin:0}}>Informe despesas da compra inteira, não apenas de um produto. Use zero somente quando a ausência do custo tiver sido confirmada.</p>
+    <label>Custo total dos produtos (R$)<input aria-label="Custo total dos produtos" inputMode="decimal" value={cost} onChange={e=>setCost(e.target.value)} placeholder="Não informado"/></label>
+    <label>Taxas e impostos (R$)<input aria-label="Taxas e impostos" inputMode="decimal" value={taxes} onChange={e=>setTaxes(e.target.value)} placeholder="Não informado"/></label>
+    <label>Frete subsidiado pela loja (R$)<input aria-label="Frete subsidiado pela loja" inputMode="decimal" value={shipping} onChange={e=>setShipping(e.target.value)} placeholder="Não informado"/></label>
+    <label>Outras despesas variáveis (R$)<input aria-label="Outras despesas variáveis" inputMode="decimal" value={misc} onChange={e=>setMisc(e.target.value)} placeholder="Não informado"/></label>
+    <div className="vf-benefit-summary" role="status"><Calculator size={20}/><span>{marginValue===null
+     ?"Contribuição indisponível: confira valor da compra, desconto e os quatro custos. Campo vazio não é zero."
+     :<>Contribuição estimada após desconto: <strong>{brl(marginValue)}</strong> por compra.
+     {marginValue<0?" Resultado negativo: revise a oferta.":""} Este cálculo não inclui custos fixos nem comprova lucro líquido.</>}</span></div>
+   </>}
    <div className="vf-benefit-summary">
     <ShieldCheck size={20}/><span>
       <strong>Isso não é o lucro da loja.</strong> Sem custos dos produtos,
