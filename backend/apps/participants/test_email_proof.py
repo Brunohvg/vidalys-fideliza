@@ -16,6 +16,7 @@ from .enrollment_models import (
     EnrollmentEmailChallenge, EnrollmentInvite, EnrollmentSubmission, ProgramTerms,
 )
 from .models import ProgramParticipant
+from apps.core.models import EmailDispatch
 
 
 @override_settings(
@@ -54,8 +55,9 @@ class EmailProofTests(TestCase):
             self.assertTrue(result)
             self.assertEqual(delayed.call_count, 1)
             challenge = EnrollmentEmailChallenge.objects.get(purpose=purpose)
-            (cid,) = delayed.call_args.args
+            cid,event_id = delayed.call_args.args
             self.assertEqual(cid, str(challenge.pk))
+            self.assertEqual(str(EmailDispatch.objects.get().pk),event_id)
             token = make_token(challenge.pk, purpose)
             self.assertEqual(challenge.token_digest, digest(token))
             self.assertNotEqual(token, challenge.token_digest)

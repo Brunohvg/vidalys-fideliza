@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from apps.tenants.models import Tenant, TenantMembership
 from .merchant_auth import create_token, canonical_email
-from .models import MerchantRegistration, MerchantPasswordReset, MerchantEmailIdentity, MerchantEmailClaim
+from .models import MerchantRegistration, MerchantPasswordReset, MerchantEmailIdentity, MerchantEmailClaim, EmailDispatch
 
 EMAIL_SETTINGS = {
     "FIDELIZA_MERCHANT_SIGNUP_ENABLED": True,
@@ -60,7 +60,10 @@ class MerchantAuthFlowTests(TestCase):
         pending = MerchantRegistration.objects.get()
         self.assertEqual(pending.normalized_email, "lojista@example.invalid")
         self.assertNotIn(GOOD["password"], pending.password_hash)
-        self.mock_mail.assert_called_once_with("register", str(pending.pk))
+        self.assertEqual(self.mock_mail.call_count, 1)
+        args=self.mock_mail.call_args.args
+        self.assertEqual(args[:2], ("register", str(pending.pk)))
+        self.assertEqual(str(EmailDispatch.objects.get().pk), args[2])
         self.assertEqual(get_user_model().objects.count(), 0)
         token = create_token("register", pending)
         result = self.post("merchant-confirm", {"token": token})
@@ -104,7 +107,10 @@ class MerchantAuthFlowTests(TestCase):
         row = MerchantRegistration.objects.get()
         with self.captureOnCommitCallbacks(execute=True):
             self.assertEqual(self.post("merchant-resend", {"email": row.normalized_email}).status_code, 202)
-        self.mock_mail.assert_called_once_with("register", str(row.pk))
+        self.assertEqual(self.mock_mail.call_count, 1)
+        args=self.mock_mail.call_args.args
+        self.assertEqual(args[:2], ("register", str(row.pk)))
+        self.assertEqual(str(EmailDispatch.objects.get().pk), args[2])
 
     def test_password_reset_generic_replay_and_login_with_email(self):
         user = get_user_model().objects.create_user(
@@ -118,7 +124,10 @@ class MerchantAuthFlowTests(TestCase):
                 "email": "LOJISTA@EXAMPLE.INVALID"
             }).status_code, 202)
         reset = MerchantPasswordReset.objects.get()
-        self.mock_mail.assert_called_once_with("reset", str(reset.pk))
+        self.assertEqual(self.mock_mail.call_count, 1)
+        args=self.mock_mail.call_args.args
+        self.assertEqual(args[:2], ("reset", str(reset.pk)))
+        self.assertEqual(str(EmailDispatch.objects.get().pk), args[2])
         token = create_token("reset", reset)
         self.assertEqual(self.post("merchant-reset-confirm", {
             "token": token, "password": "SenhaNova-2026-supersegura!"
