@@ -628,3 +628,18 @@ Código na branch homolog:
 **Estado:** alterações versionadas; CI para HEAD não confirmado nesta sessão, sem validação de browser ou implantação Coolify. Não afirmar que as capturas refletem o código novo. G3 continua operacional prioritário e G8/G9 seguem bloqueados. O próximo passo é executar CI, verificar publicação SHA e percorrer o fluxo de rascunho com usuário owner/analyst no Coolify de homologação, sem ativação financeira.
 
 Pendências de UX ainda abertas: simplificação de Campanhas/Resultados/Custo dos Benefícios, melhorias de ações em vendas de balcão, ações de publicação e suspensão quando o domínio financeiro estiver validado, importação assistida de SKU pelo ERP/loja. Não duplicar configurações de regras e recompensas em outras telas.
+
+
+## Continuação v0.4 — manutenção de Campanhas e Recompensas (13/11/2026)
+
+Gate relacionado: G0 UX operacional, desenvolvimento isolado sem ativação G8–G10.
+
+- Backend: PointCampaignDraftDetailView com PATCH/DELETE por tenant, apenas owner/admin, CSRF, limites e nenhum disparo ou crédito.
+- Frontend: Campanhas oferece Editar, Excluir com confirmação, Cancelar edição e publicação desabilitada; mesma linguagem visual para ações das Recompensas.
+- API: métodos updatePointCampaignDraft e deletePointCampaignDraft no cliente existente.
+- Testes criados: isolamento entre lojas, perfil analista, valores inválidos, zero crédito; testes Playwright mobile para edição e exclusão de Campanhas e Recompensas.
+- Atualização dos testes visuais com os rótulos atuais dos botões e do título da seção.
+
+Estado: commits presentes em homolog, mas CI e runtime ainda NÃO verificados; deployment Coolify não realizado nesta sessão. Manter PENDENTE DE VALIDAÇÃO, sem promover gate. Nenhuma alteração em produção, na Bibelô, no checkout ou no ledger.
+
+Próxima ação única: executar Django apps.sales.test_benefit_drafts e os Playwright reward-drafts.visual.spec.ts e campaign.visual.spec.ts na CI do SHA atualizado. Após aprovação, confirmar backup e publicar EXCLUSIVAMENTE no Coolify Raw de homologação; conferir SHA, migrações, operação dos botões e screenshots em mobile/desktop. A publicação real de recompensas e campanhas permanece bloqueada por G7–G9, e o gate operacional prioritário segue G3 (cadastro/SMTP).
