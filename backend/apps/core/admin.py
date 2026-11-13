@@ -60,8 +60,8 @@ from .models import EmailDispatch
 @admin.register(EmailDispatch)
 class EmailDispatchAdmin(admin.ModelAdmin):
     """Histórico de estados, nunca dados pessoais nem payload."""
-    list_display = ("created_at", "kind", "state", "published_at",
-                    "started_at", "finished_at", "attempts", "failure_type")
+    list_display = ("created_at", "kind", "state", "queue_seconds", "smtp_seconds",
+                    "published_at", "started_at", "finished_at", "attempts", "failure_type")
     list_filter = ("kind", "state")
     readonly_fields = ("id", "kind", "reference_id", "state", "created_at",
                        "published_at", "started_at", "finished_at",
@@ -69,6 +69,18 @@ class EmailDispatchAdmin(admin.ModelAdmin):
     fields = readonly_fields
     ordering = ("-created_at",)
     list_per_page = 50
+
+    @admin.display(description="Espera fila (s)")
+    def queue_seconds(self, obj):
+        if obj.published_at and obj.started_at:
+            return max(0, round((obj.started_at - obj.published_at).total_seconds(), 1))
+        return "—"
+
+    @admin.display(description="Tempo SMTP (s)")
+    def smtp_seconds(self, obj):
+        if obj.started_at and obj.finished_at:
+            return max(0, round((obj.finished_at - obj.started_at).total_seconds(), 1))
+        return "—"
 
     def has_module_permission(self, request):
         return bool(request.user.is_active and request.user.is_superuser)

@@ -140,3 +140,8 @@ ausência de `ProgramParticipant`.
 - Fazer backup, migrar `participants/0004_enrollment_email_proof`,
   e validar com e-mail de teste autorizadamente antes de abrir ao público.
 - Não houve publicação no Coolify nem envio de mensagens reais nesta etapa.
+
+
+## Correção da rastreabilidade (13/11/2026)
+
+A observabilidade do e-mail de lojistas e participantes está agora na aplicação, não no log bruto: `EmailDispatch` separa API, publicação Redis, início do Celery, aceitação SMTP, falha e reenvio. Consulta restrita ao Django Admin, com durações em segundos, sem e-mail, conteúdo e tokens. A falha de publicação no Redis deixa de ser invisível. `accepted` prova que o SMTP aceitou, **não** que o Gmail/Outlook entregou; SMTP2GO Reports → Activity fornece a última etapa. Em 12/11 às 21:30 UTC o provedor informou atraso geral para Outlook e Gmail. A fila Celery tem `prefetch_multiplier=1` para reduzir reservas de tarefas pelo worker único.

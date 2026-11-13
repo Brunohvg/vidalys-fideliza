@@ -116,6 +116,10 @@ X_FRAME_OPTIONS = "DENY"
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
+# Worker único na homologação: não reservar quatro tarefas adiantadas.
+# Ajuda a manter a fila responsiva se houver processamento mais demorado.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
 
 # Limitação de tentativas de login compartilhada entre workers em homologação/produção.
 # O Redis do Compose não expõe portas externas.
