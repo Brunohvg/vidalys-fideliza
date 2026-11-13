@@ -7,6 +7,7 @@ import hashlib
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
@@ -109,14 +110,14 @@ class PublicStoreJoinView(APIView):
         if recent >= PUBLIC_REQUESTS_PER_DAY:
             return secure(Response({"detail": "Limite de solicitações atingido."}, status=429))
 
-        already = EnrollmentSubmission.objects.filter(
+        existing = EnrollmentSubmission.objects.filter(
             tenant=tenant, email__iexact=email,
             status__in=[
                 EnrollmentSubmission.Status.PENDING_VERIFICATION,
                 EnrollmentSubmission.Status.EMAIL_VERIFIED,
             ],
-        ).exists()
-        if not already:
+        ).order_by("-accepted_at").first()
+        if existing is None:
             # Convite interno usado imediatamente. Nenhum token é devolvido.
             import secrets
             from .enrollment_views import digest
@@ -135,6 +136,17 @@ class PublicStoreJoinView(APIView):
             )
             if email_links_enabled():
                 enqueue_confirmation(receipt, EnrollmentEmailChallenge.Purpose.VERIFY)
+        elif (existing.status == EnrollmentSubmission.Status.PENDING_VERIFICATION
+              and email_links_enabled()):
+            # Repetir cadastro nunca cria outra adesão. Reenvio somente se houve
+            # falha comprovada, com cooldown por loja/caixa postal. Não reenviar
+            # mensagens já aceitas pelo SMTP (podem apenas estar atrasadas).
+            throttle = hashlib.sha256(
+                (settings.SECRET_KEY + ":" + str(tenant.pk) + ":" + email).encode()
+            ).hexdigest()
+            if cache.add("fideliza:verify-retry:" + throttle, 1, timeout=180):
+                enqueue_confirmation(existing, EnrollmentEmailChallenge.Purpose.VERIFY,
+                                     retry_failed=True)
         # A mesma resposta evita revelar se um e-mail já está na fila.
         return secure(Response({
             "status": "pending_verification", "participant_created": False,
