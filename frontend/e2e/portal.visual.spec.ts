@@ -332,5 +332,7 @@ test("rota de redefinição não vaza token na URL nem ao confirmar",async ({pag
   await page.getByLabel("Confirmar senha").fill("NovaSenhaSegura-2026!");
   await page.getByRole("button",{name:"Salvar nova senha"}).click();
   await expect(page.getByText("Senha redefinida.")).toBeVisible();
+  await expect(page).toHaveURL("/redefinir-senha");
+  await page.getByRole("button",{name:"Voltar ao login"}).click();
   await expect(page).toHaveURL("/");
 });
