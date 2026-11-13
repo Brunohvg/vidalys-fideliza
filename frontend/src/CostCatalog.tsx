@@ -165,16 +165,16 @@ export default function CostCatalog({
     <section className="cost-hero">
       <div>
         <span className="cost-eyebrow"><ClipboardCheck size={16}/> CATÁLOGO FINANCEIRO <span>•</span> CONTROLE DE MARGEM</span>
-        <h2>Conheça seus custos.<br/><em>Recompense com confiança.</em></h2>
-        <p>Organize custos por SKU ou variante, registre a origem e descubra quais itens estão prontos para uma simulação de cashback.</p>
+        <h2>Custos dos produtos<br/><em>Use somente quando precisar.</em></h2>
+        <p>Esta é uma ferramenta opcional para conferir se descontos e recompensas cabem na margem da loja. Não é necessário cadastrar todo o catálogo manualmente.</p>
         <div className="cost-hero-note"><LockKeyhole size={15}/> Dados internos da loja. Não sincronizados com Nuvemshop ou ERP.</div>
       </div>
       <span className="cost-hero-art" aria-hidden="true"><PackageSearch size={66} strokeWidth={1.4}/></span>
     </section>
 
     <div className="cost-intro">
-      <div><span className="portal-eyebrow">QUALIDADE DO CATÁLOGO</span><h2>Custos e variantes</h2>
-        <p>Custo desconhecido nunca é tratado como zero. Preço de venda aqui também é manual.</p>
+      <div><span className="portal-eyebrow">FERRAMENTA AVANÇADA · OPCIONAL</span><h2>Quanto custa vender cada produto?</h2>
+        <p>SKU identifica o produto ou sua variação. Exemplo: uma fita vermelha e uma azul podem ter SKUs e custos diferentes. Sem custo confirmado, o cálculo de lucro permanece indisponível.</p>
       </div>
       {canEdit && <button className="portal-primary" onClick={beginNew}><Plus size={18}/> Cadastrar item</button>}
     </div>
@@ -186,7 +186,7 @@ export default function CostCatalog({
       <div className="cost-stat"><span><BadgeCheck size={17}/> Conferidos</span><strong>{list?.summary.ready ?? "—"}</strong><small>Aptos para simular</small></div>
     </div>
 
-    <div className="cost-notice"><Info size={19}/><p><b>Comece por um produto.</b> Cadastre o preço e custo que você conhece. Depois confirme a origem. A integração com ERP e Nuvemshop virá após validarmos o mapeamento de variantes.</p></div>
+    <div className="cost-notice"><Info size={19}/><p><b>Não precisa preencher tudo agora.</b> Para um teste, escolha somente um produto, informe quanto a loja pagou nele e, se souber, o preço de venda. Futuramente priorizaremos a importação do ERP Avanço e da Nuvemshop, mantendo custos desconhecidos em branco.</p></div>
 
     <section className="cost-panel">
       <div className="cost-panel-header">
@@ -216,9 +216,9 @@ export default function CostCatalog({
         !listError && (list?.items.length||0) === 0 ?
           <div className="cost-empty">
             <div className="cost-empty-icon"><PackageSearch size={37}/></div>
-            <h3>{list?.summary.total ? "Nenhum item encontrado" : "Seu catálogo começa aqui"}</h3>
-            <p>{list?.summary.total ? "Experimente outro termo de busca ou filtro." : "Adicione o primeiro item manualmente. Você poderá controlar custos e registrar quando foram conferidos."}</p>
-            {canEdit && <button className="portal-primary" onClick={beginNew}><Plus size={16}/> Cadastrar primeiro item</button>}
+            <h3>{list?.summary.total ? "Nenhum item encontrado" : "Cadastro manual opcional"}</h3>
+            <p>{list?.summary.total ? "Experimente outro termo de busca ou filtro." : "Cadastre apenas um produto para testar a margem ou deixe esta etapa para quando integrar seu ERP. Seus produtos da Nuvemshop não são alterados aqui."}</p>
+            {canEdit && <button className="portal-primary" onClick={beginNew}><Plus size={16}/> Cadastrar um produto para teste</button>}
           </div> : !listError && <div className="cost-table-scroll">
             <table className="cost-table" aria-label="Itens financeiros cadastrados">
               <thead><tr><th>Produto / referência</th><th>Custo informado</th><th>Preço manual</th><th>Situação</th><th>Ações</th></tr></thead>
@@ -254,11 +254,11 @@ export default function CostCatalog({
         <form onSubmit={save}>
           <div className="cost-form-grid">
             <label className="cost-field wide"><span>Nome do produto *</span><input required maxLength={180} value={values.name} onChange={e=>change("name",e.target.value)} placeholder="Ex.: Argola 100 mm transparente"/></label>
-            <label className="cost-field"><span>Referência interna *</span><input required maxLength={100} value={values.reference} onChange={e=>change("reference",e.target.value)} placeholder="Ex.: ARG-100-TR"/></label>
+            <label className="cost-field"><span>Código de referência interno *</span><input required maxLength={100} value={values.reference} onChange={e=>change("reference",e.target.value)} placeholder="Ex.: ARG-100-TR"/></label>
             <label className="cost-field"><span>SKU (opcional)</span><input maxLength={100} value={values.sku} onChange={e=>change("sku",e.target.value)} placeholder="Ex.: 00001001"/></label>
-            <label className="cost-field"><span>ID da variante (opcional)</span><input maxLength={64} value={values.external_variant_id} onChange={e=>change("external_variant_id",e.target.value)} placeholder="Identificador confirmado"/></label>
+            <label className="cost-field"><span>ID da variante na Nuvemshop (avançado, opcional)</span><input maxLength={64} value={values.external_variant_id} onChange={e=>change("external_variant_id",e.target.value)} placeholder="Identificador confirmado"/></label>
             <label className="cost-field"><span>Preço de venda manual (R$)</span><input inputMode="decimal" value={values.price} onChange={e=>change("price",e.target.value)} placeholder="Ex.: 29,90"/></label>
-            <label className="cost-field"><span>Custo unitário manual (R$)</span><input inputMode="decimal" value={values.cost} onChange={e=>change("cost",e.target.value)} placeholder="Deixe vazio se desconhecido"/></label>
+            <label className="cost-field"><span>Quanto a loja pagou por unidade (R$)</span><input inputMode="decimal" value={values.cost} onChange={e=>change("cost",e.target.value)} placeholder="Deixe vazio se desconhecido"/></label>
             <label className="cost-field wide"><span>Origem da conferência</span><textarea rows={2} maxLength={240} value={values.provenance} onChange={e=>change("provenance",e.target.value)} placeholder="Ex.: custo conferido na nota de compra de teste"/></label>
           </div>
           <label className="cost-verify"><input type="checkbox" checked={values.verify} onChange={e=>change("verify",e.target.checked)}/>
