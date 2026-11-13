@@ -51,6 +51,12 @@ for(const width of [390,768,1440]){
     await expect(page.getByRole("heading",{name:"Olá, Cliente."})).toBeVisible();
     await expect(page.getByText("O programa de pontos ainda não está ativo.",{exact:false})).toBeVisible();
     await expect(page.getByText("Ainda não disponíveis")).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Troque seus pontos por descontos"}))
+      .toBeVisible();
+    await expect(page.getByRole("heading",{name:"Do clube para sua próxima compra"}))
+      .toBeVisible();
+    await expect(page.getByText("Esse fluxo está em preparação.",{exact:false}))
+      .toBeVisible();
     await expect(page.getByRole("button",{name:/Resgatar/})).toHaveCount(0);
     await expect(page).toHaveURL("http://127.0.0.1:4173/clube/loja-jardim");
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
