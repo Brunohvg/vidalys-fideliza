@@ -126,7 +126,7 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
             <button type="button" className="vf-clients-empty-cta" onClick={onOpenProgram}>
               Abrir Programa e compartilhar o convite <ArrowRight size={16}/>
             </button>}
-        </div> : !error && response &&
+        </div> : !error && response && <>
         <div className="xp-table-wrap">
           <table className="xp-table"><thead><tr><th>Cliente participante</th><th>Adesão</th><th>Situação</th><th>Benefícios / atividade</th></tr></thead>
           <tbody>{response.items.map(item=><tr key={item.id}>
@@ -174,7 +174,7 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
                 </button>
               </details>}
           </li>)}
-        </ul>}
+        </ul></>}
       {!loading && !error && response && response.total_filtered>0 && <div className="xp-pagination">
         <span>{response.total_filtered} participante(s) encontrado(s)</span>
         <div><button aria-label="Página anterior" disabled={offset===0} onClick={()=>setOffset(n=>Math.max(0,n-20))}><ChevronLeft size={18}/></button>
