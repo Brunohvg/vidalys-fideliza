@@ -141,6 +141,11 @@ FIDELIZA_LEDGER_WRITES_ENABLED = False
 # Registro público desativado até a homologação do fluxo de dados pessoais.
 FIDELIZA_PUBLIC_SIGNUP_ENABLED = env_bool("FIDELIZA_PUBLIC_SIGNUP_ENABLED", False)
 
+# Programa independente: ativar somente após homologar adesão manual e duplicidades.
+FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED = env_bool(
+    "FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED", False
+)
+
 # Leitura de clientes somente após reautorização da loja e liberação explícita.
 FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED = env_bool(
     "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", False

@@ -22,7 +22,7 @@ class ProgramParticipant(models.Model):
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE,
                                related_name="program_participants")
     # Referência externa só pode ser definida por fluxo de adesão futuro validado.
-    external_customer_id = models.CharField(max_length=64)
+    external_customer_id = models.CharField(max_length=64, blank=True, null=True)
     display_name = models.CharField(max_length=140, blank=True, default="")
     contact_email = models.EmailField(blank=True, default="")
     consent_at = models.DateTimeField()

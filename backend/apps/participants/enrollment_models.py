@@ -55,6 +55,7 @@ class EnrollmentSubmission(models.Model):
         PENDING_VERIFICATION = "pending_verification", "Aguardando verificação"
         EMAIL_VERIFIED = "email_verified", "E-mail confirmado"
         LINKED = "linked", "Vínculo com a loja aprovado"
+        MEMBER = "member", "Participante confirmado sem vínculo externo"
         WITHDRAWN = "withdrawn", "Solicitação retirada"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -69,6 +70,10 @@ class EnrollmentSubmission(models.Model):
     terms_digest = models.CharField(max_length=64)
     accepted_at = models.DateTimeField()
     marketing_opt_in = models.BooleanField(default=False)
+    participant = models.OneToOneField(
+        "participants.ProgramParticipant", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="local_enrollment"
+    )
     email_verified_at = models.DateTimeField(null=True, blank=True)
     withdrawn_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=32, choices=Status.choices,
