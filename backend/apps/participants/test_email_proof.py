@@ -100,6 +100,22 @@ class EmailProofTests(TestCase):
         self.assertIn("A alteração só será concluída após confirmação", message.body)
         self.assertEqual(len(message.alternatives), 1)
 
+    @patch("apps.participants.tasks.email_delivery_ready", return_value=True)
+    @patch("apps.participants.tasks.transactional_message", side_effect=ValueError("sensitive render failure"))
+    def test_participant_render_error_records_failed_dispatch(self, _template, _ready):
+        from .tasks import send_enrollment_email
+
+        challenge, _ = self.issue("verify")
+        event = EmailDispatch.objects.get(reference_id=challenge.pk)
+        with self.assertRaises(RuntimeError):
+            send_enrollment_email.run(str(challenge.pk), str(event.pk))
+        event.refresh_from_db()
+        self.assertEqual(event.state, EmailDispatch.State.FAILED)
+        self.assertEqual(event.failure_type, "ValueError")
+        self.assertEqual(event.attempts, 1)
+        self.assertIsNotNone(event.finished_at)
+        self.assertNotIn("sensitive", str(event.__dict__))
+
     def test_enrollment_email_confirmation_is_once_only(self):
         challenge, token = self.issue(EnrollmentEmailChallenge.Purpose.VERIFY)
         self.assertIsNone(self.submission.email_verified_at)
