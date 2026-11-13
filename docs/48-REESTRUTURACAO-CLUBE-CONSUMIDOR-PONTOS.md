@@ -149,3 +149,41 @@ de vínculo manual com plataforma. Não tratar CI como prova de e-mail real.
 **Futuro:** regra de pontos com ledger próprio, pedidos pagos verificados,
 motor de resgate, expiração, campanhas e integração multicanal. Não alterar
 `FIDELIZA_LEDGER_WRITES_ENABLED` apenas para habilitar esses recursos.
+
+## Referência MultiPlique/ApliqueMe — CPF e acesso seguro (13/11/2026)
+
+Referências: https://multiplique.apliqueme.com.br/ e https://multiplique.apliqueme.com.br/regulamento
+A landing divulga 1 ponto por R$ 1, níveis, troca de pontos por descontos, cupons por e-mail e indicação.
+O regulamento menciona CPF para identificar compras. O primeiro acesso /signup solicita e-mail
+no HTML público. Não foi possível validar o fator de autenticação de todas as telas: CPF como
+identificador jamais equivale a senha ou prova de posse de identidade.
+
+### Jornada desejada do Meu Clube
+
+- Entrada simples **CPF ou e-mail**, seguida de confirmação de código/link no contato verificado;
+- CPF serve para encontrar o cadastro ou uma compra, nunca para visualizar saldo/resgatar sozinho;
+- Cadastro voluntário mantém consentimento e aviso de privacidade independentes de marketing;
+- Participante possui ID interno estável por tenant, mesmo sem Nuvemshop;
+- O login por e-mail já está no código de homologação. **CPF ainda NÃO está implementado.**
+
+### Contrato de segurança e integração — FUTURO
+
+1. CPF é dado pessoal (ANPD). Coletar apenas quando houver finalidade concreta e base legal,
+   com minimização, retenção, controle de acesso e política revisada.
+2. Ao coletar CPF, normalizar 11 dígitos, validar verificadores, mostrar só máscara. Usar
+   HMAC com segredo servidor (pepper) e escopo por tenant para busca exata, jamais hash
+   simples reversível por dicionário; criptografia autenticada apenas se a finalidade exigir
+   recuperação do documento. CPF não deve ir a logs, URLs, eventos de analytics ou IA.
+3. Limitar tentativas, usar respostas anti-enumeração e exigir autenticação temporária em
+   e-mail/telefone já verificado para abrir saldo ou fazer resgate.
+4. A API estável da Nuvemshop expõe contact_identification inclusive em pedidos de convidados:
+   https://nuvemshop.dev/docs-api/resources/2025-03/order
+   Isso pode apoiar vínculo com a compra, mas NÃO substitui prova de identidade nem status
+   de pagamento confirmado. Identificação externa deverá ser por canal/empresa e auditável.
+5. CPF divergente, duplicado ou ausente: não associar automaticamente nem creditar pontos;
+   encaminhar para reconciliação protegida, sem vazamento de dados do titular.
+6. Compras elegíveis somente após adesão e vigência da regra, salvo retroatividade explícita
+   auditada. Estorno/reembolso e resgate devem ser idempotentes.
+
+Não ativar coleta obrigatória de CPF nem acesso por CPF no Coolify antes dos testes LGPD,
+fraude, autenticação e homologação com dados sintéticos.
