@@ -157,6 +157,12 @@ def main():
         if args.mode in ("proxy", "full"):
             execute(compose + ["exec", "-T", "api", "python", "-"], env,
                     stdin=PROXY_CHECK, label="HTTPS, sessão, CSRF")
+        worker_uid = execute(compose + [
+            "exec", "-T", "worker", "python", "-c",
+            "import os; print(os.geteuid())",
+        ], env, label="UID do worker Celery")
+        if worker_uid == "0":
+            raise RuntimeError("Worker Celery executando com privilegios de root")
         execute(compose + [
             "exec", "-T", "worker", "celery", "-A", "config",
             "inspect", "ping", "--timeout", "5",
