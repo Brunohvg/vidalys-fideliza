@@ -350,3 +350,48 @@ estado terminal. Agora registra `failed` (ou `retry` para erro transitório),
 somente com nome da classe do erro, sem conteúdo do link, destinatário ou
 token. Testes de regressão sintéticos adicionados. Isso não altera política
 de envio nem comprova entrega pelo provedor.
+
+## Auditoria complementar — cadastro, SMTP e infraestrutura (13/11/2026)
+
+Esta seção registra **correções de falhas específicas**, sem reiniciar G1 ou
+afirmar que o novo SHA esteja implantado no Coolify.
+
+1. **Retentativa órfã de Celery/Redis.** Se um erro SMTP transitório exigia
+   retry e o broker falhava ao publicar a nova tarefa, o evento podia ficar em
+   `retry` sem mensagem na fila. Agora o estado fica `publish_failed`, com
+   tipo de exceção sem conteúdo sensível e sem replay automático. Acompanhar
+   essa ocorrência no Admin e investigar Redis antes de nova solicitação.
+2. **Medição negativa da fila.** Como o worker pode começar antes de a
+   operação `.delay()` terminar, `published_at` passou a usar timestamp
+   capturado antes da publicação. A data só é persistida em publicação bem
+   sucedida. Testes cobrem worker mais rápido que o ACK.
+3. **Limites Nginx competindo.** O proxy Coolify pode agregar vários
+   compradores no mesmo IP de origem visto pelo frontend. Cadastro, reenvio e
+   reset passam a usar zona separada de login, mantendo 10 requests/minuto
+   por peer com burst 5. Essa separação reduz falsos bloqueios cruzados,
+   mas **não identifica IP real de cada comprador**: correção completa exige
+   contrato explícito de proxy confiável, não aceitar X-Forwarded-For arbitrário.
+4. **Worker com privilégios elevados.** Os logs anteriores mostraram alerta
+   de Celery rodando como root. O Compose passou a especificar UID/GID
+   `65534:65534` e `HOME=/tmp`; o smoke CI passa a verificar que o UID
+   real do worker não é zero antes do ping ao Redis.
+5. **Brevo/SMTP2GO.** O sistema continua independente do provedor e envia
+   por SMTP a partir do worker, sem nova API, tarefa ou env. O exemplo de
+   ambiente documenta `smtp-relay.brevo.com` como **opção**; nenhum servidor
+   Brevo foi configurado, nenhum segredo adicionado e nenhum envio real
+   executado. Antes da troca, autenticar domínio/remetente, habilitar
+   transacionais na Brevo e validar destinatário de teste; `accepted` não
+   significa entregue. Exaustão de cota pode atrasar links que expiram
+   em 30 minutos.
+
+**Estado de validação:** CI `3e86d1f3` 6/6 aprovado para retry e
+timestamp; CI `ec04c1b5` 6/6 aprovado para limite Nginx. A validação da
+mudança de UID do worker e commits posteriores deve ser conferida no
+HEAD antes de implantar. **Sem prova de deploy novo no Coolify**.
+
+**Próxima ação:** depois do CI final aprovado, implantar somente o HEAD
+em homologação Raw com backup disponível e verificar migração
+`core.0004`, `celery inspect ping`, UID não-root, sessão/CSRF,
+cadastro novo de lojista e reenvio, painel `EmailDispatch` e
+aceitação versus entrega no SMTP escolhido. Preservar main, Bibelô,
+OAuth não homologado e carteira financeira bloqueada.
