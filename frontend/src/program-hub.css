@@ -45,3 +45,10 @@
   .vf-clients-banner,.vf-clients-banner .vf-program-outline{
     min-width:0;max-width:100%;overflow-wrap:anywhere}
 }
+
+/* Diretório: nunca exibir ao mesmo tempo tabela desktop e cartões mobile. */
+.vf-clients-mobile-list{display:none}
+@media(max-width:760px){
+  .vf-clients-mobile-list{display:grid;gap:12px;list-style:none;padding:0;margin:12px 0}
+  .vf-clients-page .xp-table-wrap{display:none}
+}
