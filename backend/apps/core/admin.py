@@ -5,7 +5,7 @@ Nunca editar registros pendentes pelo Django Admin: a confirmação HMAC
 """
 from django.contrib import admin
 from django.utils import timezone
-from .models import MerchantRegistration
+from .models import MerchantRegistration, MerchantEmailIdentity
 
 
 @admin.register(MerchantRegistration)
@@ -81,6 +81,54 @@ class EmailDispatchAdmin(admin.ModelAdmin):
         if obj.started_at and obj.finished_at:
             return max(0, round((obj.finished_at - obj.started_at).total_seconds(), 1))
         return "—"
+
+    def has_module_permission(self, request):
+        return bool(request.user.is_active and request.user.is_superuser)
+
+    def has_view_permission(self, request, obj=None):
+        return bool(request.user.is_active and request.user.is_superuser)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(MerchantEmailIdentity)
+class MerchantEmailIdentityAdmin(admin.ModelAdmin):
+    """Verifica o vínculo real da conta confirmada sem alterá-lo automaticamente."""
+    list_display = ("masked_email", "verified_at", "store_links")
+    search_fields = ("normalized_email", "user__username")
+    list_select_related = ("user",)
+    ordering = ("-verified_at",)
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related(
+            "user__tenant_memberships__tenant",
+        )
+
+    @admin.display(description="E-mail confirmado")
+    def masked_email(self, obj):
+        try:
+            local, domain = obj.normalized_email.rsplit("@", 1)
+            return local[:2] + "•••@" + domain
+        except ValueError:
+            return "—"
+
+    @admin.display(description="Empresas e permissões")
+    def store_links(self, obj):
+        memberships = list(obj.user.tenant_memberships.all())
+        if not memberships:
+            return "SEM VÍNCULO — revisar a empresa no Admin"
+        return "; ".join(
+            f"{membership.tenant.name} ({membership.get_role_display()})"
+            for membership in memberships
+        )
 
     def has_module_permission(self, request):
         return bool(request.user.is_active and request.user.is_superuser)
