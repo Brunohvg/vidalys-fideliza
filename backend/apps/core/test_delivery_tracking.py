@@ -98,6 +98,25 @@ class DispatchTrackingTests(TestCase):
         self.assertEqual(len(mail.outbox),1)
         self.assertNotIn(self.register.normalized_email,row.failure_type)
 
+    @override_settings(
+        FIDELIZA_PUBLIC_BASE_URL="https://fideliza-homolog.optarys.com.br",
+        FIDELIZA_EMAIL_DELIVERY_ENABLED=True,
+    )
+    @patch("apps.core.tasks._smtp_ready", return_value=True)
+    @patch("apps.core.tasks.transactional_message", side_effect=ValueError("render failed confidential"))
+    def test_render_failure_marks_dispatch_failed_without_leaking_details(self, _template, _ready):
+        event = EmailDispatch.objects.create(
+            kind=EmailDispatch.Kind.REGISTER, reference_id=self.register.pk
+        )
+        with self.assertRaises(RuntimeError):
+            send_merchant_auth_email.run("register", str(self.register.pk), str(event.pk))
+        event.refresh_from_db()
+        self.assertEqual(event.state, EmailDispatch.State.FAILED)
+        self.assertEqual(event.failure_type, "ValueError")
+        self.assertEqual(event.attempts, 1)
+        self.assertIsNotNone(event.finished_at)
+        self.assertNotIn("confidential", str(event.__dict__))
+
     @override_settings(FIDELIZA_EMAIL_DELIVERY_ENABLED=False)
     def test_disabled_worker_has_visible_skipped_state(self):
         row=EmailDispatch.objects.create(kind="register",reference_id=self.register.pk)
