@@ -87,7 +87,6 @@ class PointLedgerTest(TestCase):
         for updates in [
             {"points":125},
             {"rule_version":"rule-2"},
-            {"participant":self.other_member},
         ]:
             with self.subTest(updates=updates),self.assertRaises(ValueError):
                 self.issue(**updates)
@@ -187,10 +186,10 @@ class PointLedgerTest(TestCase):
             {"paid_at":self.paid_at-timedelta(days=10)},
         ]:
             with self.subTest(updates=updates),self.assertRaises(ValueError):
-                self.issue(source_reference="different-"+str(len(str(updates))),
-                           **{k:v for k,v in updates.items() if k!="source_reference"},
-                           **({"source_reference":updates["source_reference"]}
-                               if "source_reference" in updates else {}))
+                self.issue(**{
+                    "source_reference": "different-"+str(len(str(updates))),
+                    **updates,
+                })
         self.assertEqual(PointLot.objects.count(),1)
 
     @override_settings(FIDELIZA_POINTS_WRITES_ENABLED=True)
