@@ -56,7 +56,7 @@ class ManualSalesTests(TestCase):
         self.client = APIClient(enforce_csrf_checks=True)
         self.client.force_login(self.owner)
         self.client.get(reverse("auth-session"))
-        self.paid = (timezone.now() - timedelta(seconds=10)).isoformat()
+        self.paid = timezone.now().isoformat()
         self.body = {
             "reference": "VENDA-00042", "eligible_amount_cents": 10000,
             "participant_id": str(self.participant.id),

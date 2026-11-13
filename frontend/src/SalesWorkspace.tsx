@@ -7,7 +7,7 @@ const money=(cents:number)=>new Intl.NumberFormat("pt-BR",{
   style:"currency",currency:"BRL",
 }).format(cents/100);
 const localNow=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000)
-  .toISOString().slice(0,16);
+  .toISOString().slice(0,19);
 const numberFromMoney=(amount:string):number|null=>{
   const clean=amount.trim();
   if(!/^\d{1,7}(?:[,.]\d{1,2})?$/.test(clean))return null;
@@ -127,7 +127,7 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
             onChange={e=>setAmount(e.target.value)} />
         </label>
         <label>Data e hora do pagamento informado
-          <input required type="datetime-local" value={paidAt}
+          <input required type="datetime-local" step={1} value={paidAt}
             onChange={e=>setPaidAt(e.target.value)} />
         </label>
         <label>Referência do comprovante
