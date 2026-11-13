@@ -3,6 +3,8 @@
 .vf-program-intro h2,.vf-clients-banner h2{font:800 clamp(23px,2.6vw,32px)/1.22 Manrope,Inter,sans-serif;letter-spacing:-.035em;margin:9px 0}
 .vf-program-intro p,.vf-clients-banner p{margin:0;max-width:660px;font-size:13px;line-height:1.65;color:#d5edeb}
 .vf-program-intro .portal-eyebrow,.vf-clients-banner .portal-eyebrow{color:#91e8d5}
+.vf-program-intro-actions{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:9px}
+.vf-program-intro-actions .vf-program-outline{text-decoration:none}
 .vf-program-outline{color:#075b52;background:#fff;border:1px solid #bddbd3;border-radius:12px;padding:12px 14px;display:inline-flex;gap:8px;align-items:center;justify-content:center;flex:none;font-weight:800;font-size:12px;cursor:pointer;min-height:45px}
 .vf-program-outline:hover,.vf-program-outline:focus-visible{background:#e8fbf3}
 .vf-program-tabs{display:flex;flex-wrap:wrap;gap:9px;padding:12px 0 7px;border-bottom:1px solid #dbe8e4}
@@ -23,4 +25,4 @@
 .vf-program-page .enroll-content{padding-top:9px}
 .vf-program-page .enroll-step:first-child{border-top:0}
 @media(max-width:780px){.vf-program-intro,.vf-clients-banner{display:grid;padding:21px;gap:17px}.vf-program-outline{justify-self:start}.vf-program-next-grid{grid-template-columns:1fr}.vf-program-page .enroll-manager{padding:18px}.vf-program-tabs button{flex:1;justify-content:center;white-space:nowrap;padding:10px 11px}}
-@media(max-width:390px){.vf-program-tabs{display:grid;grid-template-columns:1fr}.vf-program-tabs button{justify-content:flex-start}.vf-program-outline{width:100%}}
+@media(max-width:390px){.vf-program-tabs{display:grid;grid-template-columns:1fr}.vf-program-tabs button{justify-content:flex-start}.vf-program-outline{width:100%}.vf-program-intro-actions{display:grid;width:100%}}
