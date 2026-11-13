@@ -187,3 +187,52 @@ identificador jamais equivale a senha ou prova de posse de identidade.
 
 Não ativar coleta obrigatória de CPF nem acesso por CPF no Coolify antes dos testes LGPD,
 fraude, autenticação e homologação com dados sintéticos.
+
+## v0.4 — Resgate de pontos na Nuvemshop (decisão de produto, 13/11/2026)
+
+**Estado: especificado, NÃO implementado.** Prioridade do produto: pontos trocados por desconto na próxima compra. Recompensas ficam visíveis no Meu Clube e, futuramente, em componente opcional na loja. Não confundir planejamento com desconto operacional.
+
+### Jornada desejada do comprador
+
+1. Cliente entra no clube com sessão autenticada, vê pontos pendentes, disponíveis, validade e recompensas com custos em pontos.
+2. Seleciona recompensa de valor fixo (p.ex. R$ 10, exemplo fictício, não oferta) e confirma condições de uso.
+3. Backend valida participação, identidade verificada, saldo, versão de regra, produtos elegíveis, orçamento, limites, validade e combinação com outras promoções.
+4. Reserva atômica do saldo com chave idempotente e prazo de expiração, sem débito definitivo antes de uso comprovado.
+5. Integração disponibiliza benefício para o checkout por mecanismo oficialmente suportado, sem o consumidor copiar código manualmente quando o canal suportar aplicação via SDK.
+6. Acompanhar aceite/rejeição do desconto, pedido associado e pagamento; confirmar consumo apenas uma vez, liberando reserva em expiração/falha ou revertendo conforme política em cancelamento/reembolso.
+7. Portal exibe comprovante, pedido e movimentos com descrições compreensíveis, sem divulgar tokens nem cupons de terceiros.
+
+### Caminhos oficiais para a integração (não escolher sem teste real)
+
+**Caminho A — MVP por cupom individual:** solicitar escopo `write_coupons`, criar cupom de uso controlado pela API oficial de Coupons, vincular internamente a uma reserva e expiração. Usar NubeSDK `coupon:add` quando aplicável (documentado como **checkout only**) e observar `coupon:add:success`/`coupon:add:fail`. Em contextos sem SDK compatível, fornecer ação clara de copiar/aplicar código ou link de retorno: não prometer preenchimento automático. Validar se a versão de API oferece restrição de uso, consumidor e expiração suficientes para impedir compartilhamento e reutilização. Não assumir que sucesso do evento significa compra paga.
+
+**Caminho B — descontos por aplicativo:** API oficial de Discounts com `write_discounts`, promoção registrada por `POST /promotions` e callback configurado por `PUT /discounts/callbacks`. Backend responde à mudança do carrinho com comandos de aplicação/remoção, segundo identidade e reserva verificadas. O callback tem timeout documentado de **800 ms**: validação deve ser rápida, sem chamadas externas lentas, com fallback seguro (não aplicar benefício). Validar identificação autenticada do comprador no checkout, compatibilidade do plano, regras de combinabilidade, desinstalação, casos de reentrada/carrinho abandonado e estorno. O callback NÃO é autorização implícita para débito e não prova pagamento.
+
+**Critério de escolha:** começar por cupom individual se o fluxo completo puder ser realizado com escopos e controles antifraude reais; preferir desconto por aplicativo quando comprovar experiência direta no carrinho sem risco de uso cruzado. Não modificar Ipanema nem injetar script genérico sem testar os recursos oficiais do checkout e o componente real. Testar também desconto Pix e frete grátis na combinação permitida. Moeda inicial BRL.
+
+Referências oficiais verificadas em 13/11/2026:
+- https://nuvemshop.dev/docs-api/resources/2025-03/discounts
+- https://nuvemshop.dev/docs-api/authentication
+- https://nuvemshop.dev/api/resources/unstable/coupon
+- https://dev.nuvemshop.com.br/en/docs/applications/nube-sdk/events/coupon
+
+### Contrato mínimo de domínio para G8/G9
+
+- `RewardDefinition`: tenant, versão, custo em pontos, valor do desconto em centavos, elegibilidade, orçamento, validade, combinação, status.
+- `RedemptionReservation`: tenant, participante, recompensa, pontos, expiração, estado (reserved/applied/consumed/released/reversed), chave idempotente e identificadores externos cifrados/limitados.
+- `ChannelRedemption`: canal, pedido/carrinho referenciado, id de cupom/promoção e prova de aplicação; status observado não equivale a pagamento.
+- Ledger de pontos: aquisição pendente, liberação, reserva, consumo, devolução e expiração como movimentos auditáveis. Não misturar pontos com cashback monetário.
+
+Não criar essas tabelas nem novas flags até conferir os modelos existentes e passar gates anteriores. Adaptador de canal isolado da regra de negócio para suportar Nuvemshop, Vidalys Flow e PDV no futuro.
+
+### Critérios de aceite em loja de teste
+
+- Duas contas e duas lojas isoladas; saldo de A nunca utilizável por B.
+- Duplo clique, webhook repetido e dois checkouts simultâneos não consomem pontos duas vezes.
+- Cupons rejeitados, abandonados, expirados e pagamentos recusados liberam reservas de forma verificável.
+- Pedido pago com desconto e pedido cancelado/reembolsado fazem reconciliação e reversões corretamente; sem gerar saldo negativo indevido.
+- Não combinar promoção quando reduzir margem abaixo do limite ou violar regra Nuvemshop.
+- Resgate transparente em mobile, com estados de carregamento, erro e sucesso; nenhuma promessa de funcionamento automático sem teste em checkout real.
+- Evidências de CI, SHA publicado e teste transacional registrado em docs/43 antes de elevar estado.
+
+**Dependências atuais:** G2 OAuth/escopos ainda não validados em loja de teste; G7 conciliação de pagamento/estorno; G8 ledger efetivo. O resgate permanece PENDENTE e NÃO está habilitado na Bibelô. Prioridade operacional continua G3 cadastro/SMTP e homologação do SHA atual em Coolify Raw. Não ativar descontos reais nesta tarefa.
