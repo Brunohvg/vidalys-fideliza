@@ -3,7 +3,7 @@ import {
   ArrowRight, BarChart3, CheckCircle2, CircleHelp, Gift, HeartHandshake,
   LockKeyhole, PlugZap, ShieldCheck, ShoppingBag, Sparkles, UsersRound
 } from "lucide-react";
-import {merchantApi, type CampaignDraftList, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus, type ManualSaleList, type Store} from "./api";
+import {merchantApi, type PointCampaignDraft, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus, type ManualSaleList, type Store} from "./api";
 
 type Destination = "program"|"clients"|"sales"|"campaign"|"catalog"|"results"|"settings";
 type Action = {
@@ -20,7 +20,7 @@ export default function ActionCenter({
 }: {tenantId:string; role:Store["role"]; onNavigate:(target:Destination)=>void}) {
   const [participants,setParticipants]=useState<ParticipantDirectoryResponse|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
-  const [drafts,setDrafts]=useState<CampaignDraftList|null>(null);
+  const [drafts,setDrafts]=useState<{items:PointCampaignDraft[]}|null>(null);
   const [draftsError,setDraftsError]=useState(false);
   const [recentSales,setRecentSales]=useState<ManualSaleList|null>(null);
   const [salesError,setSalesError]=useState(false);
@@ -34,7 +34,7 @@ export default function ActionCenter({
     setParticipantsError(false);setIntegrationError(false);setDraftsError(false);setSalesError(false);
     merchantApi.listParticipants(tenantId).then(r=>{if(active)setParticipants(r)})
       .catch(()=>{if(active)setParticipantsError(true)});
-    merchantApi.listCampaignDrafts(tenantId).then(r=>{if(active)setDrafts(r)})
+    merchantApi.listPointCampaignDrafts(tenantId).then(r=>{if(active)setDrafts(r)})
       .catch(()=>{if(active)setDraftsError(true)});
     merchantApi.nuvemshopStatus(tenantId).then(r=>{if(active)setIntegration(r)})
       .catch(()=>{if(active)setIntegrationError(true)});
@@ -82,14 +82,14 @@ export default function ActionCenter({
     const latest=drafts.items[0];
     actions.push({
       title:"Retome seu planejamento",
-      body:"Você já começou “"+latest.title+"”. Continue de onde parou, confira o orçamento e revise os limites.",
-      reason:drafts.items.length+" rascunho(s) salvo(s). Nenhuma campanha foi publicada.",
-      target:"campaign",callToAction:"Retomar campanha",icon:Gift,
+      body:"Você já planejou "+latest.bonus_points+" pontos extras para até "+latest.max_customers+" participantes. Confira essa ideia antes de divulgar qualquer benefício.",
+      reason:drafts.items.length+" rascunho(s) de pontos salvo(s). Nenhuma campanha foi publicada.",
+      target:"campaign",callToAction:"Ver planejamento",icon:Gift,
     });
   }else{
     actions.push({
       title:"Desenhe sua primeira campanha",
-      body:"Escolha entre segunda compra, reativação ou recorrência. Faça uma prévia de orçamento em poucos passos.",
+      body:"Escolha segunda compra, reativação ou recorrência e planeje pontos extras sem enviar mensagens.",
       reason:"O motor de benefícios ainda está em desenvolvimento; a ferramenta não publica campanhas.",
       target:"campaign",callToAction:"Planejar benefício",icon:Gift,
     });
@@ -139,7 +139,7 @@ export default function ActionCenter({
 
     {
       title:"Simular recompensas",
-      detail:"Simule rentabilidade e salve uma campanha.",
+      detail:"Planeje pontos extras sem publicar nem conceder pontos.",
       status:draftsError?"unknown":drafts?.items.length?"ready":"not_ready",
       destination:"campaign" as const,action:"Planejar",
     },
