@@ -29,3 +29,11 @@
 .vf-benefit-error{background:#fff0ef;color:#9c3141}
 .vf-benefit-success{background:#e9f8ef;color:#246c5b}
 @media(max-width:700px){.vf-benefit-head{flex-wrap:wrap}.vf-benefit-state{margin-left:0}.vf-benefit-form{grid-template-columns:1fr}.vf-benefit-footer{display:grid}.vf-benefit-footer button{width:100%}}
+
+/* Ações de rascunhos: botões acessíveis, responsivos e sem aparência de links soltos. */
+.vf-draft-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.vf-draft-actions button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:10px 12px;border-radius:9px;border:1px solid #bedbd2;background:#fff;color:#175a52;font:700 12px/1.2 Inter,system-ui,sans-serif;cursor:pointer}
+.vf-draft-actions button:hover:not(:disabled){background:#ecf8f3;border-color:#70b6a1}
+.vf-draft-actions button:disabled{cursor:not-allowed;color:#647a72;background:#f5f8f6;opacity:.75}
+.vf-draft-actions button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+@media(max-width:480px){.vf-draft-actions button{flex:1 1 130px}}
