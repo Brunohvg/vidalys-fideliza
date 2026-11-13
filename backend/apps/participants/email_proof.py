@@ -18,6 +18,7 @@ from django.utils import timezone
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission, EnrollmentCustomerLink
 from .models import ProgramParticipant
 from apps.core.delivery_tracking import enqueue_email
+from apps.core.models import EmailDispatch
 
 logger = logging.getLogger(__name__)
 TOKEN_LIFETIME = timedelta(minutes=30)
@@ -64,7 +65,7 @@ def email_delivery_ready() -> bool:
             (settings.EMAIL_USE_TLS and settings.EMAIL_USE_SSL))
 
 
-def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str):
+def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str, *, retry_failed=False):
     """Emitir somente para conta não retirada, após commit, sem token no log."""
     if not email_links_enabled():
         return False
@@ -80,11 +81,26 @@ def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str):
         return False
     # Não acumular tokens válidos para o mesmo evento.
     now = timezone.now()
-    if EnrollmentEmailChallenge.objects.filter(
+    existing = EnrollmentEmailChallenge.objects.filter(
         submission=submission, purpose=purpose, consumed_at__isnull=True,
         expires_at__gt=now,
-    ).exists():
-        return False
+    ).first()
+    if existing:
+        # Um erro confirmado de publicação/SMTP permite nova tentativa segura.
+        # Nunca duplicar evento aceito, na fila ou em execução: o SMTP2GO pode
+        # apenas estar atrasado. Limite absoluto de três publicações por desafio.
+        if not retry_failed or purpose != EnrollmentEmailChallenge.Purpose.VERIFY:
+            return False
+        history = EmailDispatch.objects.filter(kind=purpose, reference_id=existing.pk)
+        latest = history.first()
+        if (not latest or latest.state not in (
+                EmailDispatch.State.PUBLISH_FAILED,
+                EmailDispatch.State.FAILED,
+                EmailDispatch.State.SKIPPED) or history.count() >= 3):
+            return False
+        from .tasks import send_enrollment_email
+        enqueue_email(purpose, existing.id, send_enrollment_email, str(existing.id))
+        return True
     challenge_id = uuid.uuid4()
     token = make_token(challenge_id, purpose)
     challenge = EnrollmentEmailChallenge.objects.create(
