@@ -8,13 +8,14 @@ import MarginSimulator from "./MarginSimulator";
 import MerchantAccess from "./MerchantAccess";
 import CampaignGuide from "./CampaignGuide";
 import ParticipantsBoard from "./ParticipantsBoard";
+import ProgramHub from "./ProgramHub";
 import StoreSettings from "./StoreSettings";
 import ActionCenter from "./ActionCenter";
 import CostCatalog from "./CostCatalog";
 import CatalogReconciliation from "./CatalogReconciliation";
 import { ApiError, merchantApi, type CostItem, type SessionInfo, type Store } from "./api";
 
-type Screen = "overview" | "clients" | "campaign" | "results" | "margin" | "costs" | "catalog" | "roadmap" | "settings";
+type Screen = "overview" | "program" | "clients" | "campaign" | "results" | "margin" | "costs" | "catalog" | "roadmap" | "settings";
 
 // Links de conta são rotas públicas mesmo com OUTRO lojista autenticado.
 // A ação só troca a sessão quando a confirmação explícita for concluída.
@@ -223,6 +224,7 @@ export default function Portal() {
       <div className="portal-nav-caption">MENU PRINCIPAL</div>
       <nav className="portal-nav">
         <button onClick={()=>navigate("overview")} className={page==="overview"?"is-active":""}><LayoutDashboard size={19}/> Visão geral</button>
+        <button onClick={()=>navigate("program")} className={page==="program"?"is-active":""}><HeartHandshake size={19}/> Programa</button>
         <button onClick={()=>navigate("clients")} className={page==="clients"?"is-active":""}><UsersRound size={19}/> Clientes</button>
         <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
         <button onClick={()=>navigate("results")} className={page==="results"?"is-active":""}><BarChart3 size={19}/> Resultados</button>
@@ -249,15 +251,15 @@ export default function Portal() {
     <div className="portal-main">
       <header className="portal-top">
         <div className="portal-top-title"><button onClick={()=>setDrawer(true)} ref={menuButtonRef} className="portal-menu" aria-label="Abrir menu" aria-controls="portal-sidebar" aria-expanded={compactMenu && drawer}><Menu size={23}/></button>
-          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="clients"?"Clientes":page==="campaign"?"Campanhas":page==="results"?"Resultados":page==="margin"?"Rentabilidade":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":page==="settings"?"Configurações":"Motor de benefícios"}</strong>
+          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="program"?"Programa":page==="clients"?"Clientes":page==="campaign"?"Campanhas":page==="results"?"Resultados":page==="margin"?"Rentabilidade":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":page==="settings"?"Configurações":"Motor de benefícios"}</strong>
         </div>
         <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
       </header>
       <main className="portal-content">
         <div className="portal-content-head">
           <div><span className="portal-eyebrow">CENTRO DE FIDELIDADE</span>
-            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="clients"?"Seu relacionamento com clientes.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Inteligência de margem.":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
-            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="clients"?"Acompanhe adesões verificadas, sem confundir compradores com participantes.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
+            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Inteligência de margem.":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
+            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Regulamento, divulgação e solicitações — cada coisa em seu lugar.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
           <StatusPill>Ambiente de teste</StatusPill>
         </div>
@@ -276,9 +278,10 @@ export default function Portal() {
             </div>
             {page==="overview" && <ActionCenter tenantId={tenant.id} key={tenant.id}
               onNavigate={destination=>navigate(destination)}/>}
-            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} key={tenant.id}/>}
+            {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} onViewClients={()=>navigate("clients")} key={tenant.id}/>}
+            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} onOpenProgram={()=>navigate("program")} key={tenant.id}/>
             {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role}
-              onGoToClients={()=>navigate("clients")} key={tenant.id}/>}
+              onGoToProgram={()=>navigate("program")} key={tenant.id}/>}
             {page==="results" && <section className="xp-panel xp-results-empty">
               <div className="xp-results-icon"><BarChart3 size={40}/></div>
               <span className="portal-eyebrow">MÉTRICAS VERIFICÁVEIS</span>
