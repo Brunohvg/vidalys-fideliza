@@ -1,3 +1,5 @@
+> **Atualização de escopo — v0.4 (13/11/2026):** este texto registra a hipótese original v0.1; para decisões vigentes, prevalecem docs/43, docs/48, docs/50 e docs/51. O primeiro produto comercial prioriza **pontos para descontos na próxima compra**, não cashback em reais como modalidade paralela. Nuvemshop é o primeiro canal opcional, com identidade e carteira por empresa; Flow/WhatsApp e balcão evoluem em etapas. A principal prova de valor ainda não está homologada: pedido pago verificável → pontos → recompensa aplicada → nova compra, com reversões, orçamento e custo medidos. **Não confundir rascunhos com benefícios publicados.**
+
 # Vidalys Fideliza — PRD (proposta v0.1)
 
 **Status:** especificação inicial, ainda não aprovada e não implementada. 10/11/2026.
