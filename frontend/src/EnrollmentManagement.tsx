@@ -21,6 +21,7 @@ export default function EnrollmentManagement({
   const [customerAccess,setCustomerAccess]=useState(false);
   const [approvalAvailable,setApprovalAvailable]=useState(false);
   const [automaticLinking,setAutomaticLinking]=useState(false);
+  const [activeSection,setActiveSection]=useState<"rules"|"share"|"review">("share");
   const [approving,setApproving]=useState<string|null>(null);
   const [approvalTarget,setApprovalTarget]=useState<string|null>(null);
   const [customerCheckBusy,setCustomerCheckBusy]=useState<string|null>(null);
@@ -54,6 +55,7 @@ export default function EnrollmentManagement({
       if(!active)return;
       setTerms(t.terms);setPending(p);setSignupEnabled(t.public_signup_enabled);
       setFormOpen(!t.terms);
+      setActiveSection(t.terms ? "share" : "rules");
     }).catch(cause=>{
       if(active)setError(cause instanceof ApiError?cause.message:"Falha ao consultar adesões.");
     }).finally(()=>{if(active)setLoading(false)});
@@ -126,14 +128,20 @@ export default function EnrollmentManagement({
     <div className="enroll-head">
       <div className="enroll-symbol"><HeartHandshake size={23}/></div>
       <div><span className="portal-eyebrow">ADESÃO COM CONSENTIMENTO</span>
-        <h2 id="enroll-title">Prepare seu programa</h2>
-        <p>O cliente aceita voluntariamente e confirma o e-mail. Quando a loja autorizar, a verificação de cadastro será automática. Nenhum benefício é ativado nesta etapa.</p>
+        <h2 id="enroll-title">Adesão ao seu clube</h2>
+        <p>O cliente autoriza sua participação e confirma o e-mail. A identificação na Nuvemshop é um vínculo separado; comprar não significa aderir automaticamente.</p>
       </div>
     </div>
     {loading && <p className="enroll-muted" role="status">Consultando as regras da loja…</p>}
     {error && <div className="enroll-error" role="alert">{error}</div>}
     {message && <div className="enroll-success" role="status"><Check size={16}/>{message}</div>}
+    {!loading && <div className="vf-program-tabs" role="tablist" aria-label="Áreas do programa">
+      <button type="button" role="tab" aria-selected={activeSection==="rules"} className={activeSection==="rules"?"is-current":""} onClick={()=>setActiveSection("rules")}><FileCheck2 size={16}/> Regulamento</button>
+      <button type="button" role="tab" aria-selected={activeSection==="share"} className={activeSection==="share"?"is-current":""} onClick={()=>setActiveSection("share")}><Link2 size={16}/> Página e convites</button>
+      <button type="button" role="tab" aria-selected={activeSection==="review"} className={activeSection==="review"?"is-current":""} onClick={()=>setActiveSection("review")}><ShieldCheck size={16}/> Solicitações {pending?.total ? "("+pending.total+")" : ""}</button>
+    </div>}
     {!loading && <div className="enroll-content">
+      {activeSection==="rules" && <>
       <div className="enroll-step">
         <span className="enroll-step-number">01</span>
         <div><strong>Regulamento aprovado</strong>
@@ -174,6 +182,8 @@ export default function EnrollmentManagement({
           </button>
         </div>
       </form>}
+      </>}
+      {activeSection==="share" && <>
       <div className="enroll-step">
         <span className="enroll-step-number">02</span>
         <div><strong>Página pública da loja</strong>
@@ -210,11 +220,13 @@ export default function EnrollmentManagement({
           {copied?"Copiado":"Copiar link"}
         </button>
       </div>}
+      </>}
+      {activeSection==="review" && <>
       <div className="enroll-step">
         <span className="enroll-step-number">04</span>
         <div><strong>Aceites aguardando verificação</strong>
-          <p>{pending?pending.total+" solicitação(ões) ainda sem vínculo confirmado."
-            :"Os aceites serão exibidos aqui depois de recebidos."}{" "}
+          <p>{pending?pending.total+" solicitação(ões) ainda não concluídas."
+            :"As solicitações novas aparecerão aqui."}{" "}
             {automaticLinking?"Cadastros com correspondência única são vinculados automaticamente; exceções ficam para revisão."
               :"A equipe da loja revisa apenas os cadastros que ainda não foram vinculados."}</p>
         </div>
@@ -274,8 +286,8 @@ export default function EnrollmentManagement({
         </div>)}
       </div>}
       <p className="enroll-footnote"><ShieldCheck size={16}/>
-        Este painel não concede recompensas. Aceites pendentes não entram na lista de participantes
-        até a identidade ser verificada na plataforma de origem.</p>
+        Este painel não concede recompensas. A confirmação do e-mail não prova uma compra nem libera pontos.</p>
+      </>}
     </div>}
   </section>;
 }
