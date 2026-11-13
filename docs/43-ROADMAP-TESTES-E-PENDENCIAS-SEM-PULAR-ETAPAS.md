@@ -278,3 +278,20 @@ Diagnóstico na sequência de cadastros: uma resposta HTTP `202` pode não gerar
 Implementação: nova tabela `EmailDispatch` guarda somente UUID de evento, referência técnica, categoria, estados e horários, sem dados pessoais/links/tokens. O envio de lojistas e participantes passa por um único `enqueue_email` após commit; se o Redis estiver indisponível, o evento é marcado `publish_failed` e identificado no admin. O worker faz reivindicação atômica, registra `sending` → `accepted`/`retry`/`failed`/`skipped` e não reenvia uma mesma tarefa concluída. Jobs legados sem ID continuam aceitos durante a implantação. Erros temporários têm até duas retentativas em 10/20s; erros permanentes falham sem duplicar tentativas. **Aceito pelo SMTP não significa entregue na caixa**. Confirme status no SMTP2GO Reports → Activity. No Django Admin, `Core → Disparos de e-mail` mostra tempo de fila e tempo SMTP, visível apenas para superusuário e sem permitir edição. A `core.0004_email_dispatch` exige migração em homologação; worker só inicia depois da API saudável e da migração.
 
 Checklist operacional, sem mudar outros projetos: verificar SHA implantado, backup existente, `python manage.py showmigrations core`, worker `celery -A config inspect ping`, observar fila no admin, testar confirmação e redefinição com caixa de teste, comparar horários e buscar a mesma transação no SMTP2GO. Manter `FIDELIZA_PUBLIC_SIGNUP_ENABLED=0` e créditos financeiros bloqueados. Não adicionar Celery Beat, outros workers ou novas credenciais por este ajuste.
+
+### Recuperação de falhas no cadastro repetido (13/11/2026)
+
+No registro público por loja, a mesma caixa postal já pendente não cria outra
+`EnrollmentSubmission`. Se houver desafio válido e a auditoria confirmar
+`publish_failed`, `failed` ou `skipped`, uma nova tentativa de cadastro
+pode publicar novamente **o mesmo desafio**, com cooldown de 180 segundos
+por loja/e-mail e limite de três publicações por desafio. Eventos
+`queued`, `sending`, `retry` ou `accepted` não são reenviados:
+SMTP aceito pode estar apenas em atraso no SMTP2GO. Depois do vencimento,
+pode ser emitido novo desafio, sem duplicar a adesão nem conceder crédito.
+
+Estado: **código em homolog, aguardando CI do SHA final e deploy**. Essa
+correção é independente do bloqueio de infraestrutura G1 e **não demonstra**
+entrega real em Gmail/Outlook. Na verificação de G3, testar cadastro novo,
+repetido com falha Redis sintética, duplicação bloqueada, mensagem aceita
+pelo SMTP e confirmação única em ambiente de homologação.
