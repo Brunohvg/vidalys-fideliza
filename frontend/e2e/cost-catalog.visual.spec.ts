@@ -156,11 +156,11 @@ for (const width of [390, 768, 1440]) {
     await page.screenshot({path:testInfo.outputPath("cost-catalog-"+width+".png"),fullPage:true});
 
     await page.getByRole("button", { name: "Simular" }).click();
-    await expect(page.getByRole("heading", { name: "Simulador de rentabilidade" })).toBeVisible();
-    await expect(page.getByText("Argola transparente 100 mm — referência ARG-100-T")).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Custo da mercadoria" })).toHaveValue("7.00");
-    await expect(page.getByRole("textbox", { name: "Subtotal dos produtos" })).toHaveValue("29.90");
-    await expect(page.getByRole("textbox", { name: "Taxas do pagamento" })).toHaveValue("0");
+    await expect(page.getByRole("heading", { name: "Quanto pode custar uma recompensa?" })).toBeVisible();
+    await expect(page.getByText("Produto de referência: Argola transparente 100 mm.",{exact:false})).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Valor da próxima compra" })).toHaveValue("29,90");
+    await expect(page.getByRole("textbox", { name: "Desconto por recompensa" })).toBeVisible();
+    await expect(page.getByText("Isso não é o lucro da loja.",{exact:false})).toBeVisible();
     expect((await page.evaluate(()=>document.documentElement.scrollWidth))).toBeLessThanOrEqual(width+1);
   });
 }
