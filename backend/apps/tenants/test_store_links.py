@@ -50,6 +50,12 @@ class StoreLinkAuditTests(TestCase):
             password_hash="fake-only-test",
             expires_at=timezone.now() + timedelta(minutes=30),
         )
+        MerchantRegistration.objects.create(
+            normalized_email="orphan@example.invalid",
+            first_name="Antigo", store_name="Loja sem vínculo",
+            password_hash="!", consumed_at=timezone.now(),
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
 
     def test_readonly_audit_classifies_verified_orphans_and_technical_staff(self):
         report = inspect_store_links()
@@ -92,6 +98,11 @@ class StoreLinkAuditTests(TestCase):
         self.assertContains(identities_page, "SEM VÍNCULO")
         self.assertContains(identities_page, "Loja Confirmada")
         self.assertNotContains(identities_page, "orphan@example.invalid")
+        registrations_page = self.client.get(
+            reverse("admin:core_merchantregistration_changelist")
+        )
+        self.assertEqual(registrations_page.status_code, 200)
+        self.assertContains(registrations_page, "Confirmado — SEM VÍNCULO")
         self.assertEqual(
             self.client.post(
                 reverse("admin:tenants_tenantmembership_change",
