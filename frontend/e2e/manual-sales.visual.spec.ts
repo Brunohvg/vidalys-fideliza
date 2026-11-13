@@ -76,7 +76,7 @@ for(const width of [390,1440]){
       if(route.request().method()!=="POST")return route.fallback();
       saved+=1;
       const payload=route.request().postDataJSON();
-      expect(payload.reference).toBe("VENDA-0042");
+      expect(payload.reference).toBe("CUPOM-0042");
       expect(payload.eligible_amount_cents).toBe(10000);
       expect(payload.participant_id).toBe(member.id);
       expect(payload.evidence_reference).toBe("CUPOM-0042");
@@ -95,14 +95,14 @@ for(const width of [390,1440]){
     await page.goto("/");
     if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-    await expect(page.getByRole("heading",{name:"Registrar venda do balcão"})).toBeVisible();
-    await expect(page.getByText("Sem crédito automático")).toBeVisible();
-    await page.getByPlaceholder("VENDA-00042").fill("VENDA-0042");
-    await page.getByPlaceholder("100,00").fill("100,00");
-    await page.getByPlaceholder("CUPOM-00042").fill("CUPOM-0042");
-    await page.locator(".vf-sales-form select").selectOption(member.id);
-    await page.getByRole("button",{name:"Registrar para conferência"}).click();
-    await expect(page.getByText("Venda registrada para conferência por outro administrador.",{
+    await expect(page.getByRole("heading",{name:"Informações da compra"})).toBeVisible();
+    await expect(page.getByRole("button",{name:"Nova venda"})).toBeVisible();
+    await expect(page.getByLabel("A compra foi em outra data?")).toHaveAttribute("aria-expanded","false");
+    await page.getByLabel("Qual foi o valor?").fill("100,00");
+    await page.getByLabel("Número do cupom ou recibo").fill("0042");
+    await page.locator("#vf-sale-client").selectOption(member.id);
+    await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
+    await expect(page.getByText("Venda registrada. Outro administrador poderá conferir",{
       exact:false,
     })).toBeVisible();
     expect(saved).toBe(1);
@@ -165,13 +165,40 @@ test("Segundo administrador confere venda sem gerar pontos",async ({page})=>{
   });
   await page.goto("/");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+  await page.getByRole("button",{name:/Histórico/}).click();
   await expect(page.getByText("Aguardando conferência")).toBeVisible();
-  await page.getByRole("button",{name:"Conferir",exact:true}).click();
+  await page.getByRole("button",{name:"Conferir comprovante"}).click();
   await expect(page.getByText("CUPOM-0042",{exact:false})).toBeVisible();
-  await page.getByPlaceholder("Descreva como conferiu o cupom e o pagamento.")
+  await page.getByPlaceholder("Ex.: Cupom e pagamento conferidos no caixa.")
     .fill("Cupom e pagamento conferidos no caixa.");
   await page.getByRole("button",{name:"Confirmar conferência"}).click();
-  await expect(page.getByText("Conferência registrada. O motor de pontos continua desativado."))
+  await expect(page.getByText("Conferência registrada. Nenhum ponto foi creditado."))
     .toBeVisible();
   expect(reviewed).toBe(1);
+});
+
+test("Não participante exige escolha explícita e data antiga fica oculta",async ({page})=>{
+  await mock(page);
+  let captured:{participant_id:string|null;reference:string}|null=null;
+  await page.route("**/api/v1/tenants/**/sales/manual/",async route=>{
+    if(route.request().method()!=="POST")return route.fallback();
+    captured=route.request().postDataJSON();
+    return route.fulfill({status:201,contentType:"application/json",body:JSON.stringify({
+      already_recorded:false,sale:{state:"awaiting_member"},
+    })});
+  });
+  await page.goto("/");
+  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+  await page.getByLabel("Qual foi o valor?").fill("59,90");
+  await page.getByLabel("Número do cupom ou recibo").fill("0071");
+  await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
+  await expect(page.getByRole("alert")).toContainText("Selecione um participante");
+  expect(captured).toBeNull();
+  await page.locator("#vf-sale-client").selectOption("");
+  await expect(page.getByText("Esta venda ficará registrada sem pontos.",{exact:false}))
+    .toBeVisible();
+  await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
+  await expect(page.getByText("Venda registrada sem participante.",{exact:false}))
+    .toBeVisible();
+  expect(captured).toMatchObject({participant_id:null,reference:"CUPOM-0071"});
 });
