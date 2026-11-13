@@ -35,6 +35,16 @@ conn.request("POST", "/api/v1/auth/login/", body="{}", headers={
 r = conn.getresponse()
 assert r.status == 403, r.status
 r.read()
+# HTML de login e confirmação deve ser sempre atualizado após um novo deploy.
+for page in ("/", "/confirmar-conta", "/redefinir-senha"):
+    conn.request("GET", page, headers={
+        "Host": "staging.invalid", "X-Forwarded-Proto": "https",
+    })
+    r = conn.getresponse()
+    assert r.status == 200, (page, r.status)
+    assert "no-store" in r.getheader("Cache-Control", ""), page
+    assert "noindex" in r.getheader("X-Robots-Tag", ""), page
+    r.read()
 conn.close()
 """
 
