@@ -105,6 +105,26 @@ test("a tela de login não expõe números demonstrativos", async ({ page }) => 
   await expect(page.getByRole("link", { name: "Conhecer demonstração visual" })).toHaveAttribute("href", "/demo");
 });
 
+test("conta técnica sem empresa exibe diagnóstico sem associar loja alheia", async ({ page }) => {
+  await page.route("**/api/v1/auth/session/", route => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({
+      authenticated: true, store_link_status: "missing",
+      user: { username: "technical-admin", display_name: "Administrador QA" },
+      tenants: [],
+    }),
+  }));
+  await page.goto("/");
+  await expect(page.getByRole("heading", {
+    name: "Sua conta está ativa, mas sem empresa associada",
+  })).toBeVisible();
+  await expect(page.getByText("Contas técnicas criadas no Django Admin", {
+    exact: false,
+  })).toBeVisible();
+  await expect(page.getByText("Bibelô — ambiente piloto")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Trocar de conta" })).toBeVisible();
+});
+
 test("login e logout respeitam sessão e CSRF de frontend", async ({ page }) => {
   await page.context().addCookies([
     { name: "csrftoken", value: "csrf-e2e", domain: "127.0.0.1", path: "/" }
