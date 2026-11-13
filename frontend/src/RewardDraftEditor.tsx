@@ -1,5 +1,5 @@
 import {useEffect,useState,type FormEvent} from "react";
-import {ArrowRight,Gift,LockKeyhole,Plus,ShieldCheck,TicketPercent} from "lucide-react";
+import {ArrowRight,Gift,LockKeyhole,Plus,ShieldCheck,TicketPercent,Pencil,Trash2,X} from "lucide-react";
 import {
   ApiError,merchantApi,type DiscountRewardDraft,type Store,
 } from "./api";
@@ -25,6 +25,7 @@ export default function RewardDraftEditor({tenantId,role}:{
   const [minOrder,setMinOrder]=useState("30,00");
   const [limit,setLimit]=useState("50");
   const [advanced,setAdvanced]=useState(false);
+  const [editingId,setEditingId]=useState<string|null>(null);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
@@ -41,6 +42,28 @@ export default function RewardDraftEditor({tenantId,role}:{
     return()=>{active=false};
   },[tenantId]);
 
+
+  const reset=()=>{
+    setEditingId(null);setTitle("");setPoints("200");setDiscount("5,00");
+    setMinOrder("30,00");setLimit("50");setAdvanced(false);
+  };
+  const edit=(item:DiscountRewardDraft)=>{
+    setEditingId(item.id);setTitle(item.title);setPoints(String(item.points_cost));
+    setDiscount((item.discount_cents/100).toFixed(2).replace(".",","));
+    setMinOrder((item.min_order_cents/100).toFixed(2).replace(".",","));
+    setLimit(String(item.max_redemptions));setAdvanced(true);setError("");setMessage("");
+  };
+  const remove=async(item:DiscountRewardDraft)=>{
+    if(busy||!canEdit||!window.confirm("Excluir o rascunho '"+item.title+"'? Esta ação não pode ser desfeita."))return;
+    setBusy(true);setError("");setMessage("");
+    try{
+      await merchantApi.deleteDiscountRewardDraft(tenantId,item.id);
+      setDrafts(v=>v.filter(x=>x.id!==item.id));
+      if(editingId===item.id)reset();
+      setMessage("Rascunho excluído. Nenhum cupom ou saldo foi alterado.");
+    }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível excluir.");}
+    finally{setBusy(false);}
+  };
   const save=async(event:FormEvent)=>{
     event.preventDefault();if(!canEdit||busy)return;
     const cost=Number(points),amount=toCents(discount),minimum=toCents(minOrder);
@@ -54,13 +77,16 @@ export default function RewardDraftEditor({tenantId,role}:{
     }
     setBusy(true);setMessage("");setError("");
     try{
-      const r=await merchantApi.saveDiscountRewardDraft(tenantId,{
+      const payload={
         title:title.trim(),points_cost:cost,discount_cents:amount,
         min_order_cents:minimum,max_redemptions:max,
-      });
-      setDrafts(v=>[r.reward,...v]);
-      setTitle("");
-      setMessage("Recompensa guardada como rascunho. Nenhum cupom foi criado.");
+      };
+      const r=editingId
+        ?await merchantApi.updateDiscountRewardDraft(tenantId,editingId,payload)
+        :await merchantApi.saveDiscountRewardDraft(tenantId,payload);
+      setDrafts(v=>editingId?v.map(x=>x.id===editingId?r.reward:x):[r.reward,...v]);
+      reset();
+      setMessage("Rascunho salvo. Nenhum cupom foi criado.");
     }catch(e){
       setError(e instanceof ApiError?e.message:"Não foi possível salvar.");
     }finally{setBusy(false)}
@@ -69,8 +95,8 @@ export default function RewardDraftEditor({tenantId,role}:{
     <header className="vf-benefit-head">
       <span className="vf-benefit-icon"><Gift size={22}/></span>
       <div><span className="portal-eyebrow">PRÊMIOS DO CLUBE</span>
-        <h2 id="vf-benefit-title">O que o cliente pode conquistar?</h2>
-        <p>Defina descontos que serão trocados por pontos quando o checkout estiver pronto.</p></div>
+        <h2 id="vf-benefit-title">Recompensas do clube</h2>
+        <p>Crie e gerencie os descontos do clube. A publicação será liberada após a validação do checkout.</p></div>
       <span className="vf-benefit-state"><LockKeyhole size={14}/> Apenas rascunho</span>
     </header>
     {error&&<p className="vf-benefit-error" role="alert">{error}</p>}
@@ -111,9 +137,10 @@ export default function RewardDraftEditor({tenantId,role}:{
       <div className="vf-benefit-footer">
         <span><ShieldCheck size={17}/> Ainda não aparece como benefício resgatável no Meu Clube.</span>
         <button type="submit" disabled={busy}>
-          <Plus size={17}/>{busy?"Salvando…":"Guardar recompensa"}
+          <Plus size={17}/>{busy?"Salvando…":editingId?"Salvar alterações":"Criar rascunho"}
         </button>
       </div>
+      {editingId&&<button type="button" className="vf-benefit-advanced" onClick={reset} disabled={busy}><X size={15}/> Cancelar edição</button>}
     </form>}
     <div className="vf-benefit-saved">
       <h3>Recompensas planejadas</h3>
@@ -127,6 +154,11 @@ export default function RewardDraftEditor({tenantId,role}:{
             <p>{item.points_cost.toLocaleString("pt-BR")} pontos ·
               Pedido mínimo {money(item.min_order_cents)}</p>
             <small>Sem cupom, sem resgate e sem consumo de pontos.</small>
+            {canEdit&&<div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:14}}>
+              <button type="button" className="vf-benefit-advanced" onClick={()=>edit(item)} disabled={busy}><Pencil size={15}/> Editar</button>
+              <button type="button" className="vf-benefit-advanced" onClick={()=>void remove(item)} disabled={busy}><Trash2 size={15}/> Excluir</button>
+              <button type="button" className="vf-benefit-advanced" disabled title="Publicação indisponível até a validação dos pontos e checkout"><LockKeyhole size={15}/> Publicar (em breve)</button>
+            </div>}
           </article>)}
         </div>}
     </div>
