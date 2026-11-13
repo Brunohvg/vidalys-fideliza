@@ -1,6 +1,7 @@
 import {ArrowRight, HeartHandshake, UsersRound} from "lucide-react";
 import EnrollmentManagement from "./EnrollmentManagement";
 import PointRuleDraftEditor from "./PointRuleDraftEditor";
+import RewardDraftEditor from "./RewardDraftEditor";
 import type {Store} from "./api";
 import "./program-hub.css";
 
