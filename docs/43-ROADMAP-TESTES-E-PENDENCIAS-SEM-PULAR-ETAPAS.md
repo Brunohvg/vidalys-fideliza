@@ -705,3 +705,14 @@ Objetivo desta intervenção: corrigir um erro de estado entre tentativas do mes
 ## G0 — Revisão pontual da captura de Clientes em 13/11/2026
 
 A captura do painel no desktop mostra somente uma tabela de participantes e contagem coerente 1/1/0; duplicação anterior não se reproduz nessa imagem. Problema visível: ação "Gerenciar adesões" sem estilização da identidade Vidalys. Corrigido em program-hub.css com barra de orientação, botão consistente, altura mínima de 44px, foco e layout mobile. Playwright de merchant-experience ganhou checagem de aparência e alvo de toque para a ação. Alterações restritas à branch homolog; ainda sem CI, screenshot novo ou deploy comprovados. Não transformar esta correção isolada em conclusão de todo o G0 nem do G3.
+
+
+## G0/G3 — Pré-validação do pipeline e correção de teste — 13/11/2026
+
+A workflow existente em .github/workflows/ci.yml roda backend, frontend, docker_smoke, visual_qa, coolify_compose_smoke e external_database_smoke em pushes para homolog. Não criar novo pipeline.
+
+Defeito identificado na checagem estática: após excluir a última recompensa, o botão Publicar (em breve) também desaparece, pois faz parte de cada cartão. O teste Playwright estava esperando esse botão desabilitado mesmo sem qualquer cartão. A asserção agora exige zero botões após a exclusão. Com recompensa presente, o botão continua desabilitado.
+
+Estado: alteração gravada na branch homolog; execução de build, pytest ou Playwright ainda NÃO comprovada. O conector GitHub disponível filtra consultas de workflow runs a PRs, não permitindo confirmar runs de push; status vazio não significa sucesso. A tentativa de clonar o repositório no contêiner local falhou por falta de resolução de DNS, portanto não informar testes executados. Nenhum deploy.
+
+Próxima ação única: conferir em GitHub Actions a execução de quality associada ao HEAD de homolog, seis jobs, logs e artefatos. Corrigir falhas verificadas antes de conferir backup e implantar o mesmo SHA no Coolify Raw para testar cadastro e SMTP G3.
