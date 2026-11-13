@@ -53,7 +53,6 @@ class EmailDispatchLifecycleTests(TestCase):
 
     def test_retry_claim_clears_finished_at_and_rejects_duplicates(self):
         from uuid import uuid4
-        from django.utils import timezone
         from .delivery_tracking import claim_delivery, finish_delivery
         from .models import EmailDispatch
 
