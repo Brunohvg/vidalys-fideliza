@@ -25,3 +25,24 @@
 .vf-campaign-bottom-note svg{flex:none}
 .vf-campaign-new button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
 @media(max-width:700px){.vf-campaign-goals,.vf-campaign-recap{grid-template-columns:1fr}.vf-campaign-hero{padding:23px}.vf-campaign-goals button{min-height:auto}.vf-campaign-actions{display:grid}.vf-campaign-actions button{width:100%;justify-content:center}}
+
+/* Densidade desktop: menos rolagem sem reduzir legibilidade ou zoom do navegador. */
+@media(min-width:1021px){
+  .vf-campaign-new{max-width:1120px;gap:12px}
+  .vf-campaign-hero{padding:20px 24px;border-radius:14px;gap:6px}
+  .vf-campaign-hero h2{font-size:clamp(21px,2vw,26px)}
+  .vf-campaign-hero p{font-size:13px;line-height:1.45}
+  .vf-campaign-steps>span{padding:7px 11px}
+  .vf-campaign-new .vf-benefit-panel{padding:18px 20px;gap:14px;border-radius:14px}
+  .vf-campaign-new .vf-benefit-panel>h3{font-size:18px}
+  .vf-campaign-goals{gap:9px}
+  .vf-campaign-goals button{min-height:112px;padding:14px 16px;gap:7px}
+  .vf-campaign-goals button small{font-size:12px;line-height:1.4}
+  .vf-campaign-actions{margin-top:0}
+  .vf-campaign-new .vf-benefit-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .vf-campaign-new .vf-benefit-card{padding:14px;gap:6px}
+  .vf-campaign-new .vf-benefit-card p{font-size:12px}
+}
+@media(min-width:701px) and (max-width:1020px){
+  .vf-campaign-goals button{min-height:125px;padding:14px;gap:8px}
+}
