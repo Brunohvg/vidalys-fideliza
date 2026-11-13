@@ -12,6 +12,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import make_password
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -23,7 +24,7 @@ from django.views.decorators.http import require_POST
 from apps.tenants.models import Tenant, TenantMembership
 from .merchant_auth import (
     CHALLENGE_LIFETIME, account_for_email, canonical_email, email_claimed,
-    pending_registration_for_email,
+    blocked_registration_for_email, pending_registration_for_email,
     pending_email_claimed, email_feature_ready, normalize_email,
     parse_token, throttle_key, valid_token,
 )
@@ -84,14 +85,16 @@ def register(request):
         return JsonResponse({"detail": "Escolha uma senha mais forte, com 12 ou mais caracteres."}, status=400)
     if not cache.add(throttle_key("register", canonical_email(email)), 1, timeout=60):
         return JsonResponse(GENERIC_ACCEPTED, status=202)
-    if email_claimed(email) or pending_email_claimed(email):
+    if email_claimed(email) or blocked_registration_for_email(email) or pending_email_claimed(email):
         return JsonResponse(GENERIC_ACCEPTED, status=202)
     now = timezone.now()
     try:
         with transaction.atomic():
+            # Cancelamentos podem ser reiniciados; bloqueios jamais são apagados pelo cadastro.
             MerchantRegistration.objects.filter(
-                normalized_email=email, expires_at__lte=now
-            ).delete()
+                normalized_email=email, consumed_at__isnull=True,
+                blocked_at__isnull=True,
+            ).filter(Q(expires_at__lte=now) | Q(cancelled_at__isnull=False)).delete()
             if not pending_email_claimed(email):
                 pending = MerchantRegistration.objects.create(
                     normalized_email=email, first_name=first.strip(),
@@ -115,7 +118,7 @@ def resend_registration(request):
         return JsonResponse({"detail": "Informe um e-mail válido."}, status=400)
     if cache.add(throttle_key("resend", canonical_email(email)), 1, timeout=60):
         pending = pending_registration_for_email(email)
-        if pending and not email_claimed(email):
+        if pending and not email_claimed(email) and not blocked_registration_for_email(email):
             _queue("register", pending.pk)
     return JsonResponse(GENERIC_ACCEPTED, status=202)
 
