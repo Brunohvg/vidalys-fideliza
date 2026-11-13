@@ -99,3 +99,36 @@ test("Custo dos benefícios diferencia custo nominal de contribuição estimada"
  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
  expect(overflow).toBeLessThanOrEqual(1);
 });
+
+
+for(const width of [390,1440]){
+ test("Diretório de participantes exibe somente um layout em "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await mockMerchant(page);
+  await page.route("**/api/v1/tenants/**/participants/**",route=>route.fulfill({
+   contentType:"application/json",body:JSON.stringify({
+    source:"verified_opt_in_only",data_status:"consent_verified",
+    summary:{total:1,active:1,paused:0},total_filtered:1,limit:20,offset:0,
+    items:[{id:"decd72f1-3dde-4254-aea2-041a39fa3e80",display_name:"Participante Exemplo",
+      contact_email:"exemplo@example.invalid",status:"active",
+      consented_at:"2026-11-13T15:00:00-03:00",consent_channel:"customer_portal",
+      last_program_activity_at:null,balance_status:"unavailable",cashback_balance_cents:null}],
+   }),
+  }));
+  await page.goto("/");
+  await nav(page,"Clientes",width);
+  await expect(page.getByRole("heading",{name:"Pessoas no clube"})).toBeVisible();
+  const cards=page.locator(".vf-clients-mobile-list");
+  const table=page.locator(".xp-table-wrap");
+  if(width===390){
+   await expect(cards).toBeVisible();
+   await expect(table).toBeHidden();
+   await expect(cards.locator(".vf-clients-mobile-card")).toHaveCount(1);
+  }else{
+   await expect(cards).toBeHidden();
+   await expect(table).toBeVisible();
+   await expect(table.locator("tbody tr")).toHaveCount(1);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+ });
+}
