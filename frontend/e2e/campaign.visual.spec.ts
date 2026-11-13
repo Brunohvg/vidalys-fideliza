@@ -36,3 +36,52 @@ for(const width of [320,390,768,1440]){
   await page.screenshot({path:testInfo.outputPath("campaign-points-"+width+".png"),fullPage:true});
  });
 }
+
+
+test("Campanha planejada permite editar e excluir sem publicar",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.context().addCookies([{name:"csrftoken",value:"campaign-csrf",url:"http://127.0.0.1:4173"}]);
+ await page.route("**/api/v1/auth/session/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   authenticated:true,user:{username:"qa",display_name:"QA"},tenants:[tenant],
+  }),
+ }));
+ const id="b26c657d-c802-4757-a4e6-ec71ec53c582";
+ let item={id,goal:"reactivation",bonus_points:20,max_customers:50,
+  maximum_bonus_points:1000,status:"draft",published:false,sending_enabled:false};
+ let removed=false,updated=false;
+ await page.route("**/api/v1/tenants/**/loyalty/point-campaign-drafts/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   mode:"draft_only",activation_available:false,items:removed?[]:[item],
+  }),
+ }));
+ await page.route("**/api/v1/tenants/**/loyalty/point-campaign-drafts/"+id+"/",r=>{
+  expect(r.request().headers()["x-csrftoken"]).toBe("campaign-csrf");
+  if(r.request().method()==="PATCH"){
+   updated=true;item={...item,...r.request().postDataJSON()};
+   item.maximum_bonus_points=item.bonus_points*item.max_customers;
+   return r.fulfill({contentType:"application/json",body:JSON.stringify({
+    mode:"draft_only",campaign:item,messages_sent:false,
+   })});
+  }
+  expect(r.request().method()).toBe("DELETE");
+  removed=true;
+  return r.fulfill({contentType:"application/json",body:JSON.stringify({
+   deleted:true,id,messages_sent:false,
+  })});
+ });
+ await page.goto("/");
+ await page.getByRole("button",{name:"Abrir menu"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
+ await page.getByRole("button",{name:"Editar",exact:true}).click();
+ await page.getByRole("button",{name:"Continuar"}).click();
+ await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("35");
+ await page.getByRole("button",{name:"Revisar campanha"}).click();
+ await page.getByRole("button",{name:"Salvar alterações"}).click();
+ expect(updated).toBe(true);
+ await expect(page.getByText("35 pontos extras",{exact:true})).toBeVisible();
+ page.once("dialog",dialog=>dialog.accept());
+ await page.getByRole("button",{name:"Excluir",exact:true}).click();
+ expect(removed).toBe(true);
+ await expect(page.getByText("Nenhuma campanha salva.",{exact:false})).toBeVisible();
+});
