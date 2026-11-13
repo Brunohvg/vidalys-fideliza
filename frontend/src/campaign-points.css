@@ -1,0 +1,27 @@
+
+.vf-campaign-new{display:grid;gap:17px;max-width:990px;margin:0 auto}
+.vf-campaign-hero{background:linear-gradient(115deg,#173d40,#235c55);padding:28px;border-radius:19px;color:#fff;display:grid;gap:11px;justify-items:start}
+.vf-campaign-hero .portal-eyebrow{color:#b3eadc}.vf-campaign-hero h2{font:800 clamp(22px,2.7vw,30px)/1.2 Manrope,Inter,sans-serif;letter-spacing:-.03em;margin:0}
+.vf-campaign-hero p{margin:0;font-size:13px;line-height:1.65;color:#d1e8dc;max-width:650px}
+.vf-campaign-steps{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vf-campaign-steps>span{background:#edf4f1;color:#647f75;border:1px solid #e0ebe5;border-radius:99px;padding:9px 13px;font-size:11px;font-weight:800}
+.vf-campaign-steps>span.current{background:#d7f4e4;color:#126758;border-color:#a7dfc4}
+.vf-campaign-new .vf-benefit-panel>h3{font:800 20px Manrope,Inter,sans-serif;color:#173f3a;margin:0}
+.vf-campaign-new .vf-benefit-panel>p{margin:0;font-size:13px;line-height:1.6;color:#648179}
+.vf-campaign-goals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.vf-campaign-goals button{display:grid;justify-items:start;align-content:start;text-align:left;gap:10px;border:1px solid #d4e5dc;background:#fff;border-radius:14px;padding:20px;color:#234a41;min-height:154px;cursor:pointer}
+.vf-campaign-goals button svg{color:#088477}.vf-campaign-goals button strong{font-size:13px}.vf-campaign-goals button small{font-size:11px;line-height:1.5;color:#6d857c}
+.vf-campaign-goals button.selected{background:#effaf3;border-color:#158b77;box-shadow:0 0 0 1px #158b77}
+.vf-campaign-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+.vf-campaign-actions button{border:0;background:#087f79;border-radius:10px;color:#fff;font-weight:850;font-size:12px;padding:12px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px}
+.vf-campaign-actions button.secondary{border:1px solid #cee1d7;color:#285a50;background:#fff}
+.vf-campaign-actions button:disabled{opacity:.5;cursor:not-allowed}
+.vf-campaign-recap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.vf-campaign-recap>div{display:grid;gap:6px;background:#f4faf6;border:1px solid #e0efe6;padding:15px;border-radius:12px}
+.vf-campaign-recap span{color:#648176;font-size:11px}.vf-campaign-recap strong{color:#234b40;font-size:16px}
+.vf-campaign-warning{display:flex;align-items:flex-start;gap:9px;padding:14px;border:1px solid #e9e1c2;border-radius:12px;background:#fffaf0;color:#6b6146;font-size:12px;line-height:1.6;margin:0}
+.vf-campaign-warning svg{flex:none}
+.vf-campaign-bottom-note{display:flex;align-items:flex-start;gap:9px;color:#668077;font-size:12px;line-height:1.6}
+.vf-campaign-bottom-note svg{flex:none}
+.vf-campaign-new button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+@media(max-width:700px){.vf-campaign-goals,.vf-campaign-recap{grid-template-columns:1fr}.vf-campaign-hero{padding:23px}.vf-campaign-goals button{min-height:auto}.vf-campaign-actions{display:grid}.vf-campaign-actions button{width:100%;justify-content:center}}
