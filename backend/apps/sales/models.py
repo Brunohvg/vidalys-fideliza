@@ -77,3 +77,52 @@ class PointRuleDraft(models.Model):
         related_name="saved_point_rules",
     )
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class DiscountRewardDraft(models.Model):
+    """Desconto em pontos para planejamento, nunca publicado ou utilizável."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="discount_reward_drafts")
+    title = models.CharField(max_length=100)
+    points_cost = models.PositiveIntegerField()
+    discount_cents = models.PositiveIntegerField()
+    min_order_cents = models.PositiveIntegerField(default=0)
+    max_redemptions = models.PositiveIntegerField(default=100)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name="discount_reward_drafts",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.CheckConstraint(condition=Q(points_cost__gt=0), name="reward_draft_points_positive"),
+            models.CheckConstraint(condition=Q(discount_cents__gt=0), name="reward_draft_discount_positive"),
+        ]
+
+
+class PointCampaignDraft(models.Model):
+    """Ação de marketing em pontos, sem publicação nem disparo."""
+    class Goal(models.TextChoices):
+        SECOND = "second_purchase", "Segunda compra"
+        REACTIVATION = "reactivation", "Recuperar clientes"
+        RECURRENCE = "recurrence", "Estimular recorrência"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="point_campaign_drafts")
+    goal = models.CharField(max_length=24, choices=Goal.choices)
+    bonus_points = models.PositiveIntegerField()
+    max_customers = models.PositiveIntegerField()
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name="point_campaign_drafts",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.CheckConstraint(condition=Q(bonus_points__gt=0), name="point_campaign_bonus_positive"),
+            models.CheckConstraint(condition=Q(max_customers__gt=0), name="point_campaign_max_customers_positive"),
+        ]
