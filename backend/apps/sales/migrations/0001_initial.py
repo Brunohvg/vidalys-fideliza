@@ -18,7 +18,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="PointRuleDraft",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True,
+                    serialize=False, verbose_name="ID")),
                 ("tenant", models.OneToOneField(
                     to="tenants.tenant", on_delete=django.db.models.deletion.PROTECT,
                     related_name="point_rule_draft",
