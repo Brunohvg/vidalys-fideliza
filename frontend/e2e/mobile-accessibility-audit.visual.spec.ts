@@ -165,3 +165,74 @@ test("Cores personalizadas mantêm contraste em fundo claro e escuro",async({pag
   )).toBe("rgb(0, 0, 0)");
   await assertNoHorizontalOverflow(page,"prévia com cores personalizadas");
 });
+
+
+// Auditoria transversal dos fluxos acessíveis, sem expor dados reais,
+// com múltiplas larguras e funções opcionais desativadas.
+for(const width of [320,390,768,1440]){
+  test("Navegação integrada sem telas duplicadas ou corte em "+width+"px",async ({page},info)=>{
+    await page.setViewportSize({width,height:900});
+    await setup(page);
+    await page.route("**/api/v1/tenants/**/sales/manual/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        mode:"manual_review_only",points_credited:false,items:[],
+      }),
+    }));
+    await page.route("**/api/v1/tenants/**/loyalty/point-rule-draft/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        mode:"draft_only",activation_available:false,rule:null,
+      }),
+    }));
+    await page.route("**/api/v1/tenants/**/program-terms/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        mode:"approval_required",public_signup_enabled:false,terms:null,
+      }),
+    }));
+    await page.route("**/api/v1/tenants/**/enrollment-submissions/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        mode:"consents_pending_identity_verification",total:0,items:[],note:"Nenhuma adesão",
+      }),
+    }));
+    await page.route("**/api/v1/tenants/**/campaign-drafts/",route=>route.fulfill({
+      contentType:"application/json",body:JSON.stringify({
+        items:[],total:0,limit:20,offset:0,
+      }),
+    }));
+    await page.goto("/");
+    const screens=[
+      ["Programa","Seu programa de fidelidade."],
+      ["Clientes","Participantes do clube."],
+      ["Vendas","Vendas do balcão."],
+      ["Campanhas","Uma campanha em poucos passos."],
+      ["Resultados","Resultados que importam."],
+      ["Rentabilidade","Inteligência de margem."],
+      ["Custos por SKU","Conheça o custo antes do benefício."],
+      ["Conciliação","Valide variantes antes de importar."],
+      ["Configurações","Sua loja, do seu jeito."],
+    ] as const;
+    for(const [nav,title] of screens){
+      if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+      await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+nav+"(?:\\s|$)")}).click();
+      await expect(page.getByRole("heading",{level:1,name:title})).toBeVisible();
+      if(nav==="Configurações"){
+        await expect(page.getByRole("heading",{name:"Regras do clube"})).toHaveCount(0);
+        await expect(page.getByRole("link",{name:"Abrir página do cliente"}))
+          .toHaveAttribute("href","/clube/loja-auditoria");
+      }
+      if(nav==="Vendas"){
+        await expect(page.getByRole("heading",{name:"Informações da compra"})).toBeVisible();
+        await expect(page.getByLabel("Qual foi o valor?")).toBeVisible();
+      }
+      if(nav==="Resultados"){
+        await expect(page.getByRole("heading",{name:"Seu clube em números que fazem sentido."}))
+          .toBeVisible();
+        await expect(page.getByText("Ainda não medido")).toBeVisible();
+      }
+      await assertNoHorizontalOverflow(page,nav+" "+width);
+      if(width===390&&["Vendas","Resultados","Programa"].includes(nav)){
+        await page.screenshot({path:info.outputPath(
+          "audit-"+nav.toLowerCase()+"-"+width+".png"),fullPage:true});
+      }
+    }
+  });
+}
