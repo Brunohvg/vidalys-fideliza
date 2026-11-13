@@ -160,3 +160,43 @@ class BenefitDraftTests(TestCase):
         self.assertEqual(self.client.delete(detail,HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,404)
         self.assertEqual(DiscountRewardDraft.objects.count(),1)
         self.assert_no_effects()
+
+    def test_edit_delete_campaign_draft_is_safe(self):
+        created=self.send(self.campaign,self.campaign_data)
+        self.assertEqual(created.status_code,201)
+        detail=reverse("point-campaign-draft-detail",kwargs={
+            "tenant_id":self.tenant.id,"campaign_id":created.data["campaign"]["id"],
+        })
+        self.client.get(reverse("auth-session"))
+        csrf=self.client.cookies["csrftoken"].value
+        updated=self.client.patch(detail,{
+            "goal":"reactivation","bonus_points":25,"max_customers":12,
+        },format="json",HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(updated.status_code,200,updated.data)
+        self.assertEqual(updated.data["campaign"]["maximum_bonus_points"],300)
+        self.assertFalse(updated.data["campaign"]["published"])
+        self.assertEqual(self.client.delete(detail,HTTP_X_CSRFTOKEN=csrf).status_code,200)
+        self.assertFalse(PointCampaignDraft.objects.exists())
+        self.assert_no_effects()
+
+    def test_campaign_detail_rejects_cross_tenant_and_invalid_updates(self):
+        created=self.send(self.campaign,self.campaign_data)
+        identifier=created.data["campaign"]["id"]
+        detail=reverse("point-campaign-draft-detail",kwargs={
+            "tenant_id":self.tenant.id,"campaign_id":identifier,
+        })
+        other=reverse("point-campaign-draft-detail",kwargs={
+            "tenant_id":self.foreign.id,"campaign_id":identifier,
+        })
+        self.client.get(reverse("auth-session"))
+        csrf=self.client.cookies["csrftoken"].value
+        self.assertEqual(self.client.patch(detail,{
+            "goal":"second_purchase","bonus_points":True,"max_customers":4,
+        },format="json",HTTP_X_CSRFTOKEN=csrf).status_code,400)
+        self.assertEqual(self.client.delete(other,HTTP_X_CSRFTOKEN=csrf).status_code,404)
+        self.client.force_login(self.analyst)
+        self.client.get(reverse("auth-session"))
+        self.assertEqual(self.client.delete(detail,
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,403)
+        self.assertEqual(PointCampaignDraft.objects.count(),1)
+        self.assert_no_effects()
