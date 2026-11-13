@@ -33,7 +33,14 @@ class MerchantRegistrationAdmin(admin.ModelAdmin):
     @admin.display(description="Estado")
     def registration_state(self, obj):
         if obj.consumed_at:
-            return "Confirmado"
+            identity = MerchantEmailIdentity.objects.filter(
+                normalized_email=obj.normalized_email,
+            ).first()
+            if not identity:
+                return "Confirmado — identidade não encontrada"
+            if not identity.user.tenant_memberships.exists():
+                return "Confirmado — SEM VÍNCULO"
+            return "Confirmado — empresa vinculada"
         if obj.expires_at <= timezone.now():
             return "Expirado"
         return "Aguardando confirmação"
