@@ -655,3 +655,16 @@ Mudanças de frontend nesta rodada:
 - Teste Playwright 1440 px ganha limite de altura para cartão de objetivo e conserva checagem de overflow; teste de recompensa agora exige que Publicar esteja desabilitado em vez de ausente.
 
 Não usar CSS zoom, transform scale nem reduzir fonte global do navegador. Mobile preservado. Antes de marcar concluído: rodar CI, publicar SHA aprovado no Coolify Raw após backup, confirmar botões Editar/Excluir em Campanhas e comparar screenshots em 390/768/1440 com zoom 100%. O deploy não foi executado nesta sessão. Gate G0 ainda requer prova visual real.
+
+
+## Revisão do alinhamento com a proposta de valor — 13/11/2026
+
+**Critério principal do produto v0.4:** fazer o cliente retornar à loja usando pontos resgatáveis, sem o lojista ter de operar planilhas, aprovar adesões em massa ou administrar saldo manualmente. Canal Nuvemshop opcional; balcão e Flow compartilham domínio futuro por tenant.
+
+A análise do repositório confirma a fundação de adesão, página Meu Clube, regras e recompensas em rascunho, vendas manuais com conferência, APIs de consulta Nuvemshop, webhooks com inbox e ledger protegido. **A jornada central NÃO está comprovada:** compra paga independente, lançamento e reversão de pontos, publicação segura de recompensas e resgate aplicado no checkout. Sem isso, não considerar MVP de fidelidade comercialmente pronto.
+
+Prioridade de desenvolvimento após homologar a base: G7 prova e conciliação de pagamento, G8 regras e ledger de pontos, G9 benefício aplicado no checkout com limites e reversões. Gamificação, IA, disparos e cashback monetário ficam depois do ciclo mínimo de fidelidade. Não abrir novas telas ou configurações paralelas sem eliminar bloqueios desse fluxo.
+
+**Melhoria de G0 isolada entregue nesta rodada:** tela Custo dos Benefícios ganhou opção de estimar contribuição por compra com custo de produtos, taxas/impostos, frete subsidiado e outras despesas variáveis. Campos vazios não significam zero; o cálculo continua local, não é lucro líquido, não importa ERP e não concede pontos. Acrescentado teste visual em 390 px para custo ausente, cenário sintético e ausência de overflow. PRD v0.1 ganhou aviso de precedência da v0.4, sem apagar histórico.
+
+**Estado:** somente commits na branch homolog; CI, testes executados, deploy e transações externas NÃO confirmados nesta sessão. Ação operacional prioritária permanece executar CI do HEAD, revisar backup e SHA, publicar somente no Coolify Raw de homologação e exercitar G3 cadastro/SMTP + smoke G0. Não tocar em clientes nem checkout real.
