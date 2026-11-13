@@ -125,6 +125,40 @@ class EmailProofTests(TestCase):
         self.assertEqual(consume_challenge(removal_token, "withdraw"), None)
         self.assertEqual(ProgramParticipant.objects.count(), 0)
 
+    def test_retry_failed_verification_is_bounded_and_never_duplicates_accepted(self):
+        challenge, _ = self.issue("verify")
+        first = EmailDispatch.objects.get(reference_id=challenge.pk)
+        with patch("apps.participants.tasks.send_enrollment_email.delay") as delayed:
+            self.assertFalse(enqueue_confirmation(self.submission, "verify", retry_failed=True))
+            delayed.assert_not_called()
+            first.state = EmailDispatch.State.PUBLISH_FAILED
+            first.save(update_fields=["state"])
+            with self.captureOnCommitCallbacks(execute=True):
+                self.assertTrue(enqueue_confirmation(self.submission, "verify", retry_failed=True))
+            self.assertEqual(delayed.call_count, 1)
+            self.assertFalse(enqueue_confirmation(self.submission, "verify", retry_failed=True))
+            second = EmailDispatch.objects.filter(reference_id=challenge.pk).first()
+            second.state = EmailDispatch.State.FAILED
+            second.save(update_fields=["state"])
+            with self.captureOnCommitCallbacks(execute=True):
+                self.assertTrue(enqueue_confirmation(self.submission, "verify", retry_failed=True))
+            self.assertEqual(delayed.call_count, 2)
+            third = EmailDispatch.objects.filter(reference_id=challenge.pk).first()
+            third.state = EmailDispatch.State.FAILED
+            third.save(update_fields=["state"])
+            self.assertFalse(enqueue_confirmation(self.submission, "verify", retry_failed=True))
+        self.assertEqual(EmailDispatch.objects.filter(reference_id=challenge.pk).count(), 3)
+        self.assertEqual(EnrollmentEmailChallenge.objects.filter(purpose="verify").count(), 1)
+
+    def test_accepted_verification_must_not_be_republished(self):
+        challenge, _ = self.issue("verify")
+        event = EmailDispatch.objects.get(reference_id=challenge.pk)
+        event.state = EmailDispatch.State.ACCEPTED
+        event.save(update_fields=["state"])
+        with patch("apps.participants.tasks.send_enrollment_email.delay") as delayed:
+            self.assertFalse(enqueue_confirmation(self.submission, "verify", retry_failed=True))
+            delayed.assert_not_called()
+
     def test_expired_and_forged_tokens_are_rejected(self):
         challenge, token = self.issue("verify")
         EnrollmentEmailChallenge.objects.filter(pk=challenge.pk).update(
