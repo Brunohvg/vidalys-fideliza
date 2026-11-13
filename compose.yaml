@@ -81,11 +81,14 @@ services:
   worker:
     build: ./backend
     restart: unless-stopped
+    # Celery nao precisa de root; elimina SecurityWarning e reduz privilegios.
+    user: "65534:65534"
     networks: [app, database]
     mem_limit: 256m
     cpus: 0.25
     environment:
       <<: *django_env
+      HOME: /tmp
       # Credenciais SMTP somente no worker; API nunca recebe EMAIL_HOST_PASSWORD.
       FIDELIZA_EMAIL_DELIVERY_ENABLED: ${FIDELIZA_EMAIL_DELIVERY_ENABLED:-0}
       FIDELIZA_PUBLIC_BASE_URL: ${FIDELIZA_PUBLIC_BASE_URL:-}
