@@ -1,6 +1,6 @@
 # 43 — Vidalys Fideliza: roteiro de execução com gates e pendências
 
-Atualizado em 11/11/2026. Fonte da verdade para a ordem de trabalho na
+Atualizado em 13/11/2026. Fonte da verdade para a ordem de trabalho na
 branch homolog. Não confundir código, CI, implantação e aprovação real.
 A conexão Nuvemshop já disponível no ChatGPT não substitui a instalação
 OAuth do aplicativo Fideliza no servidor de testes. Não usar TinyFish.
@@ -59,9 +59,9 @@ YAMLs, wizards, mecanismos de benefício ou documentos duplicados.
 | Gate | Estado comprovado | Prova que falta | Próxima ação sem repetir trabalho |
 | --- | --- | --- | --- |
 | G0 (portal/UX) | CÓDIGO VALIDADO | Revisão visual no SHA publicado, mobile | Fazer junto ao smoke de G1 |
-| **G1 (infra)** | **CÓDIGO RAW EM TESTES; HOMOLOGAÇÃO BLOQUEADA** | Managed reprovado no runtime; Raw com rotas e redes explícitas preparado, mas ainda sem prova do proxy/DB, backup/restore e deploy do SHA | **CI verde; conferir Traefik, rede Docker existente do DB, backup e opção Raw no Coolify antes de publicar** |
+| **G1 (infra)** | **BASE RAW OPERACIONAL COM PROVAS REAIS; aceite formal parcial** | Raw, rede, banco, Redis, migrações, API/HTTPS/health e worker foram exercitados; backup local registrado, restauração isolada não demonstrada e isolamento de env exige revalidação | **Não reinstalar nem redesenhar G1. Preservar recursos e checar diferenças apenas no próximo deploy de homologação** |
 | G2 (OAuth) | CÓDIGO VALIDADO | Cinco configurações oficiais, loja piloto, escopos e GET real | Executar após G1 |
-| G3 (adesão/SMTP) | CÓDIGO VALIDADO | SMTP real, consentimento, link de e-mail e vínculo único | Executar após G1/G2 |
+| G3 (adesão/SMTP) | CÓDIGO VALIDADO; 5 tarefas SMTP `sent` e confirmação de lojista em logs reais de 12/11 | Ver entrega final, instalar o HEAD atual com auditoria EmailDispatch e testar cadastro de lojistas; adesão de participantes e vínculo automático exigem OAuth/consentimento | **Próxima ação: homologar a correção de cadastro/e-mail no Coolify Raw existente** |
 | G4 (webhooks) | CÓDIGO VALIDADO | Registro e entrega HMAC em loja piloto, reenvio e ordenação | Executar após G2/G3 |
 | G5 (reconsulta) | CÓDIGO VALIDADO | GET real, cancelamento e estorno sem crédito | Executar após G4 |
 | G6 (benefício simulado) | CÓDIGO VALIDADO | UX e teto em homologação com dados sintéticos | Conferir na revisão do portal |
@@ -123,7 +123,7 @@ sanitizadas e healthchecks. Não usar TinyFish.
 | Gate | Item | Código homolog | Evidência real ainda pendente |
 | --- | --- | --- | --- |
 | G0 | Identidade visual v2, navegação acessível e mobile | Implementado/testes automatizados | Revisão humana após novo deploy |
-| G1 | Infraestrutura Coolify e DB externo seguro | Compose/CI isolado | SHA em execução, backup e restore testados |
+| G1 | Infraestrutura Coolify Raw e DB externo | Execução anterior da stack e testes reais de API/worker registrados | SHA atualizado no novo deploy, teste de restauração isolada (exceção restrita a banco descartável) e revalidação de isolamento de env |
 | G2 | OAuth da Nuvemshop, escopos read_products, read_customers, read_orders | Implementado | Reautorização em loja piloto e GET externo comprovado |
 | G3 | Regulamento, adesão, email verificado e vínculo automático | Implementado sob flags desligadas | Teste SMTP, consentimento, cliente exato e revogação |
 | G4 | Inbox HMAC e deduplicação de order/paid e order/updated | Implementado sob flag desligada; timestamp opcional (migração 0006) | Eventos reais de piloto, duplicação e retenção |
@@ -290,8 +290,52 @@ por loja/e-mail e limite de três publicações por desafio. Eventos
 SMTP aceito pode estar apenas em atraso no SMTP2GO. Depois do vencimento,
 pode ser emitido novo desafio, sem duplicar a adesão nem conceder crédito.
 
-Estado: **código em homolog, aguardando CI do SHA final e deploy**. Essa
+Estado: **CI completo aprovado no SHA `27148b71028bee7ad3162d60ffebad900f17a894` (GitHub Actions 43345165078), deploy desta revisão ainda não comprovado**. Essa
 correção é independente do bloqueio de infraestrutura G1 e **não demonstra**
 entrega real em Gmail/Outlook. Na verificação de G3, testar cadastro novo,
 repetido com falha Redis sintética, duplicação bloqueada, mensagem aceita
 pelo SMTP e confirmação única em ambiente de homologação.
+
+## Retomada correta após reconciliação do histórico — 13/11/2026
+
+**Não retornar à montagem do G1 como próxima tarefa.** O histórico posterior
+à auditoria inicial registra a publicação em Coolify **Raw** (incluindo o SHA
+`665992c840b0712ffa0e88c0b8306016d444ba19` em etapa anterior),
+PostgreSQL externo, migrações, Redis, API HTTPS e healthcheck saudáveis.
+Logs reais enviados pelo usuário em 12/11 mostram cinco tarefas de confirmação
+de **lojistas** com resultado `sent` em 1–3 segundos, além de cadastro HTTP
+202, confirmação HTTP 200 e sessão autenticada HTTP 200.
+
+**Pendências históricas do aceite integral de G1** não desaparecem: backup
+local informado (sem prova de restauração isolada), divergência anterior de
+envs SMTP/legadas na API e necessidade de verificar o SHA efetivo de cada
+novo deploy. A exceção operacional sobre restauração aplica-se apenas ao
+banco descartável de homologação; não assumir o mesmo para dados reais.
+Isso não significa que a aplicação inteira ficou sem operação nem autoriza
+apagar/refazer redes, credenciais ou containers existentes.
+
+**Trabalho real interrompido: cadastro de LOJISTAS e e-mails transacionais.**
+A API responde genericamente 202 para solicitações já pendentes/confirmadas
+ou limitadas por taxa; 202 não prova novo usuário ou novo e-mail. Depois da
+confirmação, a conta deve começar com `platform=independent`, sem OAuth
+Nuvemshop automático. A versão anterior mostrou envios SMTP aceitos, mas
+há incidente do SMTP2GO com atraso para Gmail/Outlook. A observabilidade
+persistente foi adicionada em `core.EmailDispatch` (`core.0004`) para
+separar `queued`, `sending`, `accepted`, `failed`, etc.
+
+**HEAD validado:** `27148b71028bee7ad3162d60ffebad900f17a894`, CI
+[43345165078](https://github.com/Brunohvg/vidalys-fideliza/actions/runs/43345165078)
+com seis jobs aprovados. Inclui ainda uma melhoria separada para reenvio
+idempotente de adesão de PARTICIPANTES após falha comprovada; não confundir
+essa melhoria com o defeito originalmente relatado no cadastro de lojistas.
+**Nenhuma evidência encontrada de deploy desse HEAD no Coolify.**
+
+**Uma única próxima ação operacional:** publicar o HEAD já testado **somente**
+na aplicação Raw de homologação existente, após conferir o backup disponível;
+validar migração `core.0004`, worker e auditoria no Django Admin; testar
+cadastro **novo e distinto de lojista**, confirmação, login, reenvio, reset,
+limites de duplicação e comparação dos horários ao SMTP2GO Activity.
+Não reabrir G1 sem nova divergência. Em paralelo, G2 OAuth da loja piloto
+continua sem prova de conexão real; G3 adesão de participantes não deve ser
+confundido com o onboarding do lojista. Manter `main`, loja Bibelô e
+ledger/cashback real intocados.
