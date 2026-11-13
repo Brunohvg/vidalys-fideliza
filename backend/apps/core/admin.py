@@ -52,3 +52,35 @@ class MerchantRegistrationAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+from .models import EmailDispatch
+
+
+@admin.register(EmailDispatch)
+class EmailDispatchAdmin(admin.ModelAdmin):
+    """Histórico de estados, nunca dados pessoais nem payload."""
+    list_display = ("created_at", "kind", "state", "published_at",
+                    "started_at", "finished_at", "attempts", "failure_type")
+    list_filter = ("kind", "state")
+    readonly_fields = ("id", "kind", "reference_id", "state", "created_at",
+                       "published_at", "started_at", "finished_at",
+                       "attempts", "failure_type")
+    fields = readonly_fields
+    ordering = ("-created_at",)
+    list_per_page = 50
+
+    def has_module_permission(self, request):
+        return bool(request.user.is_active and request.user.is_superuser)
+
+    def has_view_permission(self, request, obj=None):
+        return bool(request.user.is_active and request.user.is_superuser)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

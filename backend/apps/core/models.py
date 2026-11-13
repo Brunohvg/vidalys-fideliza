@@ -48,3 +48,38 @@ class MerchantEmailClaim(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                 related_name="merchant_email_claim")
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class EmailDispatch(models.Model):
+    """Auditoria sem PII do caminho API -> Redis -> worker -> SMTP."""
+    class Kind(models.TextChoices):
+        REGISTER = "register", "Confirmação de lojista"
+        RESET = "reset", "Redefinição de senha"
+        VERIFY = "verify", "Confirmação de participante"
+        WITHDRAW = "withdraw", "Retirada de participante"
+
+    class State(models.TextChoices):
+        QUEUED = "queued", "Aguardando publicação"
+        SENDING = "sending", "Enviando ao SMTP"
+        RETRY = "retry", "Retentativa programada"
+        ACCEPTED = "accepted", "Aceito pelo SMTP"
+        PUBLISH_FAILED = "publish_failed", "Falha no Redis"
+        FAILED = "failed", "Falha no SMTP"
+        SKIPPED = "skipped", "Não enviado"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    reference_id = models.UUIDField()
+    state = models.CharField(max_length=20, choices=State.choices, default=State.QUEUED)
+    created_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    failure_type = models.CharField(max_length=60, blank=True, default="")
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Disparo de e-mail"
+        verbose_name_plural = "Disparos de e-mail"
+        indexes = [models.Index(fields=["state", "created_at"], name="core_mail_dispatch_idx")]
