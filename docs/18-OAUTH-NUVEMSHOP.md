@@ -1,21 +1,21 @@
 # OAuth Nuvemshop — instalação segura e prévia real em leitura
 
-**Estado:** PR #10 — implementação em branch isolada. Não é uma implantação publicada, nem uma app aprovada na Loja de Aplicativos. Cashback, importação e gravações externas permanecem **desativados**.
+**Estado atualizado em 13/11/2026:** implementação em `homolog` com testes automatizados. Conexão real da loja piloto não está comprovada e o app não foi aprovado na Loja de Aplicativos. Cashback e gravações externas continuam **desativados**.
 
 ## Decisão de produto
 O Fideliza só pode utilizar dados de uma loja depois que seu proprietário/administrador autorizar explicitamente o aplicativo. Para esta fase piloto, o usuário já precisa ter conta e associação à loja no Fideliza; **a instalação é iniciada pelo painel**, não pelo app store de forma anônima.
 
-**Permissão exclusiva:** read_products, configurada no Partners Portal. Pedidos, clientes, preços, estoque, descontos, scripts e escrita de catálogo **não são solicitados**.
+**Permissões por etapa:** `read_products` para a prévia do catálogo; `read_customers` apenas para o vínculo de participantes com consentimento; `read_orders` apenas para prévia de pedidos sob flag. Configurar no Portal de Parceiros e reinstalar após alterar escopos. Nenhum scope habilita escrita financeira por si só.
 
 ## Fluxo
-1. Owner/admin autenticado abre **Conciliação** e seleciona **Autorizar minha loja**. O frontend solicita POST /api/v1/tenants/{tenant_id}/nuvemshop/connect/ com CSRF de sessão.
+1. Owner/admin autenticado abre **Configurações → Conexão com a loja** e seleciona **Conectar minha loja**. O frontend solicita POST /api/v1/tenants/{tenant_id}/nuvemshop/connect/ com CSRF de sessão.
 2. Backend verifica role e tenant, hostname HTTPS idêntico ao callback cadastrado, configuração e intervalo mínimo entre tentativas.
 3. Cria state aleatório de 32 bytes, guarda somente seu SHA-256 com vínculo a sessão, usuário, tenant e app ID, expirando em **cinco minutos**.
 4. Navegador vai para https://www.tiendanube.com/apps/{client_id}/authorize?state={nonce}; a Nuvemshop apresenta as permissões do aplicativo.
 5. Callback HTTPS em /api/v1/oauth/nuvemshop/callback/ verifica state, sessão, usuário, prazo e role, e consome a tentativa em transação **antes** da chamada externa. Em seguida troca code por token via POST fixo ao endpoint oficial.
-6. Valida token_type=bearer, escopo concedido igual a read_products, user_id da resposta como ID da loja e eventual store_id consistente.
+6. Valida `token_type=bearer`, escopos de leitura permitidos pelas flags, `user_id` da resposta como ID da loja e eventual `store_id` consistente. A aplicação não executa chamadas de escrita.
 7. Confere exclusividade da loja por tenant e por par app/loja. Armazena **somente token cifrado Fernet** no banco, com chave carregada de secret manager. O token nunca aparece na URL de retorno, JSON ou interface.
-8. Redirect 303 para /?nuvemshop=connected (ou failed) sem code/state. O painel lê o status por GET protegido.
+8. Redirect 303 para /?nuvemshop=connected (ou failed) sem code/state. O painel lê o status por GET protegido. Autorização registrada não significa token válido; usar **Verificar acesso à Nuvemshop** em Configurações para uma prova GET read-only.
 
 ## APIs
 - GET /api/v1/tenants/{id}/nuvemshop/status/ — configurado, conectado, loja e escopo **sem token**; qualquer membro do tenant.
@@ -46,7 +46,7 @@ A saída é um segredo de produção/homologação. Guardar em secret manager/ba
 Todas as variáveis são opcionais para o app subir: **sem configuração, a UI informa indisponível e bloqueia autorização**, em vez de usar credenciais de exemplo. O Django usa credenciais sintéticas somente nos testes automatizados, em banco descartável.
 
 ### Configuração Nuvemshop
-- Criar aplicativo parceiro oficial e configurar somente \`read_products\`.
+- Criar aplicativo parceiro oficial e habilitar somente os escopos de leitura necessários à fase autorizada (`read_products`; `read_customers` para adesão consentida; `read_orders` para prévia homologada).
 - URL de callback idêntica à variável HTTPS acima; URL do painel e política de privacidade da app devem ser próprias.
 - Configurar os três privacy webhooks exigidos (store redact, customer redact, customer data request) e política de privacidade antes de publicar a app na Loja.
 - O fluxo atual inicia pelo painel do Fideliza com sessão autenticada. Não atende instalações iniciadas diretamente no Marketplace sem state/sessão; desenvolver onboarding próprio antes da publicação pública.
@@ -69,9 +69,9 @@ Todas as variáveis são opcionais para o app subir: **sem configuração, a UI 
 - Playwright em 390/768/1440 px, sem overflow, com resposta simulada **apenas nos testes**.
 - CI Backend, frontend, Docker, Compose externo e visual totalmente aprovados antes de considerar merge.
 
-## Fonte oficial confirmada em 11/11/2026
-- https://tiendanube.github.io/api-documentation/authentication
+## Documentação oficial consultada em 13/11/2026
 - https://nuvemshop.dev/docs-api/authentication
+- https://nuvemshop.dev/docs-api/getting-started
 - https://tiendanube.github.io/api-documentation/resources/product
 - https://tiendanube.github.io/api-documentation/resources/product-variant
 - https://nuvemshop.dev/apps/publish/guidelines
@@ -82,3 +82,12 @@ Todas as variáveis são opcionais para o app subir: **sem configuração, a UI 
 - Nenhuma importação ou edição de produto, variante, pedido, estoque, preço, cupom ou crédito;
 - Nenhum webhook comercial/de privacidade em produção;
 - Nenhum deploy para Coolify (somente testes CI de Compose).
+
+
+## Diagnóstico operacional do G2 — 13/11/2026
+
+- O status do OAuth distingue autorização persistida de acesso vivo. O painel mostra **Autorizada; verificar** até que uma consulta real seja executada; não classificar como validado apenas por existir token cifrado no PostgreSQL.
+- A Visão geral encaminha à seção **Configurações** para iniciar a conexão. Conciliação faz somente GET da loja autorizada; não duplica o fluxo OAuth.
+- No Django Admin, superusuários podem consultar a listagem somente leitura das instalações: empresa, app, loja, escopo e consistência dos identificadores. Token cifrado nunca é exibido ou editável.
+- Links de confirmação do e-mail de lojista são servidos por rota React própria, mesmo com outra sessão autenticada. Validar manualmente a troca de sessão após novo deploy, sem misturar empresas.
+- Próximo gate operacional: com backup da homologação confirmado, publicar somente o HEAD validado e testar OAuth de loja **piloto autorizada**; conferir callback, escopos, leitura de até três produtos e ausência de escrita. Nada disso prova conexão da Bibelô nem autoriza ativar cashback.
