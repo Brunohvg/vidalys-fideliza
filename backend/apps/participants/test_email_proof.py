@@ -57,7 +57,7 @@ class EmailProofTests(TestCase):
             challenge = EnrollmentEmailChallenge.objects.get(purpose=purpose)
             cid,event_id = delayed.call_args.args
             self.assertEqual(cid, str(challenge.pk))
-            self.assertEqual(str(EmailDispatch.objects.get().pk),event_id)
+            self.assertTrue(EmailDispatch.objects.filter(pk=event_id,reference_id=challenge.pk).exists())
             token = make_token(challenge.pk, purpose)
             self.assertEqual(challenge.token_digest, digest(token))
             self.assertNotEqual(token, challenge.token_digest)

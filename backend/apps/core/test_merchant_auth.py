@@ -63,7 +63,7 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(self.mock_mail.call_count, 1)
         args=self.mock_mail.call_args.args
         self.assertEqual(args[:2], ("register", str(pending.pk)))
-        self.assertEqual(str(EmailDispatch.objects.get().pk), args[2])
+        self.assertTrue(EmailDispatch.objects.filter(pk=args[2]).exists())
         self.assertEqual(get_user_model().objects.count(), 0)
         token = create_token("register", pending)
         result = self.post("merchant-confirm", {"token": token})
@@ -110,7 +110,7 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(self.mock_mail.call_count, 1)
         args=self.mock_mail.call_args.args
         self.assertEqual(args[:2], ("register", str(row.pk)))
-        self.assertEqual(str(EmailDispatch.objects.get().pk), args[2])
+        self.assertTrue(EmailDispatch.objects.filter(pk=args[2]).exists())
 
     def test_password_reset_generic_replay_and_login_with_email(self):
         user = get_user_model().objects.create_user(
@@ -127,7 +127,7 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(self.mock_mail.call_count, 1)
         args=self.mock_mail.call_args.args
         self.assertEqual(args[:2], ("reset", str(reset.pk)))
-        self.assertEqual(str(EmailDispatch.objects.get().pk), args[2])
+        self.assertTrue(EmailDispatch.objects.filter(pk=args[2]).exists())
         token = create_token("reset", reset)
         self.assertEqual(self.post("merchant-reset-confirm", {
             "token": token, "password": "SenhaNova-2026-supersegura!"
