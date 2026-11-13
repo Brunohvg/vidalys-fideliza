@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.participants.apps.ParticipantsConfig",
     "apps.campaigns.apps.CampaignsConfig",
     "apps.wallets.apps.WalletsConfig",
+    "apps.sales.apps.SalesConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
