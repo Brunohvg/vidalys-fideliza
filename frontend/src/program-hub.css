@@ -52,3 +52,34 @@
   .vf-clients-mobile-list{display:grid;gap:12px;list-style:none;padding:0;margin:12px 0}
   .experience-page .xp-table-wrap{display:none}
 }
+
+/* Cartões de participantes: estilos explícitos, sem depender da tabela desktop. */
+.vf-clients-mobile-list{display:none}
+@media(max-width:760px){
+  .experience-page .xp-table-wrap{display:none}
+  .experience-page .vf-clients-mobile-list{
+    display:grid;grid-template-columns:minmax(0,1fr);gap:12px;
+    list-style:none;padding:0;margin:12px 0;width:100%;min-width:0
+  }
+  .vf-clients-mobile-card{
+    list-style:none;display:grid;gap:12px;min-width:0;
+    padding:16px;background:#fff;border:1px solid #d9e8e2;
+    border-radius:14px;box-shadow:0 3px 12px rgba(15,50,48,.04)
+  }
+  .vf-clients-mobile-person{display:flex;align-items:flex-start;gap:10px;min-width:0}
+  .vf-clients-mobile-person .xp-person-avatar{flex:none}
+  .vf-clients-mobile-identity{min-width:0;flex:1;display:grid;gap:4px;overflow-wrap:anywhere}
+  .vf-clients-mobile-identity strong{color:#173f39;font-size:14px;line-height:1.4}
+  .vf-clients-mobile-identity small{color:#58756c;font-size:12px;line-height:1.45}
+  .vf-clients-mobile-person .xp-tag{flex:none;font-size:11px}
+  .vf-clients-mobile-meta{
+    display:flex;flex-wrap:wrap;gap:6px 14px;
+    padding-top:10px;border-top:1px solid #e6f0eb;
+    color:#526e65;font-size:12px;line-height:1.5
+  }
+  .vf-clients-mobile-card .vf-wallet-technical{max-width:100%}
+}
+@media(max-width:360px){
+  .vf-clients-mobile-person{flex-wrap:wrap}
+  .vf-clients-mobile-person .xp-tag{margin-left:0}
+}
