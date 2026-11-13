@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.campaigns.apps.CampaignsConfig",
     "apps.wallets.apps.WalletsConfig",
     "apps.sales.apps.SalesConfig",
+    "apps.points.apps.PointsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -135,6 +136,10 @@ if REDIS_URL:
 # Em desenvolvimento sem Redis, Django usa cache local em memória.
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7
 SESSION_SAVE_EVERY_REQUEST = False
+
+# Bloqueado: pontos só podem ser movimentados em testes de domínio isolados.
+# Sem variável de ambiente pública para evitar ativação operacional acidental.
+FIDELIZA_POINTS_WRITES_ENABLED = False
 
 # Bloqueado: concessões e resgates dependem de autorização e eventos verificados.
 FIDELIZA_LEDGER_WRITES_ENABLED = False
