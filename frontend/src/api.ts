@@ -477,6 +477,12 @@ export const merchantApi = {
   savePointCampaignDraft:(tenantId:string,payload:PointCampaignDraftInput)=>
     postJson<{mode:"draft_only";campaign:PointCampaignDraft;messages_sent:false}>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/",payload),
+  updatePointCampaignDraft:(tenantId:string,id:string,payload:PointCampaignDraftInput)=>
+    writeJson<{mode:"draft_only";campaign:PointCampaignDraft;messages_sent:false}>(
+      "PATCH", "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"+encodeURIComponent(id)+"/", payload),
+  deletePointCampaignDraft:(tenantId:string,id:string)=>
+    deleteJson<{deleted:true;id:string}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"+encodeURIComponent(id)+"/"),
   listManualSales: (tenantId:string)=>getJson<ManualSaleList>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"),
   createManualSale: (tenantId:string,data:ManualSaleInput)=>postJson<ManualSaleResult>(
