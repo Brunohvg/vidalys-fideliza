@@ -1,14 +1,14 @@
 import "./wallet-details.css";
-import EnrollmentManagement from "./EnrollmentManagement";
+import "./program-hub.css";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, CircleHelp,
-  HeartHandshake, LockKeyhole, RefreshCw, Search, ShieldCheck,
+  HeartHandshake, RefreshCw, Search, ShieldCheck,
   UserRoundCheck, UsersRound
 } from "lucide-react";
 import {
   ApiError, merchantApi, type CashbackWalletView, type ParticipantDirectoryResponse,
-  type ProgramParticipant, type Store
+  type ProgramParticipant
 } from "./api";
 
 const money = (value: number) => new Intl.NumberFormat("pt-BR", {
@@ -33,7 +33,7 @@ function displayName(item: ProgramParticipant) {
   return item.display_name || "Participante sem nome informado";
 }
 
-export default function ParticipantsBoard({ tenantId, role, storeSlug, tenantStatus }: { tenantId: string; role: Store["role"]; storeSlug: string; tenantStatus: Store["status"] }) {
+export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantId: string; onOpenProgram: () => void }) {
   const [response, setResponse] = useState<ParticipantDirectoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -76,24 +76,21 @@ export default function ParticipantsBoard({ tenantId, role, storeSlug, tenantSta
   const submit = (e:FormEvent) => {e.preventDefault();setOffset(0);setSearch(searchText.trim());};
 
   return <div className="experience-page">
-    <section className="xp-hero">
-      <div>
-        <span className="xp-eyebrow"><HeartHandshake size={16}/> RELACIONAMENTO COM CLIENTES</span>
-        <h2>Clientes que voltam.<br/><em>Relacionamentos que crescem.</em></h2>
-        <p>Acompanhe quem aderiu ao programa de fidelidade, com consentimento verificável e informações separadas das vendas comuns da loja.</p>
-        <span className="xp-hero-note"><LockKeyhole size={15}/> Nenhum comprador participa sem consentimento e confirmação de e-mail. A vinculação pode ser automática quando a loja estiver autorizada.</span>
+    <section className="vf-clients-banner">
+      <div><span className="portal-eyebrow">BASE DO CLUBE</span>
+        <h2>Quem faz parte do seu programa</h2>
+        <p>Esta lista contém participantes verificados. Quem apenas comprou na loja não é inscrito automaticamente.</p>
       </div>
-      <div className="xp-hero-graphic" aria-hidden="true"><UsersRound size={66} strokeWidth={1.3}/></div>
+      <button type="button" className="vf-program-outline" onClick={onOpenProgram}>
+        <HeartHandshake size={17}/> Gerenciar adesões <ArrowRight size={16}/>
+      </button>
     </section>
-
-    <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
-      tenantStatus={tenantStatus} onParticipantApproved={()=>setVersion(n=>n+1)}/>
 
     <div className="xp-stats">
       <div className="xp-stat"><span><UsersRound size={17}/> Participantes</span><strong>{response?.summary.total ?? "—"}</strong><small>Com cadastro de adesão</small></div>
       <div className="xp-stat"><span><BadgeCheck size={17}/> Participando</span><strong>{response?.summary.active ?? "—"}</strong><small>Adesão ativa</small></div>
       <div className="xp-stat"><span><CircleHelp size={17}/> Pausados</span><strong>{response?.summary.paused ?? "—"}</strong><small>Sem recompensa ativa</small></div>
-      <div className="xp-stat"><span><ShieldCheck size={17}/> Saldo de benefícios</span><strong className="xp-pending-value">Ainda não disponível</strong><small>Depende da carteira e do ledger</small></div>
+      <div className="xp-stat"><span><ShieldCheck size={17}/> Pontos e recompensas</span><strong className="xp-pending-value">Não ativados</strong><small>Sem pontuação automática nesta fase</small></div>
     </div>
 
     <section className="xp-panel">
@@ -130,13 +127,13 @@ export default function ParticipantsBoard({ tenantId, role, storeSlug, tenantSta
             ?"Os convites de adesão entram primeiro na fila de verificação. Conectar a Nuvemshop não transforma compradores em participantes."
             :"Ajuste a busca ou o filtro para encontrar outros participantes."}</p>
           {response.summary.total===0 && <div className="xp-empty-steps">
-            <span><BadgeCheck size={16}/> Definir as regras do programa</span>
-            <span><BadgeCheck size={16}/> Criar o aceite na vitrine</span>
-            <span><BadgeCheck size={16}/> Registrar adesões autorizadas</span>
+            <span><BadgeCheck size={16}/> Aprovar o regulamento</span>
+            <span><BadgeCheck size={16}/> Compartilhar a página do clube</span>
+            <span><BadgeCheck size={16}/> Confirmar adesões</span>
           </div>}
         </div> : !error && response &&
         <div className="xp-table-wrap">
-          <table className="xp-table"><thead><tr><th>Cliente participante</th><th>Adesão</th><th>Situação</th><th>Saldo / atividade</th></tr></thead>
+          <table className="xp-table"><thead><tr><th>Cliente participante</th><th>Adesão</th><th>Situação</th><th>Benefícios / atividade</th></tr></thead>
           <tbody>{response.items.map(item=><tr key={item.id}>
             <td><div className="xp-person"><span className="xp-person-avatar">{displayName(item).slice(0,1).toUpperCase()}</span>
               <span><strong>{displayName(item)}</strong><small>{item.contact_email || "Contato não informado"}</small></span></div></td>
@@ -148,7 +145,7 @@ export default function ParticipantsBoard({ tenantId, role, storeSlug, tenantSta
                   <button type="button" className="vf-wallet-open" onClick={() => void openWallet(item)}>
                     Ver extrato
                   </button></>
-              : <span className="xp-unavailable">Aguardando carteira</span>}
+              : <span className="xp-unavailable">Pontos ainda não ativados</span>}
               <small>Atividade: {dateString(item.last_program_activity_at)}</small></td>
           </tr>)}</tbody></table>
         </div>}
