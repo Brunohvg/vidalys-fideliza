@@ -134,6 +134,9 @@ export default function PublicEnrollment(){
             Nenhum benefício é concedido nesta etapa.</div>
         </form>}
       </>}
+      {storeSlug&&<p className="public-enroll-privacy-link">
+        <a href={"/clube/"+encodeURIComponent(storeSlug)}>Conhecer Meu Clube e acompanhar minha participação</a>
+      </p>}
       {branding?.support_email&&<p className="public-enroll-privacy-link">
         Dúvidas sobre o programa? <a href={"mailto:"+branding.support_email}>
           {branding.support_email}</a>

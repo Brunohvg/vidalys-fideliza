@@ -1,0 +1,37 @@
+.member-club-shell{min-height:100vh;background:#f2f7f6;color:#143237;font-family:Inter,system-ui,sans-serif}
+.member-club-top{display:flex;align-items:center;gap:12px;padding:17px max(20px,calc((100vw - 1080px)/2));border-bottom:1px solid #d9e9e6;background:#fff}
+.member-club-mark{height:44px;width:44px;border-radius:13px;display:grid;place-items:center;flex:none}
+.member-club-brand{display:grid;gap:5px;min-width:0}.member-club-brand strong{font:800 17px Manrope,Inter,sans-serif;overflow-wrap:anywhere}.member-club-brand small{font-size:9px;letter-spacing:.12em;color:#648180}
+.member-club-logout{margin-left:auto;cursor:pointer;border:1px solid #d8e8e1;padding:10px 14px;border-radius:10px;color:#23665f;background:#fff}
+.member-club-main{max-width:1080px;margin:0 auto;padding:30px 18px 40px;display:grid;gap:18px}
+.member-club-guest,.member-club-account{display:grid;gap:18px}
+.member-club-guest{grid-template-columns:minmax(0,1.1fr) minmax(315px,.9fr);align-items:start}
+.member-club-hero{padding:40px 35px;border-radius:22px;min-height:280px;display:flex;flex-direction:column;justify-content:center;gap:13px;overflow-wrap:anywhere}
+.member-club-hero h1{font:800 clamp(28px,3.6vw,42px)/1.16 Manrope,Inter,sans-serif;letter-spacing:-.04em;margin:0}
+.member-club-hero p{margin:0;font-size:14px;line-height:1.7;max-width:600px;opacity:.91}
+.member-club-eyebrow{font-size:10px;letter-spacing:.13em;font-weight:800;display:flex;align-items:center;gap:8px}
+.member-club-hero-note{font-size:12px;display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:700}
+.member-club-panel{padding:28px;background:#fff;border:1px solid #d9e9e6;border-radius:20px;min-width:0}
+.member-club-panel h2{font:800 clamp(19px,2.6vw,24px)/1.3 Manrope,Inter,sans-serif;letter-spacing:-.025em;color:#143237;margin:12px 0}
+.member-club-panel p{font-size:13px;color:#5e7774;line-height:1.75;margin:8px 0 16px}
+.member-club-kicker{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.12em;font-weight:800;color:#0c8279}
+.member-club-login{display:grid;gap:9px}
+.member-club-login label{font-size:12px;font-weight:750}
+.member-club-login input{min-height:48px;border:1px solid #cadad4;border-radius:11px;font-size:16px;padding:10px 13px;width:100%}
+.member-club-button{border:0;border-radius:11px;background:#087f79;color:#fff;min-height:47px;display:flex;align-items:center;justify-content:center;gap:9px;padding:10px 13px;font-size:13px;font-weight:800;cursor:pointer}
+.member-club-button:disabled{opacity:.55;cursor:not-allowed}.member-club-light{background:#e5f5f0;color:#087f79;border:1px solid #c5e5d9;padding:12px 16px;border-radius:10px;cursor:pointer;font-weight:800}
+.member-club-join{margin-top:17px!important}.member-club-join a,.member-club-support a{color:#087f79;font-weight:800;text-decoration:underline}
+.member-club-access{display:grid;gap:10px;justify-items:start}.member-club-access>svg{color:#087f79}
+.member-club-summary{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.member-club-big-number{font:800 46px Manrope,Inter,sans-serif;color:#a8bdba;display:block;padding:8px 0}
+.member-club-terms{border-top:1px solid #e1ece8;margin-top:12px;padding-top:15px}
+.member-club-terms summary{font-weight:800;font-size:13px;color:#075f59;cursor:pointer}
+.member-club-terms p{white-space:pre-wrap;overflow-wrap:anywhere}
+.member-club-info{grid-column:1/-1}.member-club-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+.member-club-steps>div{background:#f3faf7;padding:16px;border:1px solid #dceee5;border-radius:12px}
+.member-club-steps strong{color:#155e56;font-size:13px}.member-club-steps p{margin:8px 0 0;font-size:12px}
+.member-club-support{text-align:center;color:#657e79;font-size:12px}
+.member-club-footer{display:flex;align-items:center;justify-content:center;gap:8px;color:#6e8780;font-size:11px;padding:0 20px 30px}
+.member-club-error{padding:13px 15px;color:#9b2b3c;background:#fff0f0;border:1px solid #edcaca;border-radius:10px}
+.member-club-shell button:focus-visible,.member-club-shell a:focus-visible,.member-club-shell input:focus-visible,.member-club-shell summary:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+@media(max-width:720px){.member-club-guest,.member-club-summary{grid-template-columns:1fr}.member-club-main{padding:16px 13px 25px}.member-club-hero{padding:29px 24px;min-height:230px}.member-club-panel{padding:22px}.member-club-steps{grid-template-columns:1fr}.member-club-top{padding:15px 16px}}

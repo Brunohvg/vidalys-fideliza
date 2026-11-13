@@ -556,6 +556,20 @@ export const merchantApi = {
     )
 };
 
+export type MemberClubPublic = {
+  store_name:string; store_slug:string;
+  branding:{program_name:string;primary_color:string;accent_color:string;support_email:string};
+  terms:ProgramTerms|null;
+  signup_available:boolean;points_enabled:false;rewards_enabled:false;redemption_enabled:false;
+};
+export type MemberClubPrivate = {
+  store_name:string;display_name:string;
+  status:"active"|"paused"|"awaiting_link";joined_at:string|null;
+  terms:ProgramTerms;points_balance:null;points_pending:null;points_status:"not_active";
+  available_rewards:[];transactions:[];redemption_enabled:false;
+  orders_verified:false;note:string;
+};
+
 export type EmailActionResult = {
   status: "email_verified" | "withdrawn";
   identity_verified_in_nuvemshop: boolean;
@@ -565,6 +579,14 @@ export type EmailActionResult = {
 };
 
 export const publicEnrollmentApi = {
+  club:(slug:string)=>getJson<MemberClubPublic>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/"),
+  clubMe:(slug:string)=>getJson<MemberClubPrivate>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/"),
+  clubRequestAccess:(slug:string,email:string)=>postJson<{status:"accepted"}>(
+    "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/request/",{email}),
+  clubConfirmAccess:(slug:string,token:string)=>postJson<{authenticated:true}>(
+    "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/confirm/",{token}),
+  clubLogout:(slug:string)=>postJson<{authenticated:false}>(
+    "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/logout/",{}),
   requestWithdrawal: (slug:string,email:string) =>
     postJson<{status:"accepted";message:string}>(
       "/api/v1/public/programs/"+encodeURIComponent(slug)+"/withdraw-request/",
