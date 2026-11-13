@@ -686,3 +686,17 @@ Pedido: pente-fino da UI e correções de CSS quebrado; a validação completa d
 **Limitação:** não houve execução de Playwright/build nem comparação real de screenshots nesta sessão, porque o checkout/contêiner Coolify não foi acessado. O diagnóstico é por inspeção do código e das capturas fornecidas pelo usuário. Ainda não se pode afirmar que *todo CSS* do sistema está corrigido. Os componentes não auditados visualmente exigem smoke por rotas em 320, 390, 768 e 1440 px.
 
 **Estado de gate:** mudanças na branch homolog, PENDENTE DE VALIDAÇÃO; nenhuma produção/loja alterada. Gate operacional G3 (SMTP e adesão) permanece anterior a crédito e resgate. A próxima ação é executar build frontend e smoke Playwright do HEAD no pipeline, corrigir falhas concretas, só depois implantar o SHA testado no Coolify Raw de homologação e comparar capturas com zoom 100%.
+
+
+## G3 — Continuação de código: rastreabilidade da fila de e-mails (13/11/2026)
+
+Objetivo desta intervenção: corrigir um erro de estado entre tentativas do mesmo EmailDispatch e testar as garantias básicas sem enviar mensagens externas.
+
+- Na transição RETRY → SENDING, claim_delivery agora limpa finished_at da tentativa anterior; o número de tentativas aumenta atomicamente e a falha antiga também é limpa. Antes, a linha podia indicar envio em andamento e término preenchido ao mesmo tempo.
+- Testes de backend adicionados ao arquivo existente apps/core/tests.py: publicação da tarefa apenas após commit da transação, falha de Redis registrada como publish_failed sem persistir detalhes sensíveis, dupla execução recusada, transição retry → sending → accepted coerente.
+- Os testes usam mocks, não transmitem e-mail e não modificam configurações SMTP nem dados de lojas.
+- Não duplicamos filas, workers, modelos ou configurações; permanecem os mesmos EmailDispatch e delivery_tracking.
+
+**Gate atual:** G3. Estado anterior: CÓDIGO VALIDADO de revisão prévia, homologação real pendente. Estado desta alteração: commit em homolog, testes ainda não executados (PENDENTE DE VALIDAÇÃO). Não converter automaticamente para HOMOLOGAÇÃO VALIDADA.
+
+**Uma próxima ação:** executar a suíte Django apps.core.tests (incluindo EmailDispatchLifecycleTests) no CI do HEAD e, após verde, conferir backup e publicar no Coolify Raw de homologação. Confirmar as migrações core.0004_email_dispatch, o SHA e o ciclo de cadastro → Redis → worker → SMTP com um endereço de teste autorizado. accepted significa aceitação SMTP, não entrega final.
