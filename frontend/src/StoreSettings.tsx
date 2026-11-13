@@ -12,7 +12,7 @@ import "./store-settings.css";
 
 type Props={
   tenantId:string;role:Store["role"];
-  onGoToClients:()=>void;
+  onGoToProgram:()=>void;
 };
 function Status({ready,label}:{ready:boolean;label:string}){
   return <span className={"ss-state "+(ready?"is-ready":"is-pending")}>
@@ -31,7 +31,7 @@ function friendlyError(error:unknown,defaultMessage:string){
   return defaultMessage;
 }
 
-export default function StoreSettings({tenantId,role,onGoToClients}:Props){
+export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
   const [settings,setSettings]=useState<TenantPreferences|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
   const [privacy,setPrivacy]=useState<PrivacyRequestsSummary|null>(null);
@@ -376,8 +376,8 @@ export default function StoreSettings({tenantId,role,onGoToClients}:Props){
           </div>
           <Status ready={false} label="Em breve"/>
         </div>
-        <button type="button" className="ss-secondary" onClick={onGoToClients}>
-          <BookOpen size={16}/> Editar regras e adesão <ArrowRight size={15}/>
+        <button type="button" className="ss-secondary" onClick={onGoToProgram}>
+          <BookOpen size={16}/> Gerenciar no Programa <ArrowRight size={15}/>
         </button>
       </section>
       <section className="ss-card" aria-labelledby="ss-domains-title">
