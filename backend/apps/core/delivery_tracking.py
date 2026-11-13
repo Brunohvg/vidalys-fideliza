@@ -1,11 +1,12 @@
 """Medição de envio sem gravar tokens, destinatários ou mensagens.
 
 'accepted' significa aceitação pelo SMTP, não entrega ao destinatário.
-Deferred, Bounce e Delivered exigem confirmação no painel do SMTP2GO.
+Atrasos, rejeições e entregas exigem confirmação no provedor de e-mail.
 """
 import logging
 import smtplib
 
+from celery.exceptions import Retry
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -20,6 +21,9 @@ def enqueue_email(kind, reference_id, task, *args):
     event = EmailDispatch.objects.create(kind=kind, reference_id=reference_id)
 
     def publish():
+        # Timestamp anterior ao envio: o worker pode iniciar antes do ACK do Redis.
+        # Somente persistir se a publicação terminar sem erro.
+        publication_started = timezone.now()
         try:
             task.delay(*args, str(event.pk))
         except Exception as exc:
@@ -34,7 +38,7 @@ def enqueue_email(kind, reference_id, task, *args):
                          kind, event.pk, type(exc).__name__)
         else:
             # O worker pode executar antes de a API atualizar published_at.
-            EmailDispatch.objects.filter(pk=event.pk).update(published_at=timezone.now())
+            EmailDispatch.objects.filter(pk=event.pk).update(published_at=publication_started)
             logger.info("email_dispatch queued kind=%s event=%s", kind, event.pk)
 
     transaction.on_commit(publish)
@@ -91,10 +95,30 @@ def retry_or_fail(task, event_id, exc):
         finish_delivery(event_id, EmailDispatch.State.RETRY, error_type)
         logger.warning("email_dispatch transient_smtp type=%s retry=%d",
                        error_type, task.request.retries + 1)
-        raise task.retry(
-            exc=RuntimeError("SMTP temporariamente indisponível"),
-            countdown=10 * 2 ** task.request.retries,
-        ) from None
+        try:
+            raise task.retry(
+                exc=RuntimeError("SMTP temporariamente indisponível"),
+                countdown=10 * 2 ** task.request.retries,
+            ) from None
+        except Retry:
+            # O Celery utiliza essa exceção para sinalizar retry bem agendado.
+            raise
+        except Exception as publish_exc:
+            # Falha ao publicar o retry no Redis: não deixar tarefa fantasma
+            # em "retry" e não reenviar automaticamente (SMTP pode ter aceito).
+            if event_id is not None:
+                EmailDispatch.objects.filter(
+                    pk=event_id, state=EmailDispatch.State.RETRY,
+                ).update(
+                    state=EmailDispatch.State.PUBLISH_FAILED,
+                    finished_at=timezone.now(),
+                    failure_type=type(publish_exc).__name__[:60],
+                )
+            logger.error(
+                "email_dispatch retry_publish_failed event=%s type=%s",
+                event_id, type(publish_exc).__name__,
+            )
+            raise RuntimeError("Falha ao reagendar envio") from None
     finish_delivery(event_id, EmailDispatch.State.FAILED, error_type)
     logger.error("email_dispatch terminal_smtp type=%s", error_type)
     raise RuntimeError("Falha de envio SMTP") from None
