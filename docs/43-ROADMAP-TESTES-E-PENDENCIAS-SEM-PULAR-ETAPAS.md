@@ -339,3 +339,14 @@ Não reabrir G1 sem nova divergência. Em paralelo, G2 OAuth da loja piloto
 continua sem prova de conexão real; G3 adesão de participantes não deve ser
 confundido com o onboarding do lojista. Manter `main`, loja Bibelô e
 ledger/cashback real intocados.
+
+### Correção adicional — montagem de e-mail antes do SMTP (13/11/2026)
+
+Em ambos os workers transacionais (lojista e participante), falhas na geração
+de token, dados do template ou renderização HTML/texto são capturadas pela
+mesma auditoria `EmailDispatch` das falhas SMTP. Antes, uma exceção nesse
+trecho ocorria fora do `try` e podia deixar a tarefa em `sending` sem
+estado terminal. Agora registra `failed` (ou `retry` para erro transitório),
+somente com nome da classe do erro, sem conteúdo do link, destinatário ou
+token. Testes de regressão sintéticos adicionados. Isso não altera política
+de envio nem comprova entrega pelo provedor.
