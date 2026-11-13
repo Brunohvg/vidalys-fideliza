@@ -465,3 +465,46 @@ no container API **sem alterar registros**, identificar qualquer
 divergência no Admin e realizar um cadastro de teste com nova caixa
 postal; confirmar vínculo do proprietário na sessão e no Django Admin.
 Apenas depois retomar G2 (OAuth Nuvemshop) e G3 (participantes/SMTP).
+
+## Sessão ativa, confirmação por e-mail e moderação do Admin — 13/11/2026
+
+**Falha de interface identificada:** a rota de confirmar conta era ignorada
+pelo Portal quando outra sessão autenticada já existia. A nova versão dá
+prioridade à rota de confirmação/recuperação, avisa sobre a conta atual e
+só substitui a sessão depois de ação explícita com token válido. O
+backend cria nova conta, empresa independente e vínculo de proprietário
+na mesma transação. Testes cobrem duas contas distintas, sem mesclar lojas.
+
+**Formulários:** troca de tela, retorno ou mudança de usuário limpam nome,
+loja, e-mail, senha, confirmação, estado de mostrar senha e tokens antigos.
+O fluxo que aguarda e-mail conserva somente o endereço necessário ao
+reenvio, não senhas ou dados da loja. Reset de senha exibe conclusão
+antes de oferecer retorno à tela de login.
+
+**Moderação no Django Admin: Cadastros de lojistas.** Superusuário pode
+selecionar registros e usar ações administrativas com log de auditoria:
+
+- Cancelar inscrição pendente: invalida token e destrói o hash provisório,
+  sem criar usuário/loja; novo cadastro explícito pode ser feito;
+- Bloquear inscrição pendente: impede confirmação, reenvio e novo cadastro
+  para caixa postal e aliases Gmail conhecidos;
+- Liberar inscrição bloqueada: exige novo cadastro e token, sem reativar
+  link antigo;
+- Bloquear acesso de conta confirmada: exige identidade confirmada e
+  reivindicação canônica associada; desativa o usuário, preservando loja,
+  membership, histórico e dados existentes;
+- Restaurar acesso de conta confirmada: reabilita conta anteriormente
+  bloqueada por essa moderação, sem mexer na loja;
+- Excluir inscrição: somente registro NÃO confirmado e NÃO bloqueado;
+  não oferece exclusão destrutiva de empresa ou usuário confirmado.
+
+Migração nova: core.0005_registration_moderation (cancelled_at, blocked_at).
+Não altera cadastros legados automaticamente. Falhas pré-existentes de
+cadastro não são resolvidas por exclusão em massa. Registrar evidências
+antes de qualquer correção no banco.
+
+**Homologação:** após CI aprovado, conferir backup do PostgreSQL externo
+e publicar somente o HEAD da branch homolog na aplicação Raw existente.
+Conferir showmigrations core, Admin, ações de moderação, registro novo com
+outro usuário conectado e estado correto de sessão/empresa. Nenhum deploy,
+Nuvemshop real ou cashback foi autorizado ou comprovado nesta etapa.
