@@ -98,6 +98,9 @@ test("Custo dos benefícios diferencia custo nominal de contribuição estimada"
  await page.getByRole("textbox",{name:"Desconto por recompensa"}).fill("5,00");
  await expect(page.getByText("R$ 50,00",{exact:false})).toBeVisible();
  await page.getByRole("button",{name:"Ver impacto na margem (opcional)"}).click();
+ // Nenhum custo deve ser presumido; o lojista precisa informar a cesta completa.
+ await expect(page.getByRole("textbox",{name:"Custo total dos produtos"})).toHaveValue("");
+ await expect(page.getByRole("textbox",{name:"Taxas e impostos"})).toHaveValue("");
  await expect(page.getByText("Contribuição indisponível:",{exact:false})).toBeVisible();
  await page.getByRole("textbox",{name:"Custo total dos produtos"}).fill("60,00");
  await page.getByRole("textbox",{name:"Taxas e impostos"}).fill("10,00");
