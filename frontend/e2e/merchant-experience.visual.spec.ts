@@ -77,3 +77,25 @@ test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",
   await page.getByRole("button",{name:"Configurar programa"}).click();
   await expect(page.getByRole("heading",{name:"Um programa simples para a loja. Claro para o cliente."})).toBeVisible();
 });
+
+
+test("Custo dos benefícios diferencia custo nominal de contribuição estimada",async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await mockMerchant(page);
+ await page.goto("/");
+ await nav(page,"Custo dos benefícios",390);
+ await expect(page.getByRole("heading",{name:"Quanto pode custar uma recompensa?"})).toBeVisible();
+ await page.getByRole("textbox",{name:"Valor da próxima compra"}).fill("100,00");
+ await page.getByRole("textbox",{name:"Desconto por recompensa"}).fill("5,00");
+ await expect(page.getByText("R$ 50,00",{exact:false})).toBeVisible();
+ await page.getByRole("button",{name:"Ver impacto na margem (opcional)"}).click();
+ await expect(page.getByText("Contribuição indisponível:",{exact:false})).toBeVisible();
+ await page.getByRole("textbox",{name:"Custo total dos produtos"}).fill("60,00");
+ await page.getByRole("textbox",{name:"Taxas e impostos"}).fill("10,00");
+ await page.getByRole("textbox",{name:"Frete subsidiado pela loja"}).fill("5,00");
+ await page.getByRole("textbox",{name:"Outras despesas variáveis"}).fill("0,00");
+ await expect(page.getByText("Contribuição estimada após desconto:",{exact:false})).toBeVisible();
+ await expect(page.getByText("R$ 20,00",{exact:true})).toBeVisible();
+ const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+ expect(overflow).toBeLessThanOrEqual(1);
+});
