@@ -1,5 +1,5 @@
 import {useEffect, useState, type FormEvent} from "react";
-import {ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock3, Gift, HeartHandshake, LockKeyhole, Mail, ShieldCheck} from "lucide-react";
+import {ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock3, Gift, HeartHandshake, LockKeyhole, Mail, ShieldCheck, TicketPercent, ShoppingBag} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type MemberClubPublic, type MemberClubPrivate} from "./api";
 import {readableForeground} from "./brand-contrast";
 import "./member-club.css";
@@ -156,33 +156,90 @@ export default function MemberClub(){
           <p>Este é seu espaço para acompanhar seu clube.</p>
           <span className="member-club-hero-note"><CheckCircle2 size={16}/> Situação: {state}</span>
         </section>
-        <div className="member-club-summary">
-          <section className="member-club-panel">
-            <span className="member-club-kicker"><Gift size={17}/> MEUS PONTOS</span>
-            <strong className="member-club-big-number">—</strong>
-            <p>O programa de pontos ainda não está ativo. Nenhum saldo foi atribuído a este cadastro.</p>
-          </section>
-          <section className="member-club-panel">
-            <span className="member-club-kicker"><Clock3 size={17}/> RECOMPENSAS</span>
-            <h2>Ainda não disponíveis</h2>
-            <p>Quando a loja publicar regras e recompensas, você verá aqui as opções reais de resgate.</p>
-          </section>
-        </div>
+        <section className="member-club-wallet member-club-panel">
+          <div className="member-club-wallet-main">
+            <span className="member-club-kicker"><Gift size={17}/> SUA CARTEIRA</span>
+            <span className="member-club-wallet-label">Pontos disponíveis</span>
+            <strong className="member-club-wallet-number">
+              {me.points_status==="verified"&&me.points_balance!==null
+                ?me.points_balance.toLocaleString("pt-BR"):"—"}
+            </strong>
+            <p>{me.points_status==="verified"
+              ?"Use seus pontos nas recompensas disponíveis abaixo."
+              :"O programa de pontos ainda não está ativo. Nenhum saldo foi atribuído a este cadastro."}</p>
+          </div>
+          <div className="member-club-wallet-aside">
+            <div><Clock3 size={19}/><span>Pontos pendentes</span>
+              <strong>{me.points_status==="verified"&&me.points_pending!==null
+                ?me.points_pending.toLocaleString("pt-BR"):"—"}</strong>
+            </div>
+            <div><Gift size={19}/><span>Pontos a vencer</span>
+              <strong>{me.points_status==="verified"&&me.points_expiring!==null
+                ?me.points_expiring.toLocaleString("pt-BR"):"—"}</strong>
+            </div>
+          </div>
+        </section>
+        <section className="member-club-panel member-club-rewards" aria-labelledby="member-rewards-title">
+          <span className="member-club-kicker"><TicketPercent size={17}/> SUAS VANTAGENS</span>
+          <h2 id="member-rewards-title">Troque seus pontos por descontos</h2>
+          {me.available_rewards.length===0?<>
+            <div className="member-club-rewards-empty">
+              <span><Gift size={27}/></span>
+              <div><h3>Ainda não disponíveis</h3>
+                <p>Esta loja ainda não publicou recompensas para resgate.
+                  Assim que houver descontos válidos, eles aparecerão aqui com seu custo em pontos.</p>
+              </div>
+            </div>
+          </>:<div className="member-club-rewards-grid">
+            {me.available_rewards.map(reward=><article className="member-club-reward" key={reward.id}>
+              <span className="member-club-reward-symbol"><TicketPercent size={23}/></span>
+              <h3>{reward.title}</h3>
+              <strong>{new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(reward.discount_cents/100)} de desconto</strong>
+              <p>{reward.points_cost.toLocaleString("pt-BR")} pontos necessários</p>
+              <small>Pedido mínimo: {new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(reward.min_order_cents/100)}</small>
+              <div className="member-club-reward-state">
+                {reward.status==="available"&&me.redemption_enabled&&reward.redemption_enabled
+                  ?"Benefício elegível para o checkout"
+                  :reward.status==="locked"
+                    ?`Faltam ${reward.points_missing.toLocaleString("pt-BR")} pontos`
+                    :"Resgate indisponível no momento"}
+              </div>
+              <p className="member-club-reward-footnote">
+                O resgate só será habilitado após confirmar a integração segura com o checkout.
+              </p>
+            </article>)}
+          </div>}
+        </section>
+        <section className="member-club-panel member-club-how-to">
+          <span className="member-club-kicker"><ShoppingBag size={17}/> COMO USAR NO SITE</span>
+          <h2>Do clube para sua próxima compra</h2>
+          <div className="member-club-how-steps">
+            <div><strong>1 · Escolha seu desconto</strong><p>Quando tiver pontos suficientes, selecione uma recompensa publicada pela loja.</p></div>
+            <div><strong>2 · Use no checkout</strong><p>O Fideliza apresentará um cupom individual ou aplicará o benefício no carrinho quando a integração estiver disponível.</p></div>
+            <div><strong>3 · Compra confirmada</strong><p>Os pontos serão consumidos somente após a verificação da compra paga e do desconto utilizado.</p></div>
+          </div>
+          <p className="member-club-how-notice"><LockKeyhole size={16}/> Esse fluxo está em preparação. Ainda não existem cupons gerados nem resgates autorizados.</p>
+        </section>
         <section className="member-club-panel">
-          <span className="member-club-kicker"><BookOpen size={16}/> REGRAS DO CLUBE</span>
-          <h2>{me.terms.title}</h2>
-          <p>Versão aceita: {me.terms.version}</p>
+          <span className="member-club-kicker"><ShieldCheck size={16}/> HISTÓRICO</span>
+          <h2>{me.transactions.length?"Últimas movimentações":"Sem movimentações de pontos"}</h2>
+          {me.transactions.length?<ul className="member-club-movements">
+            {me.transactions.map(item=><li key={item.id}>
+              <div><strong>{item.description}</strong><small>{new Date(item.created_at).toLocaleString("pt-BR")}</small></div>
+              <strong>{item.points_delta>0?"+":""}{item.points_delta.toLocaleString("pt-BR")} pts</strong>
+            </li>)}
+          </ul>:<p>Quando houver compras pagas verificadas e benefícios utilizados, você verá cada movimentação aqui. Não exibimos dados fictícios.</p>}
+        </section>
+        <section className="member-club-panel">
+          <span className="member-club-kicker"><BookOpen size={16}/> REGRAS E MEUS DADOS</span>
+          <h2>Como funciona meu clube</h2>
+          <p>Regulamento aceito: {me.terms.title} · versão {me.terms.version}</p>
           <details className="member-club-terms"><summary>Ler regulamento completo</summary>
             <p>{me.terms.body}</p>
           </details>
           {me.terms.privacy_notice&&<details className="member-club-terms"><summary>Meu aviso de privacidade</summary>
             <p>{me.terms.privacy_notice}</p>
           </details>}
-        </section>
-        <section className="member-club-panel">
-          <span className="member-club-kicker"><ShieldCheck size={16}/> HISTÓRICO</span>
-          <h2>Sem movimentações de pontos</h2>
-          <p>Compras pagas, pontos pendentes, liberação e resgates aparecerão aqui quando o motor for implementado e validado. Não exibimos saldos fictícios.</p>
         </section>
       </div>}
       {!loading&&club&&!me&&<section className="member-club-panel member-club-info">

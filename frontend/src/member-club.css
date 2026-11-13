@@ -35,3 +35,36 @@
 .member-club-error{padding:13px 15px;color:#9b2b3c;background:#fff0f0;border:1px solid #edcaca;border-radius:10px}
 .member-club-shell button:focus-visible,.member-club-shell a:focus-visible,.member-club-shell input:focus-visible,.member-club-shell summary:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
 @media(max-width:720px){.member-club-guest,.member-club-summary{grid-template-columns:1fr}.member-club-main{padding:16px 13px 25px}.member-club-hero{padding:29px 24px;min-height:230px}.member-club-panel{padding:22px}.member-club-steps{grid-template-columns:1fr}.member-club-top{padding:15px 16px}}
+
+.member-club-wallet{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(210px,.65fr);gap:18px}
+.member-club-wallet-main{display:grid;justify-items:start;gap:7px}
+.member-club-wallet-label{font-weight:750;font-size:13px;color:#46685e}
+.member-club-wallet-number{font:850 clamp(44px,6vw,62px)/1.1 Manrope,Inter,sans-serif;color:#087f79}
+.member-club-wallet-aside{display:grid;gap:11px}
+.member-club-wallet-aside>div{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;padding:13px;background:#f4faf6;border:1px solid #deeee4;border-radius:12px}
+.member-club-wallet-aside svg{color:#087f79}.member-club-wallet-aside span{font-size:12px;color:#526d64}
+.member-club-wallet-aside strong{grid-column:2;font-size:22px;color:#1b493e}
+.member-club-rewards>h2{margin-top:6px}
+.member-club-rewards-empty{display:flex;gap:15px;align-items:start;background:#f2f8f4;border:1px solid #dcebe2;padding:21px;border-radius:14px;margin-top:16px}
+.member-club-rewards-empty>span{display:grid;place-items:center;flex:none;width:50px;height:50px;border-radius:15px;background:#e0f3e8;color:#0a8273}
+.member-club-rewards-empty h3{font-size:16px;margin:2px 0 5px;color:#234f43}
+.member-club-rewards-empty p{margin:0}
+.member-club-rewards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:14px}
+.member-club-reward{display:grid;align-content:start;justify-items:start;gap:8px;padding:20px;border:1px solid #dce9e1;border-radius:15px}
+.member-club-reward-symbol{padding:10px;border-radius:12px;color:#087f79;background:#e9f8f1}
+.member-club-reward h3{font-size:15px;margin:0;color:#1e4a41}
+.member-club-reward>strong{font-size:20px;color:#087f79}
+.member-club-reward p{margin:0}.member-club-reward small{font-size:11px;color:#617c72}
+.member-club-reward-state{padding:7px 10px;background:#fff7e8;color:#866736;border-radius:8px;font-size:12px;font-weight:800}
+.member-club-reward-footnote{font-size:11px!important;color:#71857b!important}
+.member-club-how-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-top:17px}
+.member-club-how-steps>div{padding:15px;background:#f4faf6;border:1px solid #dceee6;border-radius:12px}
+.member-club-how-steps strong{font-size:12px;color:#155f51}.member-club-how-steps p{margin:8px 0 0;font-size:11px}
+.member-club-how-notice{display:flex;gap:9px;align-items:start;border-top:1px solid #dceee6;padding-top:15px;font-size:11px!important}
+.member-club-how-notice svg{flex:none}
+.member-club-movements{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.member-club-movements li{display:flex;justify-content:space-between;gap:12px;padding:12px;border-bottom:1px solid #dcece3}
+.member-club-movements li>div{display:grid;gap:6px}
+.member-club-movements li strong{font-size:12px;color:#1c4c42}.member-club-movements li small{font-size:11px;color:#6e867d}
+@media(max-width:750px){.member-club-wallet,.member-club-how-steps{grid-template-columns:1fr}.member-club-rewards-empty{padding:16px}.member-club-wallet-aside{grid-template-columns:repeat(2,minmax(0,1fr))}.member-club-wallet-aside>div{grid-template-columns:1fr}}
+@media(max-width:360px){.member-club-wallet-aside{grid-template-columns:1fr}.member-club-rewards-empty{display:grid}}

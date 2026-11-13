@@ -632,12 +632,20 @@ export type MemberClubPublic = {
   terms:ProgramTerms|null;
   signup_available:boolean;points_enabled:false;rewards_enabled:false;redemption_enabled:false;
 };
+export type MemberClubReward = {
+  id:string;title:string;points_cost:number;discount_cents:number;
+  min_order_cents:number;status:"available"|"locked"|"paused"|"sold_out";
+  points_missing:number;redemption_enabled:boolean;
+};
 export type MemberClubPrivate = {
   store_name:string;display_name:string;
   status:"active"|"paused"|"awaiting_link";joined_at:string|null;
-  terms:ProgramTerms;points_balance:null;points_pending:null;points_status:"not_active";
-  available_rewards:[];transactions:[];redemption_enabled:false;
-  orders_verified:false;note:string;
+  terms:ProgramTerms;
+  points_balance:number|null;points_pending:number|null;points_expiring:number|null;
+  points_status:"not_active"|"verified";
+  available_rewards:MemberClubReward[];
+  transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;
+  redemption_enabled:boolean;orders_verified:boolean;note:string;
 };
 
 export type EmailActionResult = {
