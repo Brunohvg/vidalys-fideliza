@@ -7,7 +7,8 @@ from django.core.mail import EmailMultiAlternatives
 from .email_templates import transactional_message
 
 from .merchant_auth import create_token, email_feature_ready, valid_token
-from .models import MerchantRegistration, MerchantPasswordReset
+from .models import MerchantRegistration, MerchantPasswordReset, EmailDispatch
+from .delivery_tracking import claim_delivery, finish_delivery, retry_or_fail
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +22,21 @@ def _smtp_ready():
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60, ignore_result=True)
-def send_merchant_auth_email(self, purpose, record_id):
+def send_merchant_auth_email(self, purpose, record_id, event_id=None):
+    if not claim_delivery(event_id):
+        return "duplicate"
     if purpose not in ("register", "reset") or not _smtp_ready():
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "disabled")
         return "disabled"
     model = MerchantRegistration if purpose == "register" else MerchantPasswordReset
     try:
         record = model.objects.get(pk=record_id)
     except (model.DoesNotExist, ValueError):
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "missing")
         return "missing"
     token = create_token(purpose, record)
     if not valid_token(purpose, record, token):
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "expired")
         return "expired"
     recipient = (record.normalized_email if purpose == "register"
                  else record.email_snapshot)
@@ -70,8 +76,7 @@ def send_merchant_auth_email(self, purpose, record_id):
                                          [recipient])
         message.attach_alternative(html, "text/html")
         message.send(fail_silently=False)
+        finish_delivery(event_id, EmailDispatch.State.ACCEPTED)
         return "sent"
     except Exception as exc:
-        # Não imprimir token, endereço, URL nem credenciais.
-        logger.warning("Falha SMTP de autenticação: %s", type(exc).__name__)
-        raise self.retry(exc=exc) from None
+        retry_or_fail(self, event_id, exc)

@@ -7,6 +7,8 @@ import logging
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from apps.core.email_templates import transactional_message
+from apps.core.delivery_tracking import claim_delivery, finish_delivery, retry_or_fail
+from apps.core.models import EmailDispatch
 from django.utils import timezone
 from celery import shared_task
 from .email_proof import digest, email_delivery_ready, make_token
@@ -18,14 +20,18 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60,
              acks_late=True, ignore_result=True)
-def send_enrollment_email(self, challenge_id: str):
+def send_enrollment_email(self, challenge_id: str, event_id=None):
+    if not claim_delivery(event_id):
+        return "duplicate"
     if not email_delivery_ready():
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "disabled")
         return "delivery_disabled"
     try:
         challenge = EnrollmentEmailChallenge.objects.select_related(
             "submission__tenant",
         ).get(pk=challenge_id)
     except EnrollmentEmailChallenge.DoesNotExist:
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "missing")
         return "not_found"
     token = make_token(challenge.id, challenge.purpose)
     if (challenge.token_digest != digest(token)
@@ -33,6 +39,7 @@ def send_enrollment_email(self, challenge_id: str):
             or challenge.expires_at <= timezone.now()
             or challenge.submission.status == EnrollmentSubmission.Status.WITHDRAWN
             or challenge.submission.tenant.status != Tenant.Status.ACTIVE):
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "expired")
         return "expired"
     submission = challenge.submission
     purpose = challenge.purpose
@@ -77,8 +84,7 @@ def send_enrollment_email(self, challenge_id: str):
         )
         message.attach_alternative(html, "text/html")
         message.send(fail_silently=False)
+        finish_delivery(event_id, EmailDispatch.State.ACCEPTED)
         return "sent"
     except Exception as exc:
-        logger.warning("Envio transacional falhou (tipo=%s, tentativa=%d)",
-                       type(exc).__name__, self.request.retries + 1)
-        raise self.retry(exc=exc) from None
+        retry_or_fail(self, event_id, exc)

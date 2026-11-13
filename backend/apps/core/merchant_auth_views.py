@@ -27,6 +27,7 @@ from .merchant_auth import (
     parse_token, throttle_key, valid_token,
 )
 from .models import MerchantEmailClaim, MerchantEmailIdentity, MerchantRegistration, MerchantPasswordReset
+from .delivery_tracking import enqueue_email
 
 logger = logging.getLogger(__name__)
 GENERIC_ACCEPTED = {"detail": "Se o e-mail puder receber esta solicitação, enviaremos as instruções."}
@@ -52,14 +53,8 @@ def _email(request):
 
 def _queue(purpose, record_id):
     from .tasks import send_merchant_auth_email
-
-    def send():
-        try:
-            send_merchant_auth_email.delay(purpose, str(record_id))
-        except Exception as exc:
-            logger.warning("Fila de autenticação indisponível (%s)", type(exc).__name__)
-    transaction.on_commit(send)
-
+    return enqueue_email(purpose, record_id, send_merchant_auth_email,
+                         purpose, str(record_id))
 
 def _enabled():
     return settings.FIDELIZA_MERCHANT_SIGNUP_ENABLED and email_feature_ready()

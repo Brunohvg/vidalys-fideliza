@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission, EnrollmentCustomerLink
 from .models import ProgramParticipant
+from apps.core.delivery_tracking import enqueue_email
 
 logger = logging.getLogger(__name__)
 TOKEN_LIFETIME = timedelta(minutes=30)
@@ -91,15 +92,8 @@ def enqueue_confirmation(submission: EnrollmentSubmission, purpose: str):
         token_digest=digest(token),
         expires_at=now + TOKEN_LIFETIME,
     )
-    # Falha de fila não transforma registro em confirmação nem expõe token.
-    def queue_mail():
-        try:
-            from .tasks import send_enrollment_email
-            send_enrollment_email.delay(str(challenge.id))
-        except Exception:
-            logger.warning("Falha ao enfileirar confirmação (desafio %s)", challenge.id)
-
-    transaction.on_commit(queue_mail)
+    from .tasks import send_enrollment_email
+    enqueue_email(purpose, challenge.id, send_enrollment_email, str(challenge.id))
     return True
 
 
