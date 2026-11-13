@@ -1,5 +1,6 @@
 """Rascunhos de benefícios. Sem publicar cupom, debitar pontos ou enviar campanha."""
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -71,6 +72,57 @@ class DiscountRewardDraftsView(APIView):
         return safe_reply({"mode":"draft_only","reward":_reward(obj),
                            "points_credited":False,"coupon_created":False},201)
 
+
+
+class DiscountRewardDraftDetailView(APIView):
+    """Editar e excluir apenas rascunhos. Nunca cria descontos ou publica benefícios."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["patch", "delete", "options"]
+
+    @transaction.atomic
+    def patch(self, request, tenant_id, reward_id):
+        member, err = _allowed(request, tenant_id, writing=True)
+        if err is not None:
+            return err
+        obj = get_object_or_404(
+            DiscountRewardDraft.objects.select_for_update(),
+            pk=reward_id, tenant_id=tenant_id,
+        )
+        keys = {"title", "points_cost", "discount_cents", "min_order_cents", "max_redemptions"}
+        data = request.data
+        if not isinstance(data, dict) or set(data) != keys:
+            return safe_reply({"detail": "Preencha os cinco campos da recompensa."}, 400)
+        title = data["title"]
+        if not (isinstance(title, str) and 4 <= len(title.strip()) <= 100
+                and _int(data["points_cost"], 1, 1_000_000)
+                and _int(data["discount_cents"], 100, 1_000_000)
+                and _int(data["min_order_cents"], 0, 100_000_000)
+                and _int(data["max_redemptions"], 1, 100_000)
+                and data["min_order_cents"] >= data["discount_cents"]):
+            return safe_reply({"detail": "Confira pontos, desconto, pedido mínimo e limites."}, 400)
+        obj.title = title.strip()
+        obj.points_cost = data["points_cost"]
+        obj.discount_cents = data["discount_cents"]
+        obj.min_order_cents = data["min_order_cents"]
+        obj.max_redemptions = data["max_redemptions"]
+        obj.updated_by = request.user
+        obj.save(update_fields=[
+            "title", "points_cost", "discount_cents", "min_order_cents",
+            "max_redemptions", "updated_by",
+        ])
+        return safe_reply({"mode": "draft_only", "reward": _reward(obj), "coupon_created": False})
+
+    @transaction.atomic
+    def delete(self, request, tenant_id, reward_id):
+        member, err = _allowed(request, tenant_id, writing=True)
+        if err is not None:
+            return err
+        obj = get_object_or_404(
+            DiscountRewardDraft.objects.select_for_update(),
+            pk=reward_id, tenant_id=tenant_id,
+        )
+        obj.delete()
+        return safe_reply({"deleted": True, "id": str(reward_id), "coupon_created": False})
 
 def _campaign(obj):
     return {
