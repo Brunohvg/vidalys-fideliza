@@ -38,6 +38,42 @@ class DispatchTrackingTests(TestCase):
         self.assertIsNone(row.published_at)
         self.assertNotIn("redis-private-host-should-not-leak",repr(row.__dict__))
 
+    def test_fast_worker_never_produces_negative_queue_lag(self):
+        task = Mock()
+
+        def execute_before_broker_ack(*args):
+            event_id = args[-1]
+            self.assertTrue(claim_delivery(event_id))
+            finish_delivery(event_id, EmailDispatch.State.ACCEPTED)
+
+        task.delay.side_effect = execute_before_broker_ack
+        with self.captureOnCommitCallbacks(execute=True):
+            event = enqueue_email("register", self.register.pk, task,
+                                  "register", str(self.register.pk))
+        event.refresh_from_db()
+        self.assertEqual(event.state, EmailDispatch.State.ACCEPTED)
+        self.assertIsNotNone(event.published_at)
+        self.assertLessEqual(event.published_at, event.started_at)
+
+    def test_broker_failure_during_retry_is_visible_and_not_duplicated(self):
+        event = EmailDispatch.objects.create(
+            kind="register", reference_id=self.register.pk,
+        )
+        self.assertTrue(claim_delivery(str(event.pk)))
+        fake = Mock()
+        fake.request.retries = 0
+        fake.max_retries = 2
+        fake.retry.side_effect = ConnectionError("private broker details")
+        with self.assertRaisesRegex(RuntimeError, "Falha ao reagendar"):
+            retry_or_fail(fake, str(event.pk),
+                          smtplib.SMTPServerDisconnected("synthetic"))
+        event.refresh_from_db()
+        self.assertEqual(event.state, EmailDispatch.State.PUBLISH_FAILED)
+        self.assertEqual(event.failure_type, "ConnectionError")
+        self.assertIsNotNone(event.finished_at)
+        self.assertFalse(claim_delivery(str(event.pk)))
+        self.assertNotIn("private broker details", repr(event.__dict__))
+
     def test_claim_and_complete_only_once(self):
         row=EmailDispatch.objects.create(kind="register",reference_id=self.register.pk)
         self.assertTrue(claim_delivery(str(row.pk)))
