@@ -643,3 +643,15 @@ Gate relacionado: G0 UX operacional, desenvolvimento isolado sem ativação G8�
 Estado: commits presentes em homolog, mas CI e runtime ainda NÃO verificados; deployment Coolify não realizado nesta sessão. Manter PENDENTE DE VALIDAÇÃO, sem promover gate. Nenhuma alteração em produção, na Bibelô, no checkout ou no ledger.
 
 Próxima ação única: executar Django apps.sales.test_benefit_drafts e os Playwright reward-drafts.visual.spec.ts e campaign.visual.spec.ts na CI do SHA atualizado. Após aprovação, confirmar backup e publicar EXCLUSIVAMENTE no Coolify Raw de homologação; conferir SHA, migrações, operação dos botões e screenshots em mobile/desktop. A publicação real de recompensas e campanhas permanece bloqueada por G7–G9, e o gate operacional prioritário segue G3 (cadastro/SMTP).
+
+
+## Ajuste de densidade visual — 13/11/2026
+
+Captura enviada mostrou tela Campanhas com excesso de espaço vertical e ausência dos botões Editar/Excluir. O código desses botões já existe na branch homolog, mas a captura não comprova publicação desse SHA no Coolify.
+
+Mudanças de frontend nesta rodada:
+- CSS geral do portal: sidebar 242 px, cabeçalho 64 px, área útil mais ampla e espaçamentos menores somente em desktop acima de 1020 px.
+- CSS de campanhas: cards mais compactos, título e hero proporcionais, redução de espaço vertical sem reduzir a escala raiz do navegador.
+- Teste Playwright 1440 px ganha limite de altura para cartão de objetivo e conserva checagem de overflow; teste de recompensa agora exige que Publicar esteja desabilitado em vez de ausente.
+
+Não usar CSS zoom, transform scale nem reduzir fonte global do navegador. Mobile preservado. Antes de marcar concluído: rodar CI, publicar SHA aprovado no Coolify Raw após backup, confirmar botões Editar/Excluir em Campanhas e comparar screenshots em 390/768/1440 com zoom 100%. O deploy não foi executado nesta sessão. Gate G0 ainda requer prova visual real.
