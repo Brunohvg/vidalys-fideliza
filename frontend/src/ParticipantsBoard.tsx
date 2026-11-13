@@ -3,7 +3,7 @@ import "./program-hub.css";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, CircleHelp,
-  HeartHandshake, RefreshCw, Search, ShieldCheck,
+  HeartHandshake, RefreshCw, Search,
   UserRoundCheck, UsersRound
 } from "lucide-react";
 import {
@@ -76,27 +76,23 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
   const submit = (e:FormEvent) => {e.preventDefault();setOffset(0);setSearch(searchText.trim());};
 
   return <div className="experience-page">
-    <section className="vf-clients-banner">
-      <div><span className="portal-eyebrow">BASE DO CLUBE</span>
-        <h2>Quem faz parte do seu programa</h2>
-        <p>Esta lista contém participantes verificados. Quem apenas comprou na loja não é inscrito automaticamente.</p>
-      </div>
-      <button type="button" className="vf-program-outline" onClick={onOpenProgram}>
-        <HeartHandshake size={17}/> Gerenciar adesões <ArrowRight size={16}/>
+    <div className="vf-clients-intro">
+      <p>Somente quem confirmou a adesão ao clube aparece aqui. Compradores da loja não são inscritos automaticamente.</p>
+      <button type="button" onClick={onOpenProgram}>
+        <HeartHandshake size={16}/> Gerenciar adesões <ArrowRight size={16}/>
       </button>
-    </section>
+    </div>
 
-    <div className="xp-stats">
-      <div className="xp-stat"><span><UsersRound size={17}/> Participantes</span><strong>{response?.summary.total ?? "—"}</strong><small>Com cadastro de adesão</small></div>
-      <div className="xp-stat"><span><BadgeCheck size={17}/> Participando</span><strong>{response?.summary.active ?? "—"}</strong><small>Adesão ativa</small></div>
-      <div className="xp-stat"><span><CircleHelp size={17}/> Pausados</span><strong>{response?.summary.paused ?? "—"}</strong><small>Sem recompensa ativa</small></div>
-      <div className="xp-stat"><span><ShieldCheck size={17}/> Pontos e recompensas</span><strong className="xp-pending-value">Não ativados</strong><small>Sem pontuação automática nesta fase</small></div>
+    <div className="xp-stats vf-clients-stats" aria-label="Resumo de participantes">
+      <div className="xp-stat"><span><UsersRound size={16}/> Total</span><strong>{response?.summary.total ?? "—"}</strong></div>
+      <div className="xp-stat"><span><BadgeCheck size={16}/> Ativos</span><strong>{response?.summary.active ?? "—"}</strong></div>
+      <div className="xp-stat"><span><CircleHelp size={16}/> Pausados</span><strong>{response?.summary.paused ?? "—"}</strong></div>
     </div>
 
     <section className="xp-panel">
       <div className="xp-panel-title">
-        <div><span className="portal-eyebrow">SEU PROGRAMA DE FIDELIDADE</span><h2>Participantes</h2>
-          <p>Somente clientes que aceitaram participar do programa.</p></div>
+        <div><span className="portal-eyebrow">ADESÕES CONFIRMADAS</span><h2>Pessoas no clube</h2>
+          <p>Busque por nome ou e-mail.</p></div>
         <button className="xp-link-btn" type="button" disabled={loading} onClick={()=>setVersion(n=>n+1)}>
           <RefreshCw size={17}/> Atualizar
         </button>
@@ -126,11 +122,10 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
           <p>{response.summary.total===0
             ?"Os convites de adesão entram primeiro na fila de verificação. Conectar a Nuvemshop não transforma compradores em participantes."
             :"Ajuste a busca ou o filtro para encontrar outros participantes."}</p>
-          {response.summary.total===0 && <div className="xp-empty-steps">
-            <span><BadgeCheck size={16}/> Aprovar o regulamento</span>
-            <span><BadgeCheck size={16}/> Compartilhar a página do clube</span>
-            <span><BadgeCheck size={16}/> Confirmar adesões</span>
-          </div>}
+          {response.summary.total===0&&
+            <button type="button" className="vf-clients-empty-cta" onClick={onOpenProgram}>
+              Abrir Programa e compartilhar o convite <ArrowRight size={16}/>
+            </button>}
         </div> : !error && response &&
         <div className="xp-table-wrap">
           <table className="xp-table"><thead><tr><th>Cliente participante</th><th>Adesão</th><th>Situação</th><th>Benefícios / atividade</th></tr></thead>
@@ -151,7 +146,35 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
                 </details>}
             </td>
           </tr>)}</tbody></table>
-        </div>}
+        </div>
+        <ul className="vf-clients-mobile-list" aria-label="Participantes encontrados">
+          {response.items.map(item=><li className="vf-clients-mobile-card" key={item.id}>
+            <div className="vf-clients-mobile-person">
+              <span className="xp-person-avatar" aria-hidden="true">
+                {displayName(item).slice(0,1).toUpperCase()}
+              </span>
+              <div className="vf-clients-mobile-identity">
+                <strong>{displayName(item)}</strong>
+                <small>{item.contact_email || "Contato não informado"}</small>
+              </div>
+              <span className={"xp-tag "+item.status}>
+                {item.status==="active"?"Ativo":"Pausado"}
+              </span>
+            </div>
+            <div className="vf-clients-mobile-meta">
+              <span>Desde {dateString(item.consented_at)}</span>
+              <span>Pontos ainda não ativos</span>
+            </div>
+            {item.balance_status==="ledger_only"&&item.cashback_balance_cents!==null&&
+              <details className="vf-wallet-technical">
+                <summary>Dados internos de teste</summary>
+                <p>Estes valores em reais não são pontos resgatáveis.</p>
+                <button type="button" className="vf-wallet-open" onClick={()=>void openWallet(item)}>
+                  Ver extrato técnico
+                </button>
+              </details>}
+          </li>)}
+        </ul>}
       {!loading && !error && response && response.total_filtered>0 && <div className="xp-pagination">
         <span>{response.total_filtered} participante(s) encontrado(s)</span>
         <div><button aria-label="Página anterior" disabled={offset===0} onClick={()=>setOffset(n=>Math.max(0,n-20))}><ChevronLeft size={18}/></button>
@@ -192,8 +215,6 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
         <p>Carteira ainda não disponível para este participante.</p>}
     </section>}
     
-    <aside className="xp-guidance"><ShieldCheck size={19}/><div><strong>Privacidade antes de campanhas.</strong>
-      <p>Adesão, contato de marketing e compartilhamento de dados têm finalidades distintas. O Fideliza exigirá um aceite verificável antes de atribuir benefícios; clientes sem aceite não aparecerão nesta lista.</p></div>
-      <ArrowRight size={18} className="xp-guidance-arrow"/></aside>
+
   </div>;
 }
