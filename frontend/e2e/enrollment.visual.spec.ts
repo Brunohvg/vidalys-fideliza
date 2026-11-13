@@ -123,7 +123,7 @@ for(const width of [390,768,1440]){
     await page.route("**/api/v1/public/enrollment/email-action/",route=>route.fulfill({
       contentType:"application/json",body:JSON.stringify({
         status:"email_verified",identity_verified_in_nuvemshop:false,
-        participant_created:false,cashback_enabled:false,
+        participant_created:false,cashback_enabled:false,club_slug:"loja-jardim",
         message:"E-mail confirmado. A loja ainda precisa validar o cadastro na Nuvemshop."
       })
     }));
@@ -131,6 +131,8 @@ for(const width of [390,768,1440]){
     await expect(page.getByRole("heading",{name:"Confirme seu endereço de e-mail"})).toBeVisible();
     await page.getByRole("button",{name:"Confirmar meu e-mail"}).click();
     await expect(page.getByRole("heading",{name:"E-mail confirmado."})).toBeVisible();
+    await expect(page.getByRole("link",{name:/Conhecer meu clube/}))
+      .toHaveAttribute("href","/clube/loja-jardim");
     await expect(page.getByText("não concedeu cashback, pontos ou descontos",{exact:false})).toBeVisible();
     expect(new URL(page.url()).hash).toBe("");
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))

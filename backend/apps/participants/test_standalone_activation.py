@@ -66,6 +66,7 @@ class StandaloneActivationTests(TestCase):
         response=self.verify()
         self.assertEqual(response.status_code,200,response.data)
         self.assertTrue(response.data["participant_created"])
+        self.assertEqual(response.data["club_slug"], self.tenant.slug)
         self.assertFalse(response.data["identity_verified_in_nuvemshop"])
         member=ProgramParticipant.objects.get()
         self.assertIsNone(member.external_customer_id)

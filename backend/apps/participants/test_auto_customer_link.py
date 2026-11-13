@@ -111,6 +111,7 @@ class AutoCustomerLinkTests(TestCase):
         self.assertEqual(result.status_code,200,result.data)
         self.assertTrue(result.data["identity_verified_in_nuvemshop"])
         self.assertTrue(result.data["participant_created"])
+        self.assertEqual(result.data["club_slug"], self.tenant.slug)
         self.assertFalse(result.data["cashback_enabled"])
         self.assertNotIn("351",str(result.data))
         self.assertNotIn("test@example.invalid",str(result.data))
