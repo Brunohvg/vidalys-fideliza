@@ -88,7 +88,8 @@ for(const width of [390,1440]){
       });
       await page.goto("/");
       if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-      await page.locator(".portal-nav").getByRole("button",{name:/^Clientes/}).click();
+      await page.locator(".portal-nav").getByRole("button",{name:/^Programa/}).click();
+      await page.getByRole("tab",{name:/Solicitações/}).click();
       await expect(page.getByText("Cliente Verificado")).toBeVisible();
       await expect(page.getByText("Cliente Pendente")).toBeVisible();
       await expect(page.getByRole("button",{name:"Conferir cadastro na Nuvemshop"})).toHaveCount(1);
@@ -103,7 +104,8 @@ for(const width of [390,1440]){
 test("Sem autorização read_customers, não consultar clientes da loja",async ({page})=>{
   await mock(page,false);
   await page.goto("/");
-  await page.locator(".portal-nav").getByRole("button",{name:/^Clientes/}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:/^Programa/}).click();
+      await page.getByRole("tab",{name:/Solicitações/}).click();
   await expect(page.getByText("Ainda não é possível conferir cadastros de clientes.",{exact:false}))
     .toBeVisible();
   await expect(page.getByText("read_customers",{exact:false})).toHaveCount(0);
@@ -150,7 +152,8 @@ test("Lojista aprova explicitamente vínculo verificado sem conceder recompensas
     });
   });
   await page.goto("/");
-  await page.locator(".portal-nav").getByRole("button",{name:/^Clientes/}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:/^Programa/}).click();
+      await page.getByRole("tab",{name:/Solicitações/}).click();
   await page.getByRole("button",{name:"Conferir cadastro na Nuvemshop"}).click();
   await page.getByRole("button",{name:"Aprovar participação"}).click();
   await expect(page.getByText("Confirmar a adesão deste cliente ao clube?")).toBeVisible();

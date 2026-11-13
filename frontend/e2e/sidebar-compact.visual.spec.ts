@@ -38,7 +38,7 @@ for (const width of [390, 768, 1440]) {
     await expect(menu.getByRole("button",{name:/Campanhas/})).toBeVisible();
     await expect(menu.getByRole("button",{name:/Sair da conta/})).toBeAttached();
     await menu.getByRole("button",{name:"Clientes"}).click();
-    await expect(page.getByRole("heading",{name:"Participantes"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Participantes",exact:true})).toBeVisible();
     await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
       .toBeLessThanOrEqual(1);
   });

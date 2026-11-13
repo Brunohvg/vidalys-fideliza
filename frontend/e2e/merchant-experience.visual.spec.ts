@@ -41,9 +41,9 @@ for(const width of [390,768,1440]) {
       await expect(page.getByText(/sugestões com IA/i)).toBeVisible();
 
       await nav(page,"Clientes",width);
-      await expect(page.getByRole("heading",{name:"Participantes"})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Participantes",exact:true})).toBeVisible();
       await expect(page.getByText("Sua comunidade começa com o primeiro aceite")).toBeVisible();
-      await expect(page.getByText("Ainda não disponível")).toBeVisible();
+      await expect(page.getByText("Não ativados")).toBeVisible();
       expect(await page.getByRole("button",{name:/Cadastrar cliente/}).count()).toBe(0);
       const clientsGeometry=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(clientsGeometry.doc).toBeLessThanOrEqual(clientsGeometry.width+1);
@@ -77,6 +77,6 @@ test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",
   await mockMerchant(page);
   await page.goto("/");
   await expect(page.getByText("Recomendações baseadas no estado conhecido")).toBeVisible();
-  await page.getByRole("button",{name:"Ver participantes"}).click();
-  await expect(page.getByRole("heading",{name:"Participantes"})).toBeVisible();
+  await page.getByRole("button",{name:"Configurar programa"}).click();
+  await expect(page.getByRole("heading",{name:"Um programa simples para a loja. Claro para o cliente."})).toBeVisible();
 });
