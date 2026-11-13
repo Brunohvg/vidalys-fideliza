@@ -54,15 +54,17 @@ def session_info(request):
     """Gera csrftoken em cookie, sem expor token no corpo."""
     if not request.user.is_authenticated:
         return JsonResponse({"authenticated": False, "user": None, "tenants": []})
+    tenants = _public_tenants(request.user)
     return JsonResponse({
         "authenticated": True,
+        "store_link_status": "linked" if tenants else "missing",
         "user": {
             "username": (request.user.email if
                 hasattr(request.user, "merchant_email_identity") else
                 request.user.get_username()),
             "display_name": request.user.get_full_name() or request.user.get_username(),
         },
-        "tenants": _public_tenants(request.user),
+        "tenants": tenants,
     })
 
 
@@ -129,7 +131,12 @@ def login_session(request):
 
     cache.delete(key)
     login(request, user)
-    return JsonResponse({"authenticated": True, "tenants": _public_tenants(user)})
+    tenants = _public_tenants(user)
+    return JsonResponse({
+        "authenticated": True,
+        "store_link_status": "linked" if tenants else "missing",
+        "tenants": tenants,
+    })
 
 
 @never_cache
