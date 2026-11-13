@@ -112,6 +112,22 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(args[:2], ("register", str(row.pk)))
         self.assertTrue(EmailDispatch.objects.filter(pk=args[2]).exists())
 
+    def test_resend_from_canonical_gmail_alias_uses_original_address(self):
+        self.assertEqual(self.post("merchant-register", {
+            **GOOD,"email":"pessoa.teste+cadastro@gmail.com",
+        }).status_code,202)
+        pending=MerchantRegistration.objects.get()
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.post("merchant-resend", {
+                "email":"pessoateste@googlemail.com",
+            }).status_code,202)
+        self.assertEqual(self.mock_mail.call_count,1)
+        args=self.mock_mail.call_args.args
+        self.assertEqual(args[:2],("register",str(pending.pk)))
+        self.assertTrue(EmailDispatch.objects.filter(pk=args[2]).exists())
+        self.assertEqual(EmailDispatch.objects.count(),2)
+        self.assertEqual(MerchantRegistration.objects.count(),1)
+
     def test_password_reset_generic_replay_and_login_with_email(self):
         user = get_user_model().objects.create_user(
             username="merchant-internal", email="lojista@example.invalid",

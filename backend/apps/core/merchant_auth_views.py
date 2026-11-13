@@ -23,6 +23,7 @@ from django.views.decorators.http import require_POST
 from apps.tenants.models import Tenant, TenantMembership
 from .merchant_auth import (
     CHALLENGE_LIFETIME, account_for_email, canonical_email, email_claimed,
+    pending_registration_for_email,
     pending_email_claimed, email_feature_ready, normalize_email,
     parse_token, throttle_key, valid_token,
 )
@@ -113,10 +114,7 @@ def resend_registration(request):
     if not email:
         return JsonResponse({"detail": "Informe um e-mail válido."}, status=400)
     if cache.add(throttle_key("resend", canonical_email(email)), 1, timeout=60):
-        pending = MerchantRegistration.objects.filter(
-            normalized_email=email, consumed_at__isnull=True,
-            expires_at__gt=timezone.now(),
-        ).first()
+        pending = pending_registration_for_email(email)
         if pending and not email_claimed(email):
             _queue("register", pending.pk)
     return JsonResponse(GENERIC_ACCEPTED, status=202)

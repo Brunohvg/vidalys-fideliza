@@ -83,6 +83,29 @@ def pending_email_claimed(email):
     return False
 
 
+def pending_registration_for_email(email):
+    """Retorna a mesma solicitação pendente para aliases da caixa Gmail.
+
+    O destinatário do reenvio permanece o endereço originalmente confirmado
+    por quem iniciou o cadastro. Em outros provedores, exija igualdade.
+    """
+    pending = MerchantRegistration.objects.filter(
+        consumed_at__isnull=True, expires_at__gt=timezone.now(),
+    )
+    direct = pending.filter(normalized_email=email).first()
+    if direct:
+        return direct
+    key = canonical_email(email)
+    if key.endswith("@gmail.com"):
+        for row in pending.filter(
+            Q(normalized_email__iendswith="@gmail.com")
+            | Q(normalized_email__iendswith="@googlemail.com")
+        ).order_by("-requested_at"):
+            if canonical_email(row.normalized_email) == key:
+                return row
+    return None
+
+
 def account_for_email(email):
     """Usar identidade única; legacy só quando não houver ambiguidade."""
     claim = MerchantEmailClaim.objects.select_related("user").filter(
