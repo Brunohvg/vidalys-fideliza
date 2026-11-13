@@ -154,10 +154,10 @@ export default function RewardDraftEditor({tenantId,role}:{
             <p>{item.points_cost.toLocaleString("pt-BR")} pontos ·
               Pedido mínimo {money(item.min_order_cents)}</p>
             <small>Sem cupom, sem resgate e sem consumo de pontos.</small>
-            {canEdit&&<div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:14}}>
-              <button type="button" className="vf-benefit-advanced" onClick={()=>edit(item)} disabled={busy}><Pencil size={15}/> Editar</button>
-              <button type="button" className="vf-benefit-advanced" onClick={()=>void remove(item)} disabled={busy}><Trash2 size={15}/> Excluir</button>
-              <button type="button" className="vf-benefit-advanced" disabled title="Publicação indisponível até a validação dos pontos e checkout"><LockKeyhole size={15}/> Publicar (em breve)</button>
+            {canEdit&&<div className="vf-draft-actions">
+              <button type="button" onClick={()=>edit(item)} disabled={busy}><Pencil size={15}/> Editar</button>
+              <button type="button" onClick={()=>void remove(item)} disabled={busy}><Trash2 size={15}/> Excluir</button>
+              <button type="button" disabled title="Publicação indisponível até a validação dos pontos e checkout"><LockKeyhole size={15}/> Publicar (em breve)</button>
             </div>}
           </article>)}
         </div>}
