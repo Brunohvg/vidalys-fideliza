@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import {merchantApi, type CampaignDraftList, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus} from "./api";
 
-type Destination = "clients"|"campaign"|"catalog"|"results"|"settings";
+type Destination = "program"|"clients"|"campaign"|"catalog"|"results"|"settings";
 type Action = {
   title:string;
   body:string;
@@ -63,7 +63,7 @@ export default function ActionCenter({
       title:"Prepare a primeira adesão",
       body:"Defina as regras e o aceite do programa. Compradores da loja só poderão virar participantes após consentimento.",
       reason:"Não existem participantes cadastrados nesta loja.",
-      target:"clients",callToAction:"Ver participantes",icon:HeartHandshake,
+      target:"program",callToAction:"Configurar programa",icon:HeartHandshake,
     });
   }
   if (participants && participants.summary.total>0) {
@@ -111,7 +111,7 @@ export default function ActionCenter({
       detail:"Clientes precisam autorizar a entrada no clube.",
       status:participantsError?"unknown":participants?.summary.total
         ?"ready":"not_ready",
-      destination:"clients" as const,action:"Ver clientes",
+      destination:(participants?.summary.total ? "clients" : "program") as Destination,action:"Ver programa",
     },
     {
       title:"Planejar benefícios",
