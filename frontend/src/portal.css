@@ -713,3 +713,20 @@
   .merchant-access .portal-login-panel{padding:30px 22px;min-height:calc(100vh - 85px)}
   .merchant-access .portal-login-card{width:min(100%,430px)}
 }
+
+/* Layout desktop mais eficiente: não alterar zoom ou font-size raiz. */
+@media(min-width:1021px){
+  .portal-shell .portal-side{width:242px;padding:21px 12px 14px}
+  .portal-shell .portal-side-brand{padding-bottom:18px}
+  .portal-shell .portal-nav-caption{margin-top:22px;margin-bottom:10px}
+  .portal-shell .portal-nav{gap:3px}
+  .portal-shell .portal-nav button{min-height:44px;padding:10px 12px}
+  .portal-shell .portal-main{margin-left:242px;width:calc(100% - 242px)}
+  .portal-shell .portal-top{height:64px;padding:0 28px}
+  .portal-shell .portal-content{padding:23px 28px 20px}
+  .portal-shell .portal-content-head{margin-bottom:17px}
+  .portal-shell .portal-content-head h1{font-size:clamp(24px,2.1vw,31px)}
+  .portal-shell .portal-tenant-bar{margin-bottom:15px}
+  .portal-shell .portal-panel{padding:20px 22px}
+  .portal-shell .portal-footer{margin:16px 0}
+}
