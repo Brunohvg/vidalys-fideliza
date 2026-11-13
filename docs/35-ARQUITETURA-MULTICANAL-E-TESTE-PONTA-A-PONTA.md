@@ -161,3 +161,33 @@ no SMTP2GO; o envio deve ser testado com caixa de e-mail controlada.
 
 O script não deve ser usado como substituto para o teste humano e
 integração ponta a ponta na Nuvemshop.
+
+## Revisão de experiência — programa próprio, não um apêndice da Nuvemshop (13/11/2026)
+
+A tela de Clientes foi usada como referência concreta pelo lojista e exibiu
+cadastro, termos, links, moderação, participantes e saldos na mesma página.
+Decisão: separar claramente **Programa**, **Clientes** e **Meu Clube**.
+A Nuvemshop vira canal opcional; o participante pertence ao Fideliza e à
+empresa, não ao identificador do canal.
+
+Implementação inicial em `homolog`:
+- `Programa`: abas Regulamento, Página e convites e Solicitações;
+- `Clientes`: só diretório, situação e extrato interno de cada membro;
+- `/clube/<slug>`: portal do consumidor, acesso privado por link de e-mail
+  de 15 minutos, sessão separada com expiração lógica de 12 horas, situação
+  da participação, regulamento aceito e ausência explícita de pontos/recompensas
+  até implementação real; um cliente de outra loja nunca é aceito pela sessão;
+- `FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED` é uma trava de migração
+  inicialmente `0`. Ao ser ativada **após testes**, confirmação de e-mail com
+  consentimento válido pode criar um participante interno sem Nuvemshop, e
+  vincular a plataforma posteriormente sem duplicar o registro.
+  Não ativar no Coolify antes de validar migração e e-mails.
+- A tela de Configurações mantém somente cores, identificação e integrações;
+  regulamento pertence ao Programa.
+
+O que **não** foi lançado: pontos por compra real, regra de conversão
+publicada, verificação externa de pagamento, resgate no checkout/PDV,
+índices de receita atribuída ou importação indiscriminada de compradores.
+Não inventar saldo `0` quando o recurso ainda não existe.
+
+Plano e contrato detalhado em `docs/48-REESTRUTURACAO-CLUBE-CONSUMIDOR-PONTOS.md`.
