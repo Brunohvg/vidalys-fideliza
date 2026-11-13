@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight, ChevronDown,
   Gift, LayoutDashboard, LoaderCircle, LockKeyhole,
-  LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, Target, UsersRound, X, BarChart3, HeartHandshake, Settings2
+  LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, UsersRound, X, BarChart3, HeartHandshake, Settings2
 } from "lucide-react";
 import MarginSimulator from "./MarginSimulator";
 import MerchantAccess from "./MerchantAccess";
@@ -12,11 +12,12 @@ import ProgramHub from "./ProgramHub";
 import SalesWorkspace from "./SalesWorkspace";
 import StoreSettings from "./StoreSettings";
 import ActionCenter from "./ActionCenter";
+import ResultsOverview from "./ResultsOverview";
 import CostCatalog from "./CostCatalog";
 import CatalogReconciliation from "./CatalogReconciliation";
 import { ApiError, merchantApi, type CostItem, type SessionInfo, type Store } from "./api";
 
-type Screen = "overview" | "program" | "clients" | "sales" | "campaign" | "results" | "margin" | "costs" | "catalog" | "roadmap" | "settings";
+type Screen = "overview" | "program" | "clients" | "sales" | "campaign" | "results" | "margin" | "costs" | "catalog" | "settings";
 
 // Links de conta são rotas públicas mesmo com OUTRO lojista autenticado.
 // A ação só troca a sessão quando a confirmação explícita for concluída.
@@ -236,7 +237,6 @@ export default function Portal() {
         <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Rentabilidade</button>
         <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>
         <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
-        <button onClick={()=>navigate("roadmap")} className={page==="roadmap"?"is-active":""}><Target size={19}/> Motor de benefícios <span>Em breve</span></button>
 
       </nav>
       <nav className="portal-nav portal-nav-secondary ss-settings-menu" aria-label="Preferências da loja">
@@ -245,7 +245,6 @@ export default function Portal() {
         </button>
       </nav>
       <div className="portal-side-bottom">
-        <div className="portal-side-guide"><HeartHandshake size={21}/><b>Comece pela recompra.</b><p>Desenhe sua campanha em três passos. A análise financeira está nas ferramentas.</p><button onClick={()=>navigate("campaign")}>Criar prévia <ArrowRight size={16}/></button></div>
         <button className="portal-signout" disabled={authBusy} onClick={doLogout}><LogOut size={18}/> Sair da conta</button>
       </div>
     </aside>
@@ -260,8 +259,8 @@ export default function Portal() {
       <main className="portal-content">
         <div className="portal-content-head">
           <div><span className="portal-eyebrow">CENTRO DE FIDELIDADE</span>
-            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="sales"?"Vendas e conferências.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Inteligência de margem.":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
-            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Regulamento, divulgação e solicitações — cada coisa em seu lugar.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Registre e confira vendas de balcão sem gerar pontos antes da validação.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
+            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="sales"?"Vendas do balcão.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Inteligência de margem.":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
+            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Regulamento, divulgação e solicitações — cada coisa em seu lugar.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Registre uma compra em três passos e acompanhe as conferências.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
           <StatusPill>Ambiente de teste</StatusPill>
         </div>
@@ -285,25 +284,16 @@ export default function Portal() {
             {page==="sales" && <SalesWorkspace tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role}
               onGoToProgram={()=>navigate("program")} key={tenant.id}/>}
-            {page==="results" && <section className="xp-panel xp-results-empty">
-              <div className="xp-results-icon"><BarChart3 size={40}/></div>
-              <span className="portal-eyebrow">MÉTRICAS VERIFICÁVEIS</span>
-              <h2>Resultados sem números inventados.</h2>
-              <p>Quando o programa registrar adesões, benefícios concedidos e resgates, esta área mostrará participantes ativos, recompras verificadas e custo de fidelização. Nenhum pedido ou faturamento é atribuído ao Fideliza apenas por coincidência.</p>
-              <button className="portal-primary" onClick={()=>navigate("campaign")}>Explorar campanha <ArrowRight size={17}/></button>
-            </section>}
+            {page==="results" && <ResultsOverview tenantId={tenant.id}
+              onClients={()=>navigate("clients")} onSales={()=>navigate("sales")}
+              onProgram={()=>navigate("program")} key={tenant.id}/>}
             {page==="margin" && <MarginSimulator tenantId={tenant.id} initialItem={seedItem} key={tenant.id+":"+(seedItem?.id||"")}/>}
             {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
             {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} onOpenSettings={()=>navigate("settings")} key={tenant.id}/>}
             {page==="campaign" && <CampaignGuide tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
-            {page==="roadmap" && <section className="portal-panel portal-coming">
-              <Gift size={37}/><h2>Programas, do jeito certo.</h2>
-              <p>O motor futuro fará o registro, concessão, reserva, resgate e estorno de benefícios com trilha de auditoria. Nenhum crédito é concedido nesta etapa.</p>
-              <button className="portal-primary" onClick={()=>navigate("campaign")}>Começar pelo planejamento <ArrowRight size={16}/></button>
-            </section>}
           </>}
         {authError && <div className="portal-auth-error" role="alert">{authError}</div>}
-        <footer className="portal-footer"><LockKeyhole size={14}/> Vidalys Fideliza · Homologação · Nenhuma ação executada na loja conectada</footer>
+        <footer className="portal-footer"><LockKeyhole size={14}/> Vidalys Fideliza · Homologação · Nenhuma alteração aplicada à plataforma de vendas</footer>
       </main>
     </div>
   </div>;
