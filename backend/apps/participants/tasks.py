@@ -88,3 +88,63 @@ def send_enrollment_email(self, challenge_id: str, event_id=None):
         return "sent"
     except Exception as exc:
         retry_or_fail(self, event_id, exc)
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60,
+             acks_late=True, ignore_result=True)
+def send_member_access_email(self, challenge_id: str, event_id=None):
+    """Token HMAC é derivado no worker; Redis recebe somente UUIDs."""
+    from .enrollment_models import MemberAccessChallenge
+    from .email_proof import make_token, digest
+    if not claim_delivery(event_id):
+        return "duplicate"
+    if not email_delivery_ready():
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "disabled")
+        return "delivery_disabled"
+    try:
+        challenge = MemberAccessChallenge.objects.select_related(
+            "submission__tenant",
+        ).get(pk=challenge_id)
+    except MemberAccessChallenge.DoesNotExist:
+        finish_delivery(event_id, EmailDispatch.State.SKIPPED, "missing")
+        return "not_found"
+    try:
+        submission = challenge.submission
+        token = make_token(challenge.id, "member")
+        if (challenge.token_digest != digest(token)
+                or challenge.consumed_at is not None
+                or challenge.expires_at <= timezone.now()
+                or submission.email_verified_at is None
+                or submission.withdrawn_at is not None
+                or submission.status not in (
+                    EnrollmentSubmission.Status.EMAIL_VERIFIED,
+                    EnrollmentSubmission.Status.LINKED,
+                )
+                or submission.tenant.status != Tenant.Status.ACTIVE):
+            finish_delivery(event_id, EmailDispatch.State.SKIPPED, "expired")
+            return "expired"
+        url = (settings.FIDELIZA_PUBLIC_BASE_URL.rstrip("/")
+               + "/clube/" + submission.tenant.slug + "#acesso=" + token)
+        plain, html = transactional_message(
+            title="Seu Clube de Vantagens",
+            greeting="Olá, " + submission.name + "!",
+            description=("Você pediu um acesso privado ao Clube " +
+                         submission.tenant.name +
+                         ". Use o botão abaixo para acompanhar sua participação e as regras."),
+            action_label="Acessar Meu Clube",
+            action_url=url,
+            context="Acesso privado do participante",
+            safety_note="Link pessoal, válido por 15 minutos e de uso único. Não encaminhe.",
+            footer_note="Se você não pediu este acesso, ignore o e-mail. Nenhum ponto ou recompensa é criado por este link.",
+        )
+        message = EmailMultiAlternatives(
+            subject="Acesse seu clube | " + submission.tenant.name,
+            body=plain, from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[submission.email],
+        )
+        message.attach_alternative(html, "text/html")
+        message.send(fail_silently=False)
+        finish_delivery(event_id, EmailDispatch.State.ACCEPTED)
+        return "sent"
+    except Exception as exc:
+        retry_or_fail(self, event_id, exc)

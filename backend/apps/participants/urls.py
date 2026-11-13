@@ -1,4 +1,8 @@
 from django.urls import path
+from .member_portal_views import (
+    MemberClubPublicView, MemberClubRequestAccessView,
+    MemberClubConfirmAccessView, MemberClubMeView, MemberClubLogoutView,
+)
 from .views import ParticipantListView
 from .customer_link_preview import CustomerLinkPreviewView
 from .customer_link_approval import CustomerLinkApproveView
@@ -10,6 +14,16 @@ from .enrollment_views import (
 )
 
 urlpatterns = [
+    path("public/clubs/<slug:slug>/",
+         MemberClubPublicView.as_view(), name="member-club-public"),
+    path("public/clubs/<slug:slug>/access/request/",
+         MemberClubRequestAccessView.as_view(), name="member-club-access-request"),
+    path("public/clubs/<slug:slug>/access/confirm/",
+         MemberClubConfirmAccessView.as_view(), name="member-club-access-confirm"),
+    path("public/clubs/<slug:slug>/me/",
+         MemberClubMeView.as_view(), name="member-club-me"),
+    path("public/clubs/<slug:slug>/logout/",
+         MemberClubLogoutView.as_view(), name="member-club-logout"),
     path("tenants/<uuid:tenant_id>/participants/", ParticipantListView.as_view(),
          name="tenant-participants"),
     path("tenants/<uuid:tenant_id>/program-terms/", ProgramTermsView.as_view(),
