@@ -81,7 +81,7 @@ export default function ParticipantsBoard({ tenantId, role, storeSlug, tenantSta
         <span className="xp-eyebrow"><HeartHandshake size={16}/> RELACIONAMENTO COM CLIENTES</span>
         <h2>Clientes que voltam.<br/><em>Relacionamentos que crescem.</em></h2>
         <p>Acompanhe quem aderiu ao programa de fidelidade, com consentimento verificável e informações separadas das vendas comuns da loja.</p>
-        <span className="xp-hero-note"><LockKeyhole size={15}/> Nenhum cliente entra no programa automaticamente.</span>
+        <span className="xp-hero-note"><LockKeyhole size={15}/> Nenhum comprador participa sem consentimento e confirmação de e-mail. A vinculação pode ser automática quando a loja estiver autorizada.</span>
       </div>
       <div className="xp-hero-graphic" aria-hidden="true"><UsersRound size={66} strokeWidth={1.3}/></div>
     </section>
