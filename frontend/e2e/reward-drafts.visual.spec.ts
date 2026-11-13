@@ -57,12 +57,12 @@ for(const width of [390,1440]){
   await page.goto("/");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
-  await expect(page.getByRole("heading",{name:"O que o cliente pode conquistar?"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
   await page.getByPlaceholder("Ex.: R$ 5 de desconto").fill("R$ 5 de desconto");
   await page.getByRole("spinbutton",{name:"Pontos necessários"}).fill("200");
   await page.getByRole("textbox",{name:"Valor do desconto (R$)"}).fill("5,00");
-  await page.getByRole("button",{name:"Guardar recompensa"}).click();
-  await expect(page.getByText("Recompensa guardada como rascunho.",{exact:false})).toBeVisible();
+  await page.getByRole("button",{name:"Criar rascunho"}).click();
+  await expect(page.getByText("Rascunho salvo.",{exact:false})).toBeVisible();
   await expect(page.getByText("Sem cupom, sem resgate e sem consumo de pontos.")).toBeVisible();
   expect(calls).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
