@@ -1,4 +1,4 @@
-"""Diagnóstico SMTP2GO sem rede, sem revelar segredos, executar no container worker.
+"""Diagnóstico SMTP independente do provedor, sem rede ou segredos, no worker.
 
 python scripts/audit_smtp_env.py --host fideliza-homolog.optarys.com.br
 Não envia e-mails. Retorna erro quando --require-enabled e falta configuração.
