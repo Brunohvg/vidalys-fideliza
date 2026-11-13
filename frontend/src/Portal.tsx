@@ -4,7 +4,7 @@ import {
   Gift, LayoutDashboard, LoaderCircle, LockKeyhole,
   LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, UsersRound, X, BarChart3, HeartHandshake, Settings2
 } from "lucide-react";
-import MarginSimulator from "./MarginSimulator";
+import BenefitCostOverview from "./BenefitCostOverview";
 import MerchantAccess from "./MerchantAccess";
 import CampaignGuide from "./CampaignGuide";
 import ParticipantsBoard from "./ParticipantsBoard";
@@ -234,7 +234,7 @@ export default function Portal() {
       </nav>
       <div className="portal-nav-caption portal-tools-caption">FERRAMENTAS AVANÇADAS</div>
       <nav className="portal-nav portal-nav-secondary">
-        <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Rentabilidade</button>
+        <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Custo dos benefícios</button>
         <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>
         <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
 
@@ -252,15 +252,15 @@ export default function Portal() {
     <div className="portal-main">
       <header className="portal-top">
         <div className="portal-top-title"><button onClick={()=>setDrawer(true)} ref={menuButtonRef} className="portal-menu" aria-label="Abrir menu" aria-controls="portal-sidebar" aria-expanded={compactMenu && drawer}><Menu size={23}/></button>
-          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="program"?"Programa":page==="clients"?"Clientes":page==="sales"?"Vendas":page==="campaign"?"Campanhas":page==="results"?"Resultados":page==="margin"?"Rentabilidade":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":page==="settings"?"Configurações":"Motor de benefícios"}</strong>
+          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="program"?"Programa":page==="clients"?"Clientes":page==="sales"?"Vendas":page==="campaign"?"Campanhas":page==="results"?"Resultados":page==="margin"?"Custo dos benefícios":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":page==="settings"?"Configurações":"Motor de benefícios"}</strong>
         </div>
         <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
       </header>
       <main className="portal-content">
         <div className="portal-content-head">
           <div><span className="portal-eyebrow">CENTRO DE FIDELIDADE</span>
-            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="sales"?"Vendas do balcão.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Inteligência de margem.":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
-            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Regulamento, divulgação e solicitações — cada coisa em seu lugar.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Registre uma compra em três passos e acompanhe as conferências.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Simule os custos e peça uma análise ao servidor da loja.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
+            <h1>{page==="overview"?"O próximo passo da sua loja.":page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="sales"?"Vendas do balcão.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Quanto custa meu programa?":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
+            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Regulamento, divulgação e solicitações — cada coisa em seu lugar.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Registre uma compra em três passos e acompanhe as conferências.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Entenda o custo dos benefícios antes de publicá-los.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
           <StatusPill>Ambiente de teste</StatusPill>
         </div>
@@ -287,7 +287,7 @@ export default function Portal() {
             {page==="results" && <ResultsOverview tenantId={tenant.id}
               onClients={()=>navigate("clients")} onSales={()=>navigate("sales")}
               onProgram={()=>navigate("program")} key={tenant.id}/>}
-            {page==="margin" && <MarginSimulator tenantId={tenant.id} initialItem={seedItem} key={tenant.id+":"+(seedItem?.id||"")}/>}
+            {page==="margin" && <BenefitCostOverview initialItem={seedItem} onOpenProgram={()=>navigate("program")} key={tenant.id+":"+(seedItem?.id||"")}/>}
             {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
             {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} onOpenSettings={()=>navigate("settings")} key={tenant.id}/>}
             {page==="campaign" && <CampaignGuide tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
