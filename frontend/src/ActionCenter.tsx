@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import {merchantApi, type CampaignDraftList, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus} from "./api";
 
-type Destination = "clients"|"campaign"|"catalog"|"results";
+type Destination = "clients"|"campaign"|"catalog"|"results"|"settings";
 type Action = {
   title:string;
   body:string;
@@ -41,12 +41,21 @@ export default function ActionCenter({
   const actions:Action[] = [];
   if (integration && !integration.connected) {
     actions.push({
-      title:"Conecte os produtos da loja",
+      title:"Conecte sua Nuvemshop",
       body:integration.configured
         ?"Autorize a Nuvemshop para analisar uma amostra de produtos e variantes, sem alterar seu catálogo."
         :"A conexão será liberada depois da configuração segura do aplicativo na homologação.",
       reason:"O Fideliza ainda não recebe dados dessa loja.",
-      target:"catalog",callToAction:"Ver integração",icon:PlugZap,
+      target:"settings",callToAction:"Conectar em Configurações",icon:PlugZap,
+    });
+  } else if (integration?.connected) {
+    actions.push({
+      title:"Confira o acesso à Nuvemshop",
+      body:integration.connection_check?.catalog_scope_granted===false
+        ?"A autorização existe, mas falta permissão de leitura dos produtos. Corrija no Portal de Parceiros e reinstale o aplicativo."
+        :"A autorização foi registrada. Verifique a leitura real da loja antes de confiar na conexão.",
+      reason:"Autorização registrada não prova que o token continua válido.",
+      target:"settings",callToAction:"Verificar conexão",icon:PlugZap,
     });
   }
   if (participants && participants.summary.total===0) {
@@ -92,10 +101,10 @@ export default function ActionCenter({
 
   const readiness = [
     {
-      title:"Conectar a loja",
-      detail:"Produtos e integração com a plataforma.",
-      status:integrationError?"unknown":integration?.connected?"ready":"not_ready",
-      destination:"catalog" as const,action:"Ver conexão",
+      title:"Autorizar e verificar a loja",
+      detail:"OAuth registrado não substitui o teste de acesso real.",
+      status:integrationError?"unknown":integration?.connected?"authorized":"not_ready",
+      destination:"settings" as const,action:"Configurar",
     },
     {
       title:"Receber participantes",
@@ -166,6 +175,7 @@ export default function ActionCenter({
           <span className="xp-journey-state">
             {step.status==="ready"?"Disponível":
              step.status==="locked"?"Ainda não liberado":
+             step.status==="authorized"?"Autorizada; verificar":
              step.status==="unknown"?"Não foi possível verificar":"A preparar"}
           </span>
           {step.destination&&<button type="button" className="xp-journey-link"
