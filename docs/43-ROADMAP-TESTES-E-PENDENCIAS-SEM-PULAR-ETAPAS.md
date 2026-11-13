@@ -508,3 +508,50 @@ e publicar somente o HEAD da branch homolog na aplicação Raw existente.
 Conferir showmigrations core, Admin, ações de moderação, registro novo com
 outro usuário conectado e estado correto de sessão/empresa. Nenhum deploy,
 Nuvemshop real ou cashback foi autorizado ou comprovado nesta etapa.
+
+## G2 retomada — navegação OAuth e robustez do e-mail (13/11/2026)
+
+A confirmação real relatada pelo lojista criou usuário, empresa independente
+e vínculo OWNER, mas precisou de logout manual da conta anterior. O commit
+`91570fe1` já contém a correção no Portal; para eliminar a dependência
+da tela autenticada, links `/confirmar-conta` e `/redefinir-senha` agora
+são roteados diretamente no bootstrap React para um componente isolado
+(`MerchantLinkLanding`). Ele permite confirmar o token mantendo o usuário
+anterior até a confirmação explícita, depois recarrega a raiz com a sessão
+nova; não abre endpoints de lojas da conta anterior nessa etapa.
+A evidência de execução real **ainda precisa ser repetida após o próximo
+deploy**. Não afirmar solução em produção apenas por teste visual.
+
+O G2 já tem OAuth por sessão, nonce único, callback protegido, token
+cifrado, verificação GET de três produtos, consentimento opcional para
+participantes e trilha de pedidos somente leitura. Evitar duplicar
+OAuth, tabelas, flags ou rotas de verificação. A análise mostrou falhas
+de orientação no painel:
+
+- A ação "Conectar Nuvemshop" da Visão geral apontava para
+  Conciliação, enquanto a única autorização OAuth está em Configurações.
+  Agora o botão **Iniciar conexão** vai para a seção correta.
+- A jornada tratava OAuth **registrado** como etapa **pronta**,
+  embora o token possa ter sido revogado. Passa a mostrar
+  **Autorizada; verificar** e direciona ao botão de leitura real.
+  GET somente por comando do lojista, sem nenhuma escrita na loja.
+- Clientes só entram após consentimento e confirmação de e-mail; com
+  correspondência única e scopes/flags autorizados, a ligação pode ser
+  automática. Corrigido texto que negava a existência desse recurso.
+- No Django Admin interno, `NuvemshopInstallation` possui listagem
+  somente leitura de tenant, app, store, scope e integridade do vínculo,
+  **sem mostrar token cifrado e sem permitir editar credenciais**.
+
+Novo teste Playwright cobre o caminho Visão geral → Configurações,
+e o status "Autorizada; verificar"; testes Django cobrem permissões e
+ausência de segredos no Admin. O CI detectou colisão de nomes de botões
+em testes de acessibilidade e falta de manifesto staticfiles no teste
+de admin; ambos foram corrigidos antes de declarar conclusão.
+
+**Próximo gate após CI verde:** publicar apenas `homolog` no Coolify
+após conferir backup/rollback; testar link recebido com outra sessão
+ativa e, com aplicativo parceiro autorizado para loja piloto,
+Configurações → Conectar Nuvemshop → OAuth → Verificar acesso (GET),
+confirmando app ID, loja e escopos sem revelar tokens. Se o app
+não estiver configurado no Coolify, não há como comprovar OAuth real.
+Não mexer em loja Bibelô, `main` nem habilitar cashback.
