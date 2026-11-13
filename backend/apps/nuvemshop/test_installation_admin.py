@@ -1,12 +1,17 @@
 """Admin de OAuth em leitura, sem revelar credenciais nem mudar a loja."""
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from apps.tenants.models import Tenant
 from apps.nuvemshop.models import NuvemshopInstallation
 
 
+@override_settings(STORAGES={
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+})
 class InstallationAdminSafetyTests(TestCase):
     def setUp(self):
         User = get_user_model()
