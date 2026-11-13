@@ -77,3 +77,29 @@
   .vf-clients-mobile-person{flex-wrap:wrap}
   .vf-clients-mobile-person .xp-tag{margin-left:0}
 }
+
+/* Faixa de orientação do diretório — ação com aparência consistente. */
+.vf-clients-intro{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:14px 20px;flex-wrap:wrap;padding:15px 18px;
+  border:1px solid #d8e9e3;background:#f7fbf9;border-radius:13px;
+  min-width:0
+}
+.vf-clients-intro p{
+  margin:0;flex:1 1 420px;min-width:0;color:#42665e;
+  font-size:13px;line-height:1.55
+}
+.vf-clients-intro button{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:44px;padding:10px 14px;border-radius:10px;
+  border:1px solid #b9ddd0;background:#fff;color:#08766c;
+  font:750 12px/1.4 Inter,system-ui,sans-serif;
+  cursor:pointer;flex:none
+}
+.vf-clients-intro button:hover{background:#e6f8f1;border-color:#77bdaa}
+.vf-clients-intro button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+@media(max-width:600px){
+ .vf-clients-intro{padding:14px;gap:10px}
+ .vf-clients-intro p{flex-basis:100%}
+ .vf-clients-intro button{width:100%;justify-content:center}
+}
