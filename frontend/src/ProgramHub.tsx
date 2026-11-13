@@ -1,5 +1,6 @@
 import {ArrowRight, Gift, HeartHandshake, ShieldCheck, UsersRound} from "lucide-react";
 import EnrollmentManagement from "./EnrollmentManagement";
+import PointRuleDraftEditor from "./PointRuleDraftEditor";
 import type {Store} from "./api";
 import "./program-hub.css";
 
@@ -25,6 +26,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
   </section>
   <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
    tenantStatus={tenantStatus}/>
+  <PointRuleDraftEditor tenantId={tenantId} role={role} />
   <div className="vf-program-next-grid">
    <article><Gift size={21}/><h3>Pontos por compra</h3>
     <p>O acúmulo dependerá de compras pagas e verificadas. O programa ainda não concede pontos automaticamente.</p>

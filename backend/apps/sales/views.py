@@ -35,7 +35,7 @@ def staff_member(user, tenant_id):
     return membership
 
 
-def present_sale(sale):
+def present_sale(sale, *, viewer_id=None):
     return {
         "id": str(sale.id),
         "channel": sale.channel, "reference": sale.external_reference,
@@ -46,6 +46,7 @@ def present_sale(sale):
         "evidence_reference": sale.evidence_reference,
         "state": sale.state, "created_at": sale.created_at.isoformat(),
         "reviewed_at": sale.reviewed_at.isoformat() if sale.reviewed_at else None,
+        "submitted_by_me": bool(viewer_id is not None and sale.submitted_by_id == viewer_id),
         "points_credited": False, "cashback_credited": False,
     }
 
@@ -63,7 +64,7 @@ class ManualSalesView(APIView):
         ).select_related("participant")[:30]
         return safe_reply({
             "mode": "manual_review_only", "points_credited": False,
-            "items": [present_sale(item) for item in records],
+            "items": [present_sale(item, viewer_id=request.user.pk) for item in records],
         })
 
     @transaction.atomic
@@ -127,7 +128,7 @@ class ManualSalesView(APIView):
                 and previous.reported_paid_at == paid_at
             )
             if same:
-                return safe_reply({"already_recorded": True, "sale": present_sale(previous)})
+                return safe_reply({"already_recorded": True, "sale": present_sale(previous, viewer_id=request.user.pk)})
             return safe_reply({"detail": "Referência já usada para outra venda."}, 409)
         sale = SaleRecord.objects.create(
             tenant_id=tenant_id, participant=participant, channel=SaleRecord.Channel.COUNTER,
@@ -137,7 +138,7 @@ class ManualSalesView(APIView):
                    else SaleRecord.State.AWAITING_MEMBER),
             submitted_by=request.user,
         )
-        return safe_reply({"already_recorded": False, "sale": present_sale(sale)}, 201)
+        return safe_reply({"already_recorded": False, "sale": present_sale(sale, viewer_id=request.user.pk)}, 201)
 
 
 class ManualSaleReviewView(APIView):
@@ -175,7 +176,7 @@ class ManualSaleReviewView(APIView):
         sale.save(update_fields=["state", "reviewed_by", "reviewed_at", "review_note"])
         # Revisão operacional != pagamento confirmado por PSP. Sem saldo.
         return safe_reply({
-            "sale": present_sale(sale),
+            "sale": present_sale(sale, viewer_id=request.user.pk),
             "manual_evidence_reviewed": True,
             "independent_payment_proof": False,
             "points_credited": False,

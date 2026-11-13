@@ -238,6 +238,35 @@ export type CostHistoryEntry = {
   after: Record<string, unknown>;
 };
 
+export type ManualSaleRecord = {
+  id:string;channel:"counter";reference:string;participant_id:string|null;
+  participant_name:string|null;eligible_amount_cents:number;reported_paid_at:string;
+  evidence_reference:string;state:"awaiting_member"|"awaiting_review"|"verified_manual"|"rejected";
+  created_at:string;reviewed_at:string|null;submitted_by_me:boolean;
+  points_credited:false;cashback_credited:false;
+};
+export type ManualSaleInput = {
+  reference:string;eligible_amount_cents:number;
+  participant_id:string|null;reported_paid_at:string;evidence_reference:string;
+};
+export type ManualSaleList = {
+  mode:"manual_review_only";points_credited:false;items:ManualSaleRecord[];
+};
+export type ManualSaleResult = {
+  already_recorded:boolean;sale:ManualSaleRecord;
+};
+export type ManualSaleReviewResult = {
+  sale:ManualSaleRecord;manual_evidence_reviewed:true;
+  independent_payment_proof:false;points_credited:false;
+};
+export type PointRuleDraft = {
+  version:number;points:number;per_cents:number;hold_days:number;validity_days:number;
+};
+export type PointRuleDraftResult = PointRuleDraft & {
+  mode:"draft_only";activation_available:false;
+  example_for_100_reais:number;points_credited:false;
+};
+
 export type ProgramParticipant = {
   id: string;
   customer_reference: string;
@@ -405,6 +434,20 @@ export type CatalogPreview = {
 };
 
 export const merchantApi = {
+  listManualSales: (tenantId:string)=>getJson<ManualSaleList>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"),
+  createManualSale: (tenantId:string,data:ManualSaleInput)=>postJson<ManualSaleResult>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/",data),
+  reviewManualSale: (tenantId:string,saleId:string,decision:"approve"|"reject",note:string)=>
+    postJson<ManualSaleReviewResult>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+
+      encodeURIComponent(saleId)+"/review/",{decision,note}),
+  getPointRuleDraft: (tenantId:string)=>getJson<{
+    mode:"draft_only";activation_available:false;rule:PointRuleDraft|null
+  }>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-rule-draft/"),
+  savePointRuleDraft: (tenantId:string,rule:Omit<PointRuleDraft,"version">)=>
+    postJson<PointRuleDraftResult>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-rule-draft/",rule),
   getTenantPrivacyRequests: (tenantId:string) =>
     getJson<PrivacyRequestsSummary>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/privacy/requests/"

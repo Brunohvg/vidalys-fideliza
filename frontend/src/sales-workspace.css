@@ -1,0 +1,42 @@
+.vf-sales-page{display:grid;gap:17px;min-width:0}
+.vf-sales-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(125deg,#153c43,#1d665b);color:white;padding:25px;border-radius:19px}
+.vf-sales-hero h2{font:800 clamp(21px,2.4vw,30px)/1.18 Manrope,Inter,sans-serif;letter-spacing:-.03em;margin:10px 0}
+.vf-sales-hero p{font-size:13px;line-height:1.7;max-width:670px;color:#d2ede5;margin:0}
+.vf-sales-label{flex:none;border:1px solid #99b9af;border-radius:20px;padding:10px 12px;font-size:11px;font-weight:800;display:flex;align-items:center;gap:8px}
+.vf-sales-card{background:#fff;border:1px solid #dae8e2;border-radius:18px;padding:23px;min-width:0}
+.vf-sales-title{display:flex;align-items:start;gap:11px;margin-bottom:18px}
+.vf-sales-title>svg{color:#087f79;flex:none}
+.vf-sales-title h3{margin:0 0 5px;font:800 18px Manrope,Inter,sans-serif;color:#173e3e}
+.vf-sales-title p{font-size:12px;line-height:1.65;color:#5d7874;margin:0}
+.vf-sales-form,.vf-rule-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.vf-sales-form label,.vf-rule-form label,.vf-sales-review-note{display:grid;gap:7px;font-size:12px;font-weight:750;color:#315855;min-width:0}
+.vf-sales-form input,.vf-sales-form select,.vf-rule-form input,.vf-sales-review-note textarea{width:100%;padding:12px 13px;min-height:45px;border:1px solid #c9dcd5;border-radius:10px;background:#fff;color:#153a38;font-size:14px}
+.vf-sales-form input:focus-visible,.vf-sales-form select:focus-visible,.vf-rule-form input:focus-visible,.vf-sales-review-note textarea:focus-visible{outline:3px solid #37d5bb;outline-offset:1px}
+.vf-sales-wide{grid-column:1/-1}
+.vf-sales-search{display:flex;align-items:center;gap:8px;border:1px solid #c9dcd5;border-radius:10px;padding-left:12px}
+.vf-sales-search input{border:0}
+.vf-sales-form-bottom{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:4px}
+.vf-sales-form-bottom p{margin:0;max-width:580px;color:#5c7771;font-size:12px;line-height:1.6}
+.vf-sales-form-bottom button,.vf-sales-review-actions button{flex:none;display:flex;align-items:center;gap:8px;justify-content:center}
+.vf-sales-error,.vf-sales-success{padding:13px 16px;border-radius:11px;font-size:12px;line-height:1.6}
+.vf-sales-error{color:#a12840;background:#fff0f0;border:1px solid #eccbce}
+.vf-sales-success{color:#1c6054;background:#edf9f1;border:1px solid #d1ead9}
+.vf-sales-refresh{padding:10px 12px;border:1px solid #bbd8ce;background:#f9fcfa;border-radius:9px;color:#176e63;cursor:pointer;font-size:12px;font-weight:800;display:flex;align-items:center;gap:7px}
+.vf-sales-title>.vf-sales-refresh{margin-left:auto}
+.vf-sales-table-wrap{overflow-x:auto}
+.vf-sales-table{width:100%;border-collapse:collapse;font-size:12px;text-align:left}
+.vf-sales-table th{padding:12px;background:#f0f8f5;color:#42655f;font-weight:800;white-space:nowrap}
+.vf-sales-table td{border-top:1px solid #e4eeea;padding:13px 11px;vertical-align:middle;color:#335b56}
+.vf-sales-table td strong{color:#163e3b;display:block}
+.vf-sales-table td small{display:block;color:#718a82;margin-top:4px;font-size:10px}
+.vf-sales-empty{display:grid;gap:9px;justify-items:center;padding:35px;color:#4b7670;text-align:center}
+.vf-sales-empty p{font-size:12px;margin:0}
+.vf-sales-review-note{margin-bottom:13px}
+.vf-sales-review-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.vf-rule-card{display:grid;gap:9px}
+.vf-rule-draft-label{margin-left:auto;white-space:nowrap;padding:7px 9px;font-size:11px;font-weight:800;color:#85602d;background:#fff7e6;border-radius:8px}
+.vf-rule-summary{grid-column:1/-1;display:flex;gap:11px;align-items:start;background:#f1faf5;border:1px solid #d3e9d9;color:#246155;font-size:13px;line-height:1.6;padding:14px;border-radius:11px}
+.vf-rule-summary svg{flex:none}
+.vf-rule-form .vf-sales-form-bottom{grid-column:1/-1}
+.vf-rule-form .vf-sales-form-bottom p{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+@media(max-width:740px){.vf-sales-hero{display:grid;padding:21px}.vf-sales-label{justify-self:start}.vf-sales-form,.vf-rule-form{grid-template-columns:1fr}.vf-sales-form-bottom{display:grid}.vf-sales-form-bottom button{width:100%}.vf-sales-card{padding:18px}.vf-rule-draft-label{white-space:normal}.vf-sales-review-actions button{flex:1}}
