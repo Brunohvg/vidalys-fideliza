@@ -72,10 +72,22 @@ def email_claimed(email):
     return False
 
 
+def blocked_registration_for_email(email):
+    """Bloqueio administrativo da inscrição vale também para aliases Gmail."""
+    key = canonical_email(email)
+    blocked = MerchantRegistration.objects.filter(blocked_at__isnull=False)
+    if blocked.filter(normalized_email=email).exists():
+        return True
+    if key.endswith("@gmail.com"):
+        return _gmail_matches(blocked, key, "normalized_email")
+    return False
+
+
 def pending_email_claimed(email):
     key = canonical_email(email)
     pending = MerchantRegistration.objects.filter(
-        consumed_at__isnull=True, expires_at__gt=timezone.now())
+        consumed_at__isnull=True, cancelled_at__isnull=True,
+        blocked_at__isnull=True, expires_at__gt=timezone.now())
     if pending.filter(normalized_email=email).exists():
         return True
     if key.endswith("@gmail.com"):
@@ -90,7 +102,8 @@ def pending_registration_for_email(email):
     por quem iniciou o cadastro. Em outros provedores, exija igualdade.
     """
     pending = MerchantRegistration.objects.filter(
-        consumed_at__isnull=True, expires_at__gt=timezone.now(),
+        consumed_at__isnull=True, cancelled_at__isnull=True,
+        blocked_at__isnull=True, expires_at__gt=timezone.now(),
     )
     direct = pending.filter(normalized_email=email).first()
     if direct:
@@ -163,6 +176,8 @@ def parse_token(value):
 
 def valid_token(purpose, record, candidate):
     return bool(record and record.consumed_at is None and
+                getattr(record, "cancelled_at", None) is None and
+                getattr(record, "blocked_at", None) is None and
                 record.expires_at > timezone.now() and
                 hmac.compare_digest(create_token(purpose, record), candidate))
 
