@@ -230,8 +230,9 @@ export default function Portal() {
         </div>
 
         {tenants.length===0 ? <section className="portal-empty panel">
-            <UsersRound size={36}/><h2>Sua conta ainda não tem loja vinculada</h2>
-            <p>Peça a um administrador que crie uma loja e associe seu usuário no Django Admin. Nenhuma loja ou credencial é criada automaticamente.</p>
+            <UsersRound size={36}/><h2>Sua conta está ativa, mas sem empresa associada</h2>
+            <p>Seu acesso funciona, porém nenhuma loja foi atribuída a esta conta. Se você confirmou o cadastro pelo e-mail, a empresa deveria aparecer automaticamente. Antes de criar outra conta, solicite a revisão do vínculo ao suporte.</p>
+            <p>Contas técnicas criadas no Django Admin não recebem loja automaticamente. Um administrador pode verificar a empresa em Empresas → Lojas e seus vínculos, sem associar usuários apenas pelo nome ou e-mail.</p>
             <button onClick={doLogout} className="portal-secondary">Trocar de conta</button>
           </section> : <>
             <div className="portal-tenant-bar"><label htmlFor="portal-tenant">Loja selecionada</label>
