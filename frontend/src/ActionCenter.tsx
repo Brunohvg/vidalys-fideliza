@@ -1,11 +1,11 @@
 import {useEffect, useState} from "react";
 import {
   ArrowRight, BarChart3, CheckCircle2, CircleHelp, Gift, HeartHandshake,
-  LockKeyhole, PlugZap, ShieldCheck, Sparkles, UsersRound
+  LockKeyhole, PlugZap, ShieldCheck, ShoppingBag, Sparkles, UsersRound
 } from "lucide-react";
-import {merchantApi, type CampaignDraftList, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus} from "./api";
+import {merchantApi, type CampaignDraftList, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus, type ManualSaleList, type Store} from "./api";
 
-type Destination = "program"|"clients"|"campaign"|"catalog"|"results"|"settings";
+type Destination = "program"|"clients"|"sales"|"campaign"|"catalog"|"results"|"settings";
 type Action = {
   title:string;
   body:string;
@@ -16,27 +16,33 @@ type Action = {
 };
 
 export default function ActionCenter({
-  tenantId, onNavigate
-}: {tenantId:string; onNavigate:(target:Destination)=>void}) {
+  tenantId, role, onNavigate
+}: {tenantId:string; role:Store["role"]; onNavigate:(target:Destination)=>void}) {
   const [participants,setParticipants]=useState<ParticipantDirectoryResponse|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
   const [drafts,setDrafts]=useState<CampaignDraftList|null>(null);
   const [draftsError,setDraftsError]=useState(false);
+  const [recentSales,setRecentSales]=useState<ManualSaleList|null>(null);
+  const [salesError,setSalesError]=useState(false);
+  const canManageSales=role==="owner"||role==="admin";
   const [participantsError,setParticipantsError]=useState(false);
   const [integrationError,setIntegrationError]=useState(false);
 
   useEffect(()=>{
     let active=true;
-    setParticipants(null);setIntegration(null);setDrafts(null);
-    setParticipantsError(false);setIntegrationError(false);setDraftsError(false);
+    setParticipants(null);setIntegration(null);setDrafts(null);setRecentSales(null);
+    setParticipantsError(false);setIntegrationError(false);setDraftsError(false);setSalesError(false);
     merchantApi.listParticipants(tenantId).then(r=>{if(active)setParticipants(r)})
       .catch(()=>{if(active)setParticipantsError(true)});
     merchantApi.listCampaignDrafts(tenantId).then(r=>{if(active)setDrafts(r)})
       .catch(()=>{if(active)setDraftsError(true)});
     merchantApi.nuvemshopStatus(tenantId).then(r=>{if(active)setIntegration(r)})
       .catch(()=>{if(active)setIntegrationError(true)});
+    if(canManageSales)merchantApi.listManualSales(tenantId)
+      .then(r=>{if(active)setRecentSales(r)})
+      .catch(()=>{if(active)setSalesError(true)});
     return ()=>{active=false};
-  },[tenantId]);
+  },[tenantId,canManageSales]);
 
   const actions:Action[] = [];
   if (participants && participants.summary.total===0) {
@@ -53,6 +59,23 @@ export default function ActionCenter({
       body:"Confira as adesões registradas e as situações ativas ou pausadas. Nenhum ponto é concedido sem compra e regra verificadas.",
       reason:participants.summary.total+" participante(s) registrado(s) com aceite nesta loja.",
       target:"clients",callToAction:"Abrir clientes",icon:UsersRound,
+    });
+  }
+  if(canManageSales && recentSales){
+    const pending=recentSales.items.filter(s=>s.state==="awaiting_review").length;
+    actions.push({
+      title:pending>0?"Há vendas para conferir":
+        recentSales.items.length>0?"Acompanhe suas vendas do balcão":"Registre uma venda do balcão",
+      body:pending>0
+        ?"Confira os comprovantes com um segundo administrador. Esta etapa ainda não libera pontos."
+        :recentSales.items.length>0
+          ?"Consulte os registros e os participantes. A pontuação automática ainda não está ativa."
+          :"Selecione um participante, informe o valor e o número do comprovante em três passos.",
+      reason:pending>0
+        ?pending+" venda(s) aguardando revisão entre os últimos 30 registros."
+        :"O balcão funciona sem vincular uma Nuvemshop.",
+      target:"sales",callToAction:pending>0?"Ver conferências":"Abrir Vendas",
+      icon:ShoppingBag,
     });
   }
   if(drafts?.items.length){
@@ -101,23 +124,30 @@ export default function ActionCenter({
 
   const readiness = [
     {
-      title:"Integrar Nuvemshop (opcional)",
-      detail:"A loja pode operar sem e-commerce. Use a integração quando quiser automatizar compras no site.",
-      status:integrationError?"unknown":integration?.connected?"authorized":"optional",
-      destination:"settings" as const,action:"Ver conexão",
+      title:"Participantes do clube",
+      detail:"O cliente aceita as regras e confirma sua identidade antes de ganhar pontos.",
+      status:participantsError?"unknown":participants?.summary.total?"ready":"not_ready",
+      destination:(participants?.summary.total?"clients":"program") as Destination,
+      action:"Ver participantes",
     },
+    ...(canManageSales?[{
+      title:"Vendas de balcão",
+      detail:"Registre o comprovante de forma simples. O processamento financeiro ainda será conectado.",
+      status:salesError?"unknown":recentSales?.items.length?"ready":"not_ready",
+      destination:"sales" as const,action:"Abrir Vendas",
+    }]:[]),
+
     {
-      title:"Receber participantes",
-      detail:"Clientes precisam autorizar a entrada no clube.",
-      status:participantsError?"unknown":participants?.summary.total
-        ?"ready":"not_ready",
-      destination:(participants?.summary.total ? "clients" : "program") as Destination,action:"Ver programa",
-    },
-    {
-      title:"Planejar benefícios",
+      title:"Simular recompensas",
       detail:"Simule rentabilidade e salve uma campanha.",
       status:draftsError?"unknown":drafts?.items.length?"ready":"not_ready",
       destination:"campaign" as const,action:"Planejar",
+    },
+    {
+      title:"Nuvemshop (canal opcional)",
+      detail:"A loja pode operar sem e-commerce. Use a integração quando quiser automatizar compras no site.",
+      status:integrationError?"unknown":integration?.connected?"authorized":"optional",
+      destination:"settings" as const,action:"Ver conexão",
     },
     {
       title:"Pontos e resgates nas compras",
@@ -141,7 +171,7 @@ export default function ActionCenter({
       <div className="xp-section-heading"><span className="portal-eyebrow">PRÓXIMOS PASSOS DA LOJA</span>
         <h2>Seu plano de ação</h2>
         <p>Recomendações baseadas no estado conhecido do sistema, não em vendas inventadas.</p></div>
-      {(integrationError||participantsError||draftsError) && <div className="xp-action-warning" role="status">
+      {(integrationError||participantsError||draftsError||salesError) && <div className="xp-action-warning" role="status">
         <CircleHelp size={18}/> Alguns dados não puderam ser consultados. As sugestões abaixo não representam uma avaliação completa da loja.
       </div>}
       <div className="xp-action-cards">
