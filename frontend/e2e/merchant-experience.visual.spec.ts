@@ -42,6 +42,15 @@ for(const width of [390,768,1440]) {
 
       await nav(page,"Clientes",width);
       await expect(page.getByRole("heading",{name:"Pessoas no clube",exact:true})).toBeVisible();
+      const enrollmentAction=page.getByRole("button",{name:"Gerenciar adesões"});
+      await expect(enrollmentAction).toBeVisible();
+      const appearance=await enrollmentAction.evaluate(el=>{
+        const css=getComputedStyle(el);
+        return {radius:css.borderRadius,height:el.getBoundingClientRect().height,display:css.display};
+      });
+      expect(appearance.display).toBe("inline-flex");
+      expect(appearance.radius).not.toBe("0px");
+      expect(appearance.height).toBeGreaterThanOrEqual(44);
       await expect(page.getByText("Sua comunidade começa com o primeiro aceite")).toBeVisible();
       await expect(page.getByText("Somente quem confirmou a adesão ao clube aparece aqui.",{exact:false})).toBeVisible();
       expect(await page.getByRole("button",{name:/Cadastrar cliente/}).count()).toBe(0);
