@@ -41,6 +41,7 @@ SESSION_EXPIRES = "fideliza_member_expires_ts"
 PERMITTED = (
     EnrollmentSubmission.Status.EMAIL_VERIFIED,
     EnrollmentSubmission.Status.LINKED,
+    EnrollmentSubmission.Status.MEMBER,
 )
 
 

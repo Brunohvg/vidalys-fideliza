@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 from apps.tenants.models import Tenant
 from .email_proof import consume_challenge, enqueue_confirmation, email_links_enabled
 from .customer_link_auto import auto_link_after_verified_email
+from .standalone_activation import activate_standalone_after_email
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
 from .enrollment_views import _limit_public, secure, valid_object
 
@@ -61,6 +62,7 @@ class PublicWithdrawalRequestView(APIView):
                 EnrollmentSubmission.Status.PENDING_VERIFICATION,
                 EnrollmentSubmission.Status.EMAIL_VERIFIED,
                 EnrollmentSubmission.Status.LINKED,
+                EnrollmentSubmission.Status.MEMBER,
             ],
         ).order_by("-accepted_at").first()
         if submission:
@@ -90,10 +92,13 @@ class PublicEmailActionView(APIView):
             return secure(Response({"detail": "Link inválido, usado ou expirado."}, status=410))
         auto_linked = (action == "verify" and
                        auto_link_after_verified_email(token) == "linked")
+        standalone_linked = (action == "verify" and not auto_linked and
+                             activate_standalone_after_email(token))
+        participant_created = bool(auto_linked or standalone_linked)
         return secure(Response({
             "status": status_value,
             "identity_verified_in_nuvemshop": bool(auto_linked),
-            "participant_created": bool(auto_linked),
+            "participant_created": participant_created,
             "cashback_enabled": False,
             "message": (
                 "Solicitação retirada. Nenhuma recompensa foi criada."
@@ -102,6 +107,9 @@ class PublicEmailActionView(APIView):
                     "E-mail e cadastro da loja confirmados. Sua participação "
                     "foi registrada; não há recompensas ativas nesta etapa."
                     if auto_linked else
+                    "Participação confirmada no clube. Seu e-mail foi validado. "
+                    "Pontos e recompensas ainda não estão ativos."
+                    if standalone_linked else
                     "E-mail confirmado. Se a verificação automática não concluir "
                     "o vínculo, a loja poderá revisar seu cadastro."
                 )

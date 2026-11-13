@@ -119,6 +119,7 @@ def send_member_access_email(self, challenge_id: str, event_id=None):
                 or submission.status not in (
                     EnrollmentSubmission.Status.EMAIL_VERIFIED,
                     EnrollmentSubmission.Status.LINKED,
+                    EnrollmentSubmission.Status.MEMBER,
                 )
                 or submission.tenant.status != Tenant.Status.ACTIVE):
             finish_delivery(event_id, EmailDispatch.State.SKIPPED, "expired")

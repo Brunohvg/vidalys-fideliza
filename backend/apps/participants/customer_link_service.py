@@ -51,7 +51,10 @@ def link_verified_submission(
                 link.participant.status == ProgramParticipant.Status.ACTIVE):
             return link, False
         raise CustomerLinkConflict("O vínculo anterior exige revisão.")
-    if (submission.status != EnrollmentSubmission.Status.EMAIL_VERIFIED
+    if (submission.status not in (
+            EnrollmentSubmission.Status.EMAIL_VERIFIED,
+            EnrollmentSubmission.Status.MEMBER,
+        )
             or submission.email_verified_at is None
             or submission.withdrawn_at is not None
             or not submission.email):
@@ -66,18 +69,31 @@ def link_verified_submission(
             ProgramParticipant.objects.filter(
                 tenant=tenant,external_customer_id=customer_id).exists()):
         raise CustomerLinkConflict("Cadastro já vinculado ou pendente de revisão.")
-    participant=ProgramParticipant.objects.create(
-        tenant=tenant,external_customer_id=customer_id,
-        display_name=submission.name,contact_email=submission.email,
-        consent_at=submission.accepted_at,
-        consent_channel=ProgramParticipant.ConsentChannel.CUSTOMER_PORTAL,
-        terms_version=submission.terms.version,
-        status=ProgramParticipant.Status.ACTIVE,
-    )
+    if submission.participant_id:
+        participant=ProgramParticipant.objects.select_for_update().get(
+            pk=submission.participant_id, tenant=tenant,
+        )
+        if (participant.status != ProgramParticipant.Status.ACTIVE
+                or participant.contact_email.strip().casefold() !=
+                   submission.email.strip().casefold()
+                or participant.external_customer_id not in (None, customer_id)):
+            raise CustomerLinkConflict("Participante interno exige revisão.")
+        participant.external_customer_id=customer_id
+        participant.save(update_fields=["external_customer_id"])
+    else:
+        participant=ProgramParticipant.objects.create(
+            tenant=tenant,external_customer_id=customer_id,
+            display_name=submission.name,contact_email=submission.email,
+            consent_at=submission.accepted_at,
+            consent_channel=ProgramParticipant.ConsentChannel.CUSTOMER_PORTAL,
+            terms_version=submission.terms.version,
+            status=ProgramParticipant.Status.ACTIVE,
+        )
     link=EnrollmentCustomerLink.objects.create(
         tenant=tenant, submission=submission, participant=participant,
         external_customer_id=customer_id,confirmed_by=actor,source=source,
     )
     submission.status=EnrollmentSubmission.Status.LINKED
-    submission.save(update_fields=["status"])
+    submission.participant=participant
+    submission.save(update_fields=["status", "participant"])
     return link, True

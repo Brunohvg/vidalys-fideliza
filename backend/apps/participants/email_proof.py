@@ -143,9 +143,12 @@ def consume_challenge(token: str, purpose: str):
         # Se já foi participante, encerrar a adesão no mesmo commit.
         # O extrato é preservado para auditoria; nenhum resgate é executado.
         link = EnrollmentCustomerLink.objects.filter(submission=submission).first()
+        member_ids = {submission.participant_id} if submission.participant_id else set()
         if link:
+            member_ids.add(link.participant_id)
+        if member_ids:
             ProgramParticipant.objects.select_for_update().filter(
-                pk=link.participant_id, tenant_id=submission.tenant_id,
+                pk__in=member_ids, tenant_id=submission.tenant_id,
             ).update(status=ProgramParticipant.Status.WITHDRAWN)
         submission.withdrawn_at = now
         submission.status = EnrollmentSubmission.Status.WITHDRAWN

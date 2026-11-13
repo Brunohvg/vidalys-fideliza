@@ -70,7 +70,10 @@ class CustomerLinkApproveView(APIView):
                 return _result(link, already_linked=True)
             return secure(Response({"detail": "Esta solicitação já foi encerrada ou vinculada."},
                                    status=409))
-        if (submission.status!=EnrollmentSubmission.Status.EMAIL_VERIFIED
+        if (submission.status not in (
+                EnrollmentSubmission.Status.EMAIL_VERIFIED,
+                EnrollmentSubmission.Status.MEMBER,
+            )
                 or submission.email_verified_at is None or submission.withdrawn_at):
             return secure(Response({"detail": "O cliente precisa confirmar seu e-mail antes da aprovação."},
                                    status=409))

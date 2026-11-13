@@ -38,7 +38,10 @@ class CustomerLinkPreviewView(APIView):
             }, status=409))
         submission = get_object_or_404(EnrollmentSubmission,
                                        tenant_id=tenant_id, pk=submission_id)
-        if (submission.status != EnrollmentSubmission.Status.EMAIL_VERIFIED
+        if (submission.status not in (
+                EnrollmentSubmission.Status.EMAIL_VERIFIED,
+                EnrollmentSubmission.Status.MEMBER,
+            )
                 or not submission.email_verified_at
                 or submission.withdrawn_at is not None):
             return secure(Response({

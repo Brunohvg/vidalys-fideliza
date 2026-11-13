@@ -89,8 +89,8 @@ class ParticipantListView(APIView):
             "limit": 20,
             "offset": page_start,
             "items": result,
-            "note": "Somente clientes com adesão expressa, e-mail confirmado e vínculo "
-                    "revisado com a loja aparecem aqui. Isso não ativa recompensas.",
+            "note": "Somente participantes com adesão expressa e e-mail confirmado. "
+                    "A ligação com plataformas externas é opcional e não ativa recompensas.",
         })
         response["Cache-Control"] = "private, no-store"
         return response
