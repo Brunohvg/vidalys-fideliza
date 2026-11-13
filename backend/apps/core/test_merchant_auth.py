@@ -92,6 +92,40 @@ class MerchantAuthFlowTests(TestCase):
         self.assertEqual(get_user_model().objects.count(), 1)
         self.assertEqual(Tenant.objects.count(), 1)
 
+    def test_confirmation_switches_existing_session_to_new_owner_only(self):
+        old_user = get_user_model().objects.create_user(
+            username="old-owner", email="old@example.invalid",
+            password="synthetic-old-user",
+        )
+        old_store = Tenant.objects.create(
+            name="Loja antiga", slug="loja-antiga",
+            status=Tenant.Status.ACTIVE,
+        )
+        TenantMembership.objects.create(
+            user=old_user, tenant=old_store,
+            role=TenantMembership.Role.OWNER,
+        )
+        self.client.force_login(old_user)
+        self.client.get(reverse("auth-session"))
+        self.csrf = self.client.cookies["csrftoken"].value
+        self.assertEqual(self.register().status_code, 202)
+        pending = MerchantRegistration.objects.get()
+        token = create_token("register", pending)
+        confirmed = self.post("merchant-confirm", {"token": token})
+        self.assertEqual(confirmed.status_code, 200, confirmed.content)
+        self.assertTrue(confirmed.json()["store_linked"])
+        new_store_id = confirmed.json()["store_id"]
+        info = self.client.get(reverse("auth-session")).json()
+        self.assertTrue(info["authenticated"])
+        self.assertEqual(len(info["tenants"]), 1)
+        self.assertEqual(info["tenants"][0]["id"], new_store_id)
+        self.assertNotIn(str(old_store.id), str(info))
+        self.assertEqual(
+            TenantMembership.objects.filter(user=old_user).count(), 1
+        )
+        self.assertEqual(Tenant.objects.count(), 2)
+        self.assertEqual(get_user_model().objects.count(), 2)
+
     def test_confirmation_rolls_back_user_and_store_when_membership_fails(self):
         from django.db import IntegrityError
 
