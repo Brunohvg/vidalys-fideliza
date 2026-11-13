@@ -39,25 +39,6 @@ export default function ActionCenter({
   },[tenantId]);
 
   const actions:Action[] = [];
-  if (integration && !integration.connected) {
-    actions.push({
-      title:"Conecte sua Nuvemshop",
-      body:integration.configured
-        ?"Autorize a Nuvemshop para analisar uma amostra de produtos e variantes, sem alterar seu catálogo."
-        :"A conexão será liberada depois da configuração segura do aplicativo na homologação.",
-      reason:"O Fideliza ainda não recebe dados dessa loja.",
-      target:"settings",callToAction:"Iniciar conexão",icon:PlugZap,
-    });
-  } else if (integration?.connected) {
-    actions.push({
-      title:"Confira o acesso à Nuvemshop",
-      body:integration.connection_check?.catalog_scope_granted===false
-        ?"A autorização existe, mas falta permissão de leitura dos produtos. Corrija no Portal de Parceiros e reinstale o aplicativo."
-        :"A autorização foi registrada. Verifique a leitura real da loja antes de confiar na conexão.",
-      reason:"Autorização registrada não prova que o token continua válido.",
-      target:"settings",callToAction:"Verificar conexão",icon:PlugZap,
-    });
-  }
   if (participants && participants.summary.total===0) {
     actions.push({
       title:"Prepare a primeira adesão",
@@ -69,7 +50,7 @@ export default function ActionCenter({
   if (participants && participants.summary.total>0) {
     actions.push({
       title:"Organize os participantes",
-      body:"Confira as adesões registradas e as situações ativas ou pausadas. Nenhum benefício é enviado automaticamente.",
+      body:"Confira as adesões registradas e as situações ativas ou pausadas. Nenhum ponto é concedido sem compra e regra verificadas.",
       reason:participants.summary.total+" participante(s) registrado(s) com aceite nesta loja.",
       target:"clients",callToAction:"Abrir clientes",icon:UsersRound,
     });
@@ -90,6 +71,25 @@ export default function ActionCenter({
       target:"campaign",callToAction:"Planejar benefício",icon:Gift,
     });
   }
+  if (integration && !integration.connected) {
+    actions.push({
+      title:"Integre sua Nuvemshop quando quiser",
+      body:integration.configured
+        ?"Autorize a Nuvemshop para analisar uma amostra de produtos e variantes, sem alterar seu catálogo."
+        :"A conexão será liberada depois da configuração segura do aplicativo na homologação.",
+      reason:"A Nuvemshop é um canal opcional. A loja física funciona independentemente.",
+      target:"settings",callToAction:"Conectar canal",icon:PlugZap,
+    });
+  } else if (integration?.connected) {
+    actions.push({
+      title:"Confira o acesso à Nuvemshop",
+      body:integration.connection_check?.catalog_scope_granted===false
+        ?"A autorização existe, mas falta permissão de leitura dos produtos. Corrija no Portal de Parceiros e reinstale o aplicativo."
+        :"A autorização foi registrada. Verifique a leitura real da loja antes de confiar na conexão.",
+      reason:"Autorização registrada não prova que o token continua válido.",
+      target:"settings",callToAction:"Verificar conexão",icon:PlugZap,
+    });
+  }
   if (actions.length<3) {
     actions.push({
       title:"Prepare a medição de resultados",
@@ -101,10 +101,10 @@ export default function ActionCenter({
 
   const readiness = [
     {
-      title:"Autorizar e verificar a loja",
-      detail:"OAuth registrado não substitui o teste de acesso real.",
-      status:integrationError?"unknown":integration?.connected?"authorized":"not_ready",
-      destination:"settings" as const,action:"Configurar",
+      title:"Integrar Nuvemshop (opcional)",
+      detail:"A loja pode operar sem e-commerce. Use a integração quando quiser automatizar compras no site.",
+      status:integrationError?"unknown":integration?.connected?"authorized":"optional",
+      destination:"settings" as const,action:"Ver conexão",
     },
     {
       title:"Receber participantes",
@@ -120,8 +120,8 @@ export default function ActionCenter({
       destination:"campaign" as const,action:"Planejar",
     },
     {
-      title:"Cashback nas compras",
-      detail:"A concessão real exige pagamento confirmado e motor aprovado.",
+      title:"Pontos e resgates nas compras",
+      detail:"Exigem pagamento verificado, regra publicada e carteira de pontos validada.",
       status:"locked",
       destination:null,action:"",
     },
@@ -159,7 +159,7 @@ export default function ActionCenter({
       <div className="xp-section-heading">
         <span className="portal-eyebrow">EVOLUÇÃO DO SEU CLUBE</span>
         <h2 id="xp-journey-title">Sua jornada, sem atalhos.</h2>
-        <p>Acompanhe os passos já disponíveis e saiba o que falta antes de oferecer cashback.</p>
+        <p>Acompanhe as partes verificadas do seu clube. Conectar a Nuvemshop é opcional.</p>
       </div>
       <ol className="xp-journey-list">
         {readiness.map((step,index)=><li key={step.title}
@@ -176,6 +176,7 @@ export default function ActionCenter({
             {step.status==="ready"?"Disponível":
              step.status==="locked"?"Ainda não liberado":
              step.status==="authorized"?"Autorizada; verificar":
+             step.status==="optional"?"Opcional":
              step.status==="unknown"?"Não foi possível verificar":"A preparar"}
           </span>
           {step.destination&&<button type="button" className="xp-journey-link"
