@@ -253,6 +253,68 @@ test("confirmação de e-mail apaga token da URL e entra na loja",async ({page})
   await expect(page.getByText("Loja criada pelo lojista").first()).toBeVisible();
 });
 
+test("link de nova conta vence o painel antigo sem mesclar sessões", async ({page}) => {
+  await page.context().addCookies([
+    {name:"csrftoken",value:"csrf-other-user",domain:"127.0.0.1",path:"/"},
+  ]);
+  let confirmed=false;
+  let confirmCalls=0;
+  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify(confirmed?{
+      authenticated:true,store_link_status:"linked",
+      user:{username:"new-owner",display_name:"Novo Lojista"},
+      tenants:[{...store,id:"22222222-2222-4222-8222-222222222222",
+        name:"Nova empresa confirmada"}],
+    }:{
+      authenticated:true,store_link_status:"linked",
+      user:{username:"old-owner",display_name:"Lojista Anterior"},
+      tenants:[store],
+    }),
+  }));
+  await page.route("**/api/v1/auth/register/confirm/",route=>{
+    confirmCalls++;
+    expect(route.request().postDataJSON()).toEqual({token:"token-confirm-another"});
+    expect(route.request().headers()["x-csrftoken"]).toBe("csrf-other-user");
+    confirmed=true;
+    return route.fulfill({contentType:"application/json",body:JSON.stringify({
+      authenticated:true,store_linked:true,store_id:"22222222-2222-4222-8222-222222222222",
+      detail:"Conta e empresa confirmadas.",
+    })});
+  });
+  await page.goto("/confirmar-conta#token=token-confirm-another");
+  await expect(page.getByRole("heading",{name:"Confirme seu e-mail."})).toBeVisible();
+  await expect(page.getByText("Lojista Anterior")).toBeVisible();
+  await expect(page.getByText("Ao confirmar o e-mail",{exact:false})).toBeVisible();
+  await expect(page).toHaveURL(/\/confirmar-conta$/);
+  expect(confirmCalls).toBe(0);
+  await page.getByRole("button",{name:"Confirmar e acessar"}).click();
+  await expect(page.getByText("Nova empresa confirmada").first()).toBeVisible();
+  await expect(page.getByText("Bibelô — ambiente piloto")).toHaveCount(0);
+  await expect(page).toHaveURL("/");
+  expect(confirmCalls).toBe(1);
+});
+
+test("trocar de formulário remove dados da conta anterior",async ({page})=>{
+  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+    contentType:"application/json",
+    body:JSON.stringify({authenticated:false,user:null,tenants:[]}),
+  }));
+  await page.goto("/");
+  await page.getByRole("button",{name:"Criar conta grátis"}).click();
+  await page.getByLabel("Seu nome").fill("Nome antigo");
+  await page.getByLabel("Nome da loja").fill("Empresa antiga");
+  await page.getByLabel("E-mail").fill("outro@example.invalid");
+  await page.getByLabel("Senha",{exact:true}).fill("SenhaTemporaria-2026!");
+  await page.getByRole("button",{name:"Voltar ao login"}).click();
+  await expect(page.getByLabel("E-mail")).toHaveValue("");
+  await expect(page.getByLabel("Senha",{exact:true})).toHaveValue("");
+  await page.getByRole("button",{name:"Criar conta grátis"}).click();
+  await expect(page.getByLabel("Seu nome")).toHaveValue("");
+  await expect(page.getByLabel("Nome da loja")).toHaveValue("");
+  await expect(page.getByLabel("E-mail")).toHaveValue("");
+  await expect(page.getByLabel("Senha",{exact:true})).toHaveValue("");
+});
+
 test("rota de redefinição não vaza token na URL nem ao confirmar",async ({page})=>{
   await page.context().addCookies([{name:"csrftoken",value:"csrf-new",domain:"127.0.0.1",path:"/"}]);
   await page.route("**/api/v1/auth/session/",route=>route.fulfill({
