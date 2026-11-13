@@ -132,3 +132,20 @@ for(const width of [390,1440]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  });
 }
+
+
+for(const width of [390,1440]){
+ test("Resultados permanece legível e sem rolagem horizontal em "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await mockMerchant(page);
+  await page.route("**/api/v1/tenants/**/sales/manual/",route=>route.fulfill({
+   contentType:"application/json",body:JSON.stringify({items:[],count:0,total:0}),
+  }));
+  await page.goto("/");
+  await nav(page,"Resultados",width);
+  await expect(page.getByRole("heading",{name:"Seu clube em números que fazem sentido."})).toBeVisible();
+  await expect(page.locator(".vf-results-stats article")).toHaveCount(3);
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+ });
+}
