@@ -56,6 +56,7 @@ def claim_delivery(event_id):
         started_at=timezone.now(),
         attempts=F("attempts") + 1,
         failure_type="",
+        finished_at=None,
     ))
 
 
