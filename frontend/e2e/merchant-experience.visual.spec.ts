@@ -52,25 +52,22 @@ for(const width of [390,768,1440]) {
       await page.screenshot({path:info.outputPath("new-clients-"+width+".png"),fullPage:true});
 
       await nav(page,"Campanhas",width);
-      await expect(page.getByRole("heading",{name:"Escolha o seu objetivo"})).toBeVisible();
-      await page.getByRole("button",{name:/Reconquistar participantes/}).click();
+      await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
+      await page.getByRole("button",{name:/Reativar clientes/}).click();
       await page.getByRole("button",{name:"Continuar"}).click();
-      await expect(page.getByRole("heading",{name:"Defina o limite do benefício"})).toBeVisible();
-      await page.getByRole("textbox",{name:"Orçamento mensal"}).fill("150,00");
-      await page.getByRole("textbox",{name:"Ticket médio estimado"}).fill("100,00");
-      await page.getByRole("textbox",{name:"Pedidos pagos estimados"}).fill("100");
-      await page.getByRole("button",{name:"Visualizar prévia"}).click();
-      await expect(page.getByRole("heading",{name:"Sua campanha, antes de começar"})).toBeVisible();
-      await expect(page.getByText("O valor projetado ultrapassa o orçamento")).toBeVisible();
-      await expect(page.getByText("Ativação indisponível:")).toBeVisible();
-      await expect(page.getByText("R$ 200,00")).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Qual benefício você gostaria de oferecer?"})).toBeVisible();
+      await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("20");
+      await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("100");
+      await page.getByRole("button",{name:"Revisar campanha"}).click();
+      await expect(page.getByRole("heading",{name:"Sua campanha, antes de publicar"})).toBeVisible();
+      await expect(page.getByText("2.000 pontos",{exact:false})).toBeVisible();
+      await expect(page.getByText("A campanha não envia e-mail",{exact:false})).toBeVisible();
       const geom=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(geom.doc).toBeLessThanOrEqual(geom.width+1);
       await page.evaluate(()=>window.scrollTo(0,0));
       await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
       await page.screenshot({path:info.outputPath("new-campaign-"+width+".png"),fullPage:true});
-      await page.getByRole("button",{name:/Abrir análise avançada/}).click();
-      await expect(page.getByRole("heading",{name:"Seu plano de fidelidade"})).toBeVisible();
+      expect(await page.getByRole("button",{name:/Publicar|Ativar/}).count()).toBe(0);
     });
 }
 test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",async ({page})=>{

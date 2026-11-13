@@ -59,18 +59,15 @@ for (const width of [390,768,1440]){
 
       if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
       await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
-      await expect(page.getByRole("heading",{name:"Escolha o seu objetivo"})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
       await page.getByRole("button",{name:"Continuar"}).click();
-      await page.getByRole("textbox",{name:"Orçamento mensal"}).fill("300,00");
-      await page.getByRole("textbox",{name:"Ticket médio estimado"}).fill("100,00");
-      await page.getByRole("textbox",{name:"Pedidos pagos estimados"}).fill("50");
-      await page.getByRole("button",{name:"Visualizar prévia"}).click();
-      await expect(page.getByRole("heading",{name:"Sua campanha, antes de começar"})).toBeVisible();
-      const wallet=page.getByRole("complementary",{name:"Prévia ilustrativa da recompensa"});
-      await expect(wallet).toBeVisible();
-      await expect(wallet.getByText("R$ 2,00",{exact:true})).toBeVisible();
-      await expect(wallet.getByText(/Não disponível para uso/)).toBeVisible();
-      await expect(page.getByText("Ativação indisponível:")).toBeVisible();
+      await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("20");
+      await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("50");
+      await page.getByRole("button",{name:"Revisar campanha"}).click();
+      await expect(page.getByRole("heading",{name:"Sua campanha, antes de publicar"})).toBeVisible();
+      await expect(page.getByText("1.000 pontos",{exact:false})).toBeVisible();
+      await expect(page.getByText("Isso não é um valor em reais",{exact:false})).toHaveCount(0);
+      await expect(page.getByText("A campanha não envia e-mail",{exact:false})).toBeVisible();
       const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
       expect(overflow).toBeLessThanOrEqual(1);
       await page.evaluate(()=>scrollTo(0,0));
