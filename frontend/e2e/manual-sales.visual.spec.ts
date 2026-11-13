@@ -100,7 +100,7 @@ for(const width of [390,1440]){
     await page.getByPlaceholder("VENDA-00042").fill("VENDA-0042");
     await page.getByPlaceholder("100,00").fill("100,00");
     await page.getByPlaceholder("CUPOM-00042").fill("CUPOM-0042");
-    await page.getByLabel("Participante",{exact:true}).selectOption(member.id);
+    await page.locator(".vf-sales-form select").selectOption(member.id);
     await page.getByRole("button",{name:"Registrar para conferência"}).click();
     await expect(page.getByText("Venda registrada para conferência por outro administrador.",{
       exact:false,
