@@ -16,8 +16,8 @@ const money=(value:number)=>new Intl.NumberFormat("pt-BR",{
   style:"currency",currency:"BRL",
 }).format(value/100);
 
-export default function RewardDraftEditor({tenantId,role}:{
-  tenantId:string;role:Store["role"];
+export default function RewardDraftEditor({tenantId,role,ruleRefresh=0}:{
+  tenantId:string;role:Store["role"];ruleRefresh?:number;
 }){
   const [drafts,setDrafts]=useState<DiscountRewardDraft[]>([]);
   const [title,setTitle]=useState("");
@@ -30,6 +30,7 @@ export default function RewardDraftEditor({tenantId,role}:{
   const [deleteConfirmId,setDeleteConfirmId]=useState<string|null>(null);
   const [pointRule,setPointRule]=useState<PointRuleDraft|null>(null);
   const [ruleLoadError,setRuleLoadError]=useState(false);
+  const [ruleLoading,setRuleLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
@@ -48,12 +49,13 @@ export default function RewardDraftEditor({tenantId,role}:{
 
   useEffect(()=>{
     let active=true;
-    setPointRule(null);setRuleLoadError(false);
+    setPointRule(null);setRuleLoadError(false);setRuleLoading(true);
     merchantApi.getPointRuleDraft(tenantId).then(result=>{
       if(active)setPointRule(result.rule);
-    }).catch(()=>{if(active)setRuleLoadError(true)});
+    }).catch(()=>{if(active)setRuleLoadError(true)})
+      .finally(()=>{if(active)setRuleLoading(false)});
     return()=>{active=false};
-  },[tenantId]);
+  },[tenantId,ruleRefresh]);
 
   const preview=estimateReward(Number(points),toCents(discount)??NaN,Number(limit),pointRule);
   const percent=(bps:number)=>(bps/100).toLocaleString("pt-BR",{
@@ -174,7 +176,9 @@ export default function RewardDraftEditor({tenantId,role}:{
             <strong>{preview?money(preview.nominalExposureCents):"—"}</strong>
           </div>
         </div>
-        {!pointRule&&<p>{ruleLoadError
+        {!pointRule&&<p>{ruleLoading
+          ?"Conferindo a regra de pontos…"
+          :ruleLoadError
           ?"Não foi possível conferir a regra de pontos; a estimativa de compras está indisponível."
           :"Salve uma regra de pontos para estimar quanto o cliente precisará comprar."}</p>}
         {preview?.benefitRateBps!==null&&preview?.benefitRateBps!==undefined
