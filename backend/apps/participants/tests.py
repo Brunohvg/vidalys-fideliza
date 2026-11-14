@@ -8,6 +8,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.tenants.models import Tenant, TenantMembership
+from apps.points.models import PointWallet, PointLot, PointEvent, PointEntry
 from .models import ProgramParticipant
 
 
@@ -103,3 +104,42 @@ class ParticipantDirectoryTests(TestCase):
         self.member(customer="909", name="Loja A")
         self.member(tenant=self.other, customer="909", name="Loja B")
         self.assertEqual(ProgramParticipant.objects.count(), 2)
+
+
+    def test_point_balances_are_scoped_and_never_claim_redeemable(self):
+        member=self.member(customer="37",name="Membro com lote interno")
+        foreign=self.member(tenant=self.other,customer="999",name="Outro tenant")
+        now=timezone.now()
+        for participant,value in ((member,37),(foreign,900)):
+            wallet=PointWallet.objects.create(tenant=participant.tenant,participant=participant)
+            lot=PointLot.objects.create(
+                tenant=participant.tenant,wallet=wallet,
+                channel="nuvemshop",source_reference="ORDER-"+str(value),
+                eligible_amount_cents=10000,source_paid_at=now,
+                verification_digest="a"*64,rule_version="test-v1",
+                points_issued=value,unlock_at=now,expires_at=now+timedelta(days=20),
+            )
+            accrual=PointEvent.objects.create(
+                lot=lot,kind=PointEvent.Kind.ACCRUE,
+                amount=value,idempotency_key="accrue:"+str(value),
+            )
+            PointEntry.objects.create(event=accrual,bucket="pending",delta=value)
+            release=PointEvent.objects.create(
+                lot=lot,kind=PointEvent.Kind.RELEASE,
+                amount=value,idempotency_key="release:"+str(value),
+            )
+            PointEntry.objects.create(event=release,bucket="pending",delta=-value)
+            PointEntry.objects.create(event=release,bucket="available",delta=value)
+        self.client.force_authenticate(self.owner)
+        response=self.client.get(self.path())
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(len(response.data["items"]),1)
+        row=response.data["items"][0]
+        self.assertEqual(row["points_balance"],37)
+        self.assertEqual(row["points_pending"],0)
+        self.assertEqual(row["points_status"],"ledger_only")
+        self.assertIsNone(row["cashback_balance_cents"])
+        self.assertNotIn("900",str(response.data))
+        self.client.force_authenticate(self.stranger)
+        other=self.client.get(self.path(self.other))
+        self.assertEqual(other.data["items"][0]["points_balance"],900)
