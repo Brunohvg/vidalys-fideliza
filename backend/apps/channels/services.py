@@ -49,6 +49,7 @@ class IngestionResult:
     created: bool
     duplicate: bool
     identity_status: str
+    loyalty_readiness: str = "not_evaluated"
 
 
 def issue_flow_key(*, tenant_id, label, actor, expires_at=None):
@@ -155,10 +156,11 @@ def ingest_order_event(*, data, actor=None):
     if existing_event:
         if existing_event.payload_digest not in payload_digests:
             raise IngestionConflict("Reenvio com chave de evento e conteúdo divergentes.")
+        from apps.loyalty.services import sale_readiness
         return IngestionResult(
             sale=existing_event.sale, event=existing_event,
-            created=False, duplicate=True,
-            identity_status="already_recorded",
+            created=False, duplicate=True, identity_status="already_recorded",
+            loyalty_readiness=sale_readiness(sale=existing_event.sale),
         )
     if source_event_id and SaleEventReceipt.objects.filter(
         tenant=tenant, channel=channel, source_event_id=source_event_id,
@@ -235,7 +237,11 @@ def ingest_order_event(*, data, actor=None):
         outcome=SaleEventReceipt.Outcome.APPLIED if applied else SaleEventReceipt.Outcome.IGNORED,
         occurred_at=occurred,
     )
+    # A transição de status aciona somente DIAGNÓSTICO, jamais concessão.
+    # G7/G8 exigem evidência PSP e economia por SKU vinculada ao pedido.
+    from apps.loyalty.services import sale_readiness
+    readiness = sale_readiness(sale=sale)
     return IngestionResult(
         sale=sale, event=receipt, created=created, duplicate=False,
-        identity_status=identity_status,
+        identity_status=identity_status, loyalty_readiness=readiness,
     )

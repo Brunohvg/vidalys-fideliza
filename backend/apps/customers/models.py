@@ -19,12 +19,25 @@ class CustomerProfile(models.Model):
         null=True, blank=True, related_name="customer_profile",
     )
     display_name = models.CharField(max_length=140, blank=True, default="")
+    # Opcional e privado: sem consentimento e comprovação não autoriza missão.
+    birth_date = models.DateField(null=True, blank=True)
+    birth_date_consent_at = models.DateTimeField(null=True, blank=True)
+    birth_date_verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["tenant", "created_at"], name="cust_profile_tenant_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(birth_date__isnull=True)
+                    | models.Q(birth_date_consent_at__isnull=False)
+                ),
+                name="customer_birth_requires_consent",
+            ),
         ]
 
 

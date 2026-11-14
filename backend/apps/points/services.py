@@ -19,7 +19,7 @@ MAX_CENTS = 100_000_000
 SOURCE_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,79}$")
 KEY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,179}$")
 HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-CHANNELS = {"nuvemshop", "counter", "whatsapp"}
+CHANNELS = {"nuvemshop", "counter", "whatsapp", "vidalys_flow"}
 MOVEMENTS = {
     PointEvent.Kind.ACCRUE: {"pending": +1},
     PointEvent.Kind.RELEASE: {"pending": -1, "available": +1},
@@ -179,9 +179,11 @@ def transition_points(*, lot_id, kind, amount, idempotency_key, external_receipt
     if kind == PointEvent.Kind.RELEASE:
         if now < lot.unlock_at or now >= lot.expires_at:
             raise ValueError("Carência não cumprida ou pontos expirados.")
-    elif kind in (PointEvent.Kind.RESERVE, PointEvent.Kind.CANCEL_RESERVE):
+    elif kind == PointEvent.Kind.RESERVE:
         if now >= lot.expires_at:
             raise ValueError("Pontos expirados; reserva indisponível.")
+    # Cancelar reserva após expiração é permitido para transferir
+    # reservado -> disponível -> expirado em uma transação atômica.
     elif kind in (PointEvent.Kind.EXPIRE_PENDING, PointEvent.Kind.EXPIRE_AVAILABLE):
         if now < lot.expires_at:
             raise ValueError("Expiração ainda não atingida.")
