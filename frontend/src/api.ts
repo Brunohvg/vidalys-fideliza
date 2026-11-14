@@ -712,6 +712,7 @@ export type MemberClubPublic = {
   branding:{program_name:string;primary_color:string;accent_color:string;support_email:string};
   terms:ProgramTerms|null;
   signup_available:boolean;points_enabled:false;rewards_enabled:false;redemption_enabled:false;
+  published_rewards?:MemberClubReward[];
 };
 export type MemberClubReward = {
   id:string;title:string;points_cost:number;discount_cents:number;
