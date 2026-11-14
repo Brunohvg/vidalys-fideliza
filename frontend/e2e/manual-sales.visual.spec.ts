@@ -167,7 +167,7 @@ test("Segundo administrador confere venda sem gerar pontos",async ({page})=>{
   await page.goto("/");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByRole("button",{name:/Conferir vendas/}).click();
-  await expect(page.getByText("Aguardando conferência")).toBeVisible();
+  await expect(page.locator(".vf-sale-record").first().locator(".vf-sale-state")).toContainText("Aguardando conferência");
   await page.getByRole("button",{name:"Conferir venda"}).click();
   await expect(page.getByText("CUPOM-0042",{exact:false})).toBeVisible();
   await page.getByPlaceholder("Ex.: Cupom e pagamento conferidos no caixa.")
