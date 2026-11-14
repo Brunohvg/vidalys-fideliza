@@ -1,6 +1,7 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {BadgeCheck,ClipboardCheck,Info,LockKeyhole,Search,ShieldAlert,ShoppingBag} from "lucide-react";
 import {ApiError,merchantApi,type PaidOrderInspection} from "./api";
+import {parseOrderReference} from "./order-reference";
 import "./paid-order-check.css";
 
 /** O pedido pode constar pago na loja sem prova de captura financeira no PSP. */
@@ -50,23 +51,28 @@ const money=(cents:number,currency:string)=>{
 
 export default function PaidOrderCheck({tenantId}:{tenantId:string}){
   const [orderId,setOrderId]=useState("");
+  const [internalId,setInternalId]=useState(false);
   const [result,setResult]=useState<PaidOrderInspection|null>(null);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
-  useEffect(()=>{setOrderId("");setResult(null);setError("");},[tenantId]);
-  const valid=/^[1-9][0-9]{0,17}$/.test(orderId.trim());
+  useEffect(()=>{setOrderId("");setResult(null);setError("");setInternalId(false);},[tenantId]);
+  const reference=parseOrderReference(orderId,internalId);
+  const valid=reference!==null;
   const check=async(event:FormEvent)=>{
     event.preventDefault();
     if(!valid||busy)return;
     setResult(null);setError("");setBusy(true);
     try{
-      const response=await merchantApi.inspectPaidOrder(tenantId,orderId.trim());
+      if(!reference)return;
+      const response=reference.kind==="number"
+        ?await merchantApi.inspectPaidOrderNumber(tenantId,reference.value)
+        :await merchantApi.inspectPaidOrder(tenantId,reference.value);
       setResult(response);
     }catch(cause){
       if(cause instanceof ApiError){
         const explain:Record<number,string>={
           403:"Sua conta não tem permissão para consultar pedidos.",
-          404:"Pedido não encontrado. Confira o ID interno da Nuvemshop.",
+          404:"Pedido não encontrado nesta loja. Confira se digitou o número comercial ou o ID interno.",
           409:"Consulta de pedidos indisponível. Verifique a integração, a prévia e a permissão read_orders.",
           429:"Muitas consultas seguidas. Aguarde antes de conferir outro pedido.",
           502:"Não foi possível conferir o pedido na Nuvemshop agora.",
@@ -83,22 +89,35 @@ export default function PaidOrderCheck({tenantId}:{tenantId:string}){
     <header className="vf-order-check-head">
       <ShoppingBag size={22}/>
       <div>
-        <h3 id="vf-order-check-title">Conferir uma compra na Nuvemshop</h3>
-        <p>Consulte o pedido real autorizado e veja por que ele ainda não pode gerar pontos. Sem alterar a loja.</p>
+        <h3 id="vf-order-check-title">Localize uma compra</h3>
+        <p>Use o número que aparece na Nuvemshop ou cole o link do pedido. Nós conferimos o status sem alterar a loja.</p>
       </div>
     </header>
     <form className="vf-order-check-form" onSubmit={check}>
-      <label htmlFor="vf-order-id">ID interno do pedido na Nuvemshop</label>
+      <label htmlFor="vf-order-id">Número do pedido ou link da Nuvemshop</label>
       <div>
         <input id="vf-order-id" value={orderId}
           onChange={event=>{setOrderId(event.target.value);setResult(null);setError("");}}
-          inputMode="numeric" autoComplete="off" maxLength={18}
-          placeholder="Ex.: 123456789" aria-invalid={orderId.length>0&&!valid}/>
+          inputMode="text" autoComplete="off" maxLength={500}
+          placeholder="#14111 ou cole o link do pedido"
+          aria-invalid={orderId.length>0&&!valid}/>
         <button type="submit" disabled={!valid||busy}>
-          <Search size={16}/>{busy?"Consultando…":"Conferir pedido"}</button>
+          <Search size={16}/>{busy?"Consultando…":"Buscar pedido"}</button>
       </div>
-      <small>Use o ID numérico da URL administrativa do pedido, não o número público da compra.
-        Requer a permissão de leitura de pedidos e a prévia ativada na integração.</small>
+      <div className="vf-order-reference-guide">
+        <span>{reference?.kind==="id"
+          ?"Consulta pelo ID interno da URL"
+          :"Busca pelo número comercial do pedido"}</span>
+        <label>
+          <input type="checkbox" checked={internalId} onChange={event=>{
+            setInternalId(event.target.checked);setResult(null);setError("");
+          }}/>
+          Digitei um ID interno, não o número do pedido
+        </label>
+      </div>
+      <small>Exemplo: #14111 é o número visível; 2120958234 é o ID da URL
+        administrativa. Outros códigos só são aceitos como ID se você confirmar o tipo.
+        Esta consulta requer permissão de leitura de pedidos.</small>
     </form>
     {error&&<div className="vf-order-check-error" role="alert">
       <Info size={17}/><p>{error} Confira a conexão e as permissões em Configurações.</p>
@@ -112,7 +131,10 @@ export default function PaidOrderCheck({tenantId}:{tenantId:string}){
         </div>
       </div>
       <div className="vf-order-check-facts">
-        <div><span>Pedido consultado</span><strong>#{result.order_id}</strong></div>
+        <div><span>Pedido na loja</span>
+          <strong>{result.order_number?"#"+result.order_number:"Número não informado"}</strong>
+          <small>ID interno: {result.order_id}</small>
+        </div>
         <div><span>Pagamento na loja</span><strong>{result.payment_status==="paid"?"Pago":result.payment_status==="pending"?"Pendente":result.payment_status}</strong></div>
         <div><span>Valor registrado</span><strong>{money(result.reported_total_cents,result.currency)}</strong></div>
         <div><span>Participante identificado</span><strong>{result.participant_verified?"Vinculado":"Não comprovado"}</strong></div>
