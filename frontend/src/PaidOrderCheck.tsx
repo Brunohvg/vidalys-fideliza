@@ -63,7 +63,19 @@ export default function PaidOrderCheck({tenantId}:{tenantId:string}){
       const response=await merchantApi.inspectPaidOrder(tenantId,orderId.trim());
       setResult(response);
     }catch(cause){
-      setError(cause instanceof ApiError?cause.message:"Não foi possível consultar o pedido agora.");
+      if(cause instanceof ApiError){
+        const explain:Record<number,string>={
+          403:"Sua conta não tem permissão para consultar pedidos.",
+          404:"Pedido não encontrado. Confira o ID interno da Nuvemshop.",
+          409:"Consulta de pedidos indisponível. Verifique a integração, a prévia e a permissão read_orders.",
+          429:"Muitas consultas seguidas. Aguarde antes de conferir outro pedido.",
+          502:"Não foi possível conferir o pedido na Nuvemshop agora.",
+          503:"Integração da Nuvemshop indisponível neste ambiente.",
+        };
+        setError(explain[cause.status]||"Não foi possível consultar o pedido agora.");
+      }else{
+        setError("Não foi possível consultar o pedido agora.");
+      }
     }finally{setBusy(false);}
   };
   const status=result?reasons[result.review_status]:null;
