@@ -176,7 +176,7 @@ def summarize_order(data, *, order_id, participant_verified=False):
     status, payment = data.get("status"), data.get("payment_status")
     if status not in ("open", "closed", "cancelled") or payment not in (
         "pending", "authorized", "paid", "partially_paid", "abandoned",
-        "refunded", "partially_refunded", "voided",
+        "refunded", "partially_refunded", "voided", "expired", "chargeback",
     ):
         raise OrderReadError("Status desconhecido")
     currency = data.get("currency")
@@ -209,6 +209,8 @@ def summarize_order(data, *, order_id, participant_verified=False):
         paid_at = None
     if status == "cancelled" or data.get("cancelled_at"):
         state = "blocked_cancelled"
+    elif payment == "chargeback":
+        state = "blocked_chargeback"
     elif payment in ("refunded", "partially_refunded"):
         state = "blocked_refund"
     elif payment != "paid":
