@@ -473,6 +473,35 @@ class LoyaltyFinancialTests(TestCase):
         self.assertEqual(origin_balances(first.cashback_event)["available_cents"], 0)
         self.assertEqual(cashback_balances(second.cashback_event.wallet)["available_cents"], second_available)
 
+    def test_refund_of_other_grant_preserves_redeemed_purchase_origin(self):
+        """Two purchases, redeem A, refund B: A's remaining credit is unchanged."""
+        _, first, _ = self.create_grant("REDEEM-FIRST-A", minutes=12)
+        second_sale, second, _ = self.create_grant("REFUND-SECOND-B", minutes=11)
+        release_grant(grant_id=first.pk)
+        release_grant(grant_id=second.pk)
+        voucher, code = issue_voucher(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            reward_id=self.reward(100, unit="cashback").pk,
+        )
+        redeem_sale, proof = self.redemption_evidence("REDEEM-FIRST-CHECKOUT")
+        redeem_voucher(
+            tenant_id=self.tenant.pk, code=code, channel="counter",
+            external_receipt="REDEEM-FIRST-CHECKOUT",
+            sale_id=redeem_sale.pk, capture_evidence_id=proof.pk,
+        )
+        before = origin_balances(first.cashback_event)
+        self.assertEqual(before["available_cents"], first.cashback_cents - 100)
+        self.change_sale(second_sale, "refunded")
+        refund = self.proof(second_sale, kind="refund", minutes=1)
+        reversed_grant, changed = reverse_grant(
+            grant_id=second.pk, refund_evidence_id=refund.pk,
+        )
+        self.assertTrue(changed)
+        self.assertEqual(reversed_grant.status, LoyaltyGrant.Status.REVERSED)
+        self.assertEqual(origin_balances(first.cashback_event), before)
+        self.assertEqual(origin_balances(second.cashback_event)["available_cents"], 0)
+        self.assertEqual(LoyaltyRecovery.objects.get(grant=second).remaining_cashback_cents, 0)
+
     def test_voucher_requires_published_reward_and_enforces_quota(self):
         _, grant, _ = self.create_grant("REWARD-PUBLICATION")
         release_grant(grant_id=grant.pk)
