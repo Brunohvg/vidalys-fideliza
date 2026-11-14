@@ -20,6 +20,9 @@ describe("rotas públicas e privadas", () => {
     expect(entryRoute("/clube/loja-jardim/historico")).toBe("member");
     expect(entryRoute("/clube/loja-jardim/regras/")).toBe("member");
     expect(entryRoute("/confirmar-conta")).toBe("merchant-auth");
+    expect(entryRoute("/redefinir-senha")).toBe("merchant-auth");
+    expect(entryRoute("/cadastrar")).toBe("merchant");
+    expect(entryRoute("/esqueci-senha")).toBe("merchant");
     expect(entryRoute("/participar/loja")).toBe("enrollment");
     expect(entryRoute("/demo")).toBe("demo");
   });

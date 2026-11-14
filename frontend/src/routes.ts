@@ -62,7 +62,10 @@ export function entryRoute(pathname: string): EntryRoute {
   if (pathname === "/demo") return "demo";
   if (clubSlugFromPath(pathname)) return "member";
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (merchantAuthPaths.some(page => page === path)) return "merchant-auth";
+  // Os links de confirmação têm tela própria; cadastro/reset solicitados
+  // passam pelo MerchantAccess dentro do Portal com sessão preservada.
+  if (path === "/confirmar-conta" || path === "/redefinir-senha") return "merchant-auth";
+  if (path === "/cadastrar" || path === "/esqueci-senha") return "merchant";
   if (path === "/confirmar") return "email-action";
   if (/^\/retirar\/[a-z0-9-]+$/i.test(path)) return "withdrawal";
   if (path === "/participar" || /^\/participar\/[a-z0-9-]+$/i.test(path)) return "enrollment";
