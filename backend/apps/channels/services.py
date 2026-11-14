@@ -20,7 +20,7 @@ from django.utils.crypto import salted_hmac
 from apps.customers.models import CustomerProfile
 from apps.customers.services import _digests, find_verified_customer
 from apps.sales.models import SaleEventReceipt, SaleRecord
-from apps.tenants.models import Tenant
+from apps.tenants.models import Tenant, TenantMembership
 
 from .models import ChannelCredential
 
@@ -51,8 +51,14 @@ class IngestionResult:
     identity_status: str
 
 
-def issue_flow_key(*, tenant_id, label, expires_at=None):
-    """Uso interno por operador autorizado; retorna segredo SOMENTE nesta chamada."""
+def issue_flow_key(*, tenant_id, label, actor, expires_at=None):
+    """Uso interno por OWNER/ADMIN; retorna segredo SOMENTE nesta chamada."""
+    if not getattr(actor, "is_authenticated", False) or not TenantMembership.objects.filter(
+        tenant_id=tenant_id, user=actor,
+        role__in=(TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN),
+        tenant__status=Tenant.Status.ACTIVE,
+    ).exists():
+        raise PermissionError("Acesso restrito ao administrador da loja.")
     if not isinstance(label, str) or not 1 <= len(label.strip()) <= 80:
         raise ValueError("Identifique a credencial.")
     tenant = Tenant.objects.get(pk=tenant_id, status=Tenant.Status.ACTIVE)

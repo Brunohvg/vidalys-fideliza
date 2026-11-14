@@ -47,8 +47,13 @@ class MultiChannelOrderTests(TestCase):
         TenantMembership.objects.create(
             tenant=self.tenant, user=self.analyst, role=TenantMembership.Role.ANALYST,
         )
-        _, self.key = issue_flow_key(tenant_id=self.tenant.id, label="Flow piloto")
-        _, self.other_key = issue_flow_key(tenant_id=self.other.id, label="Flow B")
+        TenantMembership.objects.create(
+            tenant=self.other, user=self.owner, role=TenantMembership.Role.OWNER,
+        )
+        _, self.key = issue_flow_key(
+            tenant_id=self.tenant.id, label="Flow piloto", actor=self.owner,
+        )
+        _, self.other_key = issue_flow_key(tenant_id=self.other.id, label="Flow B", actor=self.owner)
         self.client = APIClient()
         self.url = reverse("channel-order-events")
 
@@ -149,6 +154,17 @@ class MultiChannelOrderTests(TestCase):
             "tenant_id", flat=True
         )))
         self.assert_no_financial_writes()
+
+    def test_only_tenant_administrator_can_issue_flow_key(self):
+        with self.assertRaises(PermissionError):
+            issue_flow_key(
+                tenant_id=self.tenant.pk, label="Invasor", actor=self.analyst,
+            )
+        with self.assertRaises(PermissionError):
+            issue_flow_key(
+                tenant_id=self.tenant.pk, label="Sem login", actor=None,
+            )
+        self.assertEqual(ChannelCredential.objects.filter(tenant=self.tenant).count(), 1)
 
     def test_invalid_credentials_and_revocation_block_flow(self):
         self.assertEqual(self.flow(self.payload(), key="invalid").status_code, 401)

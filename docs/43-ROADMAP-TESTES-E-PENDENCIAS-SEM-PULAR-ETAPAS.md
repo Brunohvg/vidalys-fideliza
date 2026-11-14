@@ -1243,8 +1243,9 @@ Perfil reconhecido por contato verificado pode ser referenciado para
 conferência; nenhuma pontuação é derivada dessa ligação.
 
 **Autorização:** Flow requer Bearer key aleatória por loja, armazenada
-somente com hash Django e revogável. Só componente interno autorizado
-pode provisionar via issue_flow_key(), que retorna segredo uma vez.
+somente com hash Django e revogável. Só componente interno com actor OWNER/ADMIN do tenant
+pode provisionar via issue_flow_key(tenant_id=..., label=..., actor=...),
+que retorna segredo uma vez, sem armazenamento em claro.
 PDV exige sessão Django/CSRF e membership OWNER/ADMIN daquela loja;
 o mesmo dono pode revisar a própria venda no fluxo legado de
 conferência, sem comprovar liquidação externa.
