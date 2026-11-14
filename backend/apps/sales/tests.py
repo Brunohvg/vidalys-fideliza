@@ -100,7 +100,8 @@ class ManualSalesTests(TestCase):
         created=self.create()
         sale_id=created.data["sale"]["id"]
         review={"decision":"approve","note":"Cupom e caixa conferidos pela equipe."}
-        self.assertEqual(self.csrf_post("manual-sale-review",review,sale_id=sale_id).status_code,409)
+        # Dono pode conferir sozinho no piloto sem transformar esta conferência
+        # em prova independente de pagamento.
         self.client.force_login(self.reviewer)
         response=self.csrf_post("manual-sale-review",review,sale_id=sale_id)
         self.assertEqual(response.status_code,200,response.data)
@@ -111,6 +112,45 @@ class ManualSalesTests(TestCase):
             self.csrf_post("manual-sale-review",review,sale_id=sale_id).status_code,409,
         )
         self.assertFalse(CashbackWallet.objects.exists())
+        self.assertFalse(CashbackEvent.objects.exists())
+
+    def test_owner_can_review_own_counter_sale_only_as_operational_evidence(self):
+        created=self.create()
+        sale_id=created.data["sale"]["id"]
+        note="Venda conferida no caixa pelo proprietário, comprovante em mãos."
+        result=self.csrf_post("manual-sale-review",{
+            "decision":"approve","note":note,
+        },sale_id=sale_id)
+        self.assertEqual(result.status_code,200,result.data)
+        self.assertEqual(result.data["review_mode"],"owner_self_review")
+        self.assertFalse(result.data["independent_payment_proof"])
+        self.assertFalse(result.data["points_credited"])
+        self.assertEqual(result.data["sale"]["review_note"],note)
+        self.assertTrue(result.data["sale"]["reviewed_by_me"])
+        self.assertEqual(result.data["sale"]["review_mode"],"owner_self_review")
+        self.assertEqual(SaleRecord.objects.get(pk=sale_id).reviewed_by_id,self.owner.id)
+        self.assertFalse(CashbackEvent.objects.exists())
+        self.assertFalse(CashbackWallet.objects.exists())
+        self.assertEqual(self.csrf_post("manual-sale-review",{
+            "decision":"approve","note":note,
+        },sale_id=sale_id).status_code,409)
+
+    def test_admin_cannot_self_review_and_other_admin_can_reject(self):
+        self.client.force_login(self.reviewer)
+        created=self.create()
+        sale_id=created.data["sale"]["id"]
+        invalid=self.csrf_post("manual-sale-review",{
+            "decision":"approve","note":"Conferi esta venda do balcão no caixa.",
+        },sale_id=sale_id)
+        self.assertEqual(invalid.status_code,409)
+        self.client.force_login(self.owner)
+        result=self.csrf_post("manual-sale-review",{
+            "decision":"reject","note":"Recibo não confere com a compra registrada.",
+        },sale_id=sale_id)
+        self.assertEqual(result.status_code,200)
+        self.assertEqual(result.data["review_mode"],"another_operator")
+        self.assertEqual(result.data["sale"]["state"],"rejected")
+        self.assertEqual(result.data["sale"]["review_mode"],"another_operator")
         self.assertFalse(CashbackEvent.objects.exists())
 
     def test_non_participant_sale_is_opportunity_not_points(self):
