@@ -84,7 +84,7 @@ test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",
   await page.goto("/");
   await expect(page.getByText("Recomendações baseadas no estado conhecido")).toBeVisible();
   await page.getByRole("button",{name:"Configurar programa"}).click();
-  await expect(page.getByRole("heading",{name:"Um programa simples para a loja. Claro para o cliente."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Seu clube em três passos."})).toBeVisible();
 });
 
 
