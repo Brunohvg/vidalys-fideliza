@@ -141,5 +141,5 @@ class ParticipantDirectoryTests(TestCase):
         self.assertIsNone(row["cashback_balance_cents"])
         self.assertNotIn("900",str(response.data))
         self.client.force_authenticate(self.stranger)
-        other=self.client.get(self.path(self.other))
+        other=self.client.get(self.path(self.other.pk))
         self.assertEqual(other.data["items"][0]["points_balance"],900)
