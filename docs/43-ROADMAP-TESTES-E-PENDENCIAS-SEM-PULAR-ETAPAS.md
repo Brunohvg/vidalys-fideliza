@@ -1358,3 +1358,75 @@ status pago sozinho, idempotência por venda+regra; concessão, carência,
 estorno, voucher, recuperação e missões sem saldo indevido.
 Executar CI e makemigrations --check, revisar SHA e backup antes de
 qualquer deploy. **Estado G7/G8 = BLOQUEADO (integração real).**
+
+
+## 14/11/2026 — PR #21: Frontend em duas áreas e correção Playwright
+
+**Dependência:** PR #21 é stacked em PR #20, que depende do PR #19,
+que depende do PR #18. Nenhuma alteração foi aplicada à homolog/prod
+pelo PR #21. Dados financeiros permanecem bloqueados nos serviços.
+
+**Causa raiz do CI visual:**
+- Em frontend/e2e/manual-sales.visual.spec.ts a expectativa textual
+  era "Conferência do responsável", mas o estado self_review da venda
+  feita/conferida pelo dono mostra permanentemente
+  "Conferência do proprietário". O feedback de sucesso usa outra
+  frase. A expectativa passou a inspecionar a venda com selo correto,
+  sem reduzir segurança nem alterar a conferência.
+- Commit 3abb9333 passou o CI de seis jobs integralmente, incluindo
+  o Playwright anterior; os novos testes adicionados depois precisam
+  de verificação no SHA atual.
+
+**Contrato de rotas e de navegação:**
+- frontend/src/routes.ts guarda o mapa tipado de rotas de lojista:
+  /app/visao-geral, /app/clientes, /app/programa, /app/campanhas,
+  /app/vendas, /app/configuracoes e
+  /app/ferramentas/{resultados,margem,custos,conciliacao}.
+- frontend/src/main.tsx resolve explicitamente /app/* e
+  /clube/:slug/{historico,regras}, preservando /clube/:slug como
+  página de benefícios, /demo isolado, rotas de acesso público,
+  confirmação e retiradas. Rota desconhecida devolve página 404
+  amigável, não escolhe conteúdo privado por fallback.
+- / é alias legado de /app/visao-geral para não quebrar OAuth e
+  links antigos. Portal mantém query de OAuth e seleção de loja,
+  navega com history API e restaura estados no popstate/deep link;
+  MemberClub usa seções do histórico da própria rota, sem router
+  pesado nem reuso do estado da sessão do lojista.
+
+**Painel do lojista:**
+- menu principal: Visão geral, Clientes, Programa, Campanhas, Vendas,
+  Configurações, com margem/custos/conciliacao/resultados sob Mais
+  ferramentas. Não foram removidas telas nem regras técnicas existentes.
+- novos estilos sob experience.css adotam os tokens de
+  fideliza-theme.css; navy #10253E, jade #087F79, mint claro
+  #E8F9F4, recompensa #F5BA51 e canvas #F6F8FB, texto Inter e
+  títulos Manrope. Mantêm white-label apenas no clube da loja.
+  Não editar CSS do tema Nuvemshop ou da vitrine.
+
+**Portal do consumidor:**
+- frontend/src/MemberOverview.tsx divide nível VIP (barra baseada
+  apenas em concessão/nível verificados), carteira de pontos e BRL,
+  quick action de voucher (desabilitada pelo backend até G7/G8),
+  elegibilidade de missões e avisos sem números fictícios.
+- API do clubMe adiciona campos read-only por tenant:
+  vip_level, vip_next_level, vip_progress_percent,
+  cashback_balance_cents, cashback_pending_cents,
+  cashback_status e missions. Ausência = null, não zero.
+- Backend continua retornando redemption_enabled=false; nenhum cupom
+  Nuvemshop é criado. Se futuramente liberado em piloto autorizado,
+  emissão exige POST autenticado com CSRF do membro e backend
+  responde explicitamente external_coupon_created=false.
+- Os estados visuais diferenciam pontos internos e cashback interno
+  de saldos economicamente resgatáveis. Notificações de missão
+  são meras elegibilidades, não pontos concedidos.
+
+**QA / Responsividade / gates pendentes:**
+- frontend/src/routes.test.ts verifica rotas tipadas e isolamentos.
+- frontend/e2e/routing-and-club.visual.spec.ts valida deep links,
+  voltar, reload, sessão independente e 320/390/768 px.
+- backend/apps/participants/test_member_dashboard.py cobre leitura
+  real VIP, cashback, isolamento de tenant e ausência de dados.
+- As suítes existentes de login público, participação e Playwright
+  seguem obrigatórias antes do merge.
+- NÃO subir PR #21 antes de revisar gates #18–#20, CI do SHA final,
+  backup de banco, observabilidade de Celery e financeiro G7/G8.
