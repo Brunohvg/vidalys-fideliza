@@ -979,3 +979,66 @@ mesmo tenant para verificar publicar/despublicar, sem alterar Bibelô,
 `main` ou aplicativos conectados. A publicação efetiva de recompensas
 na instância remota só ocorre após o novo código estar implantado e
 o lojista clicar na ação.
+
+## 14/11/2026 — G7 operacional: conferência de pedidos reais e extrato interno ao participante
+
+**Critério de mercado:** fidelização competitiva exige pedido pago realmente
+conciliado -> pontos com carência -> carteira consultável -> recompensa
+resgatável -> cupom da loja -> reversões/estornos. Fidelimax anuncia
+automação dessa jornada na Nuvemshop; nossa integração **ainda não concede
+pontos nem cria cupom**. Referência pública:
+https://www.fidelimax.com.br/integracoes/nuvemshop
+
+**Incremento entregue em `homolog` sem flag nova:**
+- O componente `PaidOrderCheck` usa a rota existente
+  `GET /api/v1/tenants/{tenant_id}/nuvemshop/orders/{order_id}/preview/`,
+  atrás de sessão de lojista owner/admin, tenant e escopos existentes,
+  para **consultar um pedido real** (ID interno da URL administrativa);
+  mostra status, valor, vínculo do participante e **por que não houve
+  concessão**, inclusive falta de PSP, estorno, cancelamento, divergência
+  e pagamento manual. Campos de PII não são exibidos. Tratamento
+  de 403/404/409/429/502/503 é objetivo e a consulta é rate-limited no
+  backend. Não faz POST, nem modifica pedidos ou estoque.
+- `MemberClubMeView` agora faz leitura do ledger existente quando
+  houver `PointWallet` pertencente ao participante autenticado
+  e ao tenant; agrega pontos pendentes, disponíveis e vencimento em
+  até 30 dias, apenas de lotes **não expirados**. Histórico é limitado
+  a 20 eventos sem número de pedido/comprovante ou ID da transação.
+  `points_status=ledger_only` distingue saldo **interno informativo**
+  de saldo confirmado apto para resgate, que não foi homologado.
+  Sem `PointWallet`, mantém `null`, jamais zero presumido.
+  Não faz write ao consultar a carteira. Os lançamentos do teste são
+  produzidos somente em testes isolados de DB com
+  `override_settings(FIDELIZA_POINTS_WRITES_ENABLED=True)`,
+  sem esta flag no ambiente real.
+- A interface mobile mostra `Saldo em conferência`,
+  `Pontos internos, sem resgate`, pendentes e histórico, sem
+  exibir barra enganosa de progresso para desconto. A lista de
+  recompensas permanece publicação informativa.
+
+**Validação:** Playwright para consulta real simulada com GET,
+320/390/1440 px, cancelamento, indisponibilidade de escopo e nenhuma
+chamada de escrita; testes de backend cobrindo saldo 100 disponível /
+50 pendente / 100 vencendo, privacidade e isolamento de sessão e tenant,
+além de E2E mobile da carteira com `ledger_only`.
+Conferir CI do HEAD ao final antes de deploy.
+
+**Próximos bloqueadores concretos para benefício transacional:**
+1. Definir/implementar *adaptador PSP autenticado* e contrato de captura,
+   estorno/chargeback com reconciliação idempotente no backend, sem
+   confiar em `order/paid` ou `order:update` da vitrine como prova;
+2. ativar pontuação apenas no **tenant de teste autorizado** após
+   reconciliação e política de estornos/carência, com auditoria e cap;
+3. projetar resgate com reserva transacional por lote, emissão de cupom
+   único via API Nuvemshop com `write_coupons` e escopo autorizado
+   mediante reconsentimento, confirmação do uso real e rollback
+   em timeout/cancelamento; 
+4. validar com pedido de teste permitido e conta do participante,
+   sem mexer nos pedidos da Bibelô, habilitar `main` ou chamar
+   de venda comprovada o simples evento de checkout.
+
+**Deploy:** conferir SHA publicado no Coolify e backup antes de alterar
+serviços; nesta etapa não houve migração nova nem mudança .env.
+A eventual habilitação de `FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=1`
+continua restrita à loja de teste que consentiu `read_orders`, não
+é ativada automaticamente.
