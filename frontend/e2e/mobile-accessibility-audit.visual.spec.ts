@@ -202,7 +202,7 @@ for(const width of [320,390,768,1440]){
     const screens=[
       ["Programa","Seu programa de fidelidade."],
       ["Clientes","Participantes do clube."],
-      ["Vendas","Vendas do balcão."],
+      ["Vendas","Pedidos e vendas."],
       ["Campanhas","Uma campanha em poucos passos."],
       ["Resultados","Resultados que importam."],
       ["Custo dos benefícios","Quanto custa meu programa?"],
