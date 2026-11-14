@@ -16,8 +16,9 @@ const money=(value:number)=>new Intl.NumberFormat("pt-BR",{
   style:"currency",currency:"BRL",
 }).format(value/100);
 
-export default function RewardDraftEditor({tenantId,role,ruleRefresh=0}:{
+export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsChanged}:{
   tenantId:string;role:Store["role"];ruleRefresh?:number;
+  onDraftsChanged?:()=>void;
 }){
   const [drafts,setDrafts]=useState<DiscountRewardDraft[]>([]);
   const [title,setTitle]=useState("");
@@ -80,6 +81,7 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0}:{
     try{
       await merchantApi.deleteDiscountRewardDraft(tenantId,item.id);
       setDrafts(v=>v.filter(x=>x.id!==item.id));
+      onDraftsChanged?.();
       setDeleteConfirmId(null);
       if(editingId===item.id)reset();
       setMessage("Rascunho excluído. Nenhum cupom ou saldo foi alterado.");
@@ -107,6 +109,7 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0}:{
         ?await merchantApi.updateDiscountRewardDraft(tenantId,editingId,payload)
         :await merchantApi.saveDiscountRewardDraft(tenantId,payload);
       setDrafts(v=>editingId?v.map(x=>x.id===editingId?r.reward:x):[r.reward,...v]);
+      onDraftsChanged?.();
       reset();
       setMessage("Rascunho salvo. Nenhum cupom foi criado.");
     }catch(e){
