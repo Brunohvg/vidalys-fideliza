@@ -73,3 +73,49 @@ for(const width of [320,390,768,1440]){
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   });
 }
+
+
+for(const width of [320,390]){
+ test("Participante vê catálogo publicado mas não consegue resgatar em "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:840});
+  await page.context().addCookies([{
+   name:"csrftoken",value:"csrf-member-only",url:"http://127.0.0.1:4173",
+  }]);
+  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
+   contentType:"application/json",body:JSON.stringify({
+    authenticated:false,user:null,tenants:[],
+   }),
+  }));
+  await page.route("**/api/v1/public/clubs/loja-jardim/",route=>route.fulfill({
+   contentType:"application/json",body:JSON.stringify(info),
+  }));
+  let logged=false;
+  await page.route("**/api/v1/public/clubs/loja-jardim/me/",route=>route.fulfill({
+   status:logged?200:401,contentType:"application/json",body:JSON.stringify(logged?{
+    store_name:"Loja Jardim",display_name:"Cliente QA",
+    status:"active",joined_at:"2026-11-13T12:30:00Z",
+    terms:info.terms,points_balance:null,points_pending:null,
+    points_status:"not_active",redemption_enabled:false,orders_verified:false,
+    available_rewards:[{
+     id:"7d31d188-68ca-4c0f-b4ae-76225b3b1e41",
+     title:"R$ 5 de desconto no próximo pedido",points_cost:200,
+     discount_cents:500,min_order_cents:3000,status:"locked",
+     points_missing:null,redemption_enabled:false,
+    }],transactions:[],note:"Benefícios para consulta",
+   }:{detail:"Faça login"}),
+  }));
+  await page.route("**/api/v1/public/clubs/loja-jardim/access/confirm/",route=>{
+   logged=true;return route.fulfill({contentType:"application/json",
+    body:JSON.stringify({authenticated:true})});
+  });
+  await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
+  await page.getByRole("button",{name:"Confirmar e entrar"}).click();
+  await expect(page.getByRole("heading",{name:"Olá, Cliente!"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"R$ 5 de desconto no próximo pedido"})).toBeVisible();
+  await expect(page.getByText("Publicado para consulta · Resgate em preparação")).toBeVisible();
+  await expect(page.getByText("O clube ainda não liberou a pontuação.",{exact:false})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Resgatar|Gerar cupom/})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
