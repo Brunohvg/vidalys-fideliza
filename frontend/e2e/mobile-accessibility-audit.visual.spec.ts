@@ -91,7 +91,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
     await page.setViewportSize({width,height:width<=390?700:900});
     await setup(page);
     await page.goto("/");
-    await expect(page.getByRole("heading",{name:"Seu plano de ação"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Sua jornada, sem atalhos."})).toBeVisible();
     await expect(page.getByText("Pontos e resgates nas compras")).toBeVisible();
     await expect(page.getByText("Ainda não liberado")).toBeVisible();
