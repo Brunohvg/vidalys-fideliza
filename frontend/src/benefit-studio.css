@@ -47,3 +47,18 @@
 .vf-draft-confirm-actions button:disabled{opacity:.65;cursor:not-allowed}
 .vf-draft-confirm-actions button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
 @media(max-width:360px){.vf-draft-confirm-actions{grid-template-columns:1fr}}
+
+
+/* Economia simplificada: números de decisão, não lucro declarado. */
+.vf-economics{grid-column:1/-1;display:grid;gap:12px;min-width:0;padding:17px;border:1px solid #d7e9e0;border-radius:13px;background:#f9fcfa}
+.vf-economics-head{display:flex;gap:8px 16px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.vf-economics-head>strong{font:800 14px/1.4 Manrope,Inter,system-ui,sans-serif;color:#24473e}
+.vf-economics-head>span{font-size:10px;color:#5b786c;font-weight:700}
+.vf-economics-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.vf-economics-grid>div{display:grid;align-content:space-between;gap:10px;min-width:0;background:#fff;border:1px solid #e0ece5;border-radius:10px;padding:13px}
+.vf-economics-grid span{font-size:11px;line-height:1.55;color:#597367}
+.vf-economics-grid strong{font-size:clamp(17px,2.3vw,23px);line-height:1.25;letter-spacing:-.04em;color:#176856;overflow-wrap:anywhere}
+.vf-economics>p{margin:0;color:#5f756b;font-size:11px;line-height:1.65}
+.vf-economics>p.vf-economics-alert{color:#854321;border-left:3px solid #da985c;padding:9px 11px;background:#fff5e9;border-radius:5px;font-weight:700}
+@media(max-width:760px){.vf-economics-grid{grid-template-columns:1fr}.vf-economics-grid>div{display:flex;justify-content:space-between;align-items:center;gap:13px;padding:12px 13px}.vf-economics-grid span{flex:1}.vf-economics-grid strong{font-size:18px;text-align:right;flex:none}}
+@media(max-width:360px){.vf-economics{padding:13px}.vf-economics-grid>div{align-items:flex-start}.vf-economics-grid strong{font-size:16px}}
