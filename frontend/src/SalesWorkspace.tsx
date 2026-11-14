@@ -8,6 +8,7 @@ import {
   type ManualSaleRecord, type ProgramParticipant, type Store,
 } from "./api";
 import "./sales-workspace.css";
+import PaidOrderCheck from "./PaidOrderCheck";
 
 const money=(cents:number)=>new Intl.NumberFormat("pt-BR",{
   style:"currency",currency:"BRL",
@@ -47,8 +48,21 @@ const statusClass:Record<ManualSaleRecord["state"],string>={
 export default function SalesWorkspace({tenantId,role}:{
   tenantId:string;role:Store["role"];
 }){
-  const [section,setSection]=useState<"new"|"history">("new");
+  const [section,setSection]=useState<"nuvemshop"|"new"|"history">("new");
+  const [storeIntegration,setStoreIntegration]=useState<"unknown"|"authorized"|"unavailable">("unknown");
   const [items,setItems]=useState<ManualSaleRecord[]>([]);
+  useEffect(()=>{
+    let active=true;
+    setSection("new");setStoreIntegration("unknown");
+    merchantApi.nuvemshopStatus(tenantId).then(status=>{
+      if(!active)return;
+      if(status.connected){
+        setStoreIntegration("authorized");
+        setSection("nuvemshop");
+      }else setStoreIntegration("unavailable");
+    }).catch(()=>{if(active)setStoreIntegration("unavailable")});
+    return()=>{active=false};
+  },[tenantId]);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
@@ -95,7 +109,7 @@ export default function SalesWorkspace({tenantId,role}:{
     return()=>{active=false};
   },[tenantId,personQuery,canEdit]);
 
-  const openSection=(next:"new"|"history")=>{
+  const openSection=(next:"nuvemshop"|"new"|"history")=>{
     setSection(next);setError("");setMessage("");setReviewing(null);
   };
 
@@ -160,26 +174,47 @@ export default function SalesWorkspace({tenantId,role}:{
     <header className="vf-sale-intro">
       <div className="vf-sale-intro-icon" aria-hidden="true"><ShoppingBag size={24}/></div>
       <div>
-        <span className="portal-eyebrow">VENDAS PRESENCIAIS</span>
-        <h2>Venda registrada em poucos passos.</h2>
-        <p>Associe o cliente ao clube e guarde o comprovante da compra.</p>
+        <span className="portal-eyebrow">PEDIDOS E VENDAS</span>
+        <h2>Acompanhe as compras do seu clube.</h2>
+        <p>Pedidos da Nuvemshop são consultados automaticamente pela integração autorizada.
+          O registro manual fica reservado às vendas do balcão.</p>
       </div>
     </header>
 
-    <nav className="vf-sale-tabs" aria-label="Vendas de balcão">
+    <nav className="vf-sale-tabs" aria-label="Canais de vendas">
+      <button type="button" className={section==="nuvemshop"?"is-active":""}
+        aria-current={section==="nuvemshop"?"page":undefined}
+        onClick={()=>openSection("nuvemshop")}>
+        <ShoppingBag size={17}/> Nuvemshop
+      </button>
       {canEdit&&<button type="button" className={section==="new"?"is-active":""}
         aria-current={section==="new"?"page":undefined}
         onClick={()=>openSection("new")}>
-        <Plus size={17}/> Nova venda
+        <Plus size={17}/> Venda no balcão
       </button>}
       <button type="button" className={section==="history"?"is-active":""}
         aria-current={section==="history"?"page":undefined}
         onClick={()=>openSection("history")}>
-        <ClipboardCheck size={17}/> Histórico
+        <ClipboardCheck size={17}/> Histórico do balcão
         {pending>0&&<span className="vf-sale-tab-count">{pending}</span>}
       </button>
     </nav>
 
+    {section==="nuvemshop"&&<section className="vf-sales-online" aria-labelledby="vf-sales-online-title">
+      <header className="vf-sales-online-head">
+        <span className="portal-eyebrow">CONSULTA AUTOMÁTICA DA LOJA</span>
+        <h3 id="vf-sales-online-title">Pedidos da Nuvemshop</h3>
+        <p>{storeIntegration==="authorized"
+          ?"Autorização de integração registrada. Confirme um pedido real abaixo; nenhuma operação modifica a Nuvemshop."
+          :"A leitura de pedidos depende da conexão da sua loja e das permissões read_orders."}</p>
+      </header>
+      <PaidOrderCheck tenantId={tenantId}/>
+      <p className="vf-sales-online-footnote">
+        Não é necessário registrar novamente aqui as compras feitas no site.
+        Para pontuar automaticamente, ainda será preciso concluir a conciliação
+        de pagamentos e a política de estornos.
+      </p>
+    </section>}
     {error&&<div className="vf-sales-error" role="alert">{error}</div>}
     {message&&<div className="vf-sales-success" role="status">
       <CheckCircle2 size={19}/>
