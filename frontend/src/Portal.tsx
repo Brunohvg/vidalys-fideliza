@@ -155,7 +155,8 @@ export default function Portal() {
       await merchantApi.login(email, password);
       const value = await merchantApi.getSession();
       setSession(value);
-      setPage("overview");
+      // Login em deep link mantém a rota originalmente solicitada.
+      setPage(merchantScreenForPath(window.location.pathname) || "overview");
       setSelectedId("");
     } catch (error) {
       setAuthError(error instanceof ApiError ? error.message : "Falha de conexão. Verifique sua rede.");
