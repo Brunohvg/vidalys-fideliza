@@ -65,6 +65,7 @@ class OrderEventIngestView(APIView):
             "order_status": result.sale.order_status,
             "event_outcome": result.event.outcome,
             "identity_status": result.identity_status,
+            "loyalty_readiness": result.loyalty_readiness,
             "created": result.created,
             "duplicate": result.duplicate,
             "payment_verified": False,

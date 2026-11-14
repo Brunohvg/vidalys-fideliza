@@ -587,3 +587,31 @@ class LoyaltyFinancialTests(TestCase):
                     birth_date=timezone.now().date(), birth_date_consent_at=None,
                 )
         self.assertIsNone(CustomerProfile.objects.get(pk=self.profile.pk).birth_date)
+
+
+    def test_paid_transition_returns_actionable_readiness_without_credit(self):
+        from rest_framework.test import APIClient
+        from apps.channels.services import issue_flow_key
+        from apps.tenants.models import TenantMembership
+        user = get_user_model().objects.create_user(username="pr20-flow-owner")
+        TenantMembership.objects.create(
+            tenant=self.tenant, user=user, role=TenantMembership.Role.OWNER,
+        )
+        _, token = issue_flow_key(
+            tenant_id=self.tenant.pk, label="Test read-only readiness", actor=user,
+        )
+        response = APIClient().post(
+            reverse("channel-order-events"),
+            {
+                "tenant_id": str(self.tenant.pk), "channel": "vidalys_flow",
+                "external_order_id": "READINESS-100",
+                "customer_identifier": self.participant.contact_email,
+                "total_amount": "100.00", "currency": "BRL",
+                "status": "paid", "source_event_id": "readiness-evt-1",
+            }, format="json", HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["loyalty_readiness"], "requires_independent_capture")
+        self.assertFalse(response.data["points_credited"])
+        self.assertFalse(PointLot.objects.exists())
+        self.assertFalse(CashbackEvent.objects.exists())
