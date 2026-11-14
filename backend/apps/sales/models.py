@@ -203,3 +203,30 @@ class PointCampaignDraft(models.Model):
             models.CheckConstraint(condition=Q(bonus_points__gt=0), name="point_campaign_bonus_positive"),
             models.CheckConstraint(condition=Q(max_customers__gt=0), name="point_campaign_max_customers_positive"),
         ]
+
+
+class SaleManualLinkAudit(models.Model):
+    """Trilha única e append-only: vínculo de uma venda sem cliente no balcão."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sale = models.OneToOneField(
+        SaleRecord, on_delete=models.PROTECT, related_name="manual_identity_link",
+    )
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    participant = models.ForeignKey(
+        "participants.ProgramParticipant", on_delete=models.PROTECT,
+    )
+    profile = models.ForeignKey(
+        "customers.CustomerProfile", on_delete=models.PROTECT,
+    )
+    linked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+    )
+    linked_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Auditoria de vínculo não pode ser alterada.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Auditoria de vínculo não pode ser removida.")

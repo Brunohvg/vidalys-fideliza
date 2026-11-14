@@ -168,6 +168,38 @@ class ManualSalesView(APIView):
         }, 200 if outcome.duplicate else 201)
 
 
+class ManualSaleLinkView(APIView):
+    """Conecta venda sem CPF/telefone inicial somente ao perfil com OTP comprovado."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["post", "options"]
+
+    def post(self, request, tenant_id, sale_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        if member.tenant.status != Tenant.Status.ACTIVE:
+            return safe_reply({"detail": "Loja inativa."}, 409)
+        if not isinstance(request.data, dict) or set(request.data) != {"participant_id"}:
+            return safe_reply({"detail": "Informe o participante confirmado."}, 400)
+        try:
+            participant_id = uuid.UUID(request.data["participant_id"])
+        except (ValueError, TypeError, AttributeError, KeyError):
+            return safe_reply({"detail": "Identificador de participante inválido."}, 400)
+        from .services import attach_verified_counter_sale, ManualLinkBlocked
+        try:
+            sale = attach_verified_counter_sale(
+                tenant_id=tenant_id, sale_id=sale_id,
+                participant_id=participant_id, operator=request.user,
+            )
+        except (ManualLinkBlocked, SaleRecord.DoesNotExist, ProgramParticipant.DoesNotExist):
+            return safe_reply({"detail": "Venda ou identidade ainda não pode ser vinculada."}, 409)
+        return safe_reply({
+            "sale": present_sale(sale, viewer_id=request.user.pk),
+            "identity_status": "verified_contact_match",
+            "payment_verified": False, "points_credited": False,
+        })
+
+
 class ManualSaleReviewView(APIView):
     permission_classes = [IsAuthenticated]
     http_method_names = ["post", "options"]
