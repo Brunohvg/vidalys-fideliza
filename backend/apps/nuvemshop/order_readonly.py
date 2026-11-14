@@ -17,7 +17,7 @@ class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
-FIELDS = "id,status,payment_status,paid_at,cancelled_at,total,total_paid_by_customer,currency,gateway,customer"
+FIELDS = "id,number,status,payment_status,paid_at,cancelled_at,total,total_paid_by_customer,currency,gateway,customer"
 
 def safe_id(value):
     if isinstance(value, bool) or not isinstance(value, (str, int)):
@@ -66,6 +66,67 @@ def read_order(*, store_id, order_id, access_token, user_agent, opener=None, pau
         except (UnicodeError, json.JSONDecodeError):
             raise OrderReadError("Resposta inválida") from None
     raise OrderReadError("Tentativas esgotadas")
+
+def read_order_by_number(*, store_id, number, access_token, user_agent,
+                         opener=None, pause=time.sleep):
+    """Busca pelo número comercial e exige correspondência EXATA dentro da loja.
+
+    q também permite buscar por nome/email; nunca confiar em um match parcial.
+    Após resolver o id, busca novamente os dados atuais por GET /orders/{id}.
+    """
+    if not safe_id(store_id) or not safe_id(number):
+        raise ValueError("Número de pedido inválido")
+    if not isinstance(access_token, str) or not 16 <= len(access_token) <= 4096:
+        raise ValueError("Credencial ausente")
+    if not isinstance(user_agent, str) or not 4 <= len(user_agent) <= 150:
+        raise ValueError("User-Agent inválido")
+    request = Request(
+        f"{API_ROOT}/{store_id}/orders?q={safe_id(number)}&per_page=10&fields=id,number",
+        headers={"Authorization":f"Bearer {access_token}",
+                 "User-Agent":user_agent,"Accept":"application/json"},
+        method="GET",
+    )
+    transport = opener or build_opener(NoRedirect())
+    matches = []
+    for attempt in range(3):
+        try:
+            with transport.open(request, timeout=8) as result:
+                body = result.read(65537)
+                if len(body) > 65536:
+                    raise OrderReadError("Lista de pedidos muito grande")
+                data = json.loads(body)
+                if not isinstance(data, list) or len(data) > 10:
+                    raise OrderReadError("Lista de pedidos inesperada")
+                matches = [
+                    item for item in data
+                    if isinstance(item, dict) and safe_id(item.get("number")) == safe_id(number)
+                    and safe_id(item.get("id"))
+                ]
+                break
+        except HTTPError as exc:
+            if exc.code == 404:
+                raise OrderNotFound("Pedido não encontrado") from None
+            if exc.code in (429, 502, 503, 504) and attempt < 2:
+                pause(min(attempt+1,2))
+                continue
+            raise OrderReadError("Consulta de pedidos indisponível") from None
+        except (URLError,TimeoutError,OSError):
+            if attempt < 2:
+                pause(min(attempt+1,2))
+                continue
+            raise OrderReadError("Conexão indisponível") from None
+        except (UnicodeError,json.JSONDecodeError):
+            raise OrderReadError("Lista de pedidos inválida") from None
+    if len(matches) == 0:
+        raise OrderNotFound("Número comercial não encontrado nesta loja")
+    if len(matches) != 1:
+        raise OrderReadError("Número comercial ambíguo; informe o link do pedido")
+    return read_order(
+        store_id=store_id,order_id=safe_id(matches[0]["id"]),
+        access_token=access_token,user_agent=user_agent,
+        opener=opener,pause=pause,
+    )
+
 
 def summarize_order(data, *, order_id, participant_verified=False):
     """Normaliza somente fatos não pessoais; nunca concede cashback."""
@@ -122,8 +183,13 @@ def summarize_order(data, *, order_id, participant_verified=False):
         state = "reported_paid_amount_review"
     else:
         state = "reported_paid_requires_reconciliation"
+    number = data.get("number")
+    order_number = safe_id(number) if number is not None else None
+    if number is not None and order_number is None:
+        raise OrderReadError("Número comercial do pedido inválido")
     return {
-        "order_id": str(order_id), "source": "nuvemshop_live_read_only",
+        "order_id": str(order_id), "order_number": order_number,
+        "source": "nuvemshop_live_read_only",
         "order_status": status, "payment_status": payment,
         "paid_at": paid_at.isoformat() if paid_at else None,
         "reported_total_cents": int(amount * 100), "currency": currency.upper(),
