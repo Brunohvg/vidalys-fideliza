@@ -35,7 +35,16 @@ def has_order_access(value: str, *, preview_enabled: bool) -> bool:
 
 def allowed_scopes(value: str, *, customer_preview_enabled: bool,
                    orders_preview_enabled: bool = False) -> bool:
-    """Scopes adicionais não ativam funções sem flag correspondente."""
-    return (has_product_access(value)
-            or has_customer_access(value, customer_preview_enabled=customer_preview_enabled)
-            or has_order_access(value, preview_enabled=orders_preview_enabled))
+    """Aceita somente leituras explicitamente habilitadas para uma nova instalação.
+
+    A capacidade GET de um token com write_* NÃO justifica armazenar um token
+    que permite operações de escrita. Permissão desconhecida também falha
+    fechada para evitar ampliação silenciosa após mudanças no provedor.
+    """
+    scopes = parse_scopes(value)
+    permitted = {"read_products"}
+    if customer_preview_enabled:
+        permitted.add("read_customers")
+    if orders_preview_enabled:
+        permitted.add("read_orders")
+    return bool(scopes) and scopes.issubset(permitted)
