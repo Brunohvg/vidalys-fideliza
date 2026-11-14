@@ -745,3 +745,70 @@ aplicação Coolify Raw existente; aplicar migrações pendentes e testar o
 cadastro de lojista, worker, eventos EmailDispatch, confirmação, login,
 reenvio e reset comparando SMTP aceito versus entrega. Não habilitar
 recompensas/cupom/cashback em contas reais.
+
+## 13/11/2026 — Pré-lançamento: auditoria de CI, escopos e benchmark (MVP pontos)
+
+**Evidência de CI antes da correção:** run 43541615267 no SHA 7eb9baad:
+5 jobs aprovados (backend, frontend, Compose, smoke com banco externo e
+smoke Coolify) e 1 job visual reprovado, com 99 testes Playwright
+aprovados e 8 falhas. Causas reproduzidas pelos logs: rótulos antigos
+nos testes do catálogo de custos (4), comparação rígida flex/inline-flex
+(3) e breakpoint 768px tratado como mobile quando o CSS muda em 760px (1).
+Testes atualizados em cf51c1ab, 67308305, 16203b9c.
+O run 43542763032 aprovou todos os jobs no SHA 16203b9c.
+
+**Risco de OAuth detectado:** o contrato anterior aceitava scopes write_*
+e scopes extras na instalação que se anunciava somente leitura. Para
+**novas trocas de código OAuth**, allowed_scopes agora limita o retorno
+a read_products e, somente se as features correspondentes estiverem
+habilitadas, read_customers/read_orders, rejeitando qualquer write_* ou
+scope inesperado. Testes nos módulos nuvemshop e participants foram
+atualizados. Não interpretar a alteração como revogação automática de
+tokens já instalados: revisar instalações com write_* antes de piloto,
+sem publicar, alterar clientes ou cancelar token sem autorização.
+**Evidência final do CI do novo SHA: conferir no GitHub Actions após o
+último commit desta série.** Até lá, estado: código alterado, aceite pendente.
+
+**Benchmark público:** Fidelimax descreve pedido pago -> identificação ->
+pontuação -> resgate -> cupom Nuvemshop enviado por e-mail, sem edição
+do tema. Também informa que pontos de cancelamento/estorno podem exigir
+ação na própria plataforma. Documentação:
+https://www.fidelimax.com.br/integracoes/nuvemshop
+https://fidelimax.zendesk.com/hc/pt-br/articles/360038645431-Integra%C3%A7%C3%A3o-com-a-Nuvem-Shop-Guia-Completo
+Smile.io e LoyaltyLion também organizam ganhar, extrato e resgatar
+como áreas explícitas; são referências de UX, não APIs copiáveis.
+Oferta pública Fidelimax: R$ 179/mês (plano avulso básico), verificação
+em https://www.fidelimax.com.br/planos . Preços são de concorrentes,
+não preço aprovado do Fideliza.
+
+**Recorte comercial e técnico proposto para validação inicial:**
+(1) instalação consentida Nuvemshop e adesão opt-in;
+(2) compras pagas e comprovadas com deduplicação, carência e estorno;
+(3) 1 regra de pontos configurável, sem cashback paralelo;
+(4) 1 recompensa: desconto fixo na próxima compra com limites de
+margem e orçamento;
+(5) resgate mediante reserva transacional e cupom individual Nuvemshop,
+com teste de compra, não de mera aplicação no checkout;
+(6) Meu Clube mostra regra, saldo pendente/disponível, extrato,
+recompensa e confirmação; lojista vê participantes e ocorrências.
+NubeSDK coupon:add é somente de checkout; não assumir aplicação automática
+na vitrine. Toda capacidade de escrita exige revisão oficial de escopos
+e OAuth novamente autorizado em loja de testes, sem alterar a Bibelô.
+
+**Não compõem o MVP:** cashback monetário, IA, níveis VIP, indicação,
+campanhas multicanal e integração física/Flow. Mantê-los no roadmap,
+não misturar com os critérios do primeiro lançamento.
+
+**Bloqueadores para piloto transacional** (nenhum resolvido por CI):
+SHA publicado no Coolify Raw com backup, migrações e SMTP comprovados;
+OAuth de leitura em loja teste; pedidos/PSP ou ERP efetivamente
+reconciliados; motor de pontos habilitado somente após idempotência,
+estorno e teto auditados; cupom de teste com controle antirreuso e
+reserva segura; resgate e compra real de teste; monitoramento e rollback.
+Comercialmente é possível demonstrar interface em modo rascunho para
+colher intenção de pagamento, **sem vender pontuação e resgate como ativos**.
+
+**Próxima ação operacional única permanece:** confirmar CI do HEAD e
+homologar esse SHA no Coolify Raw existente após backup e isolamento
+de secrets, exercitando cadastro/SMTP. Evitar criar outro planejador,
+flag, compose ou trilha paralela.
