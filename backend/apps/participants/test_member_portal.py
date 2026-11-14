@@ -12,6 +12,7 @@ from rest_framework.test import APIClient
 from apps.core.models import EmailDispatch
 from apps.sales.models import DiscountRewardDraft
 from apps.points.models import PointWallet,PointEvent
+from apps.points.services import create_pending_lot,transition_points
 from apps.tenants.models import Tenant, TenantMembership
 from .email_proof import digest, make_token
 from .enrollment_models import (
@@ -212,3 +213,57 @@ class MemberClubAccessTests(TestCase):
         reward.save(update_fields=["publication_status","published_at"])
         response=self.api.get(reverse("member-club-me",kwargs={"slug":self.tenant.slug}))
         self.assertEqual(response.data["available_rewards"],[])
+
+    @override_settings(FIDELIZA_POINTS_WRITES_ENABLED=True)
+    def test_member_reads_existing_point_entries_but_cannot_redeem(self):
+        # Apenas fixture sintética: em produção a escrita permanece desativada.
+        self.request_link()
+        token=make_token(MemberAccessChallenge.objects.get().id,"member")
+        self.assertEqual(self.call("member-club-access-confirm",{"token":token}).status_code,200)
+        participant=ProgramParticipant.objects.create(
+            tenant=self.tenant,display_name="Pessoa Teste",
+            contact_email=self.submission.email,external_customer_id=None,
+            consent_at=self.submission.accepted_at,
+            consent_channel=ProgramParticipant.ConsentChannel.CUSTOMER_PORTAL,
+            terms_version=self.terms.version,status=ProgramParticipant.Status.ACTIVE,
+        )
+        self.submission.participant=participant
+        self.submission.status=EnrollmentSubmission.Status.MEMBER
+        self.submission.save(update_fields=["participant","status"])
+        paid_at=timezone.now()
+        lot,created=create_pending_lot(
+            participant=participant,channel="counter",source_reference="TEST-PAID-001",
+            eligible_amount_cents=10000,points=100,rule_version="sandbox-v1",
+            paid_at=paid_at,unlock_at=paid_at,
+            expires_at=paid_at+timedelta(days=15),verification_digest="a"*64,
+        )
+        self.assertTrue(created)
+        transition_points(lot_id=lot.pk,kind=PointEvent.Kind.RELEASE,amount=100,
+                          idempotency_key="release:TEST-PAID-001")
+        pending,_=create_pending_lot(
+            participant=participant,channel="counter",source_reference="TEST-PAID-002",
+            eligible_amount_cents=5000,points=50,rule_version="sandbox-v1",
+            paid_at=paid_at,unlock_at=paid_at+timedelta(days=3),
+            expires_at=paid_at+timedelta(days=60),verification_digest="b"*64,
+        )
+        response=self.api.get(reverse("member-club-me",kwargs={"slug":self.tenant.slug}))
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(response.data["points_status"],"ledger_only")
+        self.assertEqual(response.data["points_balance"],100)
+        self.assertEqual(response.data["points_pending"],50)
+        self.assertEqual(response.data["points_expiring"],100)
+        self.assertEqual(len(response.data["transactions"]),3)
+        self.assertFalse(response.data["redemption_enabled"])
+        self.assertFalse(response.data["orders_verified"])
+        self.assertNotIn("TEST-PAID-001",str(response.data))
+        self.assertNotIn("a"*64,str(response.data))
+        self.assertEqual(PointWallet.objects.count(),1)
+        self.assertEqual(PointEvent.objects.count(),3)
+        # Logout remove o acesso; outro tenant também nunca vê a carteira.
+        self.assertEqual(self.api.get(reverse("member-club-me",kwargs={
+            "slug":self.other.slug,
+        })).status_code,401)
+        self.assertEqual(self.call("member-club-logout").status_code,200)
+        self.assertEqual(self.api.get(reverse("member-club-me",kwargs={
+            "slug":self.tenant.slug,
+        })).status_code,401)
