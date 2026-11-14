@@ -79,9 +79,8 @@ test("Início usa rascunho de pontos e não apresenta cashback antigo",async({pa
   }),
  }));
  await page.goto("/");
- await expect(page.getByRole("heading",{name:"Retome seu planejamento"})).toBeVisible();
- await expect(page.getByText("Nenhuma campanha foi publicada.",{exact:false})).toBeVisible();
- await page.getByRole("button",{name:"Ver planejamento"}).click();
+ await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+ await page.locator(".portal-nav").getByRole("button",{name:"Campanhas"}).click();
  await expect(page.getByRole("heading",{name:"Rascunhos salvos"})).toBeVisible();
  await expect(page.getByText("30 pontos extras",{exact:false})).toBeVisible();
  expect(await page.getByRole("button",{name:/Publicar|Ativar/}).count()).toBe(0);
