@@ -67,6 +67,47 @@ def read_order(*, store_id, order_id, access_token, user_agent, opener=None, pau
             raise OrderReadError("Resposta inválida") from None
     raise OrderReadError("Tentativas esgotadas")
 
+def read_orders_page(*, store_id, access_token, user_agent, opener=None, pause=time.sleep):
+    """Primeira página oficial, limitada a 10 pedidos. Nunca grava e nunca expõe PII."""
+    if not safe_id(store_id):
+        raise ValueError("Loja inválida")
+    if not isinstance(access_token,str) or not 16 <= len(access_token) <= 4096:
+        raise ValueError("Credencial ausente")
+    if not isinstance(user_agent,str) or not 4 <= len(user_agent) <= 150:
+        raise ValueError("User-Agent inválido")
+    request=Request(
+        f"{API_ROOT}/{store_id}/orders?page=1&per_page=10&fields={FIELDS}",
+        headers={"Authorization":f"Bearer {access_token}",
+                 "User-Agent":user_agent,"Accept":"application/json"},method="GET",
+    )
+    transport=opener or build_opener(NoRedirect())
+    for attempt in range(3):
+        try:
+            with transport.open(request,timeout=8) as response:
+                body=response.read(262145)
+                if len(body)>262144:
+                    raise OrderReadError("Lista de pedidos muito grande")
+                data=json.loads(body,parse_float=str)
+                if not isinstance(data,list) or len(data)>10:
+                    raise OrderReadError("Lista de pedidos inesperada")
+                if any(not isinstance(item,dict) for item in data):
+                    raise OrderReadError("Pedido na lista inválido")
+                return data
+        except HTTPError as exc:
+            if exc.code in (429,502,503,504) and attempt<2:
+                pause(min(attempt+1,2))
+                continue
+            raise OrderReadError("Consulta de pedidos indisponível") from None
+        except (URLError,TimeoutError,OSError):
+            if attempt<2:
+                pause(min(attempt+1,2))
+                continue
+            raise OrderReadError("Conexão indisponível") from None
+        except (UnicodeError,json.JSONDecodeError):
+            raise OrderReadError("Lista de pedidos inválida") from None
+    raise OrderReadError("Tentativas esgotadas")
+
+
 def read_order_by_number(*, store_id, number, access_token, user_agent,
                          opener=None, pause=time.sleep):
     """Busca pelo número comercial e exige correspondência EXATA dentro da loja.
