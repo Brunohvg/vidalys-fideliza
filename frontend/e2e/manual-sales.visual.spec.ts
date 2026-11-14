@@ -102,7 +102,7 @@ for(const width of [390,1440]){
     await page.getByLabel("Número do cupom ou recibo").fill("0042");
     await page.locator("#vf-sale-client").selectOption(member.id);
     await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
-    await expect(page.getByText("Venda registrada. Outro administrador poderá conferir",{
+    await expect(page.getByText("Venda registrada. Confira o comprovante abaixo.",{
       exact:false,
     })).toBeVisible();
     expect(saved).toBe(1);
@@ -128,6 +128,7 @@ test("Regra configurável é apenas rascunho e pertence ao Programa",async ({pag
   });
   await page.goto("/");
   await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+  await page.getByRole("group",{name:"Editar benefícios"}).getByRole("button",{name:"Regra de pontos"}).click();
   await expect(page.getByRole("heading",{name:"Como o participante vai ganhar pontos?"})).toBeVisible();
   await expect(page.getByText("Não publicado")).toBeVisible();
   await page.getByRole("button",{name:"Salvar rascunho"}).click();
@@ -165,9 +166,9 @@ test("Segundo administrador confere venda sem gerar pontos",async ({page})=>{
   });
   await page.goto("/");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-  await page.getByRole("button",{name:/Histórico/}).click();
+  await page.getByRole("button",{name:/Conferir vendas/}).click();
   await expect(page.getByText("Aguardando conferência")).toBeVisible();
-  await page.getByRole("button",{name:"Conferir comprovante"}).click();
+  await page.getByRole("button",{name:"Conferir venda"}).click();
   await expect(page.getByText("CUPOM-0042",{exact:false})).toBeVisible();
   await page.getByPlaceholder("Ex.: Cupom e pagamento conferidos no caixa.")
     .fill("Cupom e pagamento conferidos no caixa.");
