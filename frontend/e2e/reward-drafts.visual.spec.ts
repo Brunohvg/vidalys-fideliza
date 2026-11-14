@@ -68,7 +68,7 @@ for(const width of [390,1440]){
   await page.getByRole("textbox",{name:"Valor do desconto (R$)"}).fill("5,00");
   await page.getByRole("button",{name:"Criar rascunho"}).click();
   await expect(page.getByText("Rascunho salvo.",{exact:false})).toBeVisible();
-  await expect(page.getByText("Sem cupom, sem resgate e sem consumo de pontos.")).toBeVisible();
+  await expect(page.getByText("Resgate indisponível. Nenhum cupom ou saldo será alterado.")).toBeVisible();
   expect(calls).toBe(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
@@ -196,3 +196,57 @@ test("Salvar regra recalcula economia da recompensa na mesma tela",async({page})
  expect(gets).toBeGreaterThanOrEqual(3);
  await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
 });
+
+
+for(const width of [390,1440]){
+ test("Publica e despublica recompensa para consulta sem criar cupom em "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:850});
+  await setup(page);
+  const id="b78f99bd-cbc0-4eaf-8f73-558e54b72a93";
+  let calls=0;
+  let reward={
+   id,title:"R$ 5 de desconto",points_cost:200,discount_cents:500,
+   min_order_cents:3000,max_redemptions:2,
+   status:"draft" as "draft"|"published",published:false,
+   redemption_enabled:false,published_at:null as null|string,
+  };
+  await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",route=>
+   route.fulfill({contentType:"application/json",body:JSON.stringify({
+    mode:"draft_only",activation_available:false,items:[reward],
+   })}));
+  await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/"+id+"/publication/",route=>{
+   calls++;
+   expect(route.request().method()).toBe("PATCH");
+   expect(route.request().headers()["x-csrftoken"]).toBe("reward-csrf-test");
+   const {published}=route.request().postDataJSON();
+   expect(typeof published).toBe("boolean");
+   reward={...reward,published,status:published?"published":"draft",
+    published_at:published?"2026-11-14T00:00:00Z":null};
+   return route.fulfill({contentType:"application/json",body:JSON.stringify({
+    reward,catalog_published:published,redemption_enabled:false,
+    coupon_created:false,points_credited:false,points_debited:false,
+   })});
+  });
+  await page.goto("/");
+  if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+  const catalog=page.locator(".vf-benefit-saved");
+  await catalog.getByRole("button",{name:"Publicar no Meu Clube"}).click();
+  await expect(page.getByRole("group",{name:"Confirmação de publicação da recompensa"})).toBeVisible();
+  await page.getByRole("button",{name:"Cancelar publicação"}).click();
+  expect(calls,"cancelar publicação não pode fazer PATCH").toBe(0);
+  await catalog.getByRole("button",{name:"Publicar no Meu Clube"}).click();
+  await page.getByRole("button",{name:"Confirmar publicação"}).click();
+  await expect(catalog.getByText("Publicado no Meu Clube",{exact:true})).toBeVisible();
+  await expect(catalog.getByRole("button",{name:"Despublicar"})).toBeVisible();
+  await expect(catalog.getByRole("button",{name:"Editar"})).toHaveCount(0);
+  await expect(catalog.getByRole("button",{name:"Excluir"})).toHaveCount(0);
+  await catalog.getByRole("button",{name:"Despublicar"}).click();
+  await expect(catalog.getByRole("button",{name:"Publicar no Meu Clube"})).toBeVisible();
+  await expect(catalog.getByRole("button",{name:"Editar"})).toBeVisible();
+  expect(calls).toBe(2);
+  await expect(page.getByRole("button",{name:/Resgatar|Gerar cupom/})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
