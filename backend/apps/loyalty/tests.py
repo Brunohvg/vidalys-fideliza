@@ -15,10 +15,10 @@ from apps.customers.models import CustomerProfile
 from apps.participants.models import ProgramParticipant
 from apps.points.models import PointEvent, PointLot
 from apps.points.services import lot_balances, wallet_balances as point_balances
-from apps.sales.models import SaleRecord
+from apps.sales.models import DiscountRewardDraft, SaleRecord
 from apps.tenants.models import Tenant
 from apps.wallets.models import CashbackEvent, CashbackWallet
-from apps.wallets.services import wallet_balances as cashback_balances
+from apps.wallets.services import origin_balances, wallet_balances as cashback_balances
 
 from .models import (
     FinancialEvidence, LoyaltyGrant, LoyaltyRecovery, LoyaltyRule, LoyaltyTier,
@@ -49,6 +49,7 @@ class LoyaltyFinancialTests(TestCase):
         self.another_tenant = Tenant.objects.create(
             name="Outra loja", slug="loyalty-outro", status=Tenant.Status.ACTIVE,
         )
+        self.owner = get_user_model().objects.create_user(username="owner-pr23-loyalty")
         self.participant = ProgramParticipant.objects.create(
             tenant=self.tenant, display_name="Pessoa com adesão",
             contact_email="pessoa@example.com",
@@ -89,6 +90,20 @@ class LoyaltyFinancialTests(TestCase):
             payment_fee_cents=200,
             shipping_subsidy_cents=100,
         )
+
+    def reward(self, amount, *, unit="points", discount=None, max_redemptions=100):
+        return DiscountRewardDraft.objects.create(
+            tenant=self.tenant, title=f"Recompensa {unit} {amount}",
+            points_cost=amount, discount_cents=discount if discount is not None else amount,
+            min_order_cents=100, max_redemptions=max_redemptions,
+            redemption_unit=unit, allowed_channels="counter,vidalys_flow",
+            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+            published_at=timezone.now(), updated_by=self.owner,
+        )
+
+    def redemption_evidence(self, ref):
+        sale = self.make_sale(ref, channel="counter")
+        return sale, self.proof(sale, minutes=0)
 
     def make_sale(self, ref, *, channel="vidalys_flow", status="paid", total="100.00"):
         payload = {
@@ -262,7 +277,7 @@ class LoyaltyFinancialTests(TestCase):
         release_grant(grant_id=grant.pk)
         voucher, code = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit=LoyaltyVoucher.Unit.POINTS, amount=30,
+            reward_id=self.reward(30, unit="points").pk,
         )
         self.assertTrue(verify_voucher(tenant_id=self.tenant.pk, code=code)["valid"])
         self.assertEqual(voucher.discount_cents, 30)
@@ -292,7 +307,7 @@ class LoyaltyFinancialTests(TestCase):
         release_grant(grant_id=grant.pk)
         voucher, code = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit=LoyaltyVoucher.Unit.CASHBACK, amount=200,
+            reward_id=self.reward(200, unit="cashback").pk,
         )
         self.assertEqual(cashback_balances(grant.cashback_event.wallet)["reserved_cents"], 200)
         self.assertTrue(cancel_voucher(tenant_id=self.tenant.pk, voucher_id=voucher.pk))
@@ -305,7 +320,7 @@ class LoyaltyFinancialTests(TestCase):
         release_grant(grant_id=grant.pk)
         voucher, code = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit=LoyaltyVoucher.Unit.POINTS, amount=30,
+            reward_id=self.reward(30, unit="points").pk,
         )
         redeem_voucher(
             tenant_id=self.tenant.pk, code=code,
@@ -322,7 +337,7 @@ class LoyaltyFinancialTests(TestCase):
         with self.assertRaises(LoyaltyBlocked):
             issue_voucher(
                 tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-                unit=LoyaltyVoucher.Unit.POINTS, amount=1,
+                reward_id=self.reward(1, unit="points").pk,
             )
 
     def test_grant_does_not_depend_on_nuvemshop(self):
@@ -347,11 +362,11 @@ class LoyaltyFinancialTests(TestCase):
         release_grant(grant_id=grant.pk)
         voucher, code = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit=LoyaltyVoucher.Unit.POINTS, amount=80,
+            reward_id=self.reward(80, unit="points").pk,
         )
         cashback_voucher, cash_code = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit=LoyaltyVoucher.Unit.CASHBACK, amount=200,
+            reward_id=self.reward(200, unit="cashback").pk,
         )
         self.change_sale(sale, "refunded")
         proof = self.proof(sale, kind="refund", minutes=1)
@@ -384,11 +399,11 @@ class LoyaltyFinancialTests(TestCase):
         release_grant(grant_id=grant.pk)
         one, code1 = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit="points", amount=10,
+            reward_id=self.reward(10, unit="points").pk,
         )
         two, code2 = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit="points", amount=10,
+            reward_id=self.reward(10, unit="points").pk,
         )
         redeem_voucher(
             tenant_id=self.tenant.pk, code=code1,
@@ -408,7 +423,7 @@ class LoyaltyFinancialTests(TestCase):
         release_grant(grant_id=grant.pk)
         voucher, code = issue_voucher(
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
-            unit="cashback", amount=100,
+            reward_id=self.reward(100, unit="cashback").pk,
         )
         self.assertEqual(len(code), 26)
         self.assertNotEqual(voucher.code_digest, code)
