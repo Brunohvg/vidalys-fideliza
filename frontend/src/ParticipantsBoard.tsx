@@ -134,7 +134,11 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
               <span><strong>{displayName(item)}</strong><small>{item.contact_email || "Contato não informado"}</small></span></div></td>
             <td><strong>{dateString(item.consented_at)}</strong><small>{item.consent_channel==="customer_portal"?"Portal do participante":"Aceite na loja"}</small></td>
             <td><span className={"xp-tag "+item.status}>{item.status==="active"?"Participando":"Pausado"}</span></td>
-            <td><span className="xp-unavailable">Pontos ainda não ativados</span>
+            <td><span className="xp-unavailable">{item.points_status==="ledger_only"&&item.points_balance!==null
+                ?`Saldo interno: ${item.points_balance.toLocaleString("pt-BR")} pontos · resgate desativado`
+                :"Pontos ainda não ativados"}</span>
+              {item.points_status==="ledger_only"&&item.points_pending!==null&&
+                <small>Pendentes: {item.points_pending.toLocaleString("pt-BR")} pontos</small>}
               <small>Atividade: {dateString(item.last_program_activity_at)}</small>
               {item.balance_status === "ledger_only" && item.cashback_balance_cents !== null &&
                 <details className="vf-wallet-technical">
@@ -163,7 +167,11 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
             </div>
             <div className="vf-clients-mobile-meta">
               <span>Desde {dateString(item.consented_at)}</span>
-              <span>Pontos ainda não ativos</span>
+              <span>{item.points_status==="ledger_only"&&item.points_balance!==null
+                ?`${item.points_balance.toLocaleString("pt-BR")} pontos internos · sem resgate`
+                :"Pontos ainda não ativos"}</span>
+              {item.points_status==="ledger_only"&&item.points_pending!==null&&
+                <span>{item.points_pending.toLocaleString("pt-BR")} pendentes</span>}
             </div>
             {item.balance_status==="ledger_only"&&item.cashback_balance_cents!==null&&
               <details className="vf-wallet-technical">
