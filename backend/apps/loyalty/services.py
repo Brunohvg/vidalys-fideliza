@@ -452,6 +452,13 @@ def issue_voucher(*, tenant_id, participant_id, reward_id):
             or not _integer(reward.min_order_cents, minimum=discount)
             or discount > amount * rule.point_value_cents and unit == LoyaltyVoucher.Unit.POINTS):
         raise LoyaltyBlocked("Recompensa fora do limite financeiro previsto.")
+    # Reservas vencidas não podem bloquear eternamente o limite de emissões.
+    # Cancelamento devolve créditos à MESMA origem; lotes de pontos vencidos
+    # recebem lançamento de expiração em vez de saldo disponível fictício.
+    for expired in LoyaltyVoucher.objects.select_for_update().filter(
+        reward=reward, state=LoyaltyVoucher.State.RESERVED, expires_at__lte=now,
+    ):
+        _cancel_reserved_voucher(expired)
     used_slots = LoyaltyVoucher.objects.filter(reward=reward).exclude(
         state=LoyaltyVoucher.State.CANCELLED,
     ).count()

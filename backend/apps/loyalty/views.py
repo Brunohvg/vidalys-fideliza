@@ -1,4 +1,5 @@
 """Vouchers: autorizações HTTP apenas; operações/ledger exclusivamente em services."""
+import uuid
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -80,11 +81,16 @@ class VoucherRedeemView(APIView):
         }:
             return _reply({"detail": "Código, pedido, referência e prova do pagamento obrigatórios."}, 400)
         try:
+            sale_id = uuid.UUID(str(request.data["sale_id"]))
+            capture_id = uuid.UUID(str(request.data["capture_evidence_id"]))
+        except (TypeError, ValueError, AttributeError):
+            return _reply({"detail": "IDs de pedido e comprovação inválidos."}, 400)
+        try:
             voucher, redeemed = redeem_voucher(
                 tenant_id=tenant_id, code=request.data["code"], channel=channel,
                 external_receipt=request.data["redemption_reference"],
-                sale_id=request.data["sale_id"],
-                capture_evidence_id=request.data["capture_evidence_id"],
+                sale_id=sale_id,
+                capture_evidence_id=capture_id,
             )
         except PermissionError:
             return _reply({"detail": "Resgate não habilitado."}, 409)
@@ -119,9 +125,13 @@ class ClubVoucherIssueView(APIView):
         if not isinstance(request.data, dict) or set(request.data) != {"reward_id"}:
             return _reply({"detail": "Escolha uma recompensa publicada."}, 400)
         try:
+            reward_id = uuid.UUID(str(request.data["reward_id"]))
+        except (TypeError, ValueError, AttributeError):
+            return _reply({"detail": "Identificador de recompensa inválido."}, 400)
+        try:
             voucher, code = issue_voucher(
                 tenant_id=tenant.pk, participant_id=participant.pk,
-                reward_id=request.data["reward_id"],
+                reward_id=reward_id,
             )
         except (PermissionError, LoyaltyBlocked):
             return _reply({"detail": "Saldo não elegível para resgate."}, 409)
