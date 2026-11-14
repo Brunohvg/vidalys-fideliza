@@ -176,7 +176,7 @@ test("Meu Clube exibe extrato interno real sem prometer resgate em 390px",async(
 
 
 for(const width of [320,390]){
- test("Visitante conhece recompensas publicadas antes de aderir em "+width+"px",async({page},info)=>{
+ test("Visitante conhece recompensas publicadas antes de aderir em "+width+"px",async({page},testInfo)=>{
   await page.setViewportSize({width,height:900});
   await page.route("**/api/v1/auth/session/",r=>r.fulfill({
    contentType:"application/json",body:JSON.stringify({
@@ -210,6 +210,6 @@ for(const width of [320,390]){
   await expect(page.getByRole("button",{name:/Resgatar|Gerar cupom/})).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
-  await page.screenshot({path:info.outputPath("new-club-guest-"+width+".png"),fullPage:true});
+  await page.screenshot({path:testInfo.outputPath("new-club-guest-"+width+".png"),fullPage:true});
  });
 }
