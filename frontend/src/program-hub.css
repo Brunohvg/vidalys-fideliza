@@ -117,3 +117,11 @@
  .vf-program-steps a span{width:23px;height:23px}
 }
 @media(max-width:335px){.vf-program-steps a{font-size:9px}}
+
+/* Uma ação por local: Programa configura, Vendas acompanha pedidos. */
+.vf-program-operation-link{display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0;padding:16px 18px;background:#f5faf7;border:1px solid #dcece2;border-radius:14px}
+.vf-program-operation-link>span{font-size:12px;line-height:1.65;color:#42685b}
+.vf-program-operation-link>button{flex:none;display:inline-flex;align-items:center;gap:7px;padding:11px 13px;min-height:44px;border:1px solid #a3d5c1;background:#fff;color:#0a7062;font-size:12px;font-weight:800;border-radius:10px;cursor:pointer}
+.vf-program-operation-link>button:hover{background:#e6f7ee}
+.vf-program-operation-link>button:focus-visible{outline:3px solid #32c2a9;outline-offset:2px}
+@media(max-width:650px){.vf-program-operation-link{display:grid;gap:12px}.vf-program-operation-link>button{justify-content:center}}
