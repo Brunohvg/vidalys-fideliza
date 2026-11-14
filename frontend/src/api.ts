@@ -422,6 +422,12 @@ export type PaidOrderInspection = {
 export type NuvemshopConnectionStatus = {
   configured: boolean;
   connected: boolean;
+  order_verification?: {
+    order_scope_granted:boolean;
+    preview_enabled:boolean;read_only_preview_available:boolean;
+    live_cashback_enabled:false;signed_event_inbox_enabled:boolean;
+    event_receipt_does_not_verify_payment:true;
+  };
   connection_check?: {
     next_step: "activate_tenant" | "configure_app" | "authorize_store" |
       "grant_read_products_and_reinstall" | "verify_catalog_with_live_get";
