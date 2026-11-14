@@ -31,7 +31,7 @@ for (const width of [390,768,1440]){
       await page.setViewportSize({width,height:width===390?844:900});
       await mockShop(page);
       await page.goto("/");
-      await expect(page.getByRole("heading",{name:"Seu plano de ação"})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
       const palette=await page.evaluate(()=>{
         const root=getComputedStyle(document.documentElement);
         const cta=document.querySelector(".portal-primary");
