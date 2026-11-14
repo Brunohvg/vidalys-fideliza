@@ -141,13 +141,14 @@ export default function SalesWorkspace({tenantId,role}:{
         evidence_reference:reference,
       });
       setMessage(result.already_recorded
-        ?"Este cupom já estava registrado. Não criamos outra venda."
+        ?"Este cupom já estava registrado. Nenhum registro foi duplicado."
         :chosen
-          ?"Venda registrada. Outro administrador poderá conferir o comprovante. Nenhum ponto foi creditado."
+          ?"Venda registrada. Confira o comprovante abaixo. Nenhum ponto foi creditado."
           :"Venda registrada sem participante. Nenhum ponto foi creditado.");
       setReceipt("");setAmount("");setSelected("__choose__");
       setPaidAt(localNow());setCustomTime(false);
-      setPersonQuery("");setSearchOpen(false);setVersion(v=>v+1);
+      setPersonQuery("");setSearchOpen(false);
+      setSection("history");setVersion(v=>v+1);
     }catch(cause){
       setError(cause instanceof ApiError?cause.message:"Não foi possível registrar a venda.");
     }finally{setBusy(false)}
@@ -157,11 +158,13 @@ export default function SalesWorkspace({tenantId,role}:{
     if(!reviewing||busy)return;
     setBusy(true);setError("");setMessage("");
     try{
-      await merchantApi.reviewManualSale(
+      const confirmed=await merchantApi.reviewManualSale(
         tenantId,reviewing.id,decision,reviewNote,
       );
       setMessage(decision==="approve"
-        ?"Conferência registrada. Nenhum ponto foi creditado."
+        ?confirmed.review_mode==="owner_self_review"
+          ?"Conferência do proprietário registrada e auditada. Nenhum ponto foi creditado."
+          :"Conferência registrada. Nenhum ponto foi creditado."
         :"Venda rejeitada. Nenhum ponto foi creditado.");
       setReviewing(null);setReviewNote("");setVersion(v=>v+1);
     }catch(cause){
@@ -170,6 +173,8 @@ export default function SalesWorkspace({tenantId,role}:{
   };
 
   const pending=items.filter(item=>item.state==="awaiting_review").length;
+  const canReview=(item:ManualSaleRecord)=>canEdit&&item.state==="awaiting_review"&&
+    (!item.submitted_by_me||role==="owner");
 
   return <div className="vf-sales-page">
     <header className="vf-sale-intro">
@@ -196,7 +201,7 @@ export default function SalesWorkspace({tenantId,role}:{
       <button type="button" className={section==="history"?"is-active":""}
         aria-current={section==="history"?"page":undefined}
         onClick={()=>openSection("history")}>
-        <ClipboardCheck size={17}/> Histórico do balcão
+        <ClipboardCheck size={17}/> Conferir vendas
         {pending>0&&<span className="vf-sale-tab-count">{pending}</span>}
       </button>
     </nav>
@@ -315,7 +320,10 @@ export default function SalesWorkspace({tenantId,role}:{
     {section==="history"&&<section className="vf-sale-card" aria-labelledby="vf-sale-history-heading">
       <div className="vf-sale-card-heading">
         <div><span className="vf-sale-overline">ACOMPANHAMENTO</span>
-          <h3 id="vf-sale-history-heading">Vendas registradas</h3>
+          <h3 id="vf-sale-history-heading">Vendas do balcão</h3>
+          <p>{pending>0
+            ?pending+" venda(s) aguardando conferência."
+            :"Consulte o histórico e os comprovantes registrados."}</p>
         </div>
         <button type="button" className="vf-sale-refresh" onClick={()=>setVersion(v=>v+1)}>
           <RefreshCw size={16}/> Atualizar
@@ -343,17 +351,24 @@ export default function SalesWorkspace({tenantId,role}:{
             </div>
             <div className="vf-sale-record-actions">
               <span>Nenhum ponto creditado nesta etapa.</span>
-              {item.state==="awaiting_review"&&!item.submitted_by_me&&canEdit?
+              {canReview(item)?
                 <button type="button" onClick={()=>{
                   setReviewing(item);setReviewNote("");
-                }}>Conferir comprovante <ArrowRight size={15}/></button>:
+                }}>Conferir venda <ArrowRight size={15}/></button>:
                 item.state==="awaiting_review"&&item.submitted_by_me?
-                  <span>Outro administrador precisa conferir</span>:null}
+                  <span>Aguarda outro administrador</span>:
+                item.state==="verified_manual"?
+                  <span>{item.review_mode==="owner_self_review"
+                    ?"Conferência do proprietário":"Conferida por outro operador"}</span>:null}
             </div>
             {reviewing?.id===item.id&&<div className="vf-sale-review">
               <h4>Conferir o comprovante</h4>
               <p>Verifique o recibo <strong>{item.evidence_reference}</strong> e o valor
                 de <strong>{money(item.eligible_amount_cents)}</strong> antes de concluir.</p>
+              {item.submitted_by_me&&role==="owner"&&
+                <p className="vf-sale-review-caution">Você está conferindo o próprio lançamento
+                  como proprietário. A justificativa será registrada, mas não será considerada
+                  confirmação independente de pagamento e não gera pontos.</p>}
               <label htmlFor="vf-sale-review-note">Como você conferiu?
                 <textarea id="vf-sale-review-note" value={reviewNote}
                   onChange={e=>setReviewNote(e.target.value)}
@@ -371,7 +386,8 @@ export default function SalesWorkspace({tenantId,role}:{
                 </button>
               </div>
               <p className="vf-sale-review-footnote">
-                Conferir o recibo não libera pontos automaticamente.
+                Esta é uma conferência operacional, não uma confirmação financeira.
+                Nenhum ponto ou desconto será liberado.
               </p>
             </div>}
           </li>)}
