@@ -165,6 +165,8 @@ class OrderNormalizationTests(SimpleTestCase):
             ({"payment_status": "refunded"}, "blocked_refund"),
             ({"payment_status": "partially_refunded"}, "blocked_refund"),
             ({"status": "cancelled"}, "blocked_cancelled"),
+            ({"payment_status": "chargeback"}, "blocked_chargeback"),
+            ({"payment_status": "expired"}, "not_paid"),
             ({"paid_at": None}, "payment_date_missing"),
         ]
         for difference, expected in cases:
