@@ -1,5 +1,6 @@
 """Consulta limitada à base de participantes, sem autoinscrição ou contatos importados."""
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -8,6 +9,7 @@ from rest_framework.views import APIView
 from apps.tenants.models import TenantMembership
 from .models import ProgramParticipant
 from apps.wallets.services import balances_for_participants
+from apps.points.models import PointWallet, PointEntry
 
 
 class ParticipantListView(APIView):
@@ -52,9 +54,30 @@ class ParticipantListView(APIView):
         balances = balances_for_participants(
             tenant_id=tenant_id, participant_ids=[item.id for item in page],
         )
+        # Uma agregação por página evita N+1 e nunca soma cashback em BRL.
+        participant_ids = [item.id for item in page]
+        point_wallets = set(PointWallet.objects.filter(
+            tenant_id=tenant_id,participant_id__in=participant_ids,
+        ).values_list("participant_id",flat=True))
+        point_balances = {
+            pid:{"pending":0,"available":0,"reserved":0} for pid in point_wallets
+        }
+        point_rows = PointEntry.objects.filter(
+            event__lot__wallet__tenant_id=tenant_id,
+            event__lot__tenant_id=tenant_id,
+            event__lot__wallet__participant_id__in=participant_ids,
+            event__lot__expires_at__gt=timezone.now(),
+        ).values("event__lot__wallet__participant_id","bucket").annotate(total=Sum("delta"))
+        for row in point_rows:
+            pid = row["event__lot__wallet__participant_id"]
+            if pid in point_balances:
+                point_balances[pid][row["bucket"]] = row["total"] or 0
         result = []
         for item in page:
             wallet_balance = balances.get(item.id)
+            point = point_balances.get(item.id)
+            if point and any(v < 0 for v in point.values()):
+                point = None
             result.append({
                 "id": str(item.id),
                 "customer_reference": item.external_customer_id,
@@ -69,7 +92,9 @@ class ParticipantListView(APIView):
                 ),
                 "consent_channel": item.consent_channel,
                 # Ledger interno não implica cashback resgatável.
-                "points_balance": None,
+                "points_balance": point["available"] if point else None,
+                "points_pending": point["pending"] if point else None,
+                "points_status": "ledger_only" if point is not None else "not_active",
                 "cashback_balance_cents": (
                     wallet_balance["available_cents"] if wallet_balance else None
                 ),
