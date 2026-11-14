@@ -20,6 +20,8 @@ for(const width of [320,390,768,1440]){
   }));
   await page.goto("/");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+  if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
+    await page.locator(".portal-advanced-menu > summary").click();
   await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
   await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
   if(width===1440){
@@ -77,6 +79,8 @@ test("Campanha planejada permite editar e excluir sem publicar",async({page})=>{
  });
  await page.goto("/");
  await page.getByRole("button",{name:"Abrir menu"}).click();
+  if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
+    await page.locator(".portal-advanced-menu > summary").click();
  await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
  await page.getByRole("button",{name:"Editar",exact:true}).click();
  await page.getByRole("button",{name:"Continuar"}).click();
