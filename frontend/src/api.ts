@@ -251,10 +251,11 @@ export type CostHistoryEntry = {
 export type DiscountRewardDraft = {
   id:string;title:string;points_cost:number;discount_cents:number;
   min_order_cents:number;max_redemptions:number;
-  status:"draft";published:false;redemption_enabled:false;
+  status:"draft"|"published";published:boolean;published_at?:string|null;
+  redemption_enabled:false;
 };
 export type DiscountRewardDraftInput = Omit<DiscountRewardDraft,
-  "id"|"status"|"published"|"redemption_enabled">;
+  "id"|"status"|"published"|"published_at"|"redemption_enabled">;
 export type PointCampaignDraft = {
   id:string;goal:"second_purchase"|"reactivation"|"recurrence";
   bonus_points:number;max_customers:number;maximum_bonus_points:number;
@@ -471,6 +472,13 @@ export const merchantApi = {
   deleteDiscountRewardDraft:(tenantId:string,id:string)=>
     deleteJson<{deleted:true;id:string}>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/reward-drafts/"+encodeURIComponent(id)+"/"),
+  setRewardCatalogPublication:(tenantId:string,id:string,published:boolean)=>
+    writeJson<{
+      reward:DiscountRewardDraft;catalog_published:boolean;
+      redemption_enabled:false;coupon_created:false;points_credited:false;points_debited:false
+    }>(
+      "PATCH","/api/v1/tenants/"+encodeURIComponent(tenantId)+
+      "/loyalty/reward-drafts/"+encodeURIComponent(id)+"/publication/",{published}),
   listPointCampaignDrafts:(tenantId:string)=>getJson<{
     mode:"draft_only";activation_available:false;items:PointCampaignDraft[]
   }>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"),
@@ -657,7 +665,7 @@ export type MemberClubPublic = {
 export type MemberClubReward = {
   id:string;title:string;points_cost:number;discount_cents:number;
   min_order_cents:number;status:"available"|"locked"|"paused"|"sold_out";
-  points_missing:number;redemption_enabled:boolean;
+  points_missing:number|null;redemption_enabled:boolean;
 };
 export type MemberClubPrivate = {
   store_name:string;display_name:string;
