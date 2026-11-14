@@ -3,8 +3,8 @@ import {Calculator, CheckCircle2, Settings2, ShieldCheck} from "lucide-react";
 import {ApiError, merchantApi, type PointRuleDraft, type Store} from "./api";
 import "./sales-workspace.css";
 
-export default function PointRuleDraftEditor({tenantId,role}:{
-  tenantId:string;role:Store["role"];
+export default function PointRuleDraftEditor({tenantId,role,onRuleSaved}:{
+  tenantId:string;role:Store["role"];onRuleSaved?:()=>void;
 }){
   const [rule,setRule]=useState<Omit<PointRuleDraft,"version">>({
     points:1,per_cents:100,hold_days:7,validity_days:180,
@@ -46,6 +46,7 @@ export default function PointRuleDraftEditor({tenantId,role}:{
         ...rule,per_cents:baseCents,
       });
       setVersion(updated.version);
+      onRuleSaved?.();
       setMessage("Regra salva como rascunho. Nenhum ponto foi concedido.");
     }catch(cause){
       setError(cause instanceof ApiError?cause.message:"Falha ao salvar regra.");
