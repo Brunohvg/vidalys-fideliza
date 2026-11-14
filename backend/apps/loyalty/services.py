@@ -326,6 +326,8 @@ def release_grant(*, grant_id):
         return grant, False
     if grant.status != LoyaltyGrant.Status.PENDING:
         raise LoyaltyBlocked("Concessão revertida ou indisponível.")
+    if grant.participant.status != ProgramParticipant.Status.ACTIVE:
+        raise LoyaltyBlocked("Participante sem adesão ativa.")
     if grant.sale.order_status != SaleRecord.OrderStatus.PAID:
         raise LoyaltyBlocked("Pedido alterado: revalide antes de liberar saldo.")
     now = timezone.now()
@@ -535,6 +537,8 @@ def redeem_voucher(*, tenant_id, code, channel, external_receipt):
         raise LoyaltyBlocked("Voucher já utilizado.")
     if voucher.state != LoyaltyVoucher.State.RESERVED or voucher.expires_at <= timezone.now():
         raise LoyaltyBlocked("Voucher indisponível ou expirado.")
+    if voucher.participant.status != ProgramParticipant.Status.ACTIVE:
+        raise LoyaltyBlocked("Participante não está ativo.")
     if LoyaltyRecovery.objects.filter(
         grant__tenant_id=tenant_id, grant__participant=voucher.participant,
         resolved_at__isnull=True,

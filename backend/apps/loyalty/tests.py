@@ -458,9 +458,9 @@ class LoyaltyFinancialTests(TestCase):
         self.assertFalse(CashbackEvent.objects.exists())
 
     def test_winback_task_only_records_eligibility_and_is_idempotent(self):
-        self.create_grant("WINBACK-FIRST", minutes=60 * 24 * 50)
         self.rule.winback_after_days = 45
         self.rule.save(update_fields=["winback_after_days"])
+        self.create_grant("WINBACK-FIRST", minutes=60 * 24 * 50)
         with override_settings(FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED=True):
             first = scan_winback()
             second = scan_winback()
@@ -506,3 +506,23 @@ class LoyaltyFinancialTests(TestCase):
         self.assertTrue(quote.second_purchase)
         self.assertFalse(PointEvent.objects.exists())
         self.assertFalse(CashbackEvent.objects.exists())
+
+
+    def test_rule_and_tier_cannot_be_rewritten_after_payout(self):
+        self.create_grant("IMMUTABLE-RULE")
+        self.rule.cashback_bps = 9500
+        with self.assertRaises(ValueError):
+            self.rule.save(update_fields=["cashback_bps"])
+        self.gold.multiplier_bps = 30000
+        with self.assertRaises(ValueError):
+            self.gold.save(update_fields=["multiplier_bps"])
+        self.assertEqual(LoyaltyRule.objects.get(pk=self.rule.pk).cashback_bps, 500)
+
+    def test_refund_evidence_cannot_be_changed_or_deleted(self):
+        sale = self.make_sale("IMMUTABLE-EVIDENCE")
+        evidence = self.proof(sale)
+        evidence.amount_cents = 1
+        with self.assertRaises(ValueError):
+            evidence.save()
+        with self.assertRaises(ValueError):
+            evidence.delete()

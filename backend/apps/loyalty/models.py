@@ -52,6 +52,19 @@ class LoyaltyRule(models.Model):
             ),
         ]
 
+    def save(self, *args, **kwargs):
+        if not self._state.adding and LoyaltyGrant.objects.filter(rule_id=self.pk).exists():
+            previous = type(self).objects.get(pk=self.pk)
+            names = (
+                "version", "tenant_id", "points_per_unit", "points_per_cents",
+                "cashback_bps", "point_value_cents", "hold_days", "validity_days",
+                "minimum_margin_bps", "budget_cents", "second_purchase_window_days",
+                "second_purchase_multiplier_bps", "winback_after_days",
+            )
+            if any(getattr(self, name) != getattr(previous, name) for name in names):
+                raise ValueError("Regra com concessões é imutável; crie uma nova versão.")
+        return super().save(*args, **kwargs)
+
 
 class LoyaltyTier(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -71,6 +84,19 @@ class LoyaltyTier(models.Model):
                 name="loyalty_tier_multiplier_range",
             ),
         ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and LoyaltyGrant.objects.filter(rule_id=self.rule_id).exists():
+            previous = type(self).objects.get(pk=self.pk)
+            names = ("rule_id", "name", "minimum_spend_cents", "multiplier_bps")
+            if any(getattr(self, name) != getattr(previous, name) for name in names):
+                raise ValueError("Nível VIP em regra utilizada é imutável.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if LoyaltyGrant.objects.filter(rule_id=self.rule_id).exists():
+            raise ValueError("Nível VIP em regra utilizada não pode ser removido.")
+        return super().delete(*args, **kwargs)
 
 
 class FinancialEvidence(models.Model):
