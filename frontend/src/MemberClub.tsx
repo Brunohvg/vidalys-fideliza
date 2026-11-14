@@ -216,7 +216,7 @@ export default function MemberClub(){
           aria-labelledby="member-rewards-title">
           <span className="member-club-kicker"><TicketPercent size={16}/> SEUS BENEFÍCIOS</span>
           <h2 id="member-rewards-title">Recompensas do clube</h2>
-          <p className="member-club-section-lead">Aqui você vê o que poderá trocar pelos pontos das suas compras.</p>
+          <p className="member-club-section-lead">Veja os benefícios divulgados pela loja. Pontos e resgates serão liberados após a ativação do programa.</p>
           {nextReward&&nextProgress!==null&&<div className="member-club-next">
             <div className="member-club-next-heading">
               <span>Seu próximo benefício</span>
@@ -235,7 +235,7 @@ export default function MemberClub(){
           {publishedRewards.length===0?<div className="member-club-rewards-empty">
             <span><Gift size={24}/></span>
             <div><h3>Recompensas em preparação</h3>
-              <p>A loja ainda não publicou descontos para resgatar. Assim que estiverem disponíveis, aparecerão aqui.</p>
+              <p>A loja ainda não publicou recompensas. Quando divulgar novos benefícios, você poderá consultá-los aqui.</p>
             </div>
           </div>:<div className="member-club-rewards-grid">
             {publishedRewards.map(reward=><article className="member-club-reward" key={reward.id}>
@@ -248,6 +248,7 @@ export default function MemberClub(){
               <div className="member-club-reward-state">
                 {reward.status==="paused"?"Temporariamente indisponível":
                   reward.status==="sold_out"?"Esgotada":
+                  !reward.redemption_enabled?"Publicado para consulta · Resgate em preparação":
                   !pointsReady?"Aguardando ativação":
                   availablePoints!==null&&availablePoints<reward.points_cost
                     ?"Faltam "+(reward.points_cost-availablePoints).toLocaleString("pt-BR")+" pontos":
