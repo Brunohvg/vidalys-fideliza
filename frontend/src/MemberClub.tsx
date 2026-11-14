@@ -101,7 +101,7 @@ export default function MemberClub(){
   const pointsReady=me?.points_status==="verified"&&typeof me.points_balance==="number";
   const ledgerOnly=me?.points_status==="ledger_only"&&typeof me.points_balance==="number";
   const hasLedger=pointsReady||ledgerOnly;
-  const availablePoints=hasLedger?me.points_balance:null;
+  const availablePoints=hasLedger&&me?me.points_balance:null;
   const publishedRewards=me?.available_rewards || [];
   const nextReward=publishedRewards
     .filter(item=>item.status!=="paused"&&item.status!=="sold_out"&&item.points_cost>0)
