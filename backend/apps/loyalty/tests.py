@@ -95,7 +95,8 @@ class LoyaltyFinancialTests(TestCase):
         return DiscountRewardDraft.objects.create(
             tenant=self.tenant, title=f"Recompensa {unit} {amount}",
             points_cost=amount, discount_cents=discount if discount is not None else amount,
-            min_order_cents=100, max_redemptions=max_redemptions,
+            min_order_cents=max(100, discount if discount is not None else amount),
+            max_redemptions=max_redemptions,
             redemption_unit=unit, allowed_channels="counter,vidalys_flow",
             publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
             published_at=timezone.now(), updated_by=self.owner,
@@ -286,12 +287,12 @@ class LoyaltyFinancialTests(TestCase):
         voucher, new = redeem_voucher(
             tenant_id=self.tenant.pk, code=code,
             channel="counter", external_receipt="Balcao-100",
-        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         same, again = redeem_voucher(
             tenant_id=self.tenant.pk, code=code,
             channel="counter", external_receipt="Balcao-100",
-        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         self.assertTrue(new)
         self.assertFalse(again)
@@ -330,7 +331,7 @@ class LoyaltyFinancialTests(TestCase):
         redeem_voucher(
             tenant_id=self.tenant.pk, code=code,
             channel="counter", external_receipt="Applied-101",
-        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         self.change_sale(sale, "refunded")
         proof = self.proof(sale, kind="refund", minutes=1)
@@ -415,7 +416,7 @@ class LoyaltyFinancialTests(TestCase):
         redeem_voucher(
             tenant_id=self.tenant.pk, code=code1,
             channel="counter", external_receipt="same-0001",
-        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         with self.assertRaises(LoyaltyBlocked):
             redeem_voucher(
@@ -443,7 +444,6 @@ class LoyaltyFinancialTests(TestCase):
                 tenant_id=self.another_tenant.pk, code=code,
                 channel="counter", external_receipt="foreign-222",
                 sale_id=grant.sale_id, capture_evidence_id=grant.evidence_id,
-            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
             )
 
     def test_refund_never_debits_cashback_from_another_purchase(self):
