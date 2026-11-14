@@ -9,6 +9,7 @@ import {
 } from "./api";
 import "./sales-workspace.css";
 import PaidOrderCheck from "./PaidOrderCheck";
+import NuvemshopOrdersFeed from "./NuvemshopOrdersFeed";
 
 const money=(cents:number)=>new Intl.NumberFormat("pt-BR",{
   style:"currency",currency:"BRL",
@@ -208,7 +209,11 @@ export default function SalesWorkspace({tenantId,role}:{
           ?"Autorização de integração registrada. Confirme um pedido real abaixo; nenhuma operação modifica a Nuvemshop."
           :"A leitura de pedidos depende da conexão da sua loja e das permissões read_orders."}</p>
       </header>
-      <PaidOrderCheck tenantId={tenantId}/>
+      <NuvemshopOrdersFeed tenantId={tenantId}/>
+      <details className="vf-sales-manual-search">
+        <summary>Consultar um pedido pelo número ou link</summary>
+        <PaidOrderCheck tenantId={tenantId}/>
+      </details>
       <p className="vf-sales-online-footnote">
         Não é necessário registrar novamente aqui as compras feitas no site.
         Para pontuar automaticamente, ainda será preciso concluir a conciliação
