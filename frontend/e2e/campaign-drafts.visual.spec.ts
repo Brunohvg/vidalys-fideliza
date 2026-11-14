@@ -50,6 +50,8 @@ for(const width of [390,768,1440]){
   });
   await page.goto("/");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+  if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
+    await page.locator(".portal-advanced-menu > summary").click();
   await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
   await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
   await page.getByRole("button",{name:"Continuar"}).click();
@@ -80,6 +82,8 @@ test("Início usa rascunho de pontos e não apresenta cashback antigo",async({pa
  }));
  await page.goto("/");
  await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+  if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
+    await page.locator(".portal-advanced-menu > summary").click();
  await page.locator(".portal-nav").getByRole("button",{name:"Campanhas"}).click();
  await expect(page.getByRole("heading",{name:"Rascunhos salvos"})).toBeVisible();
  await expect(page.getByText("30 pontos extras",{exact:false})).toBeVisible();
