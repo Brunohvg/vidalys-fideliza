@@ -54,7 +54,7 @@ export default function NuvemshopOrdersFeed({tenantId}:{tenantId:string}){
     finally{setChecking(null);}
   };
 
-  return <section className="vf-online-feed" aria-labelledby="vf-online-feed-title">
+  return <section className="vf-online-feed" aria-label="Pedidos recentes da Nuvemshop">
     <header className="vf-online-feed-head">
       <div><span className="portal-eyebrow">DADOS DA NUVEMSHOP</span>
         <h4 id="vf-online-feed-title">Pedidos da loja</h4>
