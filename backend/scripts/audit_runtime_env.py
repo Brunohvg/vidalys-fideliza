@@ -84,6 +84,16 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_PUBLIC_SIGNUP_ENABLED", "FALHA",
                        "Use apenas 0/1, false/true ou no/yes"))
+    standalone = env.get("FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED", "0").lower().strip()
+    if standalone in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED", "ALERTA",
+                       "Adesão independente exige confirmação de e-mail, aceite LGPD e teste de duplicidades"))
+    elif standalone in ("0", "false", "", "no", "off"):
+        result.append(("FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED", "OK",
+                       "Adesão independente desativada até homologação"))
+    else:
+        result.append(("FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED", "FALHA",
+                       "Valor inválido; use 0/1 ou false/true"))
     customer_preview = env.get("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "0").lower().strip()
     if customer_preview in ("1", "true", "yes", "on"):
         result.append(("FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED", "ALERTA",
