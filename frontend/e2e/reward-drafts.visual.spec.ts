@@ -184,12 +184,17 @@ test("Salvar regra recalcula economia da recompensa na mesma tela",async({page})
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
  const econ=page.getByLabel("Conferência da recompensa planejada");
+ const editor=page.getByRole("group",{name:"Editar benefícios"});
  await expect(econ).toContainText("Salve uma regra de pontos");
+ await editor.getByRole("button",{name:"Regra de pontos"}).click();
  await page.getByRole("button",{name:"Salvar rascunho"}).click();
+ await editor.getByRole("button",{name:"Recompensas"}).click();
  await expect(econ).toContainText("R$ 200,00");
  await expect(econ).toContainText("2,5%");
+ await editor.getByRole("button",{name:"Regra de pontos"}).click();
  await page.getByRole("spinbutton",{name:"Pontos por faixa"}).fill("2");
  await page.getByRole("button",{name:"Salvar rascunho"}).click();
+ await editor.getByRole("button",{name:"Recompensas"}).click();
  await expect(econ).toContainText("R$ 100,00");
  await expect(econ).toContainText("5%");
  expect(puts).toBe(2);
