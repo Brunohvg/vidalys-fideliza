@@ -119,3 +119,57 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+
+test("Meu Clube exibe extrato interno real sem prometer resgate em 390px",async({page})=>{
+ await page.setViewportSize({width:390,height:830});
+ await page.context().addCookies([{
+  name:"csrftoken",value:"csrf-member-only",url:"http://127.0.0.1:4173",
+ }]);
+ await page.route("**/api/v1/auth/session/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   authenticated:false,user:null,tenants:[],
+  }),
+ }));
+ await page.route("**/api/v1/public/clubs/loja-jardim/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify(info),
+ }));
+ let logged=false;
+ await page.route("**/api/v1/public/clubs/loja-jardim/me/",r=>r.fulfill({
+  status:logged?200:401,contentType:"application/json",body:JSON.stringify(
+   logged?{
+    store_name:"Loja Jardim",display_name:"Cliente QA",
+    status:"active",joined_at:"2026-11-13T12:30:00Z",
+    terms:info.terms,
+    points_balance:100,points_pending:50,points_expiring:100,
+    points_status:"ledger_only",redemption_enabled:false,
+    orders_verified:false,available_rewards:[],
+    transactions:[
+     {id:"1",kind:"release",points_delta:0,created_at:"2026-11-14T01:20:00Z",
+      description:"Pontos liberados da carência"},
+     {id:"2",kind:"accrue",points_delta:50,created_at:"2026-11-14T01:10:00Z",
+      description:"Compra registrada"},
+    ],note:"Saldo interno não liquidável",
+   }:{detail:"Faça login"}),
+ }));
+ await page.route("**/api/v1/public/clubs/loja-jardim/access/confirm/",r=>{
+  logged=true;
+  return r.fulfill({contentType:"application/json",
+   body:JSON.stringify({authenticated:true})});
+ });
+ await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
+ await page.getByRole("button",{name:"Confirmar e entrar"}).click();
+ const wallet=page.getByRole("region",{name:"Resumo da minha carteira"});
+ await expect(wallet).toContainText("Pontos internos, sem resgate");
+ await expect(wallet).toContainText("Saldo em conferência");
+ await expect(wallet).toContainText("100");
+ await expect(wallet).toContainText("50");
+ await expect(wallet).toContainText("não podem ser trocados por descontos");
+ await expect(page.getByRole("progressbar",{name:"Progresso para próxima recompensa"})).toHaveCount(0);
+ await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Histórico"}).click();
+ await expect(page.getByText("Compra registrada")).toBeVisible();
+ await expect(page.getByText("Pontos liberados da carência")).toBeVisible();
+ await expect(page.getByRole("button",{name:/Resgatar/})).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
+});
