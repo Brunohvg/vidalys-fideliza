@@ -13,6 +13,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -23,6 +24,7 @@ from rest_framework.views import APIView
 
 from apps.core.delivery_tracking import enqueue_email
 from apps.sales.models import DiscountRewardDraft
+from apps.points.models import PointWallet, PointLot, PointEntry, PointEvent
 from apps.core.models import EmailDispatch
 from apps.tenants.branding_models import TenantBranding
 from apps.tenants.models import Tenant
@@ -74,6 +76,67 @@ def _participant(submission):
         return local
     link = getattr(submission, "customer_link", None)
     return link.participant if link else None
+
+
+POINT_HISTORY = {
+    PointEvent.Kind.ACCRUE: ("Compra registrada", 1),
+    PointEvent.Kind.RELEASE: ("Pontos liberados da carência", 0),
+    PointEvent.Kind.RESERVE: ("Pontos reservados", 0),
+    PointEvent.Kind.CANCEL_RESERVE: ("Reserva cancelada", 0),
+    PointEvent.Kind.REDEEM: ("Resgate comprovado", -1),
+    PointEvent.Kind.REVERSE_PENDING: ("Compra estornada antes da liberação", -1),
+    PointEvent.Kind.REVERSE_AVAILABLE: ("Compra estornada após liberação", -1),
+    PointEvent.Kind.EXPIRE_PENDING: ("Pontos expirados em carência", -1),
+    PointEvent.Kind.EXPIRE_AVAILABLE: ("Pontos expirados", -1),
+}
+
+
+def _ledger_snapshot(tenant, participant):
+    """Extrato interno, sem tratar pontos como liquidáveis/resgatáveis.
+
+    Não inclui saldos de lotes expirados mesmo que a rotina de expiração
+    ainda não tenha gravado o lançamento. Nenhuma escrita é realizada.
+    """
+    if not participant or participant.status != ProgramParticipant.Status.ACTIVE:
+        return None
+    wallet = PointWallet.objects.filter(tenant=tenant, participant=participant).first()
+    if wallet is None:
+        return None
+    now = timezone.now()
+    entries = PointEntry.objects.filter(
+        event__lot__wallet=wallet, event__lot__tenant=tenant,
+        event__lot__expires_at__gt=now,
+    )
+    totals = dict(entries.values_list("bucket").annotate(total=Sum("delta")))
+    pending = totals.get("pending", 0) or 0
+    available = totals.get("available", 0) or 0
+    reserved = totals.get("reserved", 0) or 0
+    if any(type(value) is not int or value < 0 for value in (pending, available, reserved)):
+        # Nunca exibir saldo negativo ou inconsistência como pontos utilizáveis.
+        return None
+    soon = (entries.filter(bucket="available",
+             event__lot__expires_at__lte=now + timedelta(days=30))
+            .aggregate(total=Sum("delta"))["total"] or 0)
+    if soon < 0:
+        return None
+    history = []
+    for event in (PointEvent.objects.filter(
+        lot__wallet=wallet, lot__tenant=tenant,
+    ).order_by("-created_at", "-id")[:20]):
+        desc, sign = POINT_HISTORY.get(event.kind, ("Movimentação interna", 0))
+        history.append({
+            "id":str(event.pk),"kind":event.kind,
+            "points_delta":event.amount * sign,
+            "created_at":event.created_at.isoformat(),
+            "description":desc,
+        })
+    return {
+        "points_balance":available,
+        "points_pending":pending,
+        "points_expiring":soon,
+        "points_status":"ledger_only",
+        "transactions":history,
+    }
 
 
 class MemberClubPublicView(APIView):
@@ -219,6 +282,7 @@ class MemberClubMeView(APIView):
         ):
             participant = None
         active = bool(participant and participant.status == ProgramParticipant.Status.ACTIVE)
+        ledger = _ledger_snapshot(tenant,participant) if active else None
         # Somente catálogo publicado pelo tenant. A carteira permanece desativada,
         # sem assumir saldo, elegibilidade ou existência de cupom.
         catalog = DiscountRewardDraft.objects.filter(
@@ -242,14 +306,15 @@ class MemberClubMeView(APIView):
             ),
             "joined_at": participant.joined_at.isoformat() if participant else None,
             "terms": terms_payload(submission.terms),
-            "points_balance": None,
-            "points_pending": None,
-            "points_status": "not_active",
+            "points_balance": ledger["points_balance"] if ledger else None,
+            "points_pending": ledger["points_pending"] if ledger else None,
+            "points_expiring": ledger["points_expiring"] if ledger else None,
+            "points_status": "ledger_only" if ledger else "not_active",
             "available_rewards": published_rewards,
-            "transactions": [],
+            "transactions": ledger["transactions"] if ledger else [],
             "redemption_enabled": False,
             "orders_verified": False,
-            "note": "As recompensas publicadas são apenas para consulta. Pontos e resgates ainda não estão ativos; nenhum cupom é gerado.",
+            "note": "Catálogo disponível para consulta. Saldos internos são informativos e não estão liberados para compras; não há resgate nem cupom ativo.",
         }))
 
 
