@@ -51,12 +51,14 @@ sha256sum "$BACKUP" > "$BACKUP.sha256"
 if ! pg_restore --exit-on-error --no-owner --no-acl --dbname="$FIDELIZA_RESTORE_VERIFY_DATABASE_URL" "$BACKUP" > "$BACKUP.restore.log" 2>&1; then
   die "Restore de conferência falhou. Logs protegidos; nenhuma migração"
 fi
+declare -A BEFORE_COUNTS
 for table in django_migrations tenants_tenant participants_programparticipant sales_salerecord points_pointentry wallets_cashbackentry; do
   found="$(psql "$DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -c "SELECT to_regclass('public.$table') IS NOT NULL")" || die "Falha na conferência de tabelas"
   if [[ "$found" == t ]]; then
     live_count="$(psql "$DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM public.$table")"
     scratch_count="$(psql "$FIDELIZA_RESTORE_VERIFY_DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM public.$table")"
     [[ "$live_count" == "$scratch_count" ]] || die "Restore divergente: $table"
+    BEFORE_COUNTS["$table"]="$live_count"
     printf 'Restore OK: %s (%s linhas)\n' "$table" "$live_count"
   fi
 done
@@ -72,6 +74,14 @@ if ! uv run --locked python manage.py migrate --noinput > "$BACKUP.migration.log
 fi
 uv run --locked python manage.py migrate --check || die "Migração incompleta"
 uv run --locked python manage.py check || die "Django check pós-migração falhou"
+# As migrações PR18–PR22 não devem inserir/remover dados comerciais legados.
+for table in tenants_tenant participants_programparticipant sales_salerecord points_pointentry wallets_cashbackentry; do
+  if [[ -v BEFORE_COUNTS["$table"] ]]; then
+    current_count="$(psql "$DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM public.$table")"
+    [[ "$current_count" == "${BEFORE_COUNTS[$table]}" ]] ||
+      die "Alteração inesperada no número de registros: $table; bloquear deploy e investigar"
+  fi
+done
 invalid_fk="$(psql "$DATABASE_URL" -X -q -A -t -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated")"
 [[ "$invalid_fk" == "0" ]] || die "Constraint FK não validada"
 printf 'MIGRATION_COMPLETED sha=%s backup=%s\n' "$ACTUAL_SHA" "$BACKUP"
