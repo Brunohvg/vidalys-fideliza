@@ -108,6 +108,7 @@ class NuvemshopStatusView(APIView):
                 "will_credit_cashback":False,
             },
             "order_verification":{
+                "order_scope_granted":bool(installed and has_order_access(installed.scope,preview_enabled=True)),
                 "preview_enabled":settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED,
                 "read_only_preview_available":bool(
                     connected and tenant.status==Tenant.Status.ACTIVE and
