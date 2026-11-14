@@ -11,7 +11,7 @@ from apps.tenants.models import Tenant, TenantMembership
 from apps.participants.models import ProgramParticipant
 from apps.wallets.models import CashbackEvent
 from .models import NuvemshopInstallation
-from .order_readonly import OrderReadError, summarize_order, read_order
+from .order_readonly import OrderReadError, OrderNotFound, summarize_order, read_order, read_order_by_number
 
 def order(**kwargs):
     value = {
@@ -46,6 +46,58 @@ class OrderNormalizationTests(SimpleTestCase):
         self.assertIn("/2025-03/54321/orders/87412?", transport.request.full_url)
         self.assertEqual(transport.request.get_method(), "GET")
         self.assertEqual(transport.timeout, 8)
+
+    def test_commercial_number_resolver_matches_exact_id_and_not_partial_q(self):
+        class TwoResponses:
+            def __init__(self,list_data,detail):
+                self.responses=[list_data,detail]
+                self.urls=[]
+            def open(self,request,timeout):
+                self.urls.append(request.full_url)
+                self.body=json.dumps(self.responses.pop(0)).encode()
+                return self
+            def __enter__(self):return self
+            def __exit__(self,*args):return False
+            def read(self,size):return self.body[:size]
+        transport=TwoResponses(
+            [{"id": 17,"number":1411},{"id":2120958234,"number":14111}],
+            order(id=2120958234,number=14111),
+        )
+        resolved=read_order_by_number(
+            store_id=54321,number="14111",
+            access_token="synthetic-token-123456",
+            user_agent="Fideliza Test (x@example.invalid)",opener=transport,
+        )
+        self.assertEqual(resolved["id"],2120958234)
+        self.assertIn("q=14111",transport.urls[0])
+        self.assertIn("/orders/2120958234?",transport.urls[1])
+        self.assertEqual(summarize_order(resolved,order_id=2120958234)["order_number"],"14111")
+
+    def test_order_number_rejects_partial_duplicate_or_invalid_result(self):
+        class ListTransport:
+            def __init__(self,data):self.data=json.dumps(data).encode()
+            def open(self,*args,**kwargs):return self
+            def __enter__(self):return self
+            def __exit__(self,*args):return False
+            def read(self,size):return self.data[:size]
+        args=dict(store_id=54321,number="14111",
+                  access_token="synthetic-token-123456",
+                  user_agent="Fideliza Test (x@example.invalid)")
+        with self.assertRaises(OrderNotFound):
+            read_order_by_number(**args,opener=ListTransport([
+                {"id":2120958234,"number":1411},
+            ]))
+        with self.assertRaises(OrderReadError):
+            read_order_by_number(**args,opener=ListTransport([
+                {"id":2120958234,"number":14111},
+                {"id":363573290,"number":14111},
+            ]))
+        with self.assertRaises(OrderReadError):
+            read_order_by_number(**args,opener=ListTransport({"items":[]}))
+        with self.assertRaises(ValueError):
+            read_order_by_number(**{**args,"number":"#14111"})
+        with self.assertRaises(OrderReadError):
+            summarize_order(order(number="pedido-14111"),order_id=87412)
 
     def test_customer_reported_paid_amount_is_a_cross_check_not_psp_proof(self):
         # Até valores iguais na API da plataforma exigem reconciliação no gateway.
@@ -156,6 +208,36 @@ class OrderPreviewApiTests(TestCase):
         self.assertNotIn("secret@example.invalid", response.content.decode())
         self.assertEqual(external.call_args.kwargs["store_id"], 54321)
         self.assertEqual(CashbackEvent.objects.count(), 0)
+    def test_lookup_by_number_still_checks_scope_tenant_and_does_not_write(self):
+        url=reverse("nuvemshop-order-number-preview",kwargs={"tenant_id":self.tenant.id})
+        with patch("apps.nuvemshop.order_preview_views.config",return_value=self.cfg), \\
+             patch("apps.nuvemshop.order_preview_views.decrypt_token",return_value="synthetic-token-123456"), \\
+             patch("apps.nuvemshop.order_preview_views.read_order_by_number",return_value=order(
+                 id=2120958234,number=14111)) as lookup:
+            response=self.client.get(url,{"number":"14111"},secure=True)
+        self.assertEqual(response.status_code,200,response.content)
+        self.assertEqual(response.json()["order_number"],"14111")
+        self.assertEqual(response.json()["order_id"],"2120958234")
+        self.assertFalse(response.json()["credit_eligible"])
+        self.assertEqual(response.json()["writes_performed"],0)
+        self.assertEqual(lookup.call_args.kwargs["number"],"14111")
+        self.assertNotIn("secret@example.invalid",response.content.decode())
+        self.client.force_login(self.analyst)
+        self.assertEqual(self.client.get(url,{"number":"14111"},secure=True).status_code,403)
+        self.client.force_login(self.foreign)
+        self.assertEqual(self.client.get(url,{"number":"14111"},secure=True).status_code,404)
+
+    def test_lookup_rejects_invalid_numbers_and_mismatched_results(self):
+        url=reverse("nuvemshop-order-number-preview",kwargs={"tenant_id":self.tenant.id})
+        for value in ("#14111","abc","0","-14111","1"*19,""):
+            with self.subTest(value=value):
+                self.assertEqual(self.client.get(url,{"number":value},secure=True).status_code,400)
+        with patch("apps.nuvemshop.order_preview_views.config",return_value=self.cfg), \\
+             patch("apps.nuvemshop.order_preview_views.decrypt_token",return_value="synthetic-token-123456"), \\
+             patch("apps.nuvemshop.order_preview_views.read_order_by_number",return_value=order(
+                 id=2120958234,number=14112)):
+            self.assertEqual(self.client.get(url,{"number":"14111"},secure=True).status_code,502)
+
     def test_scopes_disabled_roles_and_tenant_isolation(self):
         with override_settings(FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=False), \
              patch("apps.nuvemshop.order_preview_views.read_order") as external:
