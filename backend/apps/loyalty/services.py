@@ -350,3 +350,301 @@ def release_grant(*, grant_id):
     grant.status = LoyaltyGrant.Status.RELEASED
     grant.save(update_fields=["status"])
     return grant, True
+
+
+
+def _code_digests(code):
+    if not isinstance(code, str) or not re.fullmatch(r"VF[A-F0-9]{24}", code):
+        raise LoyaltyBlocked("Voucher inválido.")
+    keys = [settings.SECRET_KEY, *getattr(settings, "SECRET_KEY_FALLBACKS", [])]
+    return [
+        salted_hmac("vidalys.voucher.v1", code, secret=key, algorithm="sha256").hexdigest()
+        for key in keys
+    ]
+
+
+def verify_voucher(*, tenant_id, code):
+    """Consulta de validade sem revelar identidade do titular."""
+    match = LoyaltyVoucher.objects.filter(
+        tenant_id=tenant_id, code_digest__in=_code_digests(code),
+    ).select_related("participant").first()
+    if not match:
+        return {"valid": False, "reason": "not_found"}
+    if match.state != LoyaltyVoucher.State.RESERVED:
+        return {"valid": False, "reason": "not_available"}
+    if match.expires_at <= timezone.now():
+        return {"valid": False, "reason": "expired"}
+    if LoyaltyRecovery.objects.filter(
+        grant__tenant_id=tenant_id, grant__participant_id=match.participant_id,
+        resolved_at__isnull=True,
+    ).exists():
+        return {"valid": False, "reason": "recovery_pending"}
+    return {
+        "valid": True, "unit": match.unit,
+        "amount": match.amount, "discount_cents": match.discount_cents,
+        "expires_at": match.expires_at.isoformat(),
+    }
+
+
+@transaction.atomic
+def issue_voucher(*, tenant_id, participant_id, unit, amount):
+    """Reserva carteira e cria voucher único sem disponibilizar cupom na Nuvemshop."""
+    _execution_enabled()
+    if unit not in LoyaltyVoucher.Unit.values or not _integer(amount, minimum=1):
+        raise LoyaltyBlocked("Unidade ou quantidade inválida.")
+    tenant = Tenant.objects.select_for_update().get(pk=tenant_id, status=Tenant.Status.ACTIVE)
+    participant = ProgramParticipant.objects.get(
+        pk=participant_id, tenant=tenant, status=ProgramParticipant.Status.ACTIVE,
+    )
+    if not getattr(participant, "customer_profile", None):
+        raise LoyaltyBlocked("Participante não possui perfil unificado.")
+    if not participant.customer_profile.verified_contacts.exists():
+        raise LoyaltyBlocked("Participante sem contato verificado.")
+    if LoyaltyRecovery.objects.filter(
+        grant__tenant=tenant, grant__participant=participant,
+        resolved_at__isnull=True,
+    ).exists():
+        raise LoyaltyBlocked("Resgate suspenso por recuperação de saldo.")
+    rule = _rule(tenant)
+    now = timezone.now()
+    if not LoyaltyGrant.objects.filter(
+        tenant=tenant, participant=participant, status=LoyaltyGrant.Status.RELEASED,
+        expires_at__gt=now,
+    ).exists():
+        raise LoyaltyBlocked("Não existe benefício confirmado e válido.")
+    discount = amount * rule.point_value_cents if unit == LoyaltyVoucher.Unit.POINTS else amount
+    if not 0 < discount <= MAX_CENTS:
+        raise LoyaltyBlocked("Valor de desconto fora do limite.")
+    token = "VF" + secrets.token_hex(12).upper()
+    voucher = LoyaltyVoucher.objects.create(
+        tenant=tenant, participant=participant, rule=rule,
+        code_digest=_code_digests(token)[0],
+        unit=unit, amount=amount, discount_cents=discount,
+        expires_at=now + timedelta(days=7),
+    )
+    if unit == LoyaltyVoucher.Unit.POINTS:
+        wallet = PointWallet.objects.filter(participant=participant, tenant=tenant).first()
+        if not wallet or point_wallet_balances(wallet)["available"] < amount:
+            raise LoyaltyBlocked("Pontos disponíveis insuficientes.")
+        remaining = amount
+        # FIFO pelo vencimento da compra. Não reservar valores pendentes/expirados.
+        for lot in PointLot.objects.filter(
+            wallet=wallet, tenant=tenant, expires_at__gt=now,
+        ).order_by("expires_at", "pk"):
+            available = lot_balances(lot)["available"]
+            take = min(available, remaining)
+            if take <= 0:
+                continue
+            transition_points(
+                lot_id=lot.pk, kind=PointEvent.Kind.RESERVE, amount=take,
+                idempotency_key=f"voucher:{voucher.pk}:reserve:{lot.pk}",
+            )
+            VoucherPointAllocation.objects.create(voucher=voucher, lot=lot, amount=take)
+            voucher.expires_at = min(voucher.expires_at, lot.expires_at)
+            remaining -= take
+            if not remaining:
+                break
+        if remaining:
+            raise LoyaltyBlocked("Lotes disponíveis insuficientes.")
+        voucher.save(update_fields=["expires_at"])
+    else:
+        wallet = CashbackWallet.objects.filter(participant=participant, tenant=tenant).first()
+        if not wallet or cashback_wallet_balances(wallet)["available_cents"] < amount:
+            raise LoyaltyBlocked("Cashback disponível insuficiente.")
+        append_cashback_event(
+            participant=participant, kind=CashbackEvent.Kind.RESERVE,
+            amount_cents=amount,
+            idempotency_key=f"voucher:{voucher.pk}:reserve",
+            source_order_id=str(voucher.pk), rule_version=f"rule:{rule.version}",
+        )
+    return voucher, token
+
+
+def _cancel_reserved_voucher(voucher):
+    if voucher.state != LoyaltyVoucher.State.RESERVED:
+        return False
+    if voucher.unit == LoyaltyVoucher.Unit.POINTS:
+        for allocation in VoucherPointAllocation.objects.filter(voucher=voucher).select_related("lot"):
+            transition_points(
+                lot_id=allocation.lot_id, kind=PointEvent.Kind.CANCEL_RESERVE,
+                amount=allocation.amount,
+                idempotency_key=f"voucher:{voucher.pk}:cancel:{allocation.lot_id}",
+            )
+            # Se o lote já venceu, os pontos devolvidos não ficam disponíveis.
+            if allocation.lot.expires_at <= timezone.now():
+                transition_points(
+                    lot_id=allocation.lot_id, kind=PointEvent.Kind.EXPIRE_AVAILABLE,
+                    amount=allocation.amount,
+                    idempotency_key=f"voucher:{voucher.pk}:expire:{allocation.lot_id}",
+                )
+    else:
+        append_cashback_event(
+            participant=voucher.participant,
+            kind=CashbackEvent.Kind.CANCEL_RESERVATION, amount_cents=voucher.amount,
+            idempotency_key=f"voucher:{voucher.pk}:cancel",
+            source_order_id=str(voucher.pk), rule_version=f"rule:{voucher.rule.version}",
+        )
+    voucher.state = LoyaltyVoucher.State.CANCELLED
+    voucher.save(update_fields=["state"])
+    return True
+
+
+@transaction.atomic
+def cancel_voucher(*, tenant_id, voucher_id):
+    """Revoga uma reserva interna; não cancela cupons criados fora da aplicação."""
+    _execution_enabled()
+    Tenant.objects.select_for_update().get(pk=tenant_id, status=Tenant.Status.ACTIVE)
+    voucher = LoyaltyVoucher.objects.select_for_update().get(pk=voucher_id, tenant_id=tenant_id)
+    if voucher.state == LoyaltyVoucher.State.REDEEMED:
+        raise LoyaltyBlocked("Voucher utilizado exige reconciliação externa.")
+    return _cancel_reserved_voucher(voucher)
+
+
+@transaction.atomic
+def redeem_voucher(*, tenant_id, code, channel, external_receipt):
+    """Baixa uma reserva SOMENTE após confirmação de aplicação pelo canal autorizado.
+
+    O endpoint de produção permanece desativado. Um recibo fornecido por
+    formulário NÃO equivale a comprovante de checkout Nuvemshop.
+    """
+    _execution_enabled()
+    if channel not in REDEMPTION_CHANNELS or (
+        not isinstance(external_receipt, str)
+        or not SAFE_RECEIPT.fullmatch(external_receipt)
+    ):
+        raise LoyaltyBlocked("Referência de resgate inválida.")
+    Tenant.objects.select_for_update().get(pk=tenant_id, status=Tenant.Status.ACTIVE)
+    voucher = LoyaltyVoucher.objects.select_for_update().filter(
+        tenant_id=tenant_id, code_digest__in=_code_digests(code),
+    ).first()
+    if not voucher:
+        raise LoyaltyBlocked("Voucher não encontrado.")
+    if voucher.state == LoyaltyVoucher.State.REDEEMED:
+        if (voucher.redemption_channel, voucher.redemption_reference) == (channel, external_receipt):
+            return voucher, False
+        raise LoyaltyBlocked("Voucher já utilizado.")
+    if voucher.state != LoyaltyVoucher.State.RESERVED or voucher.expires_at <= timezone.now():
+        raise LoyaltyBlocked("Voucher indisponível ou expirado.")
+    if LoyaltyRecovery.objects.filter(
+        grant__tenant_id=tenant_id, grant__participant=voucher.participant,
+        resolved_at__isnull=True,
+    ).exists():
+        raise LoyaltyBlocked("Saldo em recuperação.")
+    if LoyaltyVoucher.objects.filter(
+        tenant_id=tenant_id, redemption_channel=channel,
+        redemption_reference=external_receipt,
+    ).exclude(pk=voucher.pk).exists():
+        raise LoyaltyBlocked("Referência de resgate já utilizada.")
+    if voucher.unit == LoyaltyVoucher.Unit.POINTS:
+        for allocation in VoucherPointAllocation.objects.filter(voucher=voucher):
+            transition_points(
+                lot_id=allocation.lot_id, kind=PointEvent.Kind.REDEEM,
+                amount=allocation.amount,
+                idempotency_key=f"voucher:{voucher.pk}:redeem:{allocation.lot_id}",
+                external_receipt=external_receipt,
+            )
+    else:
+        append_cashback_event(
+            participant=voucher.participant, kind=CashbackEvent.Kind.REDEEM,
+            amount_cents=voucher.amount,
+            idempotency_key=f"voucher:{voucher.pk}:redeem",
+            source_order_id=external_receipt, rule_version=f"rule:{voucher.rule.version}",
+        )
+    voucher.state = LoyaltyVoucher.State.REDEEMED
+    voucher.redeemed_at = timezone.now()
+    voucher.redemption_channel = channel
+    voucher.redemption_reference = external_receipt
+    voucher.save(update_fields=[
+        "state", "redeemed_at", "redemption_channel", "redemption_reference",
+    ])
+    return voucher, True
+
+
+@transaction.atomic
+def reverse_grant(*, grant_id, refund_evidence_id):
+    """Estorna saldo efetivo; quando já consumido, registra recuperação explícita.
+
+    Nunca debita saldo negativo nem assume que uma venda com status refunded
+    representa um estorno PSP. Prova de estorno separada é obrigatória.
+    """
+    _execution_enabled()
+    base = LoyaltyGrant.objects.get(pk=grant_id)
+    tenant = Tenant.objects.select_for_update().get(pk=base.tenant_id, status=Tenant.Status.ACTIVE)
+    grant = LoyaltyGrant.objects.select_for_update().select_related(
+        "sale", "participant", "rule", "point_lot", "cashback_event",
+    ).get(pk=grant_id, tenant=tenant)
+    if grant.status in (LoyaltyGrant.Status.REVERSED, LoyaltyGrant.Status.RECOVERY):
+        linked = LoyaltyRecovery.objects.filter(grant=grant).first()
+        if linked and linked.evidence_id != refund_evidence_id:
+            raise LoyaltyBlocked("Estorno já registrado com outra evidência.")
+        return grant, False
+    if grant.sale.order_status not in (
+        SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED,
+    ):
+        raise LoyaltyBlocked("Venda ainda não cancelada/estornada.")
+    proof = FinancialEvidence.objects.get(pk=refund_evidence_id)
+    _evidence(
+        proof, kind=FinancialEvidence.Kind.REFUND,
+        sale=grant.sale, amount=grant.eligible_amount_cents,
+    )
+    if proof.occurred_at < grant.captured_at:
+        raise LoyaltyBlocked("Estorno anterior à captura.")
+    # Reservas ainda não usadas são canceladas para liberar o crédito
+    # antes da reversão. Vouchers já resgatados NÃO são desfeitos.
+    vouchers = LoyaltyVoucher.objects.select_for_update().filter(
+        tenant=tenant, participant=grant.participant,
+        state=LoyaltyVoucher.State.RESERVED,
+    )
+    for voucher in vouchers:
+        _cancel_reserved_voucher(voucher)
+    missing_points = 0
+    missing_cashback = 0
+    if grant.point_lot_id:
+        lot = grant.point_lot
+        balances = lot_balances(lot)
+        for bucket, kind in (
+            ("pending", PointEvent.Kind.REVERSE_PENDING),
+            ("available", PointEvent.Kind.REVERSE_AVAILABLE),
+        ):
+            if balances[bucket]:
+                transition_points(
+                    lot_id=lot.pk, kind=kind, amount=balances[bucket],
+                    idempotency_key=f"grant:{grant.pk}:refund:{bucket}",
+                )
+        # Consumo já realizado não pode ser debitado do lote novamente.
+        missing_points = PointEvent.objects.filter(
+            lot=lot, kind=PointEvent.Kind.REDEEM,
+        ).aggregate(total=Sum("amount"))["total"] or 0
+    if grant.cashback_event_id:
+        balance = cashback_wallet_balances(grant.cashback_event.wallet)
+        remaining = grant.cashback_cents
+        for bucket, kind in (
+            ("pending_cents", CashbackEvent.Kind.REVERSE_PENDING),
+            ("available_cents", CashbackEvent.Kind.REVERSE_AVAILABLE),
+        ):
+            take = min(remaining, balance[bucket])
+            if take:
+                append_cashback_event(
+                    participant=grant.participant, kind=kind, amount_cents=take,
+                    idempotency_key=f"grant:{grant.pk}:refund:{bucket}",
+                    source_order_id=str(grant.sale_id), rule_version=f"rule:{grant.rule.version}",
+                )
+                remaining -= take
+        missing_cashback = remaining
+    grant.status = (
+        LoyaltyGrant.Status.RECOVERY if missing_points or missing_cashback
+        else LoyaltyGrant.Status.REVERSED
+    )
+    grant.reversed_at = timezone.now()
+    grant.save(update_fields=["status", "reversed_at"])
+    # Sempre registra a evidência da reversão, mesmo quando recuperado 100%.
+    LoyaltyRecovery.objects.create(
+        grant=grant, evidence=proof, remaining_points=missing_points,
+        remaining_cashback_cents=missing_cashback,
+        resolved_at=None if missing_points or missing_cashback else timezone.now(),
+    )
+    _update_tier(
+        tenant=tenant, participant=grant.participant, rule=grant.rule,
+        now=timezone.now(),
+    )
+    return grant, True
