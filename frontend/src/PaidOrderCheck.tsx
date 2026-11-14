@@ -16,6 +16,10 @@ export const reasons:Record<PaidOrderInspection["review_status"],{
     label:"Pagamento estornado",message:"Há estorno total ou parcial informado.",
     next:"Concilie o estorno antes de liberar qualquer saldo.",
   },
+  blocked_chargeback:{
+    label:"Pagamento contestado",message:"Há uma contestação (chargeback) informada pela loja.",
+    next:"Confira o status com o provedor financeiro. Este pedido não pode gerar pontos.",
+  },
   not_paid:{
     label:"Aguardando pagamento",message:"O pedido ainda não consta integralmente pago.",
     next:"Aguarde a confirmação de pagamento; pedido criado não concede pontos.",
