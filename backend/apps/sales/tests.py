@@ -122,12 +122,12 @@ class ManualSalesTests(TestCase):
             "decision":"approve","note":note,
         },sale_id=sale_id)
         self.assertEqual(result.status_code,200,result.data)
-        self.assertEqual(result.data["review_mode"],"owner_self_review")
+        self.assertEqual(result.data["review_mode"],"self_review")
         self.assertFalse(result.data["independent_payment_proof"])
         self.assertFalse(result.data["points_credited"])
         self.assertEqual(result.data["sale"]["review_note"],note)
         self.assertTrue(result.data["sale"]["reviewed_by_me"])
-        self.assertEqual(result.data["sale"]["review_mode"],"owner_self_review")
+        self.assertEqual(result.data["sale"]["review_mode"],"self_review")
         self.assertEqual(SaleRecord.objects.get(pk=sale_id).reviewed_by_id,self.owner.id)
         self.assertFalse(CashbackEvent.objects.exists())
         self.assertFalse(CashbackWallet.objects.exists())
@@ -135,14 +135,25 @@ class ManualSalesTests(TestCase):
             "decision":"approve","note":note,
         },sale_id=sale_id).status_code,409)
 
-    def test_admin_cannot_self_review_and_other_admin_can_reject(self):
+    def test_admin_can_self_review_without_financial_approval(self):
         self.client.force_login(self.reviewer)
         created=self.create()
         sale_id=created.data["sale"]["id"]
         invalid=self.csrf_post("manual-sale-review",{
             "decision":"approve","note":"Conferi esta venda do balcão no caixa.",
         },sale_id=sale_id)
-        self.assertEqual(invalid.status_code,409)
+        self.assertEqual(invalid.status_code,200,invalid.data)
+        self.assertEqual(invalid.data["review_mode"],"self_review")
+        self.assertFalse(invalid.data["points_credited"])
+        self.assertFalse(invalid.data["independent_payment_proof"])
+        self.assertEqual(SaleRecord.objects.get(pk=sale_id).state,SaleRecord.State.VERIFIED_MANUAL)
+        self.assertFalse(CashbackEvent.objects.exists())
+        self.assertFalse(CashbackWallet.objects.exists())
+        # Novo registro para testar uma rejeição feita por operador diferente.
+        self.body["reference"]="VENDA-00043"
+        self.body["evidence_reference"]="CUPOM-00043"
+        created=self.create()
+        sale_id=created.data["sale"]["id"]
         self.client.force_login(self.owner)
         result=self.csrf_post("manual-sale-review",{
             "decision":"reject","note":"Recibo não confere com a compra registrada.",
