@@ -100,6 +100,6 @@ test("Pedido cancelado ou com API indisponível não libera pontos",async({page}
  await expect(page.getByRole("region",{name:"Resultado da conferência do pedido"}))
   .toContainText("Pedido cancelado");
  await input.fill("987654");await page.getByRole("button",{name:"Conferir pedido"}).click();
- await expect(page.getByRole("alert")).toContainText("Autorize a leitura");
+ await expect(page.locator(".vf-order-check-error")).toContainText("permissão read_orders");
  await expect(page.getByRole("region",{name:"Resultado da conferência do pedido"})).toHaveCount(0);
 });
