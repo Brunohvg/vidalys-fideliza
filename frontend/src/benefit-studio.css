@@ -62,3 +62,12 @@
 .vf-economics>p.vf-economics-alert{color:#854321;border-left:3px solid #da985c;padding:9px 11px;background:#fff5e9;border-radius:5px;font-weight:700}
 @media(max-width:760px){.vf-economics-grid{grid-template-columns:1fr}.vf-economics-grid>div{display:flex;justify-content:space-between;align-items:center;gap:13px;padding:12px 13px}.vf-economics-grid span{flex:1}.vf-economics-grid strong{font-size:18px;text-align:right;flex:none}}
 @media(max-width:360px){.vf-economics{padding:13px}.vf-economics-grid>div{align-items:flex-start}.vf-economics-grid strong{font-size:16px}}
+
+
+/* Publicação informativa: nenhum efeito de carteira ou cupom. */
+.vf-benefit-card>span.vf-reward-visible{color:#116c53;background:#eaf7ee;border:1px solid #c3e8ce;border-radius:99px;justify-self:start;padding:5px 9px}
+.vf-draft-actions .vf-publish-button{background:#087f79;border-color:#087f79;color:#fff}
+.vf-draft-actions .vf-publish-button:hover:not(:disabled){background:#06665e;color:#fff}
+.vf-draft-actions .vf-published-hint{flex:1 1 100%;color:#62786e;line-height:1.5}
+.vf-draft-confirm-actions button.vf-confirm-publish{background:#087f79;border-color:#087f79;color:#fff}
+.vf-draft-confirm-actions button.vf-confirm-publish:hover:not(:disabled){background:#06655e}
