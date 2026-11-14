@@ -183,7 +183,7 @@ export default function RewardDraftEditor({tenantId,role}:{
             Revise essa combinação antes de avançar.</p>}
         <p>A estimativa pressupõe saldo inicial zero e uma compra totalmente elegível.
           Compras separadas podem arredondar pontos de outra forma. Não equivale a
-          desconto automático no pedido nem comprova lucro.
+          desconto automático no pedido e não comprova lucro.
           Verifique custos, outras promoções e frete antes de publicar.</p>
       </div>
       <div className="vf-benefit-footer">
