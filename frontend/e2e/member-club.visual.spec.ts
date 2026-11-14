@@ -173,3 +173,43 @@ test("Meu Clube exibe extrato interno real sem prometer resgate em 390px",async(
  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
   .toBeLessThanOrEqual(1);
 });
+
+
+for(const width of [320,390]){
+ test("Visitante conhece recompensas publicadas antes de aderir em "+width+"px",async({page},info)=>{
+  await page.setViewportSize({width,height:900});
+  await page.route("**/api/v1/auth/session/",r=>r.fulfill({
+   contentType:"application/json",body:JSON.stringify({
+    authenticated:false,user:null,tenants:[],
+   }),
+  }));
+  await page.route("**/api/v1/public/clubs/loja-jardim/",r=>r.fulfill({
+   contentType:"application/json",body:JSON.stringify({
+    ...info,published_rewards:[{
+     id:"ed19e6bd-cf28-4915-9ec3-d1a157c2bd55",
+     title:"R$ 5 no próximo pedido",points_cost:200,discount_cents:500,
+     min_order_cents:3000,status:"locked",points_missing:null,
+     redemption_enabled:false,
+    }],
+   }),
+  }));
+  await page.route("**/api/v1/public/clubs/loja-jardim/me/",r=>r.fulfill({
+   status:401,contentType:"application/json",body:JSON.stringify({detail:"Sem acesso"}),
+  }));
+  await page.goto("/clube/loja-jardim");
+  await expect(page.getByRole("heading",{name:"Mais motivos para voltar à Loja Jardim."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Um bom motivo para voltar"})).toBeVisible();
+  const perks=page.getByRole("region",{name:"Recompensas apresentadas pela loja"});
+  await expect(perks).toContainText("R$ 5 no próximo pedido");
+  await expect(perks).toContainText("200 pontos previstos");
+  await expect(perks).toContainText("R$ 30,00");
+  await expect(perks).toContainText("Resgate em preparação");
+  await expect(page.getByRole("link",{name:"Quero participar"}))
+   .toHaveAttribute("href","/participar/loja-jardim");
+  await expect(page.getByRole("heading",{name:"Bem-vindo de volta"})).toBeVisible();
+  await expect(page.getByRole("button",{name:/Resgatar|Gerar cupom/})).toHaveCount(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+  await page.screenshot({path:info.outputPath("new-club-guest-"+width+".png"),fullPage:true});
+ });
+}
