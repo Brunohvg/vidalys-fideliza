@@ -169,3 +169,18 @@
 .vf-clients-mobile-pulse strong{color:#8e652b;font-weight:700}
 @media(max-width:980px){.vf-client-profile-grid,.vf-client-profile-sales-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.vf-client-profile-heading{display:grid}.vf-client-profile-heading button{justify-self:start}.vf-client-profile-grid,.vf-client-profile-sales-grid{gap:7px}.vf-client-profile-grid>div{padding:10px}.vf-client-profile-sales{padding:13px}}
+
+/* Editor por intenção: recompensa e regra não disputam espaço na mesma tela. */
+.vf-program-page .vf-program-intro{padding:17px 20px;border-radius:14px;gap:14px}
+.vf-program-page .vf-program-intro h2{font-size:clamp(19px,2.1vw,25px);margin:4px 0 6px}
+.vf-program-page .vf-program-intro p{font-size:12px}
+.vf-program-page .vf-program-connection-slim{display:flex;gap:10px;align-items:center;padding:11px 13px}
+.vf-program-connection-slim>svg{color:#087f79;flex:none}
+.vf-program-connection-slim>span{flex:1;min-width:0;font-size:11px;line-height:1.5;color:#466b5d}
+.vf-program-connection-slim>button{font-size:11px;padding:8px 10px;min-height:40px}
+.vf-program-benefit-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+.vf-program-benefit-switch button{display:flex;gap:9px;align-items:center;justify-content:center;min-height:45px;padding:10px 12px;background:#fff;border:1px solid #c9e1d3;color:#286a55;border-radius:11px;font-size:12px;font-weight:800;cursor:pointer}
+.vf-program-benefit-switch button.is-active{background:#e7f5ed;border-color:#91cfad;color:#155d48}
+.vf-program-benefit-switch button:focus-visible{outline:3px solid #36c7b0;outline-offset:2px}
+.vf-program-view-clients{justify-self:start}
+@media(max-width:560px){.vf-program-page .vf-program-intro{padding:15px}.vf-program-page .vf-program-connection-slim{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px}.vf-program-connection-slim>button{grid-column:2;justify-self:start}.vf-program-benefit-switch{gap:5px}.vf-program-benefit-switch button{font-size:11px;padding:9px 5px}}
