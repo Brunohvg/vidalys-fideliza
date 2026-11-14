@@ -1,5 +1,5 @@
 """Consulta limitada à base de participantes, sem autoinscrição ou contatos importados."""
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count, Max
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +10,7 @@ from apps.tenants.models import TenantMembership
 from .models import ProgramParticipant
 from apps.wallets.services import balances_for_participants
 from apps.points.models import PointWallet, PointEntry
+from apps.sales.models import SaleRecord
 
 
 class ParticipantListView(APIView):
@@ -72,15 +73,40 @@ class ParticipantListView(APIView):
             pid = row["event__lot__wallet__participant_id"]
             if pid in point_balances:
                 point_balances[pid][row["bucket"]] = row["total"] or 0
+        # Agregação por participante, apenas do balcão desta loja. Esses
+        # valores são informados no caixa, NÃO receita confirmada pelo PSP.
+        manual_summary = {}
+        sales_rows = (SaleRecord.objects.filter(
+            tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
+            participant_id__in=participant_ids,
+        ).values("participant_id").annotate(
+            manual_sales_count=Count("id"),
+            manual_sales_reviewed=Count("id", filter=Q(state=SaleRecord.State.VERIFIED_MANUAL)),
+            manual_sales_pending=Count("id", filter=Q(state=SaleRecord.State.AWAITING_REVIEW)),
+            manual_sales_reported_cents=Sum("eligible_amount_cents"),
+            last_manual_sale_at=Max("reported_paid_at"),
+        ))
+        for row in sales_rows:
+            manual_summary[row["participant_id"]] = row
         result = []
         for item in page:
             wallet_balance = balances.get(item.id)
             point = point_balances.get(item.id)
+            manual = manual_summary.get(item.id)
             if point and any(v < 0 for v in point.values()):
                 point = None
             result.append({
                 "id": str(item.id),
                 "customer_reference": item.external_customer_id,
+                "nuvemshop_customer_linked": bool(item.external_customer_id),
+                "manual_sales_count": manual["manual_sales_count"] if manual else 0,
+                "manual_sales_reviewed": manual["manual_sales_reviewed"] if manual else 0,
+                "manual_sales_pending": manual["manual_sales_pending"] if manual else 0,
+                "manual_sales_reported_cents": manual["manual_sales_reported_cents"] if manual else 0,
+                "last_manual_sale_at": (
+                    manual["last_manual_sale_at"].isoformat() if manual and manual["last_manual_sale_at"]
+                    else None
+                ),
                 "display_name": item.display_name,
                 "contact_email": item.contact_email,
                 "status": item.status,
