@@ -139,6 +139,26 @@ def _ledger_snapshot(tenant, participant):
     }
 
 
+def _published_catalog(tenant):
+    """Somente ofertas marcadas como publicadas no próprio tenant.
+
+    A mesma lista alimenta visitante e participante. Não contém dados do
+    cliente, saldos, cupons nem promessa de resgate ativo.
+    """
+    return [
+        {
+            "id":str(item.id), "title":item.title,
+            "points_cost":item.points_cost, "discount_cents":item.discount_cents,
+            "min_order_cents":item.min_order_cents, "status":"locked",
+            "points_missing":None, "redemption_enabled":False,
+        }
+        for item in DiscountRewardDraft.objects.filter(
+            tenant=tenant,
+            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+        ).order_by("points_cost","created_at","id")[:30]
+    ]
+
+
 class MemberClubPublicView(APIView):
     permission_classes = [AllowAny]
     http_method_names = ["get", "head", "options"]
@@ -159,6 +179,7 @@ class MemberClubPublicView(APIView):
             "points_enabled": False,
             "rewards_enabled": False,
             "redemption_enabled": False,
+            "published_rewards": _published_catalog(tenant),
         }))
 
 
@@ -283,21 +304,7 @@ class MemberClubMeView(APIView):
             participant = None
         active = bool(participant and participant.status == ProgramParticipant.Status.ACTIVE)
         ledger = _ledger_snapshot(tenant,participant) if active else None
-        # Somente catálogo publicado pelo tenant. A carteira permanece desativada,
-        # sem assumir saldo, elegibilidade ou existência de cupom.
-        catalog = DiscountRewardDraft.objects.filter(
-            tenant=tenant,
-            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
-        ).order_by("points_cost", "created_at", "id")[:30]
-        published_rewards = [
-            {
-                "id":str(item.id),"title":item.title,
-                "points_cost":item.points_cost,"discount_cents":item.discount_cents,
-                "min_order_cents":item.min_order_cents,"status":"locked",
-                "points_missing":None,"redemption_enabled":False,
-            }
-            for item in catalog
-        ]
+        published_rewards = _published_catalog(tenant)
         return secure(Response({
             "store_name": tenant.name,
             "display_name": submission.name,
