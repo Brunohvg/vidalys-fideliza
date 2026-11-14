@@ -269,6 +269,8 @@ export type ManualSaleRecord = {
   participant_name:string|null;eligible_amount_cents:number;reported_paid_at:string;
   evidence_reference:string;state:"awaiting_member"|"awaiting_review"|"verified_manual"|"rejected";
   created_at:string;reviewed_at:string|null;submitted_by_me:boolean;
+  reviewed_by_me:boolean;review_mode:"owner_self_review"|"another_operator"|null;
+  review_note:string|null;
   points_credited:false;cashback_credited:false;
 };
 export type ManualSaleInput = {
@@ -283,6 +285,7 @@ export type ManualSaleResult = {
 };
 export type ManualSaleReviewResult = {
   sale:ManualSaleRecord;manual_evidence_reviewed:true;
+  review_mode:"owner_self_review"|"another_operator";
   independent_payment_proof:false;points_credited:false;
 };
 export type PointRuleDraft = {
