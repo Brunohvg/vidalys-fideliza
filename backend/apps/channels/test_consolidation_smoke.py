@@ -91,7 +91,9 @@ class ConsolidationCrossAppSmokeTests(TestCase):
         # fixtures exercitam a mesma condição sem relaxar SecurityMiddleware.
         self.flow = APIClient(HTTP_X_FORWARDED_PROTO="https")
         self.member = APIClient(
-            enforce_csrf_checks=True, HTTP_X_FORWARDED_PROTO="https",
+            enforce_csrf_checks=True,
+            HTTP_X_FORWARDED_PROTO="https",
+            HTTP_REFERER="https://testserver/",
         )
         self.member.get(reverse("auth-session"))
         self.csrf = self.member.cookies["csrftoken"].value
