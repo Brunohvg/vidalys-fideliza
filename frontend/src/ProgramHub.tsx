@@ -4,13 +4,12 @@ import EnrollmentManagement from "./EnrollmentManagement";
 import PointRuleDraftEditor from "./PointRuleDraftEditor";
 import RewardDraftEditor from "./RewardDraftEditor";
 import LoyaltyTrialPanel from "./LoyaltyTrialPanel";
-import PaidOrderCheck from "./PaidOrderCheck";
 import type {Store} from "./api";
 import "./program-hub.css";
 
-export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewClients}:{
+export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewClients,onViewSales}:{
  tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"];
- onViewClients:()=>void;
+ onViewClients:()=>void;onViewSales:()=>void;
 }){
  const [ruleRefresh,setRuleRefresh]=useState(0);
  const [rewardsRefresh,setRewardsRefresh]=useState(0);
@@ -47,11 +46,11 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
     <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
       tenantStatus={tenantStatus}/>
   </div>
-  {(role==="owner"||role==="admin")&&tenantStatus==="active"&&
-  <details className="vf-program-lab">
-    <summary>Conferir pedido Nuvemshop antes de liberar pontos</summary>
-    <PaidOrderCheck tenantId={tenantId}/>
-  </details>}
+  <div className="vf-program-operation-link">
+    <span>As compras da loja virtual devem ser acompanhadas em <strong>Vendas → Nuvemshop</strong>.
+      Evite registrar no balcão um pedido que já existe no site.</span>
+    <button type="button" onClick={onViewSales}>Acompanhar pedidos <ArrowRight size={16}/></button>
+  </div>
   <details className="vf-program-lab">
     <summary>Testar pontos e recompensas sem publicar</summary>
     <LoyaltyTrialPanel tenantId={tenantId} ruleRefresh={ruleRefresh}
