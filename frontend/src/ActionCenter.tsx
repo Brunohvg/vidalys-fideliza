@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {ArrowRight,CheckCircle2,ClipboardCheck,Gift,PlugZap,ShoppingBag,UsersRound,ShieldCheck} from "lucide-react";
+import {ArrowRight,CheckCircle2,ClipboardCheck,Gift,PlugZap,UsersRound,ShieldCheck} from "lucide-react";
 import {merchantApi,type DiscountRewardDraft,type ManualSaleList,
  type NuvemshopConnectionStatus,type ParticipantDirectoryResponse,type Store} from "./api";
 import "./action-center.css";
