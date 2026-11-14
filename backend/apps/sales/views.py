@@ -42,7 +42,7 @@ def present_sale(sale, *, viewer_id=None):
         "participant_id": str(sale.participant_id) if sale.participant_id else None,
         "participant_name": sale.participant.display_name if sale.participant_id else None,
         "eligible_amount_cents": sale.eligible_amount_cents,
-        "reported_paid_at": sale.reported_paid_at.isoformat(),
+        "reported_paid_at": sale.reported_paid_at.isoformat() if sale.reported_paid_at else None,
         "evidence_reference": sale.evidence_reference,
         "state": sale.state, "created_at": sale.created_at.isoformat(),
         "reviewed_at": sale.reviewed_at.isoformat() if sale.reviewed_at else None,

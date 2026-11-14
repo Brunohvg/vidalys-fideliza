@@ -1201,3 +1201,71 @@ main, Coolify, OAuth, saldos ou conta real.
   exige regras de custo, expiração e elegibilidade explícitas.
 - A fonte de métrica ROI não poderá atribuir toda recompra ao programa
   sem método incremental. Não inventar ROI a partir de vendas totais.
+
+
+## 14/11/2026 — PR #19: ingestão segura multicanal (corte de backend)
+
+**Dependência:** PR #18 (CustomerProfile) ainda aberto em draft; PR #19 é
+empilhado sobre a branch de trabalho #18. Não incorporar à homologação
+sem concluir o PR predecessor e conferir as migrações/CI.
+
+**Mapa de arquivos:** evolui apps/sales/models.py e sales/0004,
+adiciona apps/channels (models/credencial, serializer, services,
+views, adapter Nuvemshop, urls, migração e tests) e adiciona urls/
+INSTALLED_APPS/throttle em config. Atualiza apenas docs/43.
+
+**Contrato POST /api/v1/events/orders/** (BRL apenas neste MVP):
+- tenant_id: UUID da loja; channel: vidalys_flow ou counter.
+- external_order_id: referência interna do canal (1–80 caracteres seguros).
+- customer_identifier: e-mail normalizado ou telefone E.164 já com DDI.
+- total_amount: string decimal (ex. "149.90"), nunca float.
+- currency: "BRL"; status: pending, paid, cancelled ou refunded.
+- source_event_id: opcional, identificador único do evento no canal;
+  ocorreu_at é representado por occurred_at ISO8601 com fuso (opcional).
+  Sem source_event_id, reenvios do mesmo status usam a mesma chave,
+  e conteúdo divergente retorna 409.
+- Resposta inclui sale_id, event_id, created, duplicate, event_outcome,
+  payment_verified=false, points_credited=false, cashback_credited=false.
+- O identificador do PEDIDO combina tenant+canal+external_order_id;
+  o identificador do EVENTO soma source_event_id ou status. Transições
+  legítimas pending→paid→refunded preservam UM registro de venda e
+  acrescentam eventos append-only; retornos de status são ignorados e
+  auditados, sem crédito.
+- Reenvio com mesma chave e conteúdo diferente dá 409; valor e contato
+  divergentes no mesmo pedido exigem revisão. Anotações reportadas como
+  paid NÃO são captura independente nem autorização de fidelização.
+
+**Identidade:** lookup usa VerifiedCustomerContact do PR #18. Sem
+contato previamente verificado, cria CustomerProfile PROVISÓRIO por
+pedido, sem gravar novo contato verificado, sem juntar carteiras e sem
+transferir histórico a participante existente apenas pelo texto recebido.
+Perfil reconhecido por contato verificado pode ser referenciado para
+conferência; nenhuma pontuação é derivada dessa ligação.
+
+**Autorização:** Flow requer Bearer key aleatória por loja, armazenada
+somente com hash Django e revogável. Só componente interno com actor OWNER/ADMIN do tenant
+pode provisionar via issue_flow_key(tenant_id=..., label=..., actor=...),
+que retorna segredo uma vez, sem armazenamento em claro.
+PDV exige sessão Django/CSRF e membership OWNER/ADMIN daquela loja;
+o mesmo dono pode revisar a própria venda no fluxo legado de
+conferência, sem comprovar liquidação externa.
+Nuvemshop NÃO aceita POST público deste contrato. A inbox HMAC atual
+continua intacta; somente a reconsulta OAuth autorizada do pedido
+fornece snapshot normalizado ao adaptador interno, a ser conectado após
+verificação dos dados. O evento do webhook cru tem apenas IDs/tópico.
+Throttle por escopo orders_ingest (60/min/IP) e no-store.
+
+**Migração/compatibilidade:** SaleRecord existente continua canônico;
+registros manuais antigos são preservados e não convertidos em pedidos
+novos silenciosamente. Campos de total/status/origem ficam adicionais,
+sem creditar nada a partir de migrações. É obrigatório BACKUP verificável
+e CI/makemigrations --check antes de rodar sales.0004 no Coolify.
+
+**Teste/aceite:** pytest de canais, migrações e testes existentes de
+sales/nuvemshop; duplicatas, conflito, mudança de status, concorrência
+por tenant, autenticação, dois tenants, identidade verificada vs.
+provisória, cancelamento/estorno, backend sem Nuvemshop e zero ledger.
+Faltam: testes de evento real Flow/PDV, reconsulta Nuvemshop OAuth com
+prova da origem, fila/retry, conciliação PSP, publicação e benchmark UX.
+Estado: CÓDIGO EM REVISÃO até CI; NÃO HOMOLOGADO nem autorizado a
+crédito, cupom, desconto, alteração de estoque ou deploy real.

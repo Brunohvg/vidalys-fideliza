@@ -14,12 +14,19 @@ class SaleRecord(models.Model):
         COUNTER = "counter", "Balcão"
         NUVEMSHOP = "nuvemshop", "Nuvemshop"
         WHATSAPP = "whatsapp", "WhatsApp"
+        VIDALYS_FLOW = "vidalys_flow", "Vidalys Flow"
 
     class State(models.TextChoices):
         AWAITING_MEMBER = "awaiting_member", "Sem participante"
         AWAITING_REVIEW = "awaiting_review", "Conferência pendente"
         VERIFIED_MANUAL = "verified_manual", "Venda manual conferida"
         REJECTED = "rejected", "Rejeitada"
+
+    class OrderStatus(models.TextChoices):
+        PENDING = "pending", "Pendente (informado)"
+        PAID = "paid", "Pago (informado; não conciliado)"
+        CANCELLED = "cancelled", "Cancelado"
+        REFUNDED = "refunded", "Estornado"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="sales_records")
@@ -29,13 +36,26 @@ class SaleRecord(models.Model):
     )
     channel = models.CharField(max_length=16, choices=Channel.choices)
     external_reference = models.CharField(max_length=80)
+    # Compras de canais externos começam com elegibilidade NÃO verificada (0).
     eligible_amount_cents = models.PositiveBigIntegerField()
+    reported_total_cents = models.PositiveBigIntegerField(default=0)
+    order_status = models.CharField(
+        max_length=12, choices=OrderStatus.choices, default=OrderStatus.PENDING,
+    )
+    source_order_key = models.CharField(max_length=64, blank=True, default="")
+    reported_contact_digest = models.CharField(max_length=64, blank=True, default="")
+    customer_profile = models.ForeignKey(
+        "customers.CustomerProfile", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="channel_sales",
+    )
+    status_changed_at = models.DateTimeField(null=True, blank=True)
     currency = models.CharField(max_length=3, default="BRL", editable=False)
-    reported_paid_at = models.DateTimeField()
-    evidence_reference = models.CharField(max_length=80)
+    reported_paid_at = models.DateTimeField(null=True, blank=True)
+    evidence_reference = models.CharField(max_length=80, blank=True, default="")
     state = models.CharField(max_length=24, choices=State.choices, default=State.AWAITING_REVIEW)
     submitted_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="submitted_manual_sales",
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="submitted_manual_sales",
     )
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
@@ -53,13 +73,55 @@ class SaleRecord(models.Model):
                 name="sales_unique_channel_document",
             ),
             models.CheckConstraint(
-                condition=Q(eligible_amount_cents__gt=0),
-                name="sales_positive_eligible_amount",
+                condition=Q(eligible_amount_cents__gte=0),
+                name="sales_nonnegative_eligible_amount",
             ),
         ]
         indexes = [
             models.Index(fields=["tenant", "state", "created_at"], name="sales_tenant_state_idx"),
         ]
+
+
+class SaleEventReceipt(models.Model):
+    """Histórico append-only de recepção. Evento 'paid' NÃO comprova captura no PSP."""
+
+    class Outcome(models.TextChoices):
+        APPLIED = "applied", "Estado aplicado"
+        IGNORED = "ignored", "Notificação antiga ou inválida para avançar estado"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    sale = models.ForeignKey(SaleRecord, on_delete=models.PROTECT, related_name="inbound_events")
+    channel = models.CharField(max_length=24)
+    source_event_id = models.CharField(max_length=80, blank=True, default="")
+    idempotency_key = models.CharField(max_length=64, unique=True)
+    payload_digest = models.CharField(max_length=64)
+    reported_status = models.CharField(max_length=12, choices=SaleRecord.OrderStatus.choices)
+    reported_total_cents = models.PositiveBigIntegerField()
+    outcome = models.CharField(max_length=12, choices=Outcome.choices)
+    occurred_at = models.DateTimeField(null=True, blank=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "channel", "source_event_id"],
+                condition=~Q(source_event_id=""),
+                name="sales_source_event_once",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["sale", "received_at"], name="sales_inbox_sale_idx"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Evento de venda é imutável.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Evento de venda não pode ser excluído.")
 
 
 class PointRuleDraft(models.Model):
