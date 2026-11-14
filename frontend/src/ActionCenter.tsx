@@ -1,232 +1,138 @@
-import {useEffect, useState} from "react";
-import {
-  ArrowRight, BarChart3, CheckCircle2, CircleHelp, Gift, HeartHandshake,
-  LockKeyhole, PlugZap, ShieldCheck, ShoppingBag, Sparkles, UsersRound
-} from "lucide-react";
-import {merchantApi, type PointCampaignDraft, type ParticipantDirectoryResponse, type NuvemshopConnectionStatus, type ManualSaleList, type Store} from "./api";
+import {useEffect,useState} from "react";
+import {ArrowRight,CheckCircle2,ClipboardCheck,Gift,PlugZap,ShoppingBag,UsersRound,ShieldCheck} from "lucide-react";
+import {merchantApi,type DiscountRewardDraft,type ManualSaleList,
+ type NuvemshopConnectionStatus,type ParticipantDirectoryResponse,type Store} from "./api";
+import "./action-center.css";
 
-type Destination = "program"|"clients"|"sales"|"campaign"|"catalog"|"results"|"settings";
-type Action = {
-  title:string;
-  body:string;
-  reason:string;
-  target:Destination;
-  callToAction:string;
-  icon:typeof Gift;
+type Destination="program"|"clients"|"sales"|"campaign"|"catalog"|"results"|"settings";
+type Data={
+ participants:ParticipantDirectoryResponse|null;
+ integration:NuvemshopConnectionStatus|null;
+ sales:ManualSaleList|null;
+ rewards:DiscountRewardDraft[]|null;
+ incomplete:boolean;
 };
-
-export default function ActionCenter({
-  tenantId, role, onNavigate
-}: {tenantId:string; role:Store["role"]; onNavigate:(target:Destination)=>void}) {
-  const [participants,setParticipants]=useState<ParticipantDirectoryResponse|null>(null);
-  const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
-  const [drafts,setDrafts]=useState<{items:PointCampaignDraft[]}|null>(null);
-  const [draftsError,setDraftsError]=useState(false);
-  const [recentSales,setRecentSales]=useState<ManualSaleList|null>(null);
-  const [salesError,setSalesError]=useState(false);
-  const canManageSales=role==="owner"||role==="admin";
-  const [participantsError,setParticipantsError]=useState(false);
-  const [integrationError,setIntegrationError]=useState(false);
-
-  useEffect(()=>{
-    let active=true;
-    setParticipants(null);setIntegration(null);setDrafts(null);setRecentSales(null);
-    setParticipantsError(false);setIntegrationError(false);setDraftsError(false);setSalesError(false);
-    merchantApi.listParticipants(tenantId).then(r=>{if(active)setParticipants(r)})
-      .catch(()=>{if(active)setParticipantsError(true)});
-    merchantApi.listPointCampaignDrafts(tenantId).then(r=>{if(active)setDrafts(r)})
-      .catch(()=>{if(active)setDraftsError(true)});
-    merchantApi.nuvemshopStatus(tenantId).then(r=>{if(active)setIntegration(r)})
-      .catch(()=>{if(active)setIntegrationError(true)});
-    if(canManageSales)merchantApi.listManualSales(tenantId)
-      .then(r=>{if(active)setRecentSales(r)})
-      .catch(()=>{if(active)setSalesError(true)});
-    return ()=>{active=false};
-  },[tenantId,canManageSales]);
-
-  const actions:Action[] = [];
-  if (participants && participants.summary.total===0) {
-    actions.push({
-      title:"Prepare a primeira adesão",
-      body:"Defina as regras e o aceite do programa. Compradores da loja só poderão virar participantes após consentimento.",
-      reason:"Não existem participantes cadastrados nesta loja.",
-      target:"program",callToAction:"Configurar programa",icon:HeartHandshake,
-    });
-  }
-  if (participants && participants.summary.total>0) {
-    actions.push({
-      title:"Organize os participantes",
-      body:"Confira as adesões registradas e as situações ativas ou pausadas. Nenhum ponto é concedido sem compra e regra verificadas.",
-      reason:participants.summary.total+" participante(s) registrado(s) com aceite nesta loja.",
-      target:"clients",callToAction:"Abrir clientes",icon:UsersRound,
-    });
-  }
-  if(canManageSales && recentSales){
-    const pending=recentSales.items.filter(s=>s.state==="awaiting_review").length;
-    actions.push({
-      title:pending>0?"Há vendas para conferir":
-        recentSales.items.length>0?"Acompanhe suas vendas do balcão":"Registre uma venda do balcão",
-      body:pending>0
-        ?"Confira os comprovantes com um segundo administrador. Esta etapa ainda não libera pontos."
-        :recentSales.items.length>0
-          ?"Consulte os registros e os participantes. A pontuação automática ainda não está ativa."
-          :"Selecione um participante, informe o valor e o número do comprovante em três passos.",
-      reason:pending>0
-        ?pending+" venda(s) aguardando revisão entre os últimos 30 registros."
-        :"O balcão funciona sem vincular uma Nuvemshop.",
-      target:"sales",callToAction:pending>0?"Ver conferências":"Abrir Vendas",
-      icon:ShoppingBag,
-    });
-  }
-  if(drafts?.items.length){
-    const latest=drafts.items[0];
-    actions.push({
-      title:"Retome seu planejamento",
-      body:"Você já planejou "+latest.bonus_points+" pontos extras para até "+latest.max_customers+" participantes. Confira essa ideia antes de divulgar qualquer benefício.",
-      reason:drafts.items.length+" rascunho(s) de pontos salvo(s). Nenhuma campanha foi publicada.",
-      target:"campaign",callToAction:"Ver planejamento",icon:Gift,
-    });
+export default function ActionCenter({tenantId,role,onNavigate}:{
+ tenantId:string;role:Store["role"];onNavigate:(target:Destination)=>void;
+}){
+ const canManage=role==="owner"||role==="admin";
+ const [data,setData]=useState<Data|null>(null);
+ useEffect(()=>{
+  let active=true;setData(null);
+  const load=async()=>{
+   const [people,connection,sales,rewards]=await Promise.allSettled([
+    merchantApi.listParticipants(tenantId),
+    merchantApi.nuvemshopStatus(tenantId),
+    canManage?merchantApi.listManualSales(tenantId):Promise.resolve(null),
+    canManage?merchantApi.listDiscountRewardDrafts(tenantId):Promise.resolve(null),
+   ]);
+   if(!active)return;
+   setData({
+    participants:people.status==="fulfilled"?people.value:null,
+    integration:connection.status==="fulfilled"?connection.value:null,
+    sales:sales.status==="fulfilled"?sales.value:null,
+    rewards:rewards.status==="fulfilled"&&rewards.value?rewards.value.items:null,
+    incomplete:people.status==="rejected"||connection.status==="rejected"||
+      (canManage&&(sales.status==="rejected"||rewards.status==="rejected")),
+   });
+  };
+  void load();
+  return()=>{active=false};
+ },[tenantId,canManage]);
+ const count=data?.participants?.summary.active;
+ const pending=data?.sales?.items.filter(v=>v.state==="awaiting_review").length;
+ const published=data?.rewards?.filter(v=>v.published).length;
+ const connected=data?.integration?.connected;
+ const ordersReady=data?.integration?.order_verification?.read_only_preview_available;
+ let next={
+  heading:"Prepare sua loja para fidelizar",
+  detail:"Conecte a Nuvemshop ou configure o programa de uma loja física.",
+  button:"Abrir Configurações",
+  destination:"settings" as Destination,
+ };
+ if(data){
+  if(canManage&&pending!==undefined&&pending>0){
+   next={heading:"Confira as vendas do balcão",detail:
+    pending+" lançamento(s) aguardando conferência. Isso não concede pontos automaticamente.",
+    button:"Conferir vendas",destination:"sales"};
+  }else if(data.integration&&!connected){
+   next={heading:"Conecte sua Nuvemshop",detail:
+    "Autorize a loja uma vez. Assim o Fideliza poderá ler pedidos sem recadastrá-los manualmente.",
+    button:"Configurar integração",destination:"settings"};
+  }else if(count===0){
+   next={heading:"Convide o primeiro participante",detail:
+    "Defina o regulamento e compartilhe o clube. O cliente deve confirmar a adesão.",
+    button:"Preparar meu clube",destination:"program"};
+  }else if(published===0){
+   next={heading:"Prepare a primeira recompensa",detail:
+    "Crie o benefício e publique-o para consulta; o resgate só ficará ativo após a integração financeira.",
+    button:"Configurar benefícios",destination:"program"};
+  }else if(connected){
+   next={heading:"Acompanhe as compras do site",detail:
+    "Consulte os pedidos na Nuvemshop. A pontuação ainda exige conciliação de pagamento.",
+    button:"Ver pedidos",destination:"sales"};
   }else{
-    actions.push({
-      title:"Desenhe sua primeira campanha",
-      body:"Escolha segunda compra, reativação ou recorrência e planeje pontos extras sem enviar mensagens.",
-      reason:"O motor de benefícios ainda está em desenvolvimento; a ferramenta não publica campanhas.",
-      target:"campaign",callToAction:"Planejar benefício",icon:Gift,
-    });
+   next={heading:"Veja os participantes do clube",detail:
+    "Acompanhe adesões e lançamentos registrados, sem métricas inventadas.",
+    button:"Ver participantes",destination:"clients"};
   }
-  if (integration && !integration.connected) {
-    actions.push({
-      title:"Integre sua Nuvemshop quando quiser",
-      body:integration.configured
-        ?"Autorize a Nuvemshop para analisar uma amostra de produtos e variantes, sem alterar seu catálogo."
-        :"A conexão será liberada depois da configuração segura do aplicativo na homologação.",
-      reason:"A Nuvemshop é um canal opcional. A loja física funciona independentemente.",
-      target:"settings",callToAction:"Conectar canal",icon:PlugZap,
-    });
-  } else if (integration?.connected) {
-    actions.push({
-      title:"Confira o acesso à Nuvemshop",
-      body:integration.connection_check?.catalog_scope_granted===false
-        ?"A autorização existe, mas falta permissão de leitura dos produtos. Corrija no Portal de Parceiros e reinstale o aplicativo."
-        :"A autorização foi registrada. Verifique a leitura real da loja antes de confiar na conexão.",
-      reason:"Autorização registrada não prova que o token continua válido.",
-      target:"settings",callToAction:"Verificar conexão",icon:PlugZap,
-    });
-  }
-  if (actions.length<3) {
-    actions.push({
-      title:"Prepare a medição de resultados",
-      body:"A futura área de resultados distinguirá compras, benefícios concedidos, resgates e recompras comprovadas.",
-      reason:"Sem eventos e pedidos autorizados, ainda não há receita atribuível ao programa.",
-      target:"results",callToAction:"Ver resultados",icon:BarChart3,
-    });
-  }
-
-  const readiness = [
-    {
-      title:"Participantes do clube",
-      detail:"O cliente aceita as regras e confirma sua identidade antes de ganhar pontos.",
-      status:participantsError?"unknown":participants?.summary.total?"ready":"not_ready",
-      destination:(participants?.summary.total?"clients":"program") as Destination,
-      action:"Ver participantes",
-    },
-    ...(canManageSales?[{
-      title:"Vendas de balcão",
-      detail:"Registre o comprovante de forma simples. O processamento financeiro ainda será conectado.",
-      status:salesError?"unknown":recentSales?.items.length?"ready":"not_ready",
-      destination:"sales" as const,action:"Abrir Vendas",
-    }]:[]),
-
-    {
-      title:"Simular recompensas",
-      detail:"Planeje pontos extras sem publicar nem conceder pontos.",
-      status:draftsError?"unknown":drafts?.items.length?"ready":"not_ready",
-      destination:"campaign" as const,action:"Planejar",
-    },
-    {
-      title:"Nuvemshop (canal opcional)",
-      detail:"A loja pode operar sem e-commerce. Use a integração quando quiser automatizar compras no site.",
-      status:integrationError?"unknown":integration?.connected?"authorized":"optional",
-      destination:"settings" as const,action:"Ver conexão",
-    },
-    {
-      title:"Pontos e resgates nas compras",
-      detail:"Exigem pagamento verificado, regra publicada e carteira de pontos validada.",
-      status:"locked",
-      destination:null,action:"",
-    },
-  ];
-
-  return <div className="xp-action-center">
-    <section className="xp-action-banner">
-      <div><span className="xp-eyebrow"><Sparkles size={16}/> FIDELIZAÇÃO INTELIGENTE</span>
-        <h2>O que fazer agora para<br/><em>seus clientes voltarem?</em></h2>
-        <p>Menos telas para configurar. Mais clareza sobre a próxima ação e o que precisa estar pronto antes de oferecer um benefício.</p>
-        <div className="xp-action-safe"><ShieldCheck size={16}/> Sugestões explicáveis. Nenhuma ação é executada sem sua aprovação.</div>
-      </div>
-      <div className="xp-action-decoration" aria-hidden="true"><HeartHandshake size={75} strokeWidth={1.25}/></div>
-    </section>
-
-    <section className="xp-action-section">
-      <div className="xp-section-heading"><span className="portal-eyebrow">PRÓXIMOS PASSOS DA LOJA</span>
-        <h2>Seu plano de ação</h2>
-        <p>Recomendações baseadas no estado conhecido do sistema, não em vendas inventadas.</p></div>
-      {(integrationError||participantsError||draftsError||salesError) && <div className="xp-action-warning" role="status">
-        <CircleHelp size={18}/> Alguns dados não puderam ser consultados. As sugestões abaixo não representam uma avaliação completa da loja.
-      </div>}
-      <div className="xp-action-cards">
-        {actions.slice(0,3).map((action,i)=>{const Icon=action.icon;return <article key={action.title} className="xp-action-card">
-          <div className="xp-action-top"><span className="xp-action-number">0{i+1}</span><span className="xp-action-icon"><Icon size={24}/></span></div>
-          <h3>{action.title}</h3><p>{action.body}</p>
-          <div className="xp-action-reason"><CircleHelp size={15}/>{action.reason}</div>
-          <button type="button" onClick={()=>onNavigate(action.target)} className="xp-action-link">
-            {action.callToAction} <ArrowRight size={17}/></button>
-        </article>})}
-      </div>
-    </section>
-
-    <section className="xp-journey" aria-labelledby="xp-journey-title">
-      <div className="xp-section-heading">
-        <span className="portal-eyebrow">EVOLUÇÃO DO SEU CLUBE</span>
-        <h2 id="xp-journey-title">Sua jornada, sem atalhos.</h2>
-        <p>Acompanhe as partes verificadas do seu clube. Conectar a Nuvemshop é opcional.</p>
-      </div>
-      <ol className="xp-journey-list">
-        {readiness.map((step,index)=><li key={step.title}
-          className={"xp-journey-item "+step.status}>
-          <span className="xp-journey-number" aria-hidden="true">
-            {step.status==="ready"?<CheckCircle2 size={20}/>:
-             step.status==="locked"?<LockKeyhole size={18}/>:String(index+1).padStart(2,"0")}
-          </span>
-          <div className="xp-journey-copy">
-            <strong>{step.title}</strong>
-            <p>{step.detail}</p>
-          </div>
-          <span className="xp-journey-state">
-            {step.status==="ready"?"Disponível":
-             step.status==="locked"?"Ainda não liberado":
-             step.status==="authorized"?"Autorizada; verificar":
-             step.status==="optional"?"Opcional":
-             step.status==="unknown"?"Não foi possível verificar":"A preparar"}
-          </span>
-          {step.destination&&<button type="button" className="xp-journey-link"
-            onClick={()=>onNavigate(step.destination)}>
-            {step.action}<ArrowRight size={15}/>
-          </button>}
-        </li>)}
-      </ol>
-      <p className="xp-journey-safety">
-        <ShieldCheck size={16}/> Um benefício só será aplicado quando
-        o pedido pago e a regra financeira estiverem verificados.
-      </p>
-    </section>
-
-    <section className="xp-ai-note">
-      <span className="xp-ai-note-symbol"><Sparkles size={22}/></span>
-      <div><strong>Próxima evolução: sugestões com IA</strong>
-        <p>O Gemini poderá ajudar a escrever campanhas e explicar oportunidades com indicadores agregados. Antes de ativá-lo, vamos configurar o controle de privacidade e de custo da API. Nenhum dado de clientes é enviado a modelos externos nesta versão.</p>
-      </div>
-      <span className="xp-ai-stage"><LockKeyhole size={15}/> Ainda não conectado</span>
-    </section>
-  </div>;
+ }
+ return <div className="vf-home" aria-label="Resumo da loja">
+  <section className="vf-home-welcome">
+   <span className="portal-eyebrow">VISÃO GERAL</span>
+   <h2>Seu clube, sem complicação.</h2>
+   <p>Uma visão rápida do que existe hoje e do que precisa da sua atenção.</p>
+  </section>
+  {data?.incomplete&&<p className="vf-home-warning" role="status">
+   Alguns dados estão indisponíveis. Um traço não significa zero.
+  </p>}
+  <section className="vf-home-overview" aria-label="Indicadores reais do clube">
+   <article><div><UsersRound size={18}/><span>Participantes ativos</span></div>
+    <strong>{data?count??"—":"…"}</strong>
+    <small>Adesões registradas</small>
+    <button type="button" onClick={()=>onNavigate("clients")}>Ver clientes <ArrowRight size={14}/></button>
+   </article>
+   <article><div><ClipboardCheck size={18}/><span>Vendas para conferir</span></div>
+    <strong>{data?pending??"—":"…"}</strong>
+    <small>Até 30 registros do balcão</small>
+    <button type="button" onClick={()=>onNavigate("sales")}>Ver vendas <ArrowRight size={14}/></button>
+   </article>
+   <article><div><Gift size={18}/><span>Recompensas exibidas</span></div>
+    <strong>{data?published??"—":"…"}</strong>
+    <small>Catálogo do Meu Clube, não cupons liberados</small>
+    <button type="button" onClick={()=>onNavigate("program")}>Ver benefícios <ArrowRight size={14}/></button>
+   </article>
+  </section>
+  <section className="vf-home-next" aria-labelledby="vf-home-next-title">
+   <div className="vf-home-next-symbol"><CheckCircle2 size={24}/></div>
+   <div className="vf-home-next-copy">
+    <span className="portal-eyebrow">PRÓXIMA AÇÃO RECOMENDADA</span>
+    <h3 id="vf-home-next-title">{data?next.heading:"Verificando sua loja…"}</h3>
+    <p>{data?next.detail:"Consultando o estado atual do clube."}</p>
+   </div>
+   <button type="button" disabled={!data} onClick={()=>onNavigate(next.destination)}>
+    {next.button}<ArrowRight size={17}/>
+   </button>
+  </section>
+  <section className="vf-home-integrations" aria-label="Resumo de integração">
+   <div className="vf-home-integration-icon"><PlugZap size={20}/></div>
+   <div>
+    <strong>Nuvemshop</strong>
+    <p>{!data?"Verificando a autorização…":
+      data.integration===null?"Situação indisponível":
+      !connected?"Integração não autorizada nesta loja":
+      ordersReady?"Leitura de pedidos habilitada · saldo e cupons ainda não automáticos":
+      "Autorização registrada · leitura de pedidos ainda depende de permissão ou configuração"}
+    </p>
+   </div>
+   <button type="button" onClick={()=>onNavigate(connected?"sales":"settings")}>
+    {connected?"Ver pedidos":"Conectar"}<ArrowRight size={15}/>
+   </button>
+  </section>
+  <p className="vf-home-safe"><ShieldCheck size={16}/>
+   O Fideliza ainda não calcula ROI, vendas atribuídas nem pontos a partir
+   de pedidos online. Esses dados só aparecerão quando a integração
+   transacional estiver validada.
+  </p>
+ </div>;
 }
