@@ -31,7 +31,7 @@ from .services import (
     record_engagement_eligibility,
 )
 
-from .tasks import release_due_grants, scan_winback, reconcile_verified_refunds
+from .tasks import release_due_grants, scan_winback, reconcile_verified_refunds, scan_verified_birthdays
 
 
 @override_settings(
@@ -550,3 +550,30 @@ class LoyaltyFinancialTests(TestCase):
             result = reconcile_verified_refunds()
         self.assertTrue(result["skipped"])
         self.assertEqual(result["reversed"], 0)
+
+
+    def test_birthday_task_requires_verified_birthdate_and_opt_in(self):
+        now = timezone.now()
+        profile = CustomerProfile.objects.get(pk=self.profile.pk)
+        profile.birth_date = now.date().replace(year=2001)
+        profile.birth_date_verified_at = now
+        profile.birth_date_consent_at = now
+        profile.save(update_fields=[
+            "birth_date", "birth_date_verified_at", "birth_date_consent_at",
+        ])
+        with override_settings(FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED=True):
+            without_phone = scan_verified_birthdays()
+        self.assertEqual(without_phone["created"], 0)
+        attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            phone_e164="+5531999999999", proof_method="whatsapp_otp",
+        )
+        with override_settings(FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED=True):
+            first = scan_verified_birthdays()
+            second = scan_verified_birthdays()
+        self.assertEqual(first["created"], 1)
+        self.assertEqual(second["created"], 0)
+        self.assertEqual(LoyaltyEngagement.objects.count(), 1)
+        self.assertEqual(first["notifications_sent"], 0)
+        self.assertFalse(PointEvent.objects.exists())
+        self.assertFalse(CashbackEvent.objects.exists())

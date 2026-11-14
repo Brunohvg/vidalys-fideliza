@@ -7,10 +7,11 @@ from django.db.models import Max
 from django.utils import timezone
 
 from apps.participants.models import ProgramParticipant
+from apps.customers.models import CustomerProfile
 from apps.tenants.models import Tenant
 
 from .models import FinancialEvidence, LoyaltyEngagement, LoyaltyGrant, LoyaltyRule
-from .services import LoyaltyBlocked, release_grant, reverse_grant
+from .services import LoyaltyBlocked, record_engagement_eligibility, release_grant, reverse_grant
 
 
 @shared_task(name="loyalty.scan_winback", ignore_result=True)
@@ -104,3 +105,31 @@ def reconcile_verified_refunds():
         except (LoyaltyBlocked, PermissionError):
             review_count += 1
     return {"skipped": False, "reversed": reversed_count, "pending_review": review_count}
+
+
+
+@shared_task(name="loyalty.scan_verified_birthdays", ignore_result=True)
+def scan_verified_birthdays():
+    """Somente elegibilidade anual; NÃO envia campanha nem cria pontos."""
+    if not getattr(settings, "FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED", False):
+        return {"skipped": True, "created": 0, "notifications_sent": 0}
+    now = timezone.now()
+    created = 0
+    candidates = CustomerProfile.objects.filter(
+        tenant__status=Tenant.Status.ACTIVE,
+        participant__status=ProgramParticipant.Status.ACTIVE,
+        birth_date__month=now.month, birth_date__day=now.day,
+        birth_date_verified_at__isnull=False,
+        birth_date_consent_at__isnull=False,
+    ).values_list("participant_id", flat=True)[:500]
+    for participant_id in candidates:
+        try:
+            _, added = record_engagement_eligibility(
+                participant_id=participant_id,
+                kind=LoyaltyEngagement.Kind.BIRTHDAY,
+                now=now,
+            )
+            created += int(added)
+        except (LoyaltyBlocked, ProgramParticipant.DoesNotExist):
+            continue
+    return {"skipped": False, "created": created, "notifications_sent": 0}
