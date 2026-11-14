@@ -27,7 +27,12 @@ async function mockMerchant(page:Page) {
 }
 async function nav(page:Page,name:string,width:number){
   if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.getByRole("button",{name:new RegExp("^"+name)}).click();
+  if(["Campanhas","Resultados","Custo dos benefícios","Custos por SKU","Conciliação"].includes(name)){
+   const group=page.locator(".portal-advanced-menu");
+   if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))
+     await group.locator("summary").click();
+  }
+  await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+name)}).click();
 }
 for(const width of [390,768,1440]) {
   test("Nova experiência: ações, clientes e campanha guiada em "+width+"px",
