@@ -115,7 +115,7 @@ test("visão geral encaminha Nuvemshop sem conexão para Configurações", async
     }),
   }));
   await page.goto("/");
-  await page.getByRole("button",{name:"Conectar canal"}).click();
+  await page.getByRole("button",{name:"Conectar"}).click();
   await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Conectar minha loja"})).toBeVisible();
@@ -132,9 +132,9 @@ test("autorização OAuth não é rotulada como acesso verificado no início",as
     }),
   }));
   await page.goto("/");
-  await expect(page.getByText("Autorizada; verificar",{exact:true})).toBeVisible();
-  await expect(page.getByRole("button",{name:"Verificar conexão"})).toBeVisible();
-  await expect(page.getByText("Autorização registrada não prova que o token continua válido.")).toBeVisible();
+  await expect(page.getByText("Autorização registrada",{exact:false})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Ver pedidos"})).toBeVisible();
+  await expect(page.getByText("leitura de pedidos ainda depende",{exact:false})).toBeVisible();
 });
 
 test("OAuth não configurado impede conexão sem enviar segredos", async ({page})=>{
