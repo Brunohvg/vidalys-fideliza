@@ -290,6 +290,7 @@ class LoyaltyEngagement(models.Model):
 
 class VoucherCashbackAllocation(models.Model):
     """Reserva de cashback por crédito de compra e voucher, imutável."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     voucher = models.ForeignKey(
         LoyaltyVoucher, on_delete=models.PROTECT, related_name="cashback_allocations",
     )

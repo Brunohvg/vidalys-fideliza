@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="VoucherCashbackAllocation",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
                 ("amount_cents", models.PositiveBigIntegerField()),
                 ("origin_event", models.ForeignKey(
                     to="wallets.cashbackevent", on_delete=django.db.models.deletion.PROTECT,
