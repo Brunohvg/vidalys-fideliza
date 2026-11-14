@@ -229,7 +229,8 @@ def _published_catalog(tenant):
         {
             "id":str(item.id), "title":item.title,
             "points_cost":item.points_cost, "discount_cents":item.discount_cents,
-            "min_order_cents":item.min_order_cents, "status":"locked",
+            "min_order_cents":item.min_order_cents,
+            "redemption_unit":item.redemption_unit, "status":"locked",
             "points_missing":None, "redemption_enabled":False,
         }
         for item in DiscountRewardDraft.objects.filter(

@@ -76,20 +76,22 @@ export function MemberWalletOverview({me,pointsReady,ledgerOnly}:{
 
 type VoucherResponse={code:string;voucher_id:string;discount_cents:number;expires_at:string;external_coupon_created:false};
 
-export function MemberRedeemAction({slug,me,rewardPoints}:{
-  slug:string;me:MemberClubPrivate;rewardPoints:number|null;
+export function MemberRedeemAction({slug,me,reward}:{
+  slug:string;me:MemberClubPrivate;
+  reward:MemberClubPrivate["available_rewards"][number]|null;
 }){
   const [busy,setBusy]=useState(false);
   const [issued,setIssued]=useState<VoucherResponse|null>(null);
   const [message,setMessage]=useState("");
   const canRedeem=me.redemption_enabled&&me.points_status==="verified"
-    &&typeof me.points_balance==="number"&&rewardPoints!==null
-    &&me.points_balance>=rewardPoints;
+    &&typeof me.points_balance==="number"&&reward!==null
+    &&reward.redemption_enabled&&reward.status==="available"
+    &&reward.redemption_unit==="points"&&me.points_balance>=reward.points_cost;
   const generate=async()=>{
-    if(!canRedeem||rewardPoints===null||busy)return;
+    if(!canRedeem||reward===null||busy)return;
     setBusy(true);setMessage("");
     try{
-      setIssued(await publicEnrollmentApi.clubIssueVoucher(slug,"points",rewardPoints));
+      setIssued(await publicEnrollmentApi.clubIssueVoucher(slug,reward.id));
     }catch(cause){
       setMessage(cause instanceof ApiError?cause.message:
         "Não foi possível gerar o voucher. Confira o saldo e tente novamente.");

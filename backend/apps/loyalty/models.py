@@ -230,6 +230,14 @@ class LoyaltyVoucher(models.Model):
     redeemed_at = models.DateTimeField(null=True, blank=True)
     redemption_channel = models.CharField(max_length=24, blank=True, default="")
     redemption_reference = models.CharField(max_length=100, blank=True, default="")
+    redemption_sale = models.OneToOneField(
+        "sales.SaleRecord", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="redeemed_loyalty_voucher",
+    )
+    redemption_evidence = models.OneToOneField(
+        FinancialEvidence, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="redeemed_loyalty_voucher",
+    )
 
     class Meta:
         constraints = [

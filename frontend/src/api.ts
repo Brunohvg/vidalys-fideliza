@@ -716,7 +716,7 @@ export type MemberClubPublic = {
 };
 export type MemberClubReward = {
   id:string;title:string;points_cost:number;discount_cents:number;
-  min_order_cents:number;status:"available"|"locked"|"paused"|"sold_out";
+  min_order_cents:number;redemption_unit:"points"|"cashback";status:"available"|"locked"|"paused"|"sold_out";
   points_missing:number|null;redemption_enabled:boolean;
 };
 export type MemberClubPrivate = {
@@ -746,9 +746,9 @@ export type EmailActionResult = {
 export const publicEnrollmentApi = {
   club:(slug:string)=>getJson<MemberClubPublic>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/"),
   clubMe:(slug:string)=>getJson<MemberClubPrivate>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/"),
-  clubIssueVoucher:(slug:string,unit:"points"|"cashback",amount:number)=>postJson<{
+  clubIssueVoucher:(slug:string,rewardId:string)=>postJson<{
     code:string;voucher_id:string;discount_cents:number;expires_at:string;external_coupon_created:false;
-  }>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/vouchers/issue/",{unit,amount}),
+  }>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/vouchers/issue/",{reward_id:rewardId}),
   clubRequestAccess:(slug:string,email:string)=>postJson<{status:"accepted"}>(
     "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/request/",{email}),
   clubConfirmAccess:(slug:string,token:string)=>postJson<{authenticated:true}>(

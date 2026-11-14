@@ -231,7 +231,7 @@ export default function MemberClub(){
         </section>
         <MemberVipCard me={me}/>
         <MemberWalletOverview me={me} pointsReady={pointsReady} ledgerOnly={ledgerOnly}/>
-        <MemberRedeemAction slug={slug} me={me} rewardPoints={nextReward?.points_cost ?? null}/>
+        <MemberRedeemAction slug={slug} me={me} reward={nextReward ?? null}/>
         <MemberMissions me={me}/>
         <nav className="member-club-sections" aria-label="Seu clube">
           <button type="button" aria-pressed={section==="rewards"}

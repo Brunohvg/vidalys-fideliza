@@ -379,6 +379,9 @@ def verify_voucher(*, tenant_id, code):
         return {"valid": False, "reason": "not_available"}
     if match.expires_at <= timezone.now():
         return {"valid": False, "reason": "expired"}
+    if (match.reward_id is None
+            or match.reward.publication_status != DiscountRewardDraft.PublicationStatus.PUBLISHED):
+        return {"valid": False, "reason": "reward_not_published"}
     if LoyaltyRecovery.objects.filter(
         grant__tenant_id=tenant_id, grant__participant_id=match.participant_id,
         resolved_at__isnull=True,
@@ -570,7 +573,7 @@ def cancel_voucher(*, tenant_id, voucher_id):
 
 
 @transaction.atomic
-def redeem_voucher(*, tenant_id, code, channel, external_receipt):
+def redeem_voucher(*, tenant_id, code, channel, external_receipt, sale_id, capture_evidence_id):
     """Baixa uma reserva SOMENTE após confirmação de aplicação pelo canal autorizado.
 
     O endpoint de produção permanece desativado. Um recibo fornecido por
@@ -596,6 +599,33 @@ def redeem_voucher(*, tenant_id, code, channel, external_receipt):
         raise LoyaltyBlocked("Voucher indisponível ou expirado.")
     if voucher.participant.status != ProgramParticipant.Status.ACTIVE:
         raise LoyaltyBlocked("Participante não está ativo.")
+    if not voucher.reward_id or voucher.reward.tenant_id != tenant_id:
+        raise LoyaltyBlocked("Voucher sem recompensa vinculada.")
+    if (voucher.reward.publication_status != DiscountRewardDraft.PublicationStatus.PUBLISHED
+            or voucher.reward.expires_at and voucher.reward.expires_at <= timezone.now()):
+        raise LoyaltyBlocked("Recompensa despublicada ou vencida.")
+    if channel not in voucher.allowed_channels.split(","):
+        raise LoyaltyBlocked("Canal não permitido para esta recompensa.")
+    # Aplicação só após uma compra real com comprovação externa. O número de
+    # cupom digitado pelo lojista não substitui prova de pagamento do canal.
+    sale = SaleRecord.objects.select_related("customer_profile").filter(
+        pk=sale_id, tenant_id=tenant_id, channel=channel,
+        order_status=SaleRecord.OrderStatus.PAID,
+    ).first()
+    if (sale is None or sale.reported_total_cents < voucher.minimum_order_cents
+            or not sale.customer_profile_id
+            or sale.customer_profile.participant_id != voucher.participant_id
+            or sale.reported_total_cents < voucher.discount_cents):
+        raise LoyaltyBlocked("Pedido, titular ou mínimo de compra não confirmado.")
+    capture = FinancialEvidence.objects.filter(pk=capture_evidence_id).first()
+    if capture is None:
+        raise LoyaltyBlocked("Falta conciliação independente do pagamento.")
+    _evidence(capture, kind=FinancialEvidence.Kind.CAPTURE,
+              sale=sale, amount=sale.reported_total_cents)
+    if capture.occurred_at < voucher.created_at:
+        raise LoyaltyBlocked("Compra ocorreu antes da emissão do voucher.")
+    if LoyaltyVoucher.objects.filter(redemption_sale=sale).exclude(pk=voucher.pk).exists():
+        raise LoyaltyBlocked("Pedido já recebeu outro voucher.")
     if LoyaltyRecovery.objects.filter(
         grant__tenant_id=tenant_id, grant__participant=voucher.participant,
         resolved_at__isnull=True,
@@ -640,8 +670,11 @@ def redeem_voucher(*, tenant_id, code, channel, external_receipt):
     voucher.redeemed_at = timezone.now()
     voucher.redemption_channel = channel
     voucher.redemption_reference = external_receipt
+    voucher.redemption_sale = sale
+    voucher.redemption_evidence = capture
     voucher.save(update_fields=[
         "state", "redeemed_at", "redemption_channel", "redemption_reference",
+        "redemption_sale", "redemption_evidence",
     ])
     return voucher, True
 
