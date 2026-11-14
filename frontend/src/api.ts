@@ -394,6 +394,23 @@ export type ParticipantDirectoryResponse = {
   note: string;
 };
 
+export type PaidOrderInspection = {
+  order_id:string;source:"nuvemshop_live_read_only";
+  order_status:"open"|"closed"|"cancelled";
+  payment_status:"pending"|"authorized"|"paid"|"partially_paid"|"abandoned"|"refunded"|"partially_refunded"|"voided";
+  paid_at:string|null;reported_total_cents:number;currency:string;
+  reported_customer_paid_cents:number|null;
+  reported_payment_differs_from_total:boolean|null;
+  reported_paid_amount_is_not_psp_proof:true;
+  participant_verified:boolean;
+  review_status:"blocked_cancelled"|"blocked_refund"|"not_paid"|
+    "payment_date_missing"|"customer_not_verified"|
+    "manual_payment_review"|"reported_paid_amount_review"|
+    "reported_paid_requires_reconciliation";
+  credit_eligible:false;cashback_created:false;writes_performed:0;
+  note:string;
+};
+
 export type NuvemshopConnectionStatus = {
   configured: boolean;
   connected: boolean;
@@ -580,6 +597,10 @@ export const merchantApi = {
       "/api/v1/tenants/" + encodeURIComponent(tenantId) +
       "/participants/" + encodeURIComponent(participantId) + "/wallet/"
     ),
+  inspectPaidOrder:(tenantId:string,orderId:string)=>
+    getJson<PaidOrderInspection>("/api/v1/tenants/"+
+      encodeURIComponent(tenantId)+"/nuvemshop/orders/"+
+      encodeURIComponent(orderId)+"/preview/"),
   nuvemshopStatus: (tenantId: string) =>
     getJson<NuvemshopConnectionStatus>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/nuvemshop/status/"
