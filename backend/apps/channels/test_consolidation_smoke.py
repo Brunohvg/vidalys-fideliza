@@ -87,8 +87,12 @@ class ConsolidationCrossAppSmokeTests(TestCase):
             accepted_at=self.now, email_verified_at=self.now,
             status=EnrollmentSubmission.Status.MEMBER,
         )
-        self.flow = APIClient()
-        self.member = APIClient(enforce_csrf_checks=True)
+        # Compose homolog exige HTTPS. O proxy real injeta X-Forwarded-Proto;
+        # fixtures exercitam a mesma condição sem relaxar SecurityMiddleware.
+        self.flow = APIClient(HTTP_X_FORWARDED_PROTO="https")
+        self.member = APIClient(
+            enforce_csrf_checks=True, HTTP_X_FORWARDED_PROTO="https",
+        )
         self.member.get(reverse("auth-session"))
         self.csrf = self.member.cookies["csrftoken"].value
 
