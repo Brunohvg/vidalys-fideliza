@@ -535,6 +535,10 @@ export const merchantApi = {
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"),
   createManualSale: (tenantId:string,data:ManualSaleInput)=>postJson<ManualSaleResult>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/",data),
+  linkManualSale: (tenantId:string,saleId:string,participantId:string)=>
+    postJson<{sale:ManualSaleRecord;identity_status:string;payment_verified:false;points_credited:false}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+
+      encodeURIComponent(saleId)+"/link/",{participant_id:participantId}),
   reviewManualSale: (tenantId:string,saleId:string,decision:"approve"|"reject",note:string)=>
     postJson<ManualSaleReviewResult>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+

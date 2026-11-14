@@ -82,6 +82,8 @@ export default function SalesWorkspace({tenantId,role}:{
   const [selected,setSelected]=useState("__choose__");
 
   const [reviewing,setReviewing]=useState<ManualSaleRecord|null>(null);
+  const [linking,setLinking]=useState<ManualSaleRecord|null>(null);
+  const [linkTarget,setLinkTarget]=useState("__choose__");
   const [reviewNote,setReviewNote]=useState("");
   const canEdit=role==="owner"||role==="admin";
 
@@ -169,6 +171,19 @@ export default function SalesWorkspace({tenantId,role}:{
       setReviewing(null);setReviewNote("");setVersion(v=>v+1);
     }catch(cause){
       setError(cause instanceof ApiError?cause.message:"Não foi possível concluir a conferência.");
+    }finally{setBusy(false)}
+  };
+
+  const linkSale=async()=>{
+    if(!linking||linkTarget==="__choose__"||busy)return;
+    setBusy(true);setError("");setMessage("");
+    try{
+      await merchantApi.linkManualSale(tenantId,linking.id,linkTarget);
+      setMessage("Cliente com contato verificado vinculado à venda. Confira o recibo; nenhum ponto foi creditado.");
+      setLinking(null);setLinkTarget("__choose__");setVersion(v=>v+1);
+    }catch(cause){
+      setError(cause instanceof ApiError?cause.message:
+        "É necessário confirmar um contato do participante antes de vincular a venda.");
     }finally{setBusy(false)}
   };
 
@@ -350,6 +365,10 @@ export default function SalesWorkspace({tenantId,role}:{
             </div>
             <div className="vf-sale-record-actions">
               <span>Nenhum ponto creditado nesta etapa.</span>
+              {canEdit&&item.state==="awaiting_member"&&
+                <button type="button" onClick={()=>{
+                  setLinking(item);setLinkTarget("__choose__");setReviewing(null);
+                }}>Vincular cliente confirmado <UsersRound size={15}/></button>}
               {canReview(item)?
                 <button type="button" onClick={()=>{
                   setReviewing(item);setReviewNote("");
@@ -360,6 +379,26 @@ export default function SalesWorkspace({tenantId,role}:{
                   <span>{item.review_mode==="self_review"
                     ?"Conferência do proprietário":"Conferida por outro operador"}</span>:null}
             </div>
+            {linking?.id===item.id&&<div className="vf-sale-review" aria-label="Vincular cliente à venda">
+              <h4>Identifique o cliente desta venda</h4>
+              <p>Somente um participante com contato previamente confirmado pode ser vinculado.
+                Este vínculo não comprova pagamento e não gera pontos.</p>
+              <label htmlFor="vf-sale-link-participant">Participante confirmado
+                <select id="vf-sale-link-participant" value={linkTarget}
+                  onChange={e=>setLinkTarget(e.target.value)}>
+                  <option value="__choose__" disabled>Selecione o participante</option>
+                  {people.map(person=><option key={person.id} value={person.id}>
+                    {person.display_name||"Participante"} · {person.contact_email}
+                  </option>)}
+                </select>
+              </label>
+              <div className="vf-sale-review-buttons">
+                <button type="button" onClick={()=>setLinking(null)}>Cancelar</button>
+                <button type="button" className="vf-sale-submit"
+                  disabled={busy||linkTarget==="__choose__"}
+                  onClick={()=>void linkSale()}>Vincular e registrar auditoria</button>
+              </div>
+            </div>}
             {reviewing?.id===item.id&&<div className="vf-sale-review">
               <h4>Conferir o comprovante</h4>
               <p>Verifique o recibo <strong>{item.evidence_reference}</strong> e o valor
