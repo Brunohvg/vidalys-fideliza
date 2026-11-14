@@ -26,7 +26,8 @@ async function enterMargin(page: Page, width: number) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
-  await page.getByRole("button", { name: "Custo dos benefícios" }).click();
+  await page.locator(".portal-advanced-menu > summary").click();
+  await page.locator("#portal-sidebar").getByRole("button", { name: "Custo dos benefícios" }).click();
   if (width <= 1020) {
     await expect.poll(async () => page.locator(".portal-side").evaluate(
       node => node.getBoundingClientRect().right
