@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 
 from apps.tenants.models import Tenant, TenantMembership
 from apps.points.models import PointWallet, PointLot, PointEvent, PointEntry
+from apps.sales.models import SaleRecord
 from .models import ProgramParticipant
 
 
@@ -105,6 +106,38 @@ class ParticipantDirectoryTests(TestCase):
         self.member(tenant=self.other, customer="909", name="Loja B")
         self.assertEqual(ProgramParticipant.objects.count(), 2)
 
+
+    def test_customer_profile_aggregates_only_own_reported_counter_sales(self):
+        member=self.member(customer="1401",name="Cliente com vendas do balcão")
+        foreign=self.member(tenant=self.other,customer="1401",name="Cliente em outra loja")
+        now=timezone.now()
+        for participant,values in ((member,[(1234,SaleRecord.State.AWAITING_REVIEW),
+                                             (5000,SaleRecord.State.VERIFIED_MANUAL)]),
+                                   (foreign,[(999999,SaleRecord.State.VERIFIED_MANUAL)])):
+            for idx,(value,state) in enumerate(values):
+                SaleRecord.objects.create(
+                    tenant=participant.tenant,participant=participant,
+                    channel=SaleRecord.Channel.COUNTER,
+                    external_reference=f"CUPOM-{participant.tenant.slug}-{idx}",
+                    eligible_amount_cents=value,reported_paid_at=now,
+                    evidence_reference=f"RECIBO-{idx+1:04d}",
+                    state=state,submitted_by=self.owner,
+                )
+        self.client.force_authenticate(self.owner)
+        response=self.client.get(self.path())
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(response.data["summary"]["total"],1)
+        profile=response.data["items"][0]
+        self.assertTrue(profile["nuvemshop_customer_linked"])
+        self.assertEqual(profile["manual_sales_count"],2)
+        self.assertEqual(profile["manual_sales_reviewed"],1)
+        self.assertEqual(profile["manual_sales_pending"],1)
+        self.assertEqual(profile["manual_sales_reported_cents"],6234)
+        self.assertIsNotNone(profile["last_manual_sale_at"])
+        self.assertNotIn("999999",str(response.data))
+        self.client.force_authenticate(self.stranger)
+        other_response=self.client.get(self.path(self.other.id))
+        self.assertEqual(other_response.data["items"][0]["manual_sales_reported_cents"],999999)
 
     def test_point_balances_are_scoped_and_never_claim_redeemable(self):
         member=self.member(customer="37",name="Membro com lote interno")
