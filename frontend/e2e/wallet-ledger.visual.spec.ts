@@ -51,7 +51,7 @@ for(const width of [390,768,1440]){
     await page.goto("/");
     if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.getByRole("complementary",{name:"Menu do lojista"}).getByRole("button",{name:"Clientes",exact:true}).click();
-    if(width<=1020){
+    if(width<=760){
       const list=page.getByRole("list",{name:"Participantes encontrados"});
       await expect(list.getByText("Pessoa QA")).toBeVisible();
       await list.getByText("Dados internos de teste").click();
