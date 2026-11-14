@@ -1,5 +1,5 @@
 import {useEffect,useState,type FormEvent} from "react";
-import {ArrowRight,Gift,LockKeyhole,Plus,ShieldCheck,TicketPercent,Pencil,Trash2,X} from "lucide-react";
+import {ArrowRight,Gift,LockKeyhole,Plus,ShieldCheck,TicketPercent,Pencil,Trash2,X,Eye,EyeOff} from "lucide-react";
 import {
   ApiError,merchantApi,type DiscountRewardDraft,type PointRuleDraft,type Store,
 } from "./api";
@@ -29,6 +29,7 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsC
   const [advanced,setAdvanced]=useState(false);
   const [editingId,setEditingId]=useState<string|null>(null);
   const [deleteConfirmId,setDeleteConfirmId]=useState<string|null>(null);
+  const [publicationConfirmId,setPublicationConfirmId]=useState<string|null>(null);
   const [pointRule,setPointRule]=useState<PointRuleDraft|null>(null);
   const [ruleLoadError,setRuleLoadError]=useState(false);
   const [ruleLoading,setRuleLoading]=useState(true);
@@ -64,16 +65,32 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsC
   })+"%";
 
   const reset=()=>{
-    setEditingId(null);setDeleteConfirmId(null);
+    setEditingId(null);setDeleteConfirmId(null);setPublicationConfirmId(null);
     setTitle("");setPoints("200");setDiscount("5,00");
     setMinOrder("30,00");setLimit("50");setAdvanced(false);
   };
   const edit=(item:DiscountRewardDraft)=>{
-    setDeleteConfirmId(null);setEditingId(item.id);
+    setDeleteConfirmId(null);setPublicationConfirmId(null);setEditingId(item.id);
     setTitle(item.title);setPoints(String(item.points_cost));
     setDiscount((item.discount_cents/100).toFixed(2).replace(".",","));
     setMinOrder((item.min_order_cents/100).toFixed(2).replace(".",","));
     setLimit(String(item.max_redemptions));setAdvanced(true);setError("");setMessage("");
+  };
+  const changePublication=async(item:DiscountRewardDraft,published:boolean)=>{
+    if(busy||!canEdit||(published&&publicationConfirmId!==item.id))return;
+    setBusy(true);setError("");setMessage("");
+    try{
+      const result=await merchantApi.setRewardCatalogPublication(tenantId,item.id,published);
+      setDrafts(items=>items.map(current=>current.id===item.id?result.reward:current));
+      if(editingId===item.id)reset();
+      setPublicationConfirmId(null);setDeleteConfirmId(null);
+      onDraftsChanged?.();
+      setMessage(published
+        ?"Recompensa publicada no catálogo do Meu Clube. Pontos, cupons e resgates continuam desativados."
+        :"Recompensa despublicada. Ela não aparece mais no catálogo do participante.");
+    }catch(e){
+      setError(e instanceof ApiError?e.message:"Não foi possível atualizar a publicação.");
+    }finally{setBusy(false);}
   };
   const remove=async(item:DiscountRewardDraft)=>{
     if(busy||!canEdit||deleteConfirmId!==item.id)return;
@@ -121,8 +138,8 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsC
       <span className="vf-benefit-icon"><Gift size={22}/></span>
       <div><span className="portal-eyebrow">PRÊMIOS DO CLUBE</span>
         <h2 id="vf-benefit-title">Recompensas do clube</h2>
-        <p>Crie e gerencie os descontos do clube. A publicação será liberada após a validação do checkout.</p></div>
-      <span className="vf-benefit-state"><LockKeyhole size={14}/> Apenas rascunho</span>
+        <p>Publique recompensas para mostrar ao participante no Meu Clube. O resgate no checkout continua em desenvolvimento.</p></div>
+      <span className="vf-benefit-state"><LockKeyhole size={14}/> Resgate indisponível</span>
     </header>
     {error&&<p className="vf-benefit-error" role="alert">{error}</p>}
     {message&&<p className="vf-benefit-success" role="status">{message}</p>}
@@ -194,7 +211,7 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsC
           Verifique custos, outras promoções e frete antes de publicar.</p>
       </div>
       <div className="vf-benefit-footer">
-        <span><ShieldCheck size={17}/> Ainda não aparece como benefício resgatável no Meu Clube.</span>
+        <span><ShieldCheck size={17}/> Publicação no catálogo não cria cupons nem libera descontos.</span>
         <button type="submit" disabled={busy}>
           <Plus size={17}/>{busy?"Salvando…":editingId?"Salvar alterações":"Criar rascunho"}
         </button>
@@ -202,26 +219,53 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsC
       {editingId&&<button type="button" className="vf-benefit-advanced" onClick={reset} disabled={busy}><X size={15}/> Cancelar edição</button>}
     </form>}
     <div className="vf-benefit-saved">
-      <h3>Recompensas planejadas</h3>
+      <h3>Catálogo de recompensas</h3>
       {loading?<p role="status">Carregando rascunhos…</p>:
         drafts.length===0?<p>Nenhuma recompensa definida. Comece com um desconto simples.</p>:
         <div className="vf-benefit-grid">
           {drafts.map(item=><article className="vf-benefit-card" key={item.id}>
-            <span><TicketPercent size={16}/> Não publicada</span>
+            <span className={item.published?"vf-reward-visible":""}>
+              {item.published?<Eye size={16}/>:<TicketPercent size={16}/>}
+              {item.published?"Publicado no Meu Clube":"Rascunho · não visível"}
+            </span>
             <h4>{item.title}</h4>
             <strong>{money(item.discount_cents)} de desconto</strong>
             <p>{item.points_cost.toLocaleString("pt-BR")} pontos ·
               Pedido mínimo {money(item.min_order_cents)}</p>
-            <small>Sem cupom, sem resgate e sem consumo de pontos.</small>
+            <small>Resgate indisponível. Nenhum cupom ou saldo será alterado.</small>
             <small>Limite nominal planejado: {money(item.discount_cents*item.max_redemptions)}</small>
             {canEdit&&<div className="vf-draft-actions">
-              <button type="button" onClick={()=>edit(item)} disabled={busy}><Pencil size={15}/> Editar</button>
-              {deleteConfirmId!==item.id&&<button type="button"
-                onClick={()=>{setDeleteConfirmId(item.id);setError("");setMessage("");}}
-                disabled={busy}><Trash2 size={15}/> Excluir</button>}
-              <button type="button" disabled title="Publicação indisponível até a validação dos pontos e checkout"><LockKeyhole size={15}/> Publicar (em breve)</button>
+              {item.published?<>
+                <button type="button" disabled={busy}
+                  onClick={()=>void changePublication(item,false)}>
+                  <EyeOff size={15}/> Despublicar</button>
+                <small className="vf-published-hint">Despublique antes de editar ou excluir.</small>
+              </>:<>
+                <button type="button" onClick={()=>edit(item)} disabled={busy}>
+                  <Pencil size={15}/> Editar</button>
+                {deleteConfirmId!==item.id&&<button type="button"
+                  onClick={()=>{setDeleteConfirmId(item.id);setPublicationConfirmId(null);setError("");setMessage("");}}
+                  disabled={busy}><Trash2 size={15}/> Excluir</button>}
+                {publicationConfirmId!==item.id&&<button type="button"
+                  className="vf-publish-button" disabled={busy}
+                  onClick={()=>{setPublicationConfirmId(item.id);setDeleteConfirmId(null);setError("");setMessage("");}}>
+                  <Eye size={15}/> Publicar no Meu Clube</button>}
+              </>}
             </div>}
-            {canEdit&&deleteConfirmId===item.id&&<div className="vf-draft-confirm"
+            {canEdit&&!item.published&&publicationConfirmId===item.id&&
+              <div className="vf-draft-confirm" role="group" aria-label="Confirmação de publicação da recompensa">
+                <p>Mostrar “{item.title}” no Meu Clube? Participantes poderão consultar
+                  o benefício, mas <strong>ainda não poderão ganhar ou trocar pontos por ele</strong>.
+                  Nenhum cupom será criado na Nuvemshop.</p>
+                <div className="vf-draft-confirm-actions">
+                  <button type="button" disabled={busy} onClick={()=>setPublicationConfirmId(null)}>
+                    Cancelar publicação</button>
+                  <button type="button" className="vf-confirm-publish" disabled={busy}
+                    onClick={()=>void changePublication(item,true)}>
+                    <Eye size={15}/>{busy?"Publicando…":"Confirmar publicação"}</button>
+                </div>
+              </div>}
+            {canEdit&&!item.published&&deleteConfirmId===item.id&&<div className="vf-draft-confirm"
               role="group" aria-label="Confirmação de exclusão da recompensa">
               <p>Excluir “{item.title}”? Não é possível desfazer. Nenhum cupom será alterado.</p>
               <div className="vf-draft-confirm-actions">
@@ -233,7 +277,3 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsC
               </div>
             </div>}
           </article>)}
-        </div>}
-    </div>
-  </section>;
-}
