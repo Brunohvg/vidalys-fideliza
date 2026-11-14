@@ -1,6 +1,6 @@
 """PR23 — balcão chama o mesmo core de ingestão idempotente dos demais canais."""
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -14,6 +14,7 @@ from apps.points.models import PointEntry
 from apps.wallets.models import CashbackEntry
 
 
+@override_settings(SECURE_SSL_REDIRECT=False)  # APIClient sintético; HTTPS é testado separadamente.
 class CounterUnifiedAdapterTests(TestCase):
     def setUp(self):
         self.tenant = Tenant.objects.create(

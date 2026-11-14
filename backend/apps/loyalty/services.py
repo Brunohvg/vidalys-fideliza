@@ -717,13 +717,18 @@ def reverse_grant(*, grant_id, refund_evidence_id):
         raise LoyaltyBlocked("Estorno anterior à captura.")
     # Reservas ainda não usadas são canceladas para liberar o crédito
     # antes da reversão. Vouchers já resgatados NÃO são desfeitos.
-    vouchers = LoyaltyVoucher.objects.select_for_update().filter(
+    # PostgreSQL forbids SELECT FOR UPDATE with DISTINCT. Resolve identifiers
+    # without locking, then lock concrete voucher rows under the tenant lock.
+    voucher_ids = (LoyaltyVoucher.objects.filter(
         tenant=tenant, participant=grant.participant,
         state=LoyaltyVoucher.State.RESERVED,
     ).filter(
         Q(point_allocations__lot_id=grant.point_lot_id) |
         Q(cashback_allocations__origin_event_id=grant.cashback_event_id)
-    ).distinct()
+    ).values_list("pk", flat=True).distinct())
+    vouchers = LoyaltyVoucher.objects.select_for_update().filter(
+        pk__in=voucher_ids,
+    ).order_by("pk")
     for voucher in vouchers:
         _cancel_reserved_voucher(voucher)
     missing_points = 0
