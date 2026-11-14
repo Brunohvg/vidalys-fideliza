@@ -58,6 +58,11 @@ for(const width of [390,1440]){
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
   await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
+  await expect(page.getByRole("region",{name:"Conferência da recompensa planejada"})).toHaveCount(0);
+  await expect(page.getByLabel("Conferência da recompensa planejada")).toContainText(
+    "Salve uma regra de pontos");
+  await expect(page.getByLabel("Conferência da recompensa planejada"))
+    .toContainText("R$ 250,00");
   await page.getByPlaceholder("Ex.: R$ 5 de desconto").fill("R$ 5 de desconto");
   await page.getByRole("spinbutton",{name:"Pontos necessários"}).fill("200");
   await page.getByRole("textbox",{name:"Valor do desconto (R$)"}).fill("5,00");
@@ -107,9 +112,44 @@ test("Recompensa existente pode ser editada e excluída com confirmação",async
  await page.getByRole("button",{name:"Salvar alterações"}).click();
  await expect(page.getByText("R$ 10 de desconto",{exact:true})).toBeVisible();
  expect(patched).toBe(true);
- page.once("dialog",dialog=>dialog.accept());
  await page.getByRole("button",{name:"Excluir",exact:true}).click();
+ await expect(page.getByRole("group",{name:"Confirmação de exclusão da recompensa"})).toBeVisible();
+ await page.getByRole("button",{name:"Cancelar exclusão"}).click();
+ expect(deleted,"cancelar não pode chamar DELETE").toBe(false);
+ await expect(page.getByRole("group",{name:"Confirmação de exclusão da recompensa"})).toHaveCount(0);
+ await page.getByRole("button",{name:"Excluir",exact:true}).click();
+ await page.getByRole("button",{name:"Confirmar exclusão"}).click();
  await expect(page.getByText("Nenhuma recompensa definida.",{exact:false})).toBeVisible();
  expect(deleted).toBe(true);
  await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
+});
+
+test("Recompensa mostra esforço real em pontos, taxa e orçamento sem publicar",async({page})=>{
+ await page.setViewportSize({width:390,height:850});
+ await setup(page);
+ await page.route("**/api/v1/tenants/**/loyalty/point-rule-draft/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   mode:"draft_only",activation_available:false,
+   rule:{version:1,points:1,per_cents:100,hold_days:7,validity_days:180},
+  }),
+ }));
+ await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",r=>r.fulfill({
+  contentType:"application/json",body:JSON.stringify({
+   mode:"draft_only",activation_available:false,items:[],
+  }),
+ }));
+ await page.goto("/");
+ await page.getByRole("button",{name:"Abrir menu"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+ const economics=page.getByLabel("Conferência da recompensa planejada");
+ await expect(economics).toContainText("R$ 200,00");
+ await expect(economics).toContainText("2,5%");
+ await expect(economics).toContainText("R$ 250,00");
+ await expect(economics).toContainText("não comprova lucro");
+ await page.getByRole("spinbutton",{name:"Pontos necessários"}).fill("1");
+ await page.getByRole("textbox",{name:"Valor do desconto (R$)"}).fill("150,00");
+ await expect(economics).toContainText("Revise essa combinação");
+ await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+  .toBeLessThanOrEqual(1);
 });
