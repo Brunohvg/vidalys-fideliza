@@ -113,7 +113,7 @@ export default function MemberClub(){
         <HeartHandshake size={23}/>
       </div>
       <div className="member-club-brand">
-        <strong>{program}</strong><small>TECNOLOGIA VIDALYS FIDELIZA</small>
+        <strong>{program}</strong><small>Seu espaço de vantagens</small>
       </div>
       {me&&<button className="member-club-logout" type="button" disabled={busy} onClick={()=>void logout()}>
         <LogOut size={16} aria-hidden="true"/><span className="member-club-logout-desktop">Sair do clube</span>
@@ -126,8 +126,8 @@ export default function MemberClub(){
       {!loading&&club&&!me&&<div className="member-club-guest">
         <section className="member-club-hero" style={{background:color,color:readableForeground(color)}}>
           <span className="member-club-eyebrow"><Gift size={16}/> SEU CLUBE DE VANTAGENS</span>
-          <h1>Bem-vindo ao {program}.</h1>
-          <p>Um lugar para acompanhar sua participação, entender as regras e, quando a loja liberar, consultar seus pontos e recompensas.</p>
+          <h1>Seu clube, suas vantagens.</h1>
+          <p>Descubra os benefícios de {club.store_name}, acompanhe sua participação e saiba quando suas recompensas estiverem disponíveis.</p>
           <span className="member-club-hero-note"><ShieldCheck size={16}/> Seus dados só aparecem após confirmação por e-mail.</span>
         </section>
         <section className="member-club-panel" aria-label="Entrar no clube">
@@ -144,7 +144,7 @@ export default function MemberClub(){
           </div>:<>
             <span className="member-club-kicker"><LockKeyhole size={16}/> ACESSO DO PARTICIPANTE</span>
             <h2>Entre no seu clube</h2>
-            <p>Não precisa criar senha. Enviaremos um link temporário ao e-mail confirmado na adesão.</p>
+            <p>Informe o e-mail usado na adesão. Você receberá um link privado para entrar, sem senha.</p>
             <form onSubmit={requestAccess} className="member-club-login">
               <label htmlFor="member-club-email">Seu e-mail</label>
               <input id="member-club-email" type="email" required autoComplete="email"
@@ -163,19 +163,24 @@ export default function MemberClub(){
       {!loading&&me&&<div className="member-club-account">
         <section className="member-club-hero member-club-hero-account"
           style={{background:color,color:readableForeground(color)}}>
-          <span className="member-club-eyebrow"><BadgeCheck size={15}/> SEU CLUBE DE VANTAGENS</span>
+          <span className="member-club-eyebrow"><BadgeCheck size={15}/> MEU CLUBE</span>
           <h1>Olá, {firstName}!</h1>
           <span className="member-club-hero-note"><CheckCircle2 size={15}/> {state}</span>
+          <p className="member-club-hero-subtitle">Suas conquistas e benefícios em um só lugar.</p>
         </section>
         <section className="member-club-wallet member-club-panel" aria-label="Resumo da minha carteira">
           <div className="member-club-wallet-main">
-            <span className="member-club-kicker"><Gift size={16}/> MEUS PONTOS</span>
+            <div className="member-club-wallet-heading">
+              <span className="member-club-kicker"><Gift size={16}/> MINHA CARTEIRA</span>
+              {!pointsReady&&<span className="member-club-wallet-pending"><Clock3 size={13}/> Em preparação</span>}
+            </div>
             <span className="member-club-wallet-label">Pontos disponíveis</span>
             <strong className="member-club-wallet-number">
               {availablePoints!==null?availablePoints.toLocaleString("pt-BR"):"—"}
+              {availablePoints!==null&&<small>pontos</small>}
             </strong>
             <p>{pointsReady
-              ?"Veja abaixo quais recompensas você pode conquistar."
+              ?"Veja as recompensas e acompanhe os pontos de cada compra."
               :"O clube ainda não liberou a pontuação. Nenhum saldo foi atribuído."}</p>
           </div>
           {pointsReady&&<div className="member-club-wallet-aside">
@@ -189,25 +194,29 @@ export default function MemberClub(){
         </section>
         <nav className="member-club-sections" aria-label="Seu clube">
           <button type="button" aria-pressed={section==="rewards"}
+            aria-controls="member-rewards-panel"
             className={section==="rewards"?"selected":""}
             onClick={()=>setSection("rewards")}>
-            <Gift size={16}/> Recompensas
+            <Gift size={17}/><span>Recompensas</span>
           </button>
           <button type="button" aria-pressed={section==="history"}
+            aria-controls="member-history-panel"
             className={section==="history"?"selected":""}
             onClick={()=>setSection("history")}>
-            <Clock3 size={16}/> Histórico
+            <Clock3 size={17}/><span>Histórico</span>
           </button>
           <button type="button" aria-pressed={section==="rules"}
+            aria-controls="member-rules-panel"
             className={section==="rules"?"selected":""}
             onClick={()=>setSection("rules")}>
-            <BookOpen size={16}/> Regras
+            <BookOpen size={17}/><span>Regras</span>
           </button>
         </nav>
-        {section==="rewards"&&<section className="member-club-panel member-club-rewards"
+        {section==="rewards"&&<section id="member-rewards-panel" className="member-club-panel member-club-rewards"
           aria-labelledby="member-rewards-title">
           <span className="member-club-kicker"><TicketPercent size={16}/> SEUS BENEFÍCIOS</span>
           <h2 id="member-rewards-title">Recompensas do clube</h2>
+          <p className="member-club-section-lead">Aqui você vê o que poderá trocar pelos pontos das suas compras.</p>
           {nextReward&&nextProgress!==null&&<div className="member-club-next">
             <div className="member-club-next-heading">
               <span>Seu próximo benefício</span>
@@ -226,7 +235,7 @@ export default function MemberClub(){
           {publishedRewards.length===0?<div className="member-club-rewards-empty">
             <span><Gift size={24}/></span>
             <div><h3>Recompensas em preparação</h3>
-              <p>A loja ainda não publicou descontos para resgatar.</p>
+              <p>A loja ainda não publicou descontos para resgatar. Assim que estiverem disponíveis, aparecerão aqui.</p>
             </div>
           </div>:<div className="member-club-rewards-grid">
             {publishedRewards.map(reward=><article className="member-club-reward" key={reward.id}>
@@ -247,6 +256,20 @@ export default function MemberClub(){
               </div>
             </article>)}
           </div>}
+          <div className="member-club-explainer" aria-label="Como funciona a pontuação">
+            <h3>Como funcionará seu clube</h3>
+            <ol className="member-club-journey">
+              <li><span className="member-club-journey-icon"><ShoppingBag size={18}/></span>
+                <div><strong>Compre na loja</strong><small>Após a ativação, compras elegíveis e pagas serão verificadas.</small></div>
+              </li>
+              <li><span className="member-club-journey-icon"><Clock3 size={18}/></span>
+                <div><strong>Acompanhe os pontos</strong><small>Quando liberados, os pontos e suas movimentações aparecerão aqui.</small></div>
+              </li>
+              <li><span className="member-club-journey-icon"><TicketPercent size={18}/></span>
+                <div><strong>Troque por um desconto</strong><small>Quando o resgate estiver ativo, o benefício será usado na próxima compra.</small></div>
+              </li>
+            </ol>
+          </div>
           <details className="member-club-more">
             <summary><ShoppingBag size={16}/> Como vou usar meus pontos no site?</summary>
             <div className="member-club-more-body">
@@ -255,7 +278,7 @@ export default function MemberClub(){
             </div>
           </details>
         </section>}
-        {section==="history"&&<section className="member-club-panel member-club-history"
+        {section==="history"&&<section id="member-history-panel" className="member-club-panel member-club-history"
           aria-labelledby="member-history-title">
           <span className="member-club-kicker"><Clock3 size={16}/> MOVIMENTAÇÕES</span>
           <h2 id="member-history-title">Histórico de pontos</h2>
@@ -270,11 +293,12 @@ export default function MemberClub(){
             <p>Ainda não há movimentações. Compras pagas e pontos liberados aparecerão aqui.</p>
           </div>}
         </section>}
-        {section==="rules"&&<section className="member-club-panel member-club-rules"
+        {section==="rules"&&<section id="member-rules-panel" className="member-club-panel member-club-rules"
           aria-labelledby="member-rules-title">
           <span className="member-club-kicker"><ShieldCheck size={16}/> SEUS DADOS</span>
           <h2 id="member-rules-title">Regras e privacidade</h2>
-          <p>Você aceitou {me.terms.title} · versão {me.terms.version}.</p>
+          <p>Confira o regulamento aceito durante sua adesão. A pontuação e o resgate só funcionarão após a ativação pela loja.</p>
+          <p className="member-club-terms-version">Você aceitou {me.terms.title} · versão {me.terms.version}.</p>
           <details className="member-club-terms"><summary>Ler regulamento completo</summary>
             <p>{me.terms.body}</p>
           </details>
@@ -287,9 +311,9 @@ export default function MemberClub(){
       {!loading&&club&&!me&&<section className="member-club-panel member-club-info">
         <span className="member-club-kicker"><BookOpen size={16}/> COMO FUNCIONA</span>
         <h2>Suas vantagens em um só lugar</h2>
-        <div className="member-club-steps"><div><strong>01 · Participe</strong><p>Leia e aceite o regulamento e confirme seu e-mail.</p></div>
-          <div><strong>02 · Compre</strong><p>Quando o programa estiver ativo, compras elegíveis e pagas serão verificadas.</p></div>
-          <div><strong>03 · Acompanhe</strong><p>Pontos e resgates futuros terão histórico e regras transparentes.</p></div></div>
+        <div className="member-club-steps"><div><strong>01 · Participe</strong><p>Leia e aceite o regulamento. Confirme seu e-mail uma única vez.</p></div>
+          <div><strong>02 · Acumule</strong><p>Após a ativação, as compras elegíveis poderão gerar pontos.</p></div>
+          <div><strong>03 · Aproveite</strong><p>Quando disponível, troque pontos por benefícios e acompanhe o histórico.</p></div></div>
         {club.terms&&<details className="member-club-terms"><summary>Conhecer o regulamento</summary><p>{club.terms.body}</p></details>}
       </section>}
       {club?.branding.support_email&&<p className="member-club-support">Dúvidas sobre o clube?
