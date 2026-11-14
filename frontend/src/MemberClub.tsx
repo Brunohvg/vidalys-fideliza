@@ -114,6 +114,7 @@ export default function MemberClub(){
   const state=me?.status==="active"?"Participando":me?.status==="paused"?"Pausado":"Aguardando ativação";
   const pointsReady=me?.points_status==="verified"&&typeof me.points_balance==="number";
   const ledgerOnly=me?.points_status==="ledger_only"&&typeof me.points_balance==="number";
+  const hasLedger=pointsReady||ledgerOnly;
   const availablePoints=hasLedger&&me?me.points_balance:null;
   const publishedRewards=me?.available_rewards || [];
   const guestRewards=club?.published_rewards || [];
