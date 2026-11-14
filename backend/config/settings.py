@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.catalog.apps.CatalogConfig",
     "apps.nuvemshop.apps.NuvemshopConfig",
     "apps.participants.apps.ParticipantsConfig",
+    "apps.customers.apps.CustomersConfig",
     "apps.campaigns.apps.CampaignsConfig",
     "apps.wallets.apps.WalletsConfig",
     "apps.sales.apps.SalesConfig",

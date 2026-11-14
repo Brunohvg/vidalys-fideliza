@@ -1116,3 +1116,88 @@ reversão. Não alegar que a integração financeira está pronta.
 `write_*` no .env e não ativar motores financeiros. Só considerar
 automação efetiva de pontos depois de validar o adaptador
 independente de conciliação e resgate da Nuvemshop.
+
+
+## 14/11/2026 — Refatoração segura: identidade omnichannel (corte 1)
+
+**Origem:** auditoria da branch homolog no SHA c25d668. A infraestrutura
+G1 e a homologação de OAuth/SMTP/PSP seguem bloqueadas pelos critérios
+anteriores; esta é uma alteração offline de domínio, sem mudança em
+main, Coolify, OAuth, saldos ou conta real.
+
+**Diagnóstico:**
+- tenants e participants já permitem adesão independente; a Nuvemshop
+  NÃO é atualmente obrigatória para criar uma loja.
+- points/PointLot/PointEvent/PointEntry e wallets/CashbackEvent/CashbackEntry
+  são ledgers separados, ambos bloqueados para escrita operacional.
+  Consolidar a interface de domínio depois, sem migrar ou zerar saldos.
+- sales/SaleRecord já permite entrada manual com conferência por
+  dono único. Não criar outra tabela paralela de vendas.
+- campaigns/CampaignDraft, sales/PointCampaignDraft e
+  sales/DiscountRewardDraft são rascunhos; não confundir publicação
+  visual com resgate transacional.
+- O frontend autenticado real usa Portal.tsx e o consumidor MemberClub.tsx;
+  App.tsx é somente /demo. Há CSS distribuído em muitos arquivos.
+- CI de c25d668: backend/frontend e smoke passaram; visual_qa falhou
+  em Playwright. Não declarar interface homologada.
+
+**Mapa de modelos (migração progressiva, sem renomeação destrutiva):**
+1. tenants: Tenant, TenantMembership e branding são mantidos.
+2. customers: CustomerProfile, VerifiedCustomerContact (HMAC por tenant
+   de contato normalizado e efetivamente verificado) e
+   ChannelCustomerReference (único por tenant/canal/ID).
+3. participants: ProgramParticipant + prova de aceite continuam como
+   titular da carteira. O vínculo com customers é 1:1 opcional e
+   nunca cria adesão a partir de contato informado por terceiros.
+4. ledger: consolidar **serviços/interfaces** de points e wallets;
+   preservar as tabelas e unidades atuais até migração auditada.
+5. loyalty: evolução gradual de campaigns e sales/drafts, sem
+   implementar cópias de regras/campanhas em apps concorrentes.
+6. channels: interfaces adaptadoras para Nuvemshop, PDV e Flow;
+   ingressos não equivalem a pagamento. Autorização, verificação,
+   cancelamento, deduplicação e políticas de reversão vêm antes de
+   conceder qualquer ponto/cashback.
+
+**Mapa de telas alvo:**
+- /app: Visão Geral (indicadores verificados), Clientes (perfil e
+  carteira), Programa (regras/recompensas/níveis), Campanhas (templates),
+  Vendas (lista por canal e lançamento rápido) e Configurações.
+- Custos, margem, SKU e conciliação: ferramentas avançadas dentro
+  do fluxo, sem perder funcionalidade.
+- /clube/:slug_loja: nível e progresso, saldo, resgate comprovado,
+  benefícios, missões e extrato; white-label por TenantBranding.
+- /demo continua isolado, sem números reais nem acesso autenticado.
+- Tokens existentes --vf-ink/navy, --vf-primary/jade, mint, reward/gold
+  e canvas são a base; eliminar estilos conflitantes e testar
+  320/390/768/1440, keyboard e estados de loading/vazio/erro.
+
+**Incremento offline implementado na branch de revisão:**
+- Adiciona customers com unicidade de contato e referência por tenant.
+  Normalização de e-mail e telefone EXCLUSIVAMENTE E.164; contato
+  fica indexado por HMAC, não como dado adicional claro.
+- Reutiliza a prova de e-mail consumida na adesão independente e
+  na vinculação Nuvemshop já verificada para criar o perfil universal.
+- Nenhum merge automático de participantes com contato conflitante.
+  Sem migração em massa dos participantes antigos (exige amostra e
+  tratamento de duplicidades); sem transferência de saldo.
+- Testes sintéticos: independente, idempotência, isolamento tenant,
+  e-mail + telefone, ligação entre canais, conflito de identidade
+  e zero crédito. Execução no CI ainda deve ser verificada.
+- HMAC usa DJANGO_SECRET_KEY: rotação exige SECRET_KEY_FALLBACKS
+  temporário ou estratégia futura de versionamento/rehash; nenhuma
+  chave/contato é exibida em logs.
+- Os endpoints /api/v1/customers/identify/ e /api/v1/events/orders/
+  permanecem PENDENTES: só serão abertos com autenticação do canal,
+  escopos tenant, assinatura/replay, prova financeira e rate-limit.
+- **Não ativar** FIDELIZA_POINTS_WRITES_ENABLED ou
+  FIDELIZA_LEDGER_WRITES_ENABLED. Sem emissão de cupom real.
+
+**Fronteiras e decisões futuras:**
+- Política de vínculo: dados autodeclarados nunca unem carteiras;
+  confirmação OTP ou fonte autenticada é obrigatória.
+- Fonte de pagamento: PDV poderá usar conferência auditada de operador;
+  Nuvemshop/Flow exigem contrato de pagamento/estorno por canal.
+- Modelo comercial: pontos são o benefício inicial, cashback em R$
+  exige regras de custo, expiração e elegibilidade explícitas.
+- A fonte de métrica ROI não poderá atribuir toda recompra ao programa
+  sem método incremental. Não inventar ROI a partir de vendas totais.

@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from apps.customers.models import ChannelCustomerReference, CustomerProfile, VerifiedCustomerContact
 from apps.nuvemshop.models import NuvemshopInstallation
 from apps.tenants.models import Tenant
 from apps.wallets.models import CashbackEvent,CashbackWallet
@@ -71,6 +72,8 @@ class StandaloneActivationTests(TestCase):
         member=ProgramParticipant.objects.get()
         self.assertIsNone(member.external_customer_id)
         self.assertEqual(member.tenant_id,self.tenant.id)
+        self.assertEqual(CustomerProfile.objects.get(participant=member).tenant_id, self.tenant.id)
+        self.assertEqual(VerifiedCustomerContact.objects.count(), 1)
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.status,EnrollmentSubmission.Status.MEMBER)
         self.assertEqual(self.submission.participant_id,member.id)
@@ -100,6 +103,8 @@ class StandaloneActivationTests(TestCase):
         self.submission.refresh_from_db()
         self.assertEqual(self.submission.status,EnrollmentSubmission.Status.LINKED)
         self.assertEqual(EnrollmentCustomerLink.objects.count(),1)
+        self.assertEqual(CustomerProfile.objects.count(), 1)
+        self.assertEqual(ChannelCustomerReference.objects.get().external_id, "351")
         self.assertFalse(CashbackWallet.objects.exists())
 
     def test_withdrawal_disables_local_member(self):

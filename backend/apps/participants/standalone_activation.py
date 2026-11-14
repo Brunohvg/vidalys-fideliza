@@ -6,6 +6,7 @@ nunca transforma compradores importados em participantes sem autorização.
 from django.conf import settings
 from django.db import transaction
 from apps.tenants.models import Tenant
+from apps.customers.services import attach_verified_contact
 
 from .email_proof import digest
 from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
@@ -51,4 +52,8 @@ def activate_standalone_after_email(token: str) -> bool:
     submission.participant = participant
     submission.status = EnrollmentSubmission.Status.MEMBER
     submission.save(update_fields=["participant", "status"])
+    attach_verified_contact(
+        tenant_id=tenant.pk, participant_id=participant.pk,
+        email=submission.email, proof_method="email_otp",
+    )
     return True
