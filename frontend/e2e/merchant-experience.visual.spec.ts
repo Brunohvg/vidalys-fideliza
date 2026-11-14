@@ -36,9 +36,9 @@ for(const width of [390,768,1440]) {
       await mockMerchant(page);
       await page.goto("/");
       await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
-      await expect(page.getByRole("heading",{name:"Seu plano de ação"})).toBeVisible();
-      await expect(page.getByText("Não existem participantes cadastrados nesta loja.")).toBeVisible();
-      await expect(page.getByText(/sugestões com IA/i)).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+      await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes ativos");
+      await expect(page.getByRole("heading",{name:"PRÓXIMA AÇÃO RECOMENDADA"})).toHaveCount(0);
 
       await nav(page,"Clientes",width);
       await expect(page.getByRole("heading",{name:"Pessoas no clube",exact:true})).toBeVisible();
@@ -82,8 +82,8 @@ for(const width of [390,768,1440]) {
 test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",async ({page})=>{
   await mockMerchant(page);
   await page.goto("/");
-  await expect(page.getByText("Recomendações baseadas no estado conhecido")).toBeVisible();
-  await page.getByRole("button",{name:"Configurar programa"}).click();
+  await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
+  await page.getByRole("button",{name:"Ver benefícios"}).click();
   await expect(page.getByRole("heading",{name:"Seu clube em três passos."})).toBeVisible();
 });
 
