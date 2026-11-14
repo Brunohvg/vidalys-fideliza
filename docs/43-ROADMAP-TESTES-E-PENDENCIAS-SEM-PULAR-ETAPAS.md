@@ -1042,3 +1042,77 @@ serviços; nesta etapa não houve migração nova nem mudança .env.
 A eventual habilitação de `FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=1`
 continua restrita à loja de teste que consentiu `read_orders`, não
 é ativada automaticamente.
+
+## 14/11/2026 — Nuvemshop-first: IDs reais, pedidos automáticos e IA simplificada
+
+**Motivação do piloto:** o lojista se perde em telas extensas e opções
+técnicas. Um pedido real apresentado como
+`#14111` tem `number=14111` e `id=2120958234`
+(validado por consulta autorizada da Nuvemshop conectada).
+O código `363573290` tem **origem não confirmada**: jamais o tratar
+como pedido ou pagamento sem o tipo explícito e confirmação da API.
+
+**Contrato oficial (Nuvemshop 2025-03):**
+https://nuvemshop.dev/en-US/api/resources/2025-03/order
+- `id` é o identificador único da API (`GET /orders/{id}`);
+  `number` é o número visível para lojista/consumidor.
+- Para localizar `#14111`, usar `GET /orders?q=14111&per_page=10`
+  (busca pelo número também pode fazer matches de outros dados),
+  comparar `number` de forma **exata**, validar que existe um único
+  candidato e então buscar detalhes por `id`. Falhar em resultados
+  parciais/ambíguos; não heuristizar por quantidade de dígitos.
+- Aceitar URL administrativa HTTPS de domínios oficiais e extrair
+  somente `/admin/orders/{id}`. Nunca fazer HTTP para o URL digitado.
+  Entrada numérica pura é tratada como `number` por padrão; opção
+  explícita permite informar `id` interno.
+- O retorno normalizado informa `order_number` e `order_id`
+  separadamente, sem acrescentar nome/e-mail/CPF a essa API.
+
+**Operação conectada:**
+- A tela `Vendas → Nuvemshop` lê automaticamente a **primeira página
+  de até 10 pedidos** por GET com token/escopo do tenant e mostra
+  número, ID secundário, valor, estado de pagamento e motivo da
+  pendência de fidelização; botão `Conferir` relê o pedido atual.
+  Sem importação de pedidos/clientes, sem gravações financeiras e
+  sem duplicar compras como venda de balcão.
+- Proteções: owner/admin, tenant ativo, instalação OAuth com
+  `read_orders`, flag de consulta já existente, cache/rate-limit
+  20 segundos, lista limitada, nenhum redirect externo, no-store,
+  sanitização de identidade e sem campos pessoais retornados.
+- Pesquisa manual de `#numero`/URL/ID fica recolhida como
+  ferramenta eventual, não fluxo padrão.
+- `Programa` agora tem somente 3 áreas
+  **Benefícios | Participantes | Testes**, com estado **registrado**
+  da autorização OAuth. `Configurações` continua o único lugar
+  de administrar conexão; `Clientes` exibe saldo informativo
+  do ledger quando houver. Estilo e navegação responsiva 320/390.
+- Referência de produto Smile.io: configurar uma vez, mostrar
+  regras e recompensas para membros a partir do estado **vivo**
+  do programa, sem conteúdo duplicado na vitrine:
+  https://smile.io/features/loyalty-landing-page
+
+**Limites explícitos:** `read_orders` não comprova pagamento no
+PSP. `order/paid` pode ocorrer por marcação manual. A listagem não
+libera pontos, cupons ou cashback; ainda faltam conciliação de
+Nuvem Pago / Stone de origem autenticada, estornos, reserva idempotente,
+desconto aplicado no checkout via OAuth aprovado e teste real de
+reversão. Não alegar que a integração financeira está pronta.
+
+**Teste do piloto em homologação, após backup/deploy do SHA validado:**
+1. Em Vendas → Nuvemshop, conferir a lista retornada sem redigitar IDs.
+2. Pesquisar `#14111`, confirmando `number=14111` e
+   `id=2120958234` sem mostrar PII; pesquisar também pelo link
+   administrativo e conferir resultado equivalente.
+3. Tentar número de outra loja ou link externo; sem correspondência
+   exata, não deve retornar pedido.
+4. Trocar para Programa → Benefícios, publicar recompensa informativa,
+   verificar Meu Clube; em Participantes, conferir adesão; em Testes,
+   inspecionar simulação sem efetuar escrita.
+5. Conferir que pedidos, saldos financeiros e cupons reais não mudaram.
+   Confirmar CI (backend, frontend, visual 320/390, Docker,
+   Coolify Compose e banco externo). 
+
+**Deploy ainda não realizado por este fluxo.** Não criar escopo
+`write_*` no .env e não ativar motores financeiros. Só considerar
+automação efetiva de pontos depois de validar o adaptador
+independente de conciliação e resgate da Nuvemshop.
