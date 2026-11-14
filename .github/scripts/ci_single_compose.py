@@ -214,8 +214,11 @@ def main():
             execute(compose + [
                 "exec", "-T", "api", "python", "manage.py", "test",
                 "apps.channels.test_consolidation_smoke",
-                "apps.core.test_pr22_legacy_upgrade", "--verbosity=1",
-            ], env, label="smoke PR22 Flow-identidade-portal no PostgreSQL isolado",
+                "apps.core.test_pr22_legacy_upgrade",
+                "apps.wallets.test_postgres_immutable",
+                "apps.sales.test_pr23_counter_adapter",
+                "apps.loyalty.tests", "--verbosity=1",
+            ], env, label="smoke PR23 origem, PDV, rewards, triggers e upgrade legado no PostgreSQL isolado",
                synthetic_test_output=True)
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
     finally:
