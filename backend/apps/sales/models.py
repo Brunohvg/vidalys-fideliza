@@ -80,7 +80,11 @@ class PointRuleDraft(models.Model):
 
 
 class DiscountRewardDraft(models.Model):
-    """Desconto em pontos para planejamento, nunca publicado ou utilizável."""
+    """Catálogo do clube: visibilidade pública não autoriza uso financeiro."""
+    class PublicationStatus(models.TextChoices):
+        DRAFT = "draft", "Rascunho"
+        PUBLISHED = "published", "Publicado para consulta"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="discount_reward_drafts")
     title = models.CharField(max_length=100)
@@ -88,6 +92,10 @@ class DiscountRewardDraft(models.Model):
     discount_cents = models.PositiveIntegerField()
     min_order_cents = models.PositiveIntegerField(default=0)
     max_redemptions = models.PositiveIntegerField(default=100)
+    publication_status = models.CharField(
+        max_length=12, choices=PublicationStatus.choices, default=PublicationStatus.DRAFT,
+    )
+    published_at = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
         related_name="discount_reward_drafts",
