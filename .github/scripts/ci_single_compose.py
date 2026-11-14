@@ -5,6 +5,7 @@ Não toca Coolify, nunca imprime senhas, URLs de DB ou tokens.
 """
 import argparse
 import os
+import re
 from pathlib import Path
 import secrets
 import subprocess
@@ -49,12 +50,20 @@ conn.close()
 """
 
 
-def execute(args, env, *, label, stdin=None, timeout=600):
+def execute(args, env, *, label, stdin=None, timeout=600, synthetic_test_output=False):
     result = subprocess.run(
         args, cwd=ROOT, env=env, input=stdin, text=True,
         capture_output=True, timeout=timeout,
     )
     if result.returncode:
+        if synthetic_test_output:
+            # Apenas as fixtures test_* e banco efêmero, nunca dados de loja.
+            tail = (result.stdout + "\n" + result.stderr).splitlines()[-65:]
+            for line in tail:
+                line = re.sub(r"postgres(?:ql)?://[^\s]+", "[DB_URL_REDACTED]", line)
+                line = re.sub(r"vf_[0-9a-f]{32}\.[A-Za-z0-9_-]+", "[TOKEN_REDACTED]", line)
+                line = re.sub(r"(?i)(password|secret|token)\s*[:=]\s*\S+", "[SECRET_REDACTED]", line)
+                print("CI_SYNTHETIC_TEST: " + line[:500], file=sys.stderr, flush=True)
         raise RuntimeError("ETAPA_FALHOU: " + label)
     print("OK: " + label, flush=True)
     return result.stdout.strip()
@@ -77,7 +86,7 @@ def main():
         "FIDELIZA_DB_NETWORK": db_network,
         "FIDELIZA_PROXY_NETWORK": proxy_network,
         "DJANGO_SECRET_KEY": secrets.token_hex(40),
-        "DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1,frontend," + HOST,
+        "DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1,frontend,testserver," + HOST,
         "DJANGO_CSRF_TRUSTED_ORIGINS": "https://" + HOST,
         "DATABASE_URL": "postgresql://fideliza:" + password + "@fideliza-db:5432/fideliza",
         "FIDELIZA_PUBLIC_BASE_URL": "https://" + HOST,
@@ -136,6 +145,22 @@ def main():
             time.sleep(2)
         else:
             raise RuntimeError("PostgreSQL externo não ficou saudável")
+        # DB do runner é descartável, sem dado real: migração explicitamente
+        # controlada aqui; startup do Compose deve SOMENTE verificar migrations.
+        execute(compose + ["build", "api"], env, label="build API descartável")
+        # Provar que o boot novo não migra a base automaticamente.
+        preflight = subprocess.run(
+            compose + ["run", "--rm", "--no-deps", "-T",
+                       "api", "python", "manage.py", "migrate", "--check"],
+            cwd=ROOT, env=env, capture_output=True, text=True, timeout=120,
+        )
+        if preflight.returncode == 0:
+            raise RuntimeError("Base nova com migrations pendentes foi aceita")
+        print("OK: boot bloqueia migrations pendentes", flush=True)
+        execute(compose + [
+            "run", "--rm", "--no-deps", "-T",
+            "api", "python", "manage.py", "migrate", "--noinput",
+        ], env, label="migração explícita somente no banco CI descartável")
         execute(compose + ["up", "-d", "--build", "--wait", "--wait-timeout", "180"],
                 env, label="API, worker e frontend saudáveis")
         # Isolamento no Docker inspect (containers de verdade), nao so YAML.
@@ -164,6 +189,9 @@ def main():
             "exec", "-T", "api", "python", "scripts/audit_runtime_env.py",
             "--host", HOST,
         ], env, label="auditoria de ambiente")
+        execute(compose + [
+            "exec", "-T", "api", "python", "manage.py", "migrate", "--check",
+        ], env, label="API sobe com migrations explicitamente verificadas")
         if args.mode in ("proxy", "full"):
             execute(compose + ["exec", "-T", "api", "python", "-"], env,
                     stdin=PROXY_CHECK, label="HTTPS, sessão, CSRF")
@@ -183,6 +211,12 @@ def main():
                 "exec", "-T", "-e", "FIDELIZA_CI_ISOLATED=1",
                 "api", "python", "-",
             ], env, stdin=script, label="login/CSRF/tenant/campanhas")
+            execute(compose + [
+                "exec", "-T", "api", "python", "manage.py", "test",
+                "apps.channels.test_consolidation_smoke",
+                "apps.core.test_pr22_legacy_upgrade", "--verbosity=1",
+            ], env, label="smoke PR22 Flow-identidade-portal no PostgreSQL isolado",
+               synthetic_test_output=True)
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
     finally:
         subprocess.run(

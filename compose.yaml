@@ -65,7 +65,9 @@ services:
       - sh
       - -ec
       - |
-        python manage.py migrate --noinput
+        # Migrations are operator-controlled: backup + restore verification first.
+        # If a deploy occurs too early, remain unhealthy instead of changing data.
+        python manage.py migrate --check
         exec gunicorn config.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000 --access-logfile - --access-logformat '%(h)s %(U)s %(s)s'
     healthcheck:
       test:

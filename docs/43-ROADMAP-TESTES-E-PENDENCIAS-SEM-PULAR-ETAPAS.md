@@ -1430,3 +1430,34 @@ pelo PR #21. Dados financeiros permanecem bloqueados nos serviços.
   seguem obrigatórias antes do merge.
 - NÃO subir PR #21 antes de revisar gates #18–#20, CI do SHA final,
   backup de banco, observabilidade de Celery e financeiro G7/G8.
+
+
+## 14/11/2026 — PR #22: consolidação e execução operativa guardada
+
+PR #22 (feature/pr22-consolidation-homolog-gates), base PR #21. O registro
+operacional detalhado fica em docs/PR22-RELATORIO-HOMOLOGACAO.md e não
+substitui este roadmap. **Nenhum merge, backup ou migração no PostgreSQL
+real de homologação foi executado por esta sessão.**
+
+- Confirmadas branches reais e SHAs: #18 base homolog; #19 sobre #18;
+  #20 sobre #19; #21 sobre #20; #22 sobre #21. O PR #18 NÃO usa a
+  branch fictícia "feature/pr18-customer-identity"; a real é
+  refactor/omnichannel-customer-identity.
+- Proteção crítica: API não executa migrate no boot; apenas migrate
+  --check. CI migra seu PostgreSQL descartável por comando explícito.
+  O Coolify Raw não deve fazer auto-deploy antes de dump e restauração
+  verificados em banco separado. Migrações pendentes bloqueiam API.
+- scripts/homolog_backup_migrate.sh: operação manual exclusiva de
+  homolog com janela de manutenção, banco confirmado, SHA aprovado,
+  dump full, SHA256, restore em base scratch vazia, contagens legadas,
+  plano Django, migrate explícito, check Django e FKs validadas.
+  Nunca armazenar dump ou credenciais no Git.
+- Smoke integrado backend/apps/channels/test_consolidation_smoke.py:
+  Flow pending → duplicação → paid → cliente de telefone comprovado →
+  autenticação isolada do portal do participante → refunded sem ponto
+  ou cashback. O novo cliente sem prova fica provisório.
+- backend/apps/core/test_pr22_legacy_upgrade.py testa a evolução de
+  uma venda/participante anteriores a #19 no banco descartável.
+- G7/G8 e o merge na homolog seguem BLOQUEADOS até que o operador
+  autorizado produza evidência do dump, restore, migrações e
+  E2E autenticado no ambiente real, sem atingir a Bibelô.
