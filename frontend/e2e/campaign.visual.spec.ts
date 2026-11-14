@@ -85,8 +85,13 @@ test("Campanha planejada permite editar e excluir sem publicar",async({page})=>{
  await page.getByRole("button",{name:"Salvar alterações"}).click();
  expect(updated).toBe(true);
  await expect(page.getByText("35 pontos extras",{exact:true})).toBeVisible();
- page.once("dialog",dialog=>dialog.accept());
  await page.getByRole("button",{name:"Excluir",exact:true}).click();
+ await expect(page.getByRole("group",{name:"Confirmação de exclusão"})).toBeVisible();
+ await page.getByRole("button",{name:"Cancelar exclusão"}).click();
+ expect(removed,"cancelar não pode fazer DELETE").toBe(false);
+ await expect(page.getByRole("group",{name:"Confirmação de exclusão"})).toHaveCount(0);
+ await page.getByRole("button",{name:"Excluir",exact:true}).click();
+ await page.getByRole("button",{name:"Confirmar exclusão"}).click();
  expect(removed).toBe(true);
  await expect(page.getByText("Nenhuma campanha salva.",{exact:false})).toBeVisible();
 });
