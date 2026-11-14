@@ -847,3 +847,43 @@ leitor de tela nem validação do checkout real.
 alimentado por regras realmente publicadas, com instruções de
 acúmulo não inventadas e integração Nuvemshop de resgate sob
 idempotência, sem substituir a página por dados de demonstração.
+
+## 13/11/2026 — Prévia de economia de recompensas no editor (incremento pré-lançamento)
+
+**Direção comercial:** o concorrente já faz pontos por pedido e troca por
+cupom (ex.: https://www.fidelimax.com.br/integracoes/nuvemshop ).
+A diferenciação pretendida no MVP é oferecer uma regra simples e
+mostrar **antes de publicar** a relação entre esforço de compra, desconto
+e teto nominal de exposição. Sem cadastro duplicado de custos por SKU
+como pré-requisito do programa.
+
+**Implementação na homolog:** `frontend/src/reward-economics.ts` implementa
+cálculo inteiro em centavos, inversão do arredondamento da regra
+`floor(valor_elegivel*points/per_cents)` com `ceil`; resultado é
+**valor de uma compra elegível** para acumular os pontos da recompensa,
+não previsão de recompra ou soma exata de várias compras.
+O editor `RewardDraftEditor` lê a mesma regra rascunho já existente,
+sem criar uma nova configuração. Exibe percentual de desconto
+equivalente ao gasto teórico e teto nominal
+`discount_cents * max_redemptions`. Sem regra, valor desconhecido
+é exibido como indisponível, nunca como 0. Exposição nominal não é
+custo líquido, lucro ou limite de margem. Não promete ativação nem cupom.
+Alertar quando benefício iguala ou excede o gasto teórico.
+
+**UX:** também removido `window.confirm` para exclusão de recompensa,
+substituído por confirmação local acessível. Cancelar não envia
+`DELETE`, seguindo o padrão de campanhas. Ações continuam restritas
+ao perfil já autorizado. Testes Vitest de arredondamento e valores
+limite, Playwright de 390px, regra salva e cancelamento de exclusão.
+
+**API e domínio:** nenhuma nova rota, permissão, migração, schema ou
+flag. Não mexer no estado real da carteira. Persistência ainda
+em modo `draft_only`, escrita de pontos ainda off.
+
+**Gate seguinte:** confirmar CI final do HEAD, homologar no Coolify
+Raw existente e validar o fluxo do clube com loja teste; depois
+adaptador de pagamento autenticado e conciliação de cancelamentos.
+Segundo a API oficial, `order/paid` também pode ocorrer por
+marcação manual de pagamento e `order/updated` duplica notificações
+especializadas; nenhum webhook sozinho autoriza emissão de pontos.
+https://nuvemshop.dev/api/resources/2025-03/webhook
