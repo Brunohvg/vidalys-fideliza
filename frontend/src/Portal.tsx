@@ -229,16 +229,17 @@ export default function Portal() {
         <button onClick={()=>navigate("program")} className={page==="program"?"is-active":""}><HeartHandshake size={19}/> Programa</button>
         <button onClick={()=>navigate("clients")} className={page==="clients"?"is-active":""}><UsersRound size={19}/> Clientes</button>
         <button onClick={()=>navigate("sales")} className={page==="sales"?"is-active":""}><ShoppingBag size={19}/> Vendas</button>
-        <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
-        <button onClick={()=>navigate("results")} className={page==="results"?"is-active":""}><BarChart3 size={19}/> Resultados</button>
       </nav>
-      <div className="portal-nav-caption portal-tools-caption">FERRAMENTAS AVANÇADAS</div>
-      <nav className="portal-nav portal-nav-secondary">
-        <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Custo dos benefícios</button>
-        <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>
-        <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
-
-      </nav>
+      <details className="portal-advanced-menu">
+        <summary><span>Mais ferramentas</span><ChevronDown size={16}/></summary>
+        <nav className="portal-nav portal-nav-secondary" aria-label="Ferramentas adicionais">
+          <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
+          <button onClick={()=>navigate("results")} className={page==="results"?"is-active":""}><BarChart3 size={19}/> Resultados</button>
+          <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Custo dos benefícios</button>
+          <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>
+          <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
+        </nav>
+      </details>
       <nav className="portal-nav portal-nav-secondary ss-settings-menu" aria-label="Preferências da loja">
         <button onClick={()=>navigate("settings")} className={page==="settings"?"is-active":""}>
           <Settings2 size={19}/> Configurações
