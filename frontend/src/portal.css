@@ -730,3 +730,14 @@
   .portal-shell .portal-panel{padding:20px 22px}
   .portal-shell .portal-footer{margin:16px 0}
 }
+
+/* Navegação do MVP: quatro tarefas; recursos técnicos ficam a um clique. */
+.portal-advanced-menu{margin-top:16px;padding-top:13px;border-top:1px solid #243C5A;min-width:0}
+.portal-advanced-menu>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:9px;min-height:43px;padding:9px 13px;border-radius:10px;color:#a5b8ca;font-size:12px;font-weight:800;cursor:pointer}
+.portal-advanced-menu>summary::-webkit-details-marker{display:none}
+.portal-advanced-menu>summary:hover,.portal-advanced-menu[open]>summary{background:#172640;color:#e1f6ed}
+.portal-advanced-menu>summary svg{transition:transform .15s ease}
+.portal-advanced-menu[open]>summary svg{transform:rotate(180deg)}
+.portal-advanced-menu>summary:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+.portal-advanced-menu .portal-nav{margin-top:6px;padding-left:7px}
+.portal-advanced-menu .portal-nav button{font-size:11px;min-height:41px}
