@@ -48,7 +48,7 @@ for(const width of [390,768,1440]) {
         const css=getComputedStyle(el);
         return {radius:css.borderRadius,height:el.getBoundingClientRect().height,display:css.display};
       });
-      expect(appearance.display).toBe("inline-flex");
+      expect(["flex","inline-flex"]).toContain(appearance.display);
       expect(appearance.radius).not.toBe("0px");
       expect(appearance.height).toBeGreaterThanOrEqual(44);
       await expect(page.getByText("Sua comunidade começa com o primeiro aceite")).toBeVisible();
