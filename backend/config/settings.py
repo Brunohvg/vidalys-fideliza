@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.wallets.apps.WalletsConfig",
     "apps.sales.apps.SalesConfig",
     "apps.points.apps.PointsConfig",
+    "apps.channels.apps.ChannelsConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -105,6 +106,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_THROTTLE_RATES": {"orders_ingest": "60/min"},
 }
 # Somente use com proxy que substitua X-Forwarded-Proto e sem acesso externo direto à API.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
