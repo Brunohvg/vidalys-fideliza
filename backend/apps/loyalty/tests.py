@@ -446,6 +446,77 @@ class LoyaltyFinancialTests(TestCase):
             sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
             )
 
+    def test_refund_never_debits_cashback_from_another_purchase(self):
+        """P0: spent credit of grant A must not consume available credit of B."""
+        first_sale, first, _ = self.create_grant("ORIGIN-A", minutes=12)
+        _, second, _ = self.create_grant("ORIGIN-B", minutes=11)
+        release_grant(grant_id=first.pk)
+        release_grant(grant_id=second.pk)
+        second_available = origin_balances(second.cashback_event)["available_cents"]
+        voucher, code = issue_voucher(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            reward_id=self.reward(300, unit="cashback").pk,
+        )
+        redeem_sale, redeem_proof = self.redemption_evidence("ORIGIN-REDEEM")
+        redeem_voucher(
+            tenant_id=self.tenant.pk, code=code,
+            channel="counter", external_receipt="ORIGIN-RECEIPT",
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
+        )
+        self.change_sale(first_sale, "refunded")
+        refund = self.proof(first_sale, kind="refund", minutes=1)
+        reversed_grant, _ = reverse_grant(grant_id=first.pk, refund_evidence_id=refund.pk)
+        self.assertEqual(reversed_grant.status, LoyaltyGrant.Status.RECOVERY)
+        self.assertEqual(origin_balances(second.cashback_event)["available_cents"], second_available)
+        self.assertEqual(LoyaltyRecovery.objects.get(grant=first).remaining_cashback_cents, 300)
+        self.assertEqual(origin_balances(first.cashback_event)["available_cents"], 0)
+        self.assertEqual(cashback_balances(second.cashback_event.wallet)["available_cents"], second_available)
+
+    def test_voucher_requires_published_reward_and_enforces_quota(self):
+        _, grant, _ = self.create_grant("REWARD-PUBLICATION")
+        release_grant(grant_id=grant.pk)
+        reward = self.reward(10, max_redemptions=1)
+        reward.publication_status = DiscountRewardDraft.PublicationStatus.DRAFT
+        reward.save(update_fields=["publication_status"])
+        with self.assertRaises(LoyaltyBlocked):
+            issue_voucher(
+                tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+                reward_id=reward.pk,
+            )
+        reward.publication_status = DiscountRewardDraft.PublicationStatus.PUBLISHED
+        reward.save(update_fields=["publication_status"])
+        issue_voucher(tenant_id=self.tenant.pk, participant_id=self.participant.pk, reward_id=reward.pk)
+        with self.assertRaises(LoyaltyBlocked):
+            issue_voucher(
+                tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+                reward_id=reward.pk,
+            )
+
+    def test_voucher_minimum_order_and_channel_are_verified_at_redemption(self):
+        _, grant, _ = self.create_grant("REWARD-MINIMUM")
+        release_grant(grant_id=grant.pk)
+        reward = self.reward(10)
+        reward.min_order_cents = 12000
+        reward.allowed_channels = "counter"
+        reward.save(update_fields=["min_order_cents", "allowed_channels"])
+        _, code = issue_voucher(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            reward_id=reward.pk,
+        )
+        redeem_sale, redeem_proof = self.redemption_evidence("REWARD-LOW-ORDER")
+        with self.assertRaises(LoyaltyBlocked):
+            redeem_voucher(
+                tenant_id=self.tenant.pk, code=code, channel="counter",
+                external_receipt="LOW-ORDER-100",
+                sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
+            )
+        with self.assertRaises(LoyaltyBlocked):
+            redeem_voucher(
+                tenant_id=self.tenant.pk, code=code, channel="vidalys_flow",
+                external_receipt="WRONG-CHANNEL-100",
+                sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
+            )
+
     def test_profile_birthday_mission_requires_verified_contact_and_consent(self):
         with self.assertRaises(LoyaltyBlocked):
             record_engagement_eligibility(
