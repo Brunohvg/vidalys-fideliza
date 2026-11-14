@@ -245,6 +245,7 @@ export default function Portal() {
         <button onClick={()=>navigate("program")} className={page==="program"?"is-active":""}><HeartHandshake size={19}/> Programa</button>
         <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
         <button onClick={()=>navigate("sales")} className={page==="sales"?"is-active":""}><ShoppingBag size={19}/> Vendas</button>
+        <button onClick={()=>navigate("settings")} className={page==="settings"?"is-active":""}><Settings2 size={19}/> Configurações</button>
       </nav>
       <details className="portal-advanced-menu">
         <summary><span>Mais ferramentas</span><ChevronDown size={16}/></summary>
@@ -255,11 +256,6 @@ export default function Portal() {
           <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
         </nav>
       </details>
-      <nav className="portal-nav portal-nav-secondary ss-settings-menu" aria-label="Preferências da loja">
-        <button onClick={()=>navigate("settings")} className={page==="settings"?"is-active":""}>
-          <Settings2 size={19}/> Configurações
-        </button>
-      </nav>
       <div className="portal-side-bottom">
         <button className="portal-signout" disabled={authBusy} onClick={doLogout}><LogOut size={18}/> Sair da conta</button>
       </div>
