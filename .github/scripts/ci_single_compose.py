@@ -136,6 +136,13 @@ def main():
             time.sleep(2)
         else:
             raise RuntimeError("PostgreSQL externo não ficou saudável")
+        # DB do runner é descartável, sem dado real: migração explicitamente
+        # controlada aqui; startup do Compose deve SOMENTE verificar migrations.
+        execute(compose + ["build", "api"], env, label="build API descartável")
+        execute(compose + [
+            "run", "--rm", "--no-deps", "-T",
+            "api", "python", "manage.py", "migrate", "--noinput",
+        ], env, label="migração explícita somente no banco CI descartável")
         execute(compose + ["up", "-d", "--build", "--wait", "--wait-timeout", "180"],
                 env, label="API, worker e frontend saudáveis")
         # Isolamento no Docker inspect (containers de verdade), nao so YAML.
