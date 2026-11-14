@@ -580,9 +580,9 @@ class LoyaltyFinancialTests(TestCase):
 
 
     def test_birthdate_cannot_be_stored_without_consent(self):
-        from django.db import IntegrityError
+        from django.db import IntegrityError, transaction
         with self.assertRaises(IntegrityError):
-            with self.captureOnCommitCallbacks(execute=False):
+            with transaction.atomic():
                 CustomerProfile.objects.filter(pk=self.profile.pk).update(
                     birth_date=timezone.now().date(), birth_date_consent_at=None,
                 )
