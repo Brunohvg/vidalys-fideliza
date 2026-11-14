@@ -693,7 +693,7 @@ export type MemberClubPrivate = {
   status:"active"|"paused"|"awaiting_link";joined_at:string|null;
   terms:ProgramTerms;
   points_balance:number|null;points_pending:number|null;points_expiring:number|null;
-  points_status:"not_active"|"verified";
+  points_status:"not_active"|"ledger_only"|"verified";
   available_rewards:MemberClubReward[];
   transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;
   redemption_enabled:boolean;orders_verified:boolean;note:string;
