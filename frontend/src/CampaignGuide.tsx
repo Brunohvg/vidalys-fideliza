@@ -182,7 +182,7 @@ export default function CampaignGuide({tenantId,role}:{
           {canSave&&<div className="vf-draft-actions">
             <button type="button" onClick={()=>edit(item)} disabled={busy}><Pencil size={16}/> Editar</button>
             <button type="button" onClick={()=>void remove(item)} disabled={busy}><Trash2 size={16}/> Excluir</button>
-            <button type="button" disabled title="A publicação depende do motor de pontos e da validação financeira"><LockKeyhole size={16}/> Publicar indisponível</button>
+            <span className="vf-campaign-locked" title="A publicação exige carteira e regras de pontos verificadas"><LockKeyhole size={15}/> Publicação ainda não disponível</span>
           </div>}
         </article>)}</div>}
     </section>

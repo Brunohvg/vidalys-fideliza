@@ -59,7 +59,7 @@ for(const width of [390,768,1440]){
   await expect(page.getByRole("heading",{name:"Sua campanha, antes de publicar"})).toBeVisible();
   await expect(page.getByText("800 pontos",{exact:false})).toBeVisible();
   await page.getByRole("button",{name:"Guardar rascunho"}).click();
-  await expect(page.getByText("Campanha guardada como rascunho.",{exact:false})).toBeVisible();
+  await expect(page.getByText("Rascunho salvo. Nenhuma mensagem foi enviada",{exact:false})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Rascunhos salvos"})).toBeVisible();
   await expect(page.getByText("20 pontos extras",{exact:false})).toBeVisible();
   expect(await page.getByRole("button",{name:/Publicar|Ativar campanha/}).count()).toBe(0);
