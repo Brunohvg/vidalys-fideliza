@@ -251,8 +251,7 @@ export default function MemberClub(){
                   !pointsReady?"Aguardando ativação":
                   availablePoints!==null&&availablePoints<reward.points_cost
                     ?"Faltam "+(reward.points_cost-availablePoints).toLocaleString("pt-BR")+" pontos":
-                  me.redemption_enabled&&reward.redemption_enabled&&me.status==="active"
-                    ?"Aguardando confirmação do resgate":"Resgate em preparação"}
+                  "Resgate em preparação"}
               </div>
             </article>)}
           </div>}
