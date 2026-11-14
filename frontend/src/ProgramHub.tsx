@@ -4,6 +4,7 @@ import EnrollmentManagement from "./EnrollmentManagement";
 import PointRuleDraftEditor from "./PointRuleDraftEditor";
 import RewardDraftEditor from "./RewardDraftEditor";
 import LoyaltyTrialPanel from "./LoyaltyTrialPanel";
+import PaidOrderCheck from "./PaidOrderCheck";
 import type {Store} from "./api";
 import "./program-hub.css";
 
@@ -35,6 +36,11 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
    onRuleSaved={()=>setRuleRefresh(value=>value+1)} />
   <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}
    onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>
+  {(role==="owner"||role==="admin")&&tenantStatus==="active"&&
+  <details className="vf-program-lab">
+    <summary>Conferir pedido Nuvemshop antes de liberar pontos</summary>
+    <PaidOrderCheck tenantId={tenantId}/>
+  </details>}
   <details className="vf-program-lab">
     <summary>Testar pontos e recompensas sem publicar</summary>
     <LoyaltyTrialPanel tenantId={tenantId} ruleRefresh={ruleRefresh}
