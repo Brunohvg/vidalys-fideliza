@@ -16,8 +16,9 @@ import ResultsOverview from "./ResultsOverview";
 import CostCatalog from "./CostCatalog";
 import CatalogReconciliation from "./CatalogReconciliation";
 import { ApiError, merchantApi, type CostItem, type SessionInfo, type Store } from "./api";
+import { merchantPaths, merchantScreenForPath, type MerchantScreen } from "./routes";
 
-type Screen = "overview" | "program" | "clients" | "sales" | "campaign" | "results" | "margin" | "costs" | "catalog" | "settings";
+type Screen = MerchantScreen;
 
 // Links de conta são rotas públicas mesmo com OUTRO lojista autenticado.
 // A ação só troca a sessão quando a confirmação explícita for concluída.
@@ -53,7 +54,15 @@ export default function Portal() {
   const [authRoute, setAuthRoute] = useState(() => isMerchantAuthPage(window.location.pathname));
 
   useEffect(() => {
-    const syncRoute = () => setAuthRoute(isMerchantAuthPage(window.location.pathname));
+    const syncRoute = () => {
+      setAuthRoute(isMerchantAuthPage(window.location.pathname));
+      const route = merchantScreenForPath(window.location.pathname);
+      if (route) {
+        setPage(route);
+        setSeedItem(null);
+        setDrawer(false);
+      }
+    };
     window.addEventListener("popstate", syncRoute);
     return () => window.removeEventListener("popstate", syncRoute);
   }, []);
@@ -62,7 +71,8 @@ export default function Portal() {
    const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [page, setPage] = useState<Screen>(() =>
-    new URLSearchParams(window.location.search).has("nuvemshop") ? "settings" : "overview"
+    new URLSearchParams(window.location.search).has("nuvemshop")
+      ? "settings" : merchantScreenForPath(window.location.pathname) || "overview"
   );
   const [drawer, setDrawer] = useState(false);
   const [compactMenu, setCompactMenu] = useState(() =>
@@ -188,12 +198,17 @@ export default function Portal() {
   };
 
   const navigate = (next: Screen) => {
+    if (window.location.pathname !== merchantPaths[next]) {
+      window.history.pushState(null, "", merchantPaths[next]);
+    }
     setPage(next);
     setDrawer(false);
     if (compactMenu && drawer) menuButtonRef.current?.focus();
     if (next !== "margin") setSeedItem(null);
   };
-  const simulateProduct = (item: CostItem) => { setSeedItem(item); setPage("margin"); setDrawer(false); };
+  const simulateProduct = (item: CostItem) => {
+    setSeedItem(item); navigate("margin");
+  };
   const tenants = session?.authenticated ? session.tenants : [];
   const tenant = tenants.find(value => value.id === selectedId) || tenants[0];
 
@@ -226,14 +241,14 @@ export default function Portal() {
       <div className="portal-nav-caption">MENU PRINCIPAL</div>
       <nav className="portal-nav">
         <button onClick={()=>navigate("overview")} className={page==="overview"?"is-active":""}><LayoutDashboard size={19}/> Visão geral</button>
-        <button onClick={()=>navigate("program")} className={page==="program"?"is-active":""}><HeartHandshake size={19}/> Programa</button>
         <button onClick={()=>navigate("clients")} className={page==="clients"?"is-active":""}><UsersRound size={19}/> Clientes</button>
+        <button onClick={()=>navigate("program")} className={page==="program"?"is-active":""}><HeartHandshake size={19}/> Programa</button>
+        <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
         <button onClick={()=>navigate("sales")} className={page==="sales"?"is-active":""}><ShoppingBag size={19}/> Vendas</button>
       </nav>
       <details className="portal-advanced-menu">
         <summary><span>Mais ferramentas</span><ChevronDown size={16}/></summary>
         <nav className="portal-nav portal-nav-secondary" aria-label="Ferramentas adicionais">
-          <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
           <button onClick={()=>navigate("results")} className={page==="results"?"is-active":""}><BarChart3 size={19}/> Resultados</button>
           <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Custo dos benefícios</button>
           <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>

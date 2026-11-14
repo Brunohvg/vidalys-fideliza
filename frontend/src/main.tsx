@@ -7,22 +7,29 @@ import PublicEnrollment from "./PublicEnrollment";
 import MemberClub from "./MemberClub";
 import EmailAction from "./EmailAction";
 import WithdrawalRequest from "./WithdrawalRequest";
+import {entryRoute} from "./routes";
 import "./styles.css";
 import "./portal.css";
 import "./fideliza-theme.css";
 
-// A demo nunca usa credenciais, dados ou endpoints de lojistas.
-// A rota principal exige sessão real do Django.
-const isDemo = window.location.pathname === "/demo";
-const isMemberClub = /^\/clube\/[a-z0-9-]+\/?$/i.test(window.location.pathname);
-const isMerchantEmailLink = ["/confirmar-conta", "/redefinir-senha"]
-  .includes(window.location.pathname.replace(/\/+$/, ""));
-const isEmailAction = window.location.pathname === "/confirmar";
-const isWithdrawal = /^\/retirar\/[a-z0-9-]+\/?$/i.test(window.location.pathname);
-const isEnrollment = window.location.pathname === "/participar" ||
-  /^\/participar\/[a-z0-9-]+\/?$/i.test(window.location.pathname);
+const entry = entryRoute(window.location.pathname);
+const content = (() => {
+  switch (entry) {
+    case "email-action": return <EmailAction />;
+    case "withdrawal": return <WithdrawalRequest />;
+    case "enrollment": return <PublicEnrollment />;
+    case "demo": return <App />;
+    case "member": return <MemberClub />;
+    case "merchant-auth": return <MerchantLinkLanding />;
+    case "merchant": return <Portal />;
+    default: return <main className="route-not-found">
+      <h1>Página não encontrada</h1>
+      <p>Confira o endereço ou retorne ao painel.</p>
+      <a href="/app/visao-geral">Ir para o painel</a>
+    </main>;
+  }
+})();
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    {isEmailAction ? <EmailAction /> : isWithdrawal ? <WithdrawalRequest /> : isEnrollment ? <PublicEnrollment /> : isDemo ? <App /> : isMemberClub ? <MemberClub /> : isMerchantEmailLink ? <MerchantLinkLanding /> : <Portal />}
-  </React.StrictMode>
+  <React.StrictMode>{content}</React.StrictMode>
 );
