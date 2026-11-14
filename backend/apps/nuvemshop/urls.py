@@ -1,5 +1,6 @@
 from django.urls import path
 from .order_preview_views import OrderPreviewView
+from .recent_order_views import RecentOrdersPreviewView
 from .order_event_inspection import OrderEventInspectionView
 from .order_webhooks import OrderEventsView, order_webhook
 from .privacy_webhooks import privacy_webhook
@@ -16,6 +17,8 @@ urlpatterns = [
          OAuthStartView.as_view(), name="nuvemshop-connect"),
     path("tenants/<uuid:tenant_id>/nuvemshop/catalog/preview/",
          LiveCatalogPreviewView.as_view(), name="nuvemshop-catalog-preview"),
+    path("tenants/<uuid:tenant_id>/nuvemshop/orders/recent/preview/",
+         RecentOrdersPreviewView.as_view(), name="nuvemshop-recent-orders-preview"),
     path("tenants/<uuid:tenant_id>/nuvemshop/orders/by-number/preview/",
          OrderPreviewView.as_view(), name="nuvemshop-order-number-preview"),
     path("tenants/<uuid:tenant_id>/nuvemshop/orders/<int:order_id>/preview/",
