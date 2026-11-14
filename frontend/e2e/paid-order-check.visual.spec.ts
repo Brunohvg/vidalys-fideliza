@@ -5,7 +5,7 @@ const shop={
  name:"Loja QA Pedidos",slug:"qa-pedidos",status:"active",role:"owner",
 };
 const order={
- order_id:"1234567",source:"nuvemshop_live_read_only",
+ order_id:"2120958234",order_number:"14111",source:"nuvemshop_live_read_only",
  order_status:"open",payment_status:"paid",
  paid_at:"2026-11-14T01:00:00Z",
  reported_total_cents:20000,currency:"BRL",
@@ -44,8 +44,9 @@ async function setup(page:Page){
   }),
  }));
 }
+
 for(const width of [320,390,1440]){
- test("Pedido Nuvemshop real tem diagnóstico sem gerar pontos em "+width+"px",async({page},info)=>{
+ test("Busca #14111 na Nuvemshop com IDs corretos e sem crédito em "+width+"px",async({page},info)=>{
   await page.setViewportSize({width,height:880});
   await setup(page);
   let count=0;const writes:string[]=[];
@@ -53,7 +54,7 @@ for(const width of [320,390,1440]){
    if(req.url().includes("/api/v1/")&&!["GET","OPTIONS","HEAD"].includes(req.method()))
     writes.push(req.url());
   });
-  await page.route("**/api/v1/tenants/**/nuvemshop/orders/1234567/preview/",r=>{
+  await page.route(/\/nuvemshop\/orders\/by-number\/preview\/\?number=14111$/,r=>{
    count++;
    expect(r.request().method()).toBe("GET");
    return r.fulfill({contentType:"application/json",body:JSON.stringify(order)});
@@ -62,44 +63,75 @@ for(const width of [320,390,1440]){
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
   await page.getByText("Conferir pedido Nuvemshop antes de liberar pontos").click();
-  await expect(page.getByRole("heading",{name:"Conferir uma compra na Nuvemshop"})).toBeVisible();
-  const input=page.getByRole("textbox",{name:"ID interno do pedido na Nuvemshop"});
-  await input.fill("abc");
-  await expect(page.getByRole("button",{name:"Conferir pedido"})).toBeDisabled();
-  await input.fill("1234567");
-  await page.getByRole("button",{name:"Conferir pedido"}).click();
+  await expect(page.getByRole("heading",{name:"Localize uma compra"})).toBeVisible();
+  const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
+  await input.fill("invalido");
+  await expect(page.getByRole("button",{name:"Buscar pedido"})).toBeDisabled();
+  await input.fill("#14111");
+  await page.getByRole("button",{name:"Buscar pedido"}).click();
   const result=page.getByRole("region",{name:"Resultado da conferência do pedido"});
   await expect(result).toContainText("Falta conciliação financeira");
+  await expect(result).toContainText("#14111");
+  await expect(result).toContainText("2120958234");
   await expect(result).toContainText("R$ 200,00");
   await expect(result).toContainText("Vinculado");
   await expect(result).toContainText("Nenhum ponto foi criado");
-  expect(count).toBe(1);
-  expect(writes).toEqual([]);
+  expect(count).toBe(1);expect(writes).toEqual([]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
   await page.screenshot({path:info.outputPath("order-check-"+width+".png"),fullPage:true});
  });
 }
-test("Pedido cancelado ou com API indisponível não libera pontos",async({page})=>{
+
+test("Cancelamento e falta de autorização não geram pontos",async({page})=>{
  await page.setViewportSize({width:390,height:840});await setup(page);
- await page.route("**/api/v1/tenants/**/nuvemshop/orders/1234567/preview/",r=>
-  r.fulfill({status:200,contentType:"application/json",body:JSON.stringify({
-   ...order,order_status:"cancelled",payment_status:"refunded",
-   review_status:"blocked_cancelled",
-  })}));
- await page.route("**/api/v1/tenants/**/nuvemshop/orders/987654/preview/",r=>
-  r.fulfill({status:409,contentType:"application/json",body:JSON.stringify({
-   detail:"Autorize a leitura de pedidos nesta loja.",
-  })}));
+ await page.route(/\/nuvemshop\/orders\/by-number\/preview\/\?number=/,r=>{
+  const number=new URL(r.request().url()).searchParams.get("number");
+  if(number==="14111")return r.fulfill({contentType:"application/json",
+   body:JSON.stringify({...order,order_status:"cancelled",
+    payment_status:"refunded",review_status:"blocked_cancelled"})});
+  return r.fulfill({status:409,contentType:"application/json",
+   body:JSON.stringify({detail:"Autorize a leitura de pedidos nesta loja."})});
+ });
  await page.goto("/");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
  await page.getByText("Conferir pedido Nuvemshop antes de liberar pontos").click();
- const input=page.getByRole("textbox",{name:"ID interno do pedido na Nuvemshop"});
- await input.fill("1234567");await page.getByRole("button",{name:"Conferir pedido"}).click();
+ const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
+ await input.fill("#14111");
+ await page.getByRole("button",{name:"Buscar pedido"}).click();
  await expect(page.getByRole("region",{name:"Resultado da conferência do pedido"}))
   .toContainText("Pedido cancelado");
- await input.fill("987654");await page.getByRole("button",{name:"Conferir pedido"}).click();
+ await input.fill("987654");
+ await page.getByRole("button",{name:"Buscar pedido"}).click();
  await expect(page.locator(".vf-order-check-error")).toContainText("permissão read_orders");
  await expect(page.getByRole("region",{name:"Resultado da conferência do pedido"})).toHaveCount(0);
+});
+
+test("Link administrativo e ID interno explícito não confundem com #numero",async({page})=>{
+ await page.setViewportSize({width:390,height:840});
+ await setup(page);const seen:string[]=[];
+ await page.route("**/api/v1/tenants/**/nuvemshop/orders/2120958234/preview/",r=>{
+  seen.push("url");return r.fulfill({contentType:"application/json",
+   body:JSON.stringify(order)});
+ });
+ await page.route("**/api/v1/tenants/**/nuvemshop/orders/363573290/preview/",r=>{
+  seen.push("id");return r.fulfill({contentType:"application/json",
+   body:JSON.stringify({...order,order_id:"363573290",order_number:"14112"})});
+ });
+ await page.goto("/");
+ await page.getByRole("button",{name:"Abrir menu"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+ await page.getByText("Conferir pedido Nuvemshop antes de liberar pontos").click();
+ const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
+ await input.fill("https://bibelo8.lojavirtualnuvem.com.br/admin/orders/2120958234");
+ await expect(page.getByText("Consulta pelo ID interno da URL")).toBeVisible();
+ await page.getByRole("button",{name:"Buscar pedido"}).click();
+ await expect(page.getByRole("region",{name:"Resultado da conferência do pedido"})).toContainText("#14111");
+ await input.fill("363573290");
+ await expect(page.getByText("Busca pelo número comercial do pedido")).toBeVisible();
+ await page.getByRole("checkbox",{name:"Digitei um ID interno, não o número do pedido"}).check();
+ await page.getByRole("button",{name:"Buscar pedido"}).click();
+ await expect(page.getByRole("region",{name:"Resultado da conferência do pedido"})).toContainText("363573290");
+ expect(seen).toEqual(["url","id"]);
 });
