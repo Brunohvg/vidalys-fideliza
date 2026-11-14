@@ -282,13 +282,16 @@ class LoyaltyFinancialTests(TestCase):
         self.assertTrue(verify_voucher(tenant_id=self.tenant.pk, code=code)["valid"])
         self.assertEqual(voucher.discount_cents, 30)
         self.assertEqual(lot_balances(grant.point_lot)["reserved"], 30)
+        redeem_sale, redeem_proof = self.redemption_evidence("REDEEM-PTS-NEW")
         voucher, new = redeem_voucher(
             tenant_id=self.tenant.pk, code=code,
             channel="counter", external_receipt="Balcao-100",
+        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         same, again = redeem_voucher(
             tenant_id=self.tenant.pk, code=code,
             channel="counter", external_receipt="Balcao-100",
+        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         self.assertTrue(new)
         self.assertFalse(again)
@@ -300,6 +303,7 @@ class LoyaltyFinancialTests(TestCase):
             redeem_voucher(
                 tenant_id=self.tenant.pk, code=code,
                 channel="counter", external_receipt="Balcao-200",
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
             )
 
     def test_cashback_voucher_can_be_cancelled_and_reserved_again(self):
@@ -322,9 +326,11 @@ class LoyaltyFinancialTests(TestCase):
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
             reward_id=self.reward(30, unit="points").pk,
         )
+        redeem_sale, redeem_proof = self.redemption_evidence("REDEEM-RECOVERY-NEW")
         redeem_voucher(
             tenant_id=self.tenant.pk, code=code,
             channel="counter", external_receipt="Applied-101",
+        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         self.change_sale(sale, "refunded")
         proof = self.proof(sale, kind="refund", minutes=1)
@@ -405,14 +411,17 @@ class LoyaltyFinancialTests(TestCase):
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
             reward_id=self.reward(10, unit="points").pk,
         )
+        redeem_sale, redeem_proof = self.redemption_evidence("REDEEM-SAME-NEW")
         redeem_voucher(
             tenant_id=self.tenant.pk, code=code1,
             channel="counter", external_receipt="same-0001",
+        sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
         )
         with self.assertRaises(LoyaltyBlocked):
             redeem_voucher(
                 tenant_id=self.tenant.pk, code=code2,
                 channel="counter", external_receipt="same-0001",
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
             )
         two.refresh_from_db()
         self.assertEqual(two.state, LoyaltyVoucher.State.RESERVED)
@@ -433,6 +442,8 @@ class LoyaltyFinancialTests(TestCase):
             redeem_voucher(
                 tenant_id=self.another_tenant.pk, code=code,
                 channel="counter", external_receipt="foreign-222",
+                sale_id=grant.sale_id, capture_evidence_id=grant.evidence_id,
+            sale_id=redeem_sale.pk, capture_evidence_id=redeem_proof.pk,
             )
 
     def test_profile_birthday_mission_requires_verified_contact_and_consent(self):
