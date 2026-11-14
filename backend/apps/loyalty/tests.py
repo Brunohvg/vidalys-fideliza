@@ -577,3 +577,13 @@ class LoyaltyFinancialTests(TestCase):
         self.assertEqual(first["notifications_sent"], 0)
         self.assertFalse(PointEvent.objects.exists())
         self.assertFalse(CashbackEvent.objects.exists())
+
+
+    def test_birthdate_cannot_be_stored_without_consent(self):
+        from django.db import IntegrityError
+        with self.assertRaises(IntegrityError):
+            with self.captureOnCommitCallbacks(execute=False):
+                CustomerProfile.objects.filter(pk=self.profile.pk).update(
+                    birth_date=timezone.now().date(), birth_date_consent_at=None,
+                )
+        self.assertIsNone(CustomerProfile.objects.get(pk=self.profile.pk).birth_date)

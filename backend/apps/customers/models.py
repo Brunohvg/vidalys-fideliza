@@ -30,6 +30,15 @@ class CustomerProfile(models.Model):
         indexes = [
             models.Index(fields=["tenant", "created_at"], name="cust_profile_tenant_idx"),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(birth_date__isnull=True)
+                    | models.Q(birth_date_consent_at__isnull=False)
+                ),
+                name="customer_birth_requires_consent",
+            ),
+        ]
 
 
 class VerifiedCustomerContact(models.Model):
