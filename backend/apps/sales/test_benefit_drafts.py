@@ -200,3 +200,72 @@ class BenefitDraftTests(TestCase):
             HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,403)
         self.assertEqual(PointCampaignDraft.objects.count(),1)
         self.assert_no_effects()
+
+    def test_publish_is_visible_catalog_only_and_unpublish_is_reversible(self):
+        created=self.send(self.reward,self.reward_data)
+        self.assertEqual(created.status_code,201)
+        reward_id=created.data["reward"]["id"]
+        publication=reverse("discount-reward-publication",kwargs={
+            "tenant_id":self.tenant.id,"reward_id":reward_id,
+        })
+        detail=reverse("discount-reward-draft-detail",kwargs={
+            "tenant_id":self.tenant.id,"reward_id":reward_id,
+        })
+        csrf=self.client.cookies["csrftoken"].value
+        published=self.client.patch(publication,{"published":True},format="json",
+                                    HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(published.status_code,200,published.data)
+        self.assertEqual(published.data["reward"]["status"],"published")
+        self.assertTrue(published.data["reward"]["published"])
+        self.assertFalse(published.data["redemption_enabled"])
+        self.assertFalse(published.data["coupon_created"])
+        self.assertFalse(published.data["points_credited"])
+        self.assertFalse(published.data["points_debited"])
+        self.assertEqual(self.client.get(self.reward).data["items"][0]["status"],"published")
+        first_published_at=DiscountRewardDraft.objects.get().published_at
+        self.assertIsNotNone(first_published_at)
+        repeated=self.client.patch(publication,{"published":True},format="json",
+                                   HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(repeated.status_code,200)
+        self.assertEqual(DiscountRewardDraft.objects.get().published_at,first_published_at)
+        self.assertEqual(self.client.patch(detail,self.reward_data,format="json",
+            HTTP_X_CSRFTOKEN=csrf).status_code,409)
+        self.assertEqual(self.client.delete(detail,HTTP_X_CSRFTOKEN=csrf).status_code,409)
+        hidden=self.client.patch(publication,{"published":False},format="json",
+                                 HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(hidden.status_code,200,hidden.data)
+        self.assertEqual(hidden.data["reward"]["status"],"draft")
+        self.assertFalse(hidden.data["reward"]["published"])
+        self.assertIsNone(DiscountRewardDraft.objects.get().published_at)
+        self.assertEqual(self.client.delete(detail,HTTP_X_CSRFTOKEN=csrf).status_code,200)
+        self.assert_no_effects()
+
+    def test_publication_requires_owner_active_tenant_valid_boolean_and_csrf(self):
+        reward=self.send(self.reward,self.reward_data).data["reward"]
+        publication=reverse("discount-reward-publication",kwargs={
+            "tenant_id":self.tenant.id,"reward_id":reward["id"],
+        })
+        other=reverse("discount-reward-publication",kwargs={
+            "tenant_id":self.foreign.id,"reward_id":reward["id"],
+        })
+        csrf=self.client.cookies["csrftoken"].value
+        self.assertEqual(self.client.patch(publication,{"published":True},format="json").status_code,403)
+        for data in ({"published":1},{"published":"true"},{"published":True,"coupon":True},
+                     {"published":None},{}):
+            with self.subTest(data=data):
+                self.assertEqual(self.client.patch(publication,data,format="json",
+                    HTTP_X_CSRFTOKEN=csrf).status_code,400)
+        self.assertEqual(self.client.patch(other,{"published":True},format="json",
+            HTTP_X_CSRFTOKEN=csrf).status_code,404)
+        self.client.force_login(self.analyst)
+        self.client.get(reverse("auth-session"))
+        self.assertEqual(self.client.patch(publication,{"published":True},format="json",
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,403)
+        self.client.force_login(self.owner)
+        self.client.get(reverse("auth-session"))
+        self.tenant.status=Tenant.Status.SUSPENDED
+        self.tenant.save(update_fields=["status"])
+        self.assertEqual(self.client.patch(publication,{"published":True},format="json",
+            HTTP_X_CSRFTOKEN=self.client.cookies["csrftoken"].value).status_code,409)
+        self.assertEqual(DiscountRewardDraft.objects.get().publication_status,"draft")
+        self.assert_no_effects()
