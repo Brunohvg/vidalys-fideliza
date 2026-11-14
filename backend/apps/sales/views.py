@@ -47,6 +47,12 @@ def present_sale(sale, *, viewer_id=None):
         "state": sale.state, "created_at": sale.created_at.isoformat(),
         "reviewed_at": sale.reviewed_at.isoformat() if sale.reviewed_at else None,
         "submitted_by_me": bool(viewer_id is not None and sale.submitted_by_id == viewer_id),
+        "reviewed_by_me": bool(viewer_id is not None and sale.reviewed_by_id == viewer_id),
+        "review_mode": (
+            "owner_self_review" if sale.reviewed_by_id and sale.reviewed_by_id == sale.submitted_by_id
+            else "another_operator" if sale.reviewed_by_id else None
+        ),
+        "review_note": sale.review_note if sale.reviewed_at else None,
         "points_credited": False, "cashback_credited": False,
     }
 
@@ -164,8 +170,9 @@ class ManualSaleReviewView(APIView):
         )
         if sale.state != SaleRecord.State.AWAITING_REVIEW:
             return safe_reply({"detail": "Venda não está pendente de conferência."}, 409)
-        if sale.submitted_by_id == request.user.pk:
-            return safe_reply({"detail": "A conferência deve ser feita por outro administrador."}, 409)
+        self_review = sale.submitted_by_id == request.user.pk
+        if self_review and member.role != TenantMembership.Role.OWNER:
+            return safe_reply({"detail": "Somente o proprietário pode conferir seu próprio lançamento. Solicite a outro administrador."}, 409)
         if not sale.participant or sale.participant.status != ProgramParticipant.Status.ACTIVE:
             return safe_reply({"detail": "Participante inativo ou ausente."}, 409)
         sale.state = (SaleRecord.State.VERIFIED_MANUAL if decision == "approve"
@@ -178,6 +185,7 @@ class ManualSaleReviewView(APIView):
         return safe_reply({
             "sale": present_sale(sale, viewer_id=request.user.pk),
             "manual_evidence_reviewed": True,
+            "review_mode": "owner_self_review" if self_review else "another_operator",
             "independent_payment_proof": False,
             "points_credited": False,
         })
