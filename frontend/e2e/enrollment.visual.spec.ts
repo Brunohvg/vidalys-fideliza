@@ -38,16 +38,16 @@ for(const width of [390,768,1440]){
     await page.setViewportSize({width,height:850});
     await setup(page);
     await page.goto("/participar#convite=token-qa-somente-front");
-    await expect(page.getByRole("heading",{name:"Faça parte de uma relação que vale mais."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Entre para o clube de vantagens."})).toBeVisible();
     await expect(page.getByText("Regulamento de adesão")).toBeVisible();
     await expect(page.getByText("não significa receber saldo ou crédito",{exact:false})).toBeVisible();
     await page.getByRole("textbox",{name:"Seu nome"}).fill("Pessoa Interessada");
     await page.getByRole("textbox",{name:"Seu e-mail"}).fill("pessoa@example.invalid");
-    await expect(page.getByRole("button",{name:"Registrar meu aceite"})).toBeDisabled();
+    await expect(page.getByRole("button",{name:"Quero participar"})).toBeDisabled();
     await page.getByRole("checkbox",{name:/Li e aceito os termos/}).check();
     await expect(page.getByRole("checkbox",{name:/comunicações promocionais/})).not.toBeChecked();
-    await page.getByRole("button",{name:"Registrar meu aceite"}).click();
-    await expect(page.getByRole("heading",{name:"Aceite registrado."})).toBeVisible();
+    await page.getByRole("button",{name:"Quero participar"}).click();
+    await expect(page.getByRole("heading",{name:"Quase lá! Sua adesão foi registrada."})).toBeVisible();
     await expect(page.getByText("não gera saldo, desconto, pontos ou cashback",{exact:false})).toBeVisible();
     expect(new URL(page.url()).hash).toBe("");
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
@@ -99,8 +99,8 @@ for(const width of [390,768,1440]){
       await page.getByRole("textbox",{name:"Seu nome"}).fill("Cliente Interessado");
       await page.getByRole("textbox",{name:"Seu e-mail"}).fill("cliente@example.invalid");
       await page.getByRole("checkbox",{name:/Li e aceito os termos/}).check();
-      await page.getByRole("button",{name:"Registrar meu aceite"}).click();
-      await expect(page.getByRole("heading",{name:"Aceite registrado."})).toBeVisible();
+      await page.getByRole("button",{name:"Quero participar"}).click();
+      await expect(page.getByRole("heading",{name:"Quase lá! Sua adesão foi registrada."})).toBeVisible();
       await expect(page.getByText("não gera saldo, desconto, pontos ou cashback",{exact:false})).toBeVisible();
       expect(await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth))
         .toBeLessThanOrEqual(1);
