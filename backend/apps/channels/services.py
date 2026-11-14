@@ -11,6 +11,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 
+from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
 from django.utils import timezone
@@ -99,7 +100,7 @@ def _event_key(*, tenant_id, channel, order_id, event_id, status):
     return _hash(json.dumps([str(tenant_id), channel, order_id, suffix], separators=(",", ":")))
 
 
-def _payload_digest(data):
+def _payload_digests(data):
     # HMAC: não persistir telefone/e-mail nem hash simples sujeito a dicionário.
     canonical = json.dumps([
         str(data["tenant_id"]), data["channel"], data["external_order_id"],
@@ -107,7 +108,14 @@ def _payload_digest(data):
         data["status"], data.get("source_event_id", ""),
         data["occurred_at"].isoformat() if data.get("occurred_at") else "",
     ], separators=(",", ":"), ensure_ascii=True)
-    return salted_hmac("vidalys.sales-event.v1", canonical, algorithm="sha256").hexdigest()
+    secrets = [settings.SECRET_KEY, *getattr(settings, "SECRET_KEY_FALLBACKS", [])]
+    return tuple(dict.fromkeys(
+        salted_hmac(
+            "vidalys.sales-event.v1", canonical, secret=secret,
+            algorithm="sha256",
+        ).hexdigest()
+        for secret in secrets
+    ))
 
 
 def _order_key(data):
@@ -134,12 +142,12 @@ def ingest_order_event(*, data, actor=None):
         tenant_id=tenant.pk, channel=channel, order_id=order_ref,
         event_id=source_event_id, status=data["status"],
     )
-    digest = _payload_digest(data)
+    digests = _payload_digests(data)
     existing_event = SaleEventReceipt.objects.select_related("sale").filter(
         idempotency_key=event_key,
     ).first()
     if existing_event:
-        if existing_event.payload_digest != digest:
+        if existing_event.payload_digest not in digests:
             raise IngestionConflict("Reenvio com chave de evento e conteúdo divergentes.")
         return IngestionResult(
             sale=existing_event.sale, event=existing_event,
@@ -216,7 +224,7 @@ def ingest_order_event(*, data, actor=None):
 
     receipt = SaleEventReceipt.objects.create(
         tenant=tenant, sale=sale, channel=channel, source_event_id=source_event_id,
-        idempotency_key=event_key, payload_digest=digest,
+        idempotency_key=event_key, payload_digest=digests[0],
         reported_status=data["status"], reported_total_cents=data["total_amount"],
         outcome=SaleEventReceipt.Outcome.APPLIED if applied else SaleEventReceipt.Outcome.IGNORED,
         occurred_at=occurred,

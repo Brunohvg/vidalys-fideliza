@@ -252,6 +252,7 @@ class MultiChannelOrderTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(SaleRecord.objects.exists())
 
+    @override_settings(FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True)
     def test_nuvemshop_adapter_requires_installation_and_uses_same_sale_record(self):
         snapshot = {
             "external_order_id": "19872", "customer_identifier": "mail@example.com",
@@ -278,6 +279,48 @@ class MultiChannelOrderTests(TestCase):
         self.assertEqual(SaleRecord.objects.get().channel, SaleRecord.Channel.NUVEMSHOP)
         self.assertEqual(SaleEventReceipt.objects.count(), 1)
         self.assert_no_financial_writes()
+
+    def test_hmac_secret_rotation_keeps_idempotency(self):
+        request = self.payload()
+        with override_settings(SECRET_KEY="first-test-key", SECRET_KEY_FALLBACKS=[]):
+            initial = self.flow(request)
+        with override_settings(
+            SECRET_KEY="next-test-key", SECRET_KEY_FALLBACKS=["first-test-key"],
+        ):
+            retry = self.flow(request)
+        self.assertEqual(initial.status_code, 201)
+        self.assertEqual(retry.status_code, 200)
+        self.assertTrue(retry.data["duplicate"])
+        self.assertEqual(SaleEventReceipt.objects.count(), 1)
+
+    def test_no_source_event_id_dedupes_by_order_and_status(self):
+        request = self.payload()
+        request.pop("source_event_id")
+        self.assertEqual(self.flow(request).status_code, 201)
+        self.assertTrue(self.flow(request).data["duplicate"])
+        request["status"] = "paid"
+        self.assertEqual(self.flow(request).status_code, 200)
+        self.assertTrue(self.flow(request).data["duplicate"])
+        self.assertEqual(SaleEventReceipt.objects.count(), 2)
+        self.assert_no_financial_writes()
+
+    def test_flow_key_expiry_is_enforced(self):
+        row = ChannelCredential.objects.get(tenant=self.tenant)
+        row.expires_at = timezone.now() - timedelta(seconds=1)
+        row.save(update_fields=["expires_at"])
+        self.assertEqual(self.flow(self.payload()).status_code, 401)
+
+    def test_counter_requires_csrf_for_browser_session(self):
+        api = APIClient(enforce_csrf_checks=True)
+        api.force_login(self.owner)
+        self.assertEqual(api.post(self.url, self.payload(channel="counter"), format="json").status_code, 403)
+        api.get(reverse("auth-session"))
+        csrf = api.cookies["csrftoken"].value
+        result = api.post(
+            self.url, self.payload(channel="counter"), format="json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+        self.assertEqual(result.status_code, 201, result.data)
 
     def test_receipt_is_append_only(self):
         self.flow(self.payload())

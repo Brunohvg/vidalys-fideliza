@@ -7,6 +7,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.sales.models import SaleRecord
+from apps.tenants.models import Tenant
 from apps.tenants.models import TenantMembership
 
 from .serializers import OrderEventSerializer
@@ -54,11 +55,8 @@ class OrderEventIngestView(APIView):
             return self._answer({"detail": str(exc)}, 409)
         except (ValueError, IntegrityError):
             return self._answer({"detail": "Evento inválido ou concorrente. Consulte o estado atual."}, 409)
-        except Exception as exc:
-            from apps.tenants.models import Tenant
-            if isinstance(exc, Tenant.DoesNotExist):
-                return self._answer({"detail": "Loja indisponível."}, 404)
-            raise
+        except Tenant.DoesNotExist:
+            return self._answer({"detail": "Loja indisponível."}, 404)
         return self._answer({
             "sale_id": str(result.sale.pk),
             "event_id": str(result.event.pk),
