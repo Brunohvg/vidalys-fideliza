@@ -17,8 +17,8 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
  return <div className="vf-program-page">
   <section className="vf-program-intro">
    <div><span className="portal-eyebrow">SEU CLUBE DE VANTAGENS</span>
-    <h2>Um programa simples para a loja. Claro para o cliente.</h2>
-    <p>Regulamento, divulgação e adesões ficam aqui. Clientes e histórico do programa são acompanhados em áreas próprias.</p>
+    <h2>Seu clube em três passos.</h2>
+    <p>Defina uma regra de pontos, publique uma recompensa e convide participantes. O acompanhamento fica em Clientes.</p>
    </div>
    <div className="vf-program-intro-actions">
     <a className="vf-program-outline" href={"/clube/"+encodeURIComponent(storeSlug)}
@@ -30,12 +30,23 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
     </button>
    </div>
   </section>
-  <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
-   tenantStatus={tenantStatus}/>
-  <PointRuleDraftEditor tenantId={tenantId} role={role}
-   onRuleSaved={()=>setRuleRefresh(value=>value+1)} />
-  <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}
-   onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>
+  <nav className="vf-program-steps" aria-label="Configuração do clube">
+    <a href="#vf-program-rule"><span>1</span>Regra de pontos</a>
+    <a href="#vf-program-rewards"><span>2</span>Recompensas</a>
+    <a href="#vf-program-enrollment"><span>3</span>Participantes</a>
+  </nav>
+  <div id="vf-program-rule" className="vf-program-anchor">
+    <PointRuleDraftEditor tenantId={tenantId} role={role}
+      onRuleSaved={()=>setRuleRefresh(value=>value+1)}/>
+  </div>
+  <div id="vf-program-rewards" className="vf-program-anchor">
+    <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}
+      onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>
+  </div>
+  <div id="vf-program-enrollment" className="vf-program-anchor">
+    <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
+      tenantStatus={tenantStatus}/>
+  </div>
   {(role==="owner"||role==="admin")&&tenantStatus==="active"&&
   <details className="vf-program-lab">
     <summary>Conferir pedido Nuvemshop antes de liberar pontos</summary>
@@ -47,8 +58,9 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
       rewardsRefresh={rewardsRefresh}/>
   </details>
   <p className="vf-program-status-note">
-    A pontuação e os resgates ainda não estão disponíveis.
-    As regras são apenas rascunhos e nenhuma compra é pontuada nesta fase.
+    O catálogo de recompensas pode ser publicado no Meu Clube. A regra de
+    pontos continua em rascunho: compras ainda não geram pontos e não há
+    cupom ou resgate ativo no checkout.
   </p>
  </div>;
 }
