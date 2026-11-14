@@ -210,8 +210,8 @@ class OrderPreviewApiTests(TestCase):
         self.assertEqual(CashbackEvent.objects.count(), 0)
     def test_lookup_by_number_still_checks_scope_tenant_and_does_not_write(self):
         url=reverse("nuvemshop-order-number-preview",kwargs={"tenant_id":self.tenant.id})
-        with patch("apps.nuvemshop.order_preview_views.config",return_value=self.cfg), \\
-             patch("apps.nuvemshop.order_preview_views.decrypt_token",return_value="synthetic-token-123456"), \\
+        with patch("apps.nuvemshop.order_preview_views.config",return_value=self.cfg), \
+             patch("apps.nuvemshop.order_preview_views.decrypt_token",return_value="synthetic-token-123456"), \
              patch("apps.nuvemshop.order_preview_views.read_order_by_number",return_value=order(
                  id=2120958234,number=14111)) as lookup:
             response=self.client.get(url,{"number":"14111"},secure=True)
@@ -232,8 +232,8 @@ class OrderPreviewApiTests(TestCase):
         for value in ("#14111","abc","0","-14111","1"*19,""):
             with self.subTest(value=value):
                 self.assertEqual(self.client.get(url,{"number":value},secure=True).status_code,400)
-        with patch("apps.nuvemshop.order_preview_views.config",return_value=self.cfg), \\
-             patch("apps.nuvemshop.order_preview_views.decrypt_token",return_value="synthetic-token-123456"), \\
+        with patch("apps.nuvemshop.order_preview_views.config",return_value=self.cfg), \
+             patch("apps.nuvemshop.order_preview_views.decrypt_token",return_value="synthetic-token-123456"), \
              patch("apps.nuvemshop.order_preview_views.read_order_by_number",return_value=order(
                  id=2120958234,number=14112)):
             self.assertEqual(self.client.get(url,{"number":"14111"},secure=True).status_code,502)
