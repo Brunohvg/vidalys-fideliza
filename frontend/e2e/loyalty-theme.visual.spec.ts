@@ -41,7 +41,7 @@ for (const width of [390,768,1440]){
           gold:root.getPropertyValue("--vf-reward").trim(),
           navy:root.getPropertyValue("--vf-ink").trim(),
           overflow:document.documentElement.scrollWidth-innerWidth,
-          displayFont:getComputedStyle(document.querySelector(".xp-action-banner h2")!).fontFamily,
+          displayFont:getComputedStyle(document.querySelector(".vf-home-welcome h2")!).fontFamily,
           mainArea:document.querySelector(".portal-main")?.getBoundingClientRect().left
         };
       });
