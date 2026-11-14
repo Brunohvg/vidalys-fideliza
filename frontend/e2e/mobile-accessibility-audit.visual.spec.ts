@@ -92,9 +92,9 @@ for(const width of [320,360,390,430,768,1024,1440]){
     await setup(page);
     await page.goto("/");
     await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Sua jornada, sem atalhos."})).toBeVisible();
-    await expect(page.getByText("Pontos e resgates nas compras")).toBeVisible();
-    await expect(page.getByText("Ainda não liberado")).toBeVisible();
+    await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
+    await expect(page.getByText("Recompensas exibidas")).toBeVisible();
+    await expect(page.getByText("pontos a partir",{exact:false})).toBeVisible();
     await assertNoHorizontalOverflow(page,"visão geral "+width);
     if(width<=1020){
       const opener=page.getByRole("button",{name:"Abrir menu"});
@@ -115,7 +115,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
         .toBe("");
       await opener.click();
     }
-    await page.getByRole("button",{name:"Configurações"}).click();
+    await page.locator(".portal-nav").getByRole("button",{name:"Configurações",exact:true}).click();
     await expect(page.getByRole("heading",{name:"Aparência do programa"})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Privacidade dos participantes"})).toBeVisible();
     await expect(page.getByText("Dados de contato protegidos.",{exact:false})).toBeVisible();
@@ -143,7 +143,7 @@ test("Cores personalizadas mantêm contraste em fundo claro e escuro",async({pag
   await setup(page);
   await page.goto("/");
   await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.getByRole("button",{name:"Configurações"}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:"Configurações",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Aparência do programa"})).toBeVisible();
   const colors=page.locator(".ss-color-control input[type=color]");
   await expect(colors).toHaveCount(2);
