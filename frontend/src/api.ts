@@ -303,7 +303,9 @@ export type ProgramParticipant = {
   joined_at: string;
   last_program_activity_at: string | null;
   consent_channel: "customer_portal" | "storefront_opt_in";
-  points_balance: null;
+  points_balance: number | null;
+  points_pending: number | null;
+  points_status: "not_active" | "ledger_only";
   cashback_balance_cents: number | null;
   cashback_pending_cents: number | null;
   cashback_reserved_cents: number | null;
