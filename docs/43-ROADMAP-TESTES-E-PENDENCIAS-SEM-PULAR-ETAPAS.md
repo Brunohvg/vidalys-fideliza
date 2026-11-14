@@ -887,3 +887,46 @@ Segundo a API oficial, `order/paid` também pode ocorrer por
 marcação manual de pagamento e `order/updated` duplica notificações
 especializadas; nenhum webhook sozinho autoriza emissão de pontos.
 https://nuvemshop.dev/api/resources/2025-03/webhook
+
+## 14/11/2026 — Laboratório de pontos para piloto com um participante
+
+**Objetivo:** oferecer jornada **testável hoje na UI de homologação**,
+sem abrir o ledger financeiro ou introduzir flag oculta.
+A página administrativa `Programa` ganhou o painel recolhível
+`Testar pontos e recompensas sem publicar`, que lê a regra existente
+e os rascunhos de recompensa do tenant autenticado (GET somente).
+Use a regra `1 ponto a cada R$ 1`, 7 dias de carência, recompensa
+`200 pontos = R$ 5`, pedido mínimo R$ 30, compra R$ 200
+e próxima compra R$ 50 como cenário **sintético**.
+
+Estados exercitáveis na tela:
+- Aguardando pagamento: 0 pontos e 0 desconto;
+- Em carência: 200 pontos pendentes e 0 disponíveis;
+- Pontos liberados: 200 disponíveis, troca hipotética de 200 por R$ 5;
+- Cancelamento/estorno: 0 disponível e 0 desconto;
+- Pontos vencidos: 0 disponível e 0 desconto;
+- Próxima compra inferior a R$ 30: sem troca;
+- Pontos insuficientes e entradas inválidas: sem troca.
+
+O motor local em `frontend/src/loyalty-trial.ts` usa centavos
+inteiros e `floor` por **uma compra**; os estados de carência/validade
+são selecionados manualmente, não são eventos recebidos nem prova
+do relógio real. NÃO persiste, debita ou credita pontos; não cria
+cupons, pedidos, emails, participantes nem chamadas POST/DELETE.
+O botão de simulação nunca ativa `FIDELIZA_POINTS_WRITES_ENABLED`
+nem `FIDELIZA_LEDGER_WRITES_ENABLED`. Testes unitários do domínio e
+Playwright verificam 320px, 390px e desktop e ausência de escrita.
+
+**Critério do primeiro teste com a própria conta:** conferir o SHA
+implantado na aplicação Coolify Raw autorizada, proteger o banco e
+validar termos, SMTP e identidade. Só depois usar a conta do titular
+como participante de teste; isso NÃO autoriza operação financeira
+real. O checkout com cupom e captura de pagamento ficam no Gate G8/G9,
+dependem de OAuth com scopes aprovados, conciliação, idempotência,
+reserva, estorno e teste autorizado de pedido. Não publicar na Bibelô.
+Nenhum ajuste de `.env` é necessário para este laboratório;
+as flags financeiras permanecem desligadas no código.
+
+**Status:** implementação em `homolog` e CI da revisão final a conferir;
+sem evidência de deploy no Coolify. Não transformar QA sintético em
+declaração de integração real.
