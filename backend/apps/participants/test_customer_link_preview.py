@@ -22,17 +22,20 @@ from .models import ProgramParticipant
 
 
 class ScopeContractTests(TestCase):
-    def test_oauth_uses_capabilities_not_exact_scope_set(self):
+    def test_oauth_grants_only_enabled_read_scopes(self):
         self.assertTrue(allowed_scopes("read_products", customer_preview_enabled=False))
-        self.assertTrue(allowed_scopes("read_products,read_customers,read_orders",
+        self.assertFalse(allowed_scopes("read_products,read_customers,read_orders",
                                         customer_preview_enabled=False))
-        self.assertTrue(allowed_scopes("write_products,write_customers,write_orders",
-                                        customer_preview_enabled=True))
-        for scope in ("read_orders", "write_orders", ""):
+        self.assertFalse(allowed_scopes("write_products,write_customers,write_orders",
+                                         customer_preview_enabled=True))
+        for scope in ("read_orders", "write_orders", "", "read_products,write_coupons"):
             with self.subTest(scope=scope):
                 self.assertFalse(allowed_scopes(scope, customer_preview_enabled=True))
-        self.assertTrue(allowed_scopes("read_customers",customer_preview_enabled=True))
-        self.assertFalse(allowed_scopes("read_customers",customer_preview_enabled=False))
+        self.assertTrue(allowed_scopes("read_customers", customer_preview_enabled=True))
+        self.assertFalse(allowed_scopes("read_customers", customer_preview_enabled=False))
+        self.assertTrue(allowed_scopes(
+            "read_products,read_customers,read_orders",
+            customer_preview_enabled=True, orders_preview_enabled=True))
         self.assertTrue(has_customer_access("read_customers",
                                             customer_preview_enabled=True))
         self.assertFalse(has_customer_access("read_products", customer_preview_enabled=True))
@@ -41,7 +44,7 @@ class ScopeContractTests(TestCase):
         self.assertTrue(has_customer_access("read_products,read_customers,read_orders",
                                            customer_preview_enabled=True))
 
-    def test_oauth_accepts_extra_granted_permissions_but_not_missing_products(self):
+    def test_oauth_rejects_unapproved_scopes(self):
         class OAuthAnswer:
             def __init__(self, scopes):
                 self.scopes = scopes
@@ -51,21 +54,26 @@ class ScopeContractTests(TestCase):
                     "token_type": "bearer", "user_id": 1234,
                     "scope": self.scopes,
                 }).encode())
-        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=False):
-            result=exchange_code("secure-code-123", "11111", "test-client-secret",
-                opener=OAuthAnswer("read_products,read_customers,read_orders"))
-            self.assertEqual(set(result["scope"].split(",")),
-                             {"read_products","read_customers","read_orders"})
-        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=True):
-            result=exchange_code("secure-code-123", "11111", "test-client-secret",
-                opener=OAuthAnswer("write_customers,write_products,write_orders"))
-            self.assertIn("write_customers", result["scope"])
-            result=exchange_code("secure-code-123", "11111", "test-client-secret",
-                                 opener=OAuthAnswer("read_customers,write_orders"))
-            self.assertIn("read_customers",result["scope"])
+        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=False,
+                               FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=False):
             with self.assertRaises(OAuthExchangeError):
                 exchange_code("secure-code-123", "11111", "test-client-secret",
-                              opener=OAuthAnswer("write_orders"))
+                    opener=OAuthAnswer("read_products,read_customers,read_orders"))
+            result = exchange_code("secure-code-123", "11111", "test-client-secret",
+                opener=OAuthAnswer("read_products"))
+            self.assertEqual(result["scope"], "read_products")
+        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=True,
+                               FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True):
+            result = exchange_code("secure-code-123", "11111", "test-client-secret",
+                opener=OAuthAnswer("read_products,read_customers,read_orders"))
+            self.assertEqual(set(result["scope"].split(",")),
+                             {"read_products", "read_customers", "read_orders"})
+            for scopes in ("write_customers,write_products,write_orders",
+                           "read_customers,write_orders", "write_orders",
+                           "read_products,write_coupons"):
+                with self.subTest(scope=scopes), self.assertRaises(OAuthExchangeError):
+                    exchange_code("secure-code-123", "11111", "test-client-secret",
+                        opener=OAuthAnswer(scopes))
 
     def test_http_reads_minimum_customer_fields(self):
         class Capture:
