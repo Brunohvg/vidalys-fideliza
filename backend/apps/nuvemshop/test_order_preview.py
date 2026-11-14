@@ -276,7 +276,8 @@ class OrderPreviewApiTests(TestCase):
         self.assertEqual(data["page"],1)
         self.assertEqual(reader.call_args.kwargs["store_id"],54321)
         self.assertNotIn("secret@example.invalid",response.content.decode())
-        self.assertEqual(self.client.get(url,secure=True).status_code,429)
+        with patch("apps.nuvemshop.recent_order_views.config",return_value=self.cfg):
+            self.assertEqual(self.client.get(url,secure=True).status_code,429)
         self.client.force_login(self.analyst)
         self.assertEqual(self.client.get(url,secure=True).status_code,403)
         self.client.force_login(self.foreign)
