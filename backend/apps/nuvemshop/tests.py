@@ -73,17 +73,26 @@ class TokenSecurityTests(SimpleTestCase):
         self.assertEqual(posted["grant_type"], "authorization_code")
         self.assertEqual(posted["client_id"], "12345")
         self.assertEqual(posted["code"], "synthetic-code-123")
-        # Scopes extras do app não devem bloquear as leituras que ele usa.
-        for scopes in ("read_products,write_products", "read_products,read_customers,read_orders",
-                       "write_products,write_customers,write_orders"):
-            with self.subTest(scope=scopes):
-                result=exchange_code("synthetic-code-123", "12345", "synthetic-secret",
-                    opener=FakeOpener({**good, "scope": scopes}))
-                self.assertEqual(set(result["scope"].split(",")), set(scopes.split(",")))
-        for scopes in ("read_orders", "", "read_customers"):
+        # Escopos indevidos nunca podem entrar no banco com acesso de escrita.
+        # Features futuras precisam de consentimento e testes separados.
+        for scopes in ("read_products,write_products", "write_products",
+                       "read_products,write_coupons", "read_products,unknown_scope",
+                       "read_products,read_customers", "read_products,read_orders",
+                       "read_products,read_customers,read_orders",
+                       "write_products,write_customers,write_orders",
+                       "read_orders", "", "read_customers"):
             with self.subTest(scope=scopes), self.assertRaises(OAuthExchangeError):
                 exchange_code("synthetic-code-123", "12345", "synthetic-secret",
                     opener=FakeOpener({**good, "scope": scopes}))
+        with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=True,
+                               FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True):
+            scopes="read_products,read_customers,read_orders"
+            result=exchange_code("synthetic-code-123", "12345", "synthetic-secret",
+                opener=FakeOpener({**good, "scope": scopes}))
+            self.assertEqual(set(result["scope"].split(",")), set(scopes.split(",")))
+            with self.assertRaises(OAuthExchangeError):
+                exchange_code("synthetic-code-123", "12345", "synthetic-secret",
+                    opener=FakeOpener({**good, "scope": scopes+",write_coupons"}))
         # Customer é independente de Product; a feature precisa estar ativa.
         with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=True):
             received=exchange_code(
