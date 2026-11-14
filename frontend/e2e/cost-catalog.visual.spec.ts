@@ -40,6 +40,8 @@ async function navigateCosts(page: Page, width: number) {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
+  if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
+    await page.locator(".portal-advanced-menu > summary").click();
   await page.locator(".portal-nav").getByRole("button", { name: /Custos por SKU/ }).click();
   if (width <= 1020) {
     await expect.poll(() => page.locator(".portal-side").evaluate(el => el.getBoundingClientRect().right)).toBeLessThan(2);
