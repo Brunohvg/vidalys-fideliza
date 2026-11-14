@@ -212,6 +212,11 @@ for(const width of [320,390,768,1440]){
     ] as const;
     for(const [nav,title] of screens){
       if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+      if(["Campanhas","Resultados","Custo dos benefícios","Custos por SKU","Conciliação"].includes(nav)){
+        const group=page.locator(".portal-advanced-menu");
+        if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))
+          await group.locator("summary").click();
+      }
       await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+nav+"(?:\\s|$)")}).click();
       await expect(page.getByRole("heading",{level:1,name:title})).toBeVisible();
       if(nav==="Configurações"){
