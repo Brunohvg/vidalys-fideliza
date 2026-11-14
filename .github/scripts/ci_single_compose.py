@@ -77,7 +77,7 @@ def main():
         "FIDELIZA_DB_NETWORK": db_network,
         "FIDELIZA_PROXY_NETWORK": proxy_network,
         "DJANGO_SECRET_KEY": secrets.token_hex(40),
-        "DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1,frontend," + HOST,
+        "DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1,frontend,testserver," + HOST,
         "DJANGO_CSRF_TRUSTED_ORIGINS": "https://" + HOST,
         "DATABASE_URL": "postgresql://fideliza:" + password + "@fideliza-db:5432/fideliza",
         "FIDELIZA_PUBLIC_BASE_URL": "https://" + HOST,
