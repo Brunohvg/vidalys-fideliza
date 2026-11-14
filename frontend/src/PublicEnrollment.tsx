@@ -1,5 +1,5 @@
 import {useEffect, useState, type FormEvent} from "react";
-import {CheckCircle2, HeartHandshake, LockKeyhole, ShieldCheck} from "lucide-react";
+import {ArrowRight,CheckCircle2, HeartHandshake, LockKeyhole, ShieldCheck,Gift,Mail} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type PublicInvitationPreview,
   type PublicConsentResult, type PublicStoreProgram,
   type PublicStoreJoinResult} from "./api";
@@ -76,36 +76,32 @@ export default function PublicEnrollment(){
   return <div className="public-enroll-shell">
     <main className="public-enroll-card">
       <div className="public-enroll-brand"><span style={{background:accent,color:readableForeground(accent)}}><HeartHandshake size={25}/></span>
-        <div><strong>{publicTitle}</strong><small>PROGRAMA DE FIDELIDADE • TECNOLOGIA VIDALYS</small></div></div>
+        <div><strong>{publicTitle}</strong><small>Seu clube de vantagens</small></div></div>
       {loading && <div role="status" className="public-enroll-state">Validando convite seguro…</div>}
       {!loading && result && <div className="public-enroll-done" role="status">
         <CheckCircle2 size={42}/>
-        <h1>Aceite registrado.</h1>
-        <p>Sua solicitação de adesão foi registrada com a versão {result.terms_version} do regulamento.</p>
-        <p><strong>Confira seu e-mail para confirmar o endereço quando o envio estiver disponível.</strong>
-          A loja ainda precisa verificar sua identidade. Este registro não gera saldo, desconto, pontos ou cashback.</p>
+        <h1>Quase lá! Sua adesão foi registrada.</h1>
+        <p>Recebemos sua solicitação de participação e o aceite do regulamento versão {result.terms_version}.</p>
+        <p><strong>Confira seu e-mail para confirmar o cadastro.</strong>
+          A confirmação e o vínculo à loja são necessários para participar.
+          Nenhum ponto ou desconto é concedido no cadastro.</p>
         {"receipt_id" in result && <span>Protocolo de aceite: {result.receipt_id}</span>}
       </div>}
       {!loading && !result && <>
         <div className="public-enroll-top"><span className="public-enroll-eyebrow">
           <ShieldCheck size={16}/> ADESÃO VOLUNTÁRIA</span>
-          <h1>Faça parte de uma relação que vale mais.</h1>
+          <h1>Entre para o clube de vantagens.</h1>
           <p>{preview
             ? ("store_slug" in preview
-                ? "Conheça o programa de "+preview.store_name+" e leia as condições antes de solicitar participação."
-                : "Convite enviado por "+preview.store_name+". Leia as condições antes de decidir participar.")
+                ? "Participe do clube da "+preview.store_name+". É gratuito solicitar a adesão e acompanhar os benefícios divulgados."
+                : "Você recebeu um convite da "+preview.store_name+". Confira as regras antes de participar.")
             :"O cadastro público desta loja não está disponível."}</p></div>
         {error && <div role="alert" className="public-enroll-error">{error}</div>}
         {preview && <form onSubmit={submit}>
-          <section className="public-enroll-terms">
-            <div><strong>{preview.terms.title}</strong>
-              <span>Versão {preview.terms.version}</span></div>
-            <p>{preview.terms.body}</p>
-          </section>
-          {preview.terms.privacy_notice && <section className="public-enroll-terms public-enroll-privacy">
-            <div><strong>Aviso de privacidade da loja</strong><span>Transparência de dados</span></div>
-            <p>{preview.terms.privacy_notice}</p>
-          </section>}
+          <div className="public-enroll-value">
+            <Gift size={19}/><span>Confira os benefícios publicados no Meu Clube.
+              O acúmulo de pontos e o resgate ainda estão em preparação.</span>
+          </div>
           <div className="public-enroll-fields">
             <label>Seu nome
               <input autoComplete="name" required minLength={3} maxLength={140} value={name}
@@ -116,10 +112,20 @@ export default function PublicEnrollment(){
                 onChange={e=>setEmail(e.target.value)} placeholder="voce@exemplo.com"/>
             </label>
           </div>
+          <div className="public-enroll-policies">
+            <details className="public-enroll-terms">
+              <summary>Ler regulamento · {preview.terms.title} · versão {preview.terms.version}</summary>
+              <p>{preview.terms.body}</p>
+            </details>
+            {preview.terms.privacy_notice&&<details className="public-enroll-terms public-enroll-privacy">
+              <summary>Ler aviso de privacidade</summary>
+              <p>{preview.terms.privacy_notice}</p>
+            </details>}
+          </div>
           <label className="public-enroll-choice">
             <input type="checkbox" required checked={accepted}
               onChange={e=>setAccepted(e.target.checked)}/>
-            <span>Li e aceito os termos do programa de fidelidade apresentados acima.</span>
+            <span>Li e aceito o <strong>regulamento do clube</strong> e estou ciente do aviso de privacidade. A adesão depende de confirmação.</span>
           </label>
           <label className="public-enroll-choice">
             <input type="checkbox" checked={marketing}
@@ -127,15 +133,15 @@ export default function PublicEnrollment(){
             <span>Também aceito receber comunicações promocionais. Esta escolha é opcional e independente da adesão.</span>
           </label>
           <button className="public-enroll-submit" type="submit" style={{background:primary,color:readableForeground(primary)}} disabled={!accepted||busy}>
-            {busy?"Registrando aceite…":"Registrar meu aceite"}
+            {busy?"Registrando…":"Quero participar"} <ArrowRight size={17}/>
           </button>
           <div className="public-enroll-warning"><LockKeyhole size={16}/>
-            A confirmação do vínculo como participante depende da verificação do cadastro pela loja.
-            Nenhum benefício é concedido nesta etapa.</div>
+            Confirmação por e-mail e proteção dos seus dados. Nenhum benefício é
+            gerado antes da ativação do programa.</div>
         </form>}
       </>}
       {storeSlug&&<p className="public-enroll-privacy-link">
-        <a href={"/clube/"+encodeURIComponent(storeSlug)}>Conhecer Meu Clube e acompanhar minha participação</a>
+        <a href={"/clube/"+encodeURIComponent(storeSlug)}><Mail size={15}/> Conhecer Meu Clube ou entrar com meu e-mail</a>
       </p>}
       {branding?.support_email&&<p className="public-enroll-privacy-link">
         Dúvidas sobre o programa? <a href={"mailto:"+branding.support_email}>
