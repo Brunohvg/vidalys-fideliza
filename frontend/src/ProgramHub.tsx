@@ -3,6 +3,7 @@ import {useState} from "react";
 import EnrollmentManagement from "./EnrollmentManagement";
 import PointRuleDraftEditor from "./PointRuleDraftEditor";
 import RewardDraftEditor from "./RewardDraftEditor";
+import LoyaltyTrialPanel from "./LoyaltyTrialPanel";
 import type {Store} from "./api";
 import "./program-hub.css";
 
@@ -11,6 +12,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
  onViewClients:()=>void;
 }){
  const [ruleRefresh,setRuleRefresh]=useState(0);
+ const [rewardsRefresh,setRewardsRefresh]=useState(0);
  return <div className="vf-program-page">
   <section className="vf-program-intro">
    <div><span className="portal-eyebrow">SEU CLUBE DE VANTAGENS</span>
@@ -31,7 +33,13 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
    tenantStatus={tenantStatus}/>
   <PointRuleDraftEditor tenantId={tenantId} role={role}
    onRuleSaved={()=>setRuleRefresh(value=>value+1)} />
-  <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}/>
+  <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}
+   onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>
+  <details className="vf-program-lab">
+    <summary>Testar pontos e recompensas sem publicar</summary>
+    <LoyaltyTrialPanel tenantId={tenantId} ruleRefresh={ruleRefresh}
+      rewardsRefresh={rewardsRefresh}/>
+  </details>
   <p className="vf-program-status-note">
     A pontuação e os resgates ainda não estão disponíveis.
     As regras são apenas rascunhos e nenhuma compra é pontuada nesta fase.
