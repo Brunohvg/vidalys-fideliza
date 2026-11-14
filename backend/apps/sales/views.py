@@ -170,9 +170,9 @@ class ManualSaleReviewView(APIView):
         )
         if sale.state != SaleRecord.State.AWAITING_REVIEW:
             return safe_reply({"detail": "Venda não está pendente de conferência."}, 409)
+        # Revisão operacional pode ser feita pelo próprio responsável quando
+        # a loja trabalha com uma única pessoa. Nunca vira prova PSP.
         self_review = sale.submitted_by_id == request.user.pk
-        if self_review and member.role != TenantMembership.Role.OWNER:
-            return safe_reply({"detail": "Somente o proprietário pode conferir seu próprio lançamento. Solicite a outro administrador."}, 409)
         if not sale.participant or sale.participant.status != ProgramParticipant.Status.ACTIVE:
             return safe_reply({"detail": "Participante inativo ou ausente."}, 409)
         sale.state = (SaleRecord.State.VERIFIED_MANUAL if decision == "approve"
