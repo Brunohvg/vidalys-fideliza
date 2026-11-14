@@ -33,6 +33,10 @@ test("Rotas do lojista suportam deep link, voltar e recarga sem perder a loja",a
 for(const width of [320,390,768]){
   test("Carteira mobile, VIP, missões e resgate bloqueado em "+width+"px",async({page})=>{
     await page.setViewportSize({width,height:850});
+    // A confirmação do link exige CSRF real na sessão do membro.
+    await page.context().addCookies([{
+      name:"csrftoken",value:"csrf-member-qa",url:"http://127.0.0.1:4173",
+    }]);
     await page.route("**/api/v1/auth/session/",route=>route.fulfill({
       contentType:"application/json",body:JSON.stringify({
         authenticated:false,user:null,tenants:[],
