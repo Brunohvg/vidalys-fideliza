@@ -137,8 +137,19 @@ def _contact_digests(*, tenant_id, value):
 
 
 @transaction.atomic
-def ingest_order_event(*, data, actor=None):
-    """Persiste notificação, mas NÃO chama services de points ou wallets."""
+def ingest_order_event(*, data, actor=None, manual_override=None):
+    """Contrato de persistência único: eventos Flow, PDV e adaptadores de loja.
+
+    `manual_override` é exclusivamente para a view autenticada de balcão.
+    Nunca representa prova externa de pagamento nem habilita ledger.
+    """
+    if manual_override is not None:
+        if actor is None or data["channel"] != SaleRecord.Channel.COUNTER:
+            raise IngestionConflict("Entrada manual exige lojista autenticado e canal balcão.")
+        participant = manual_override["participant"]
+        identifier = f"manual:{participant.pk}" if participant else ""
+        if data["customer_identifier"] != identifier:
+            raise IngestionConflict("Identidade manual não corresponde ao participante selecionado.")
     tenant = Tenant.objects.select_for_update().get(
         pk=data["tenant_id"], status=Tenant.Status.ACTIVE,
     )
@@ -171,13 +182,30 @@ def ingest_order_event(*, data, actor=None):
         tenant=tenant, channel=channel, external_reference=order_ref,
     ).first()
     order_key = _order_key(data)
-    matched = find_verified_customer(
-        tenant_id=tenant.pk,
-        **({"email": data["customer_identifier"]} if "@" in data["customer_identifier"]
-           else {"phone_e164": data["customer_identifier"]}),
-    )
-    identity_status = "verified_contact_match" if matched else "provisional"
-    contact_digests = _contact_digests(tenant_id=tenant.pk, value=data["customer_identifier"])
+    if manual_override is None:
+        matched = find_verified_customer(
+            tenant_id=tenant.pk,
+            **({"email": data["customer_identifier"]} if "@" in data["customer_identifier"]
+               else {"phone_e164": data["customer_identifier"]}),
+        )
+        identity_status = "verified_contact_match" if matched else "provisional"
+        contact_digests = _contact_digests(
+            tenant_id=tenant.pk, value=data["customer_identifier"],
+        )
+    else:
+        manual_participant = manual_override["participant"]
+        profile = CustomerProfile.objects.filter(
+            tenant=tenant, participant=manual_participant,
+            verified_contacts__isnull=False,
+        ).distinct().first() if manual_participant else None
+        matched = profile
+        identity_status = (
+            "verified_contact_match" if profile else
+            "awaiting_verified_identity" if manual_participant else "unidentified"
+        )
+        contact_digests = (
+            _hash("manual:" + str(manual_participant.pk)) if manual_participant else "",
+        )
     occurred = data.get("occurred_at")
     now = timezone.now()
     effective_at = occurred or now
@@ -185,25 +213,32 @@ def ingest_order_event(*, data, actor=None):
     applied = True
 
     if sale is None:
-        profile = matched or CustomerProfile.objects.create(tenant=tenant)
+        profile = matched if manual_override is not None else (
+            matched or CustomerProfile.objects.create(tenant=tenant)
+        )
+        manual_participant = manual_override["participant"] if manual_override else None
         sale = SaleRecord.objects.create(
             tenant=tenant, channel=channel, external_reference=order_ref,
             source_order_key=order_key, customer_profile=profile,
             reported_contact_digest=contact_digests[0],
             reported_total_cents=data["total_amount"],
-            eligible_amount_cents=0, currency="BRL",
+            eligible_amount_cents=(
+                data["total_amount"] if manual_override is not None else 0
+            ), currency="BRL",
             order_status=data["status"], status_changed_at=effective_at,
             # Relato do canal não comprova pagamento; sem data não inventar.
             reported_paid_at=occurred if data["status"] == SaleRecord.OrderStatus.PAID else None,
-            evidence_reference="",
+            evidence_reference=manual_override["evidence_reference"] if manual_override else "",
             state=(
                 SaleRecord.State.AWAITING_REVIEW
-                if channel == SaleRecord.Channel.COUNTER
-                and matched and matched.participant_id
-                and data["status"] == SaleRecord.OrderStatus.PAID
-                else SaleRecord.State.AWAITING_MEMBER
+                if (manual_participant or (
+                    channel == SaleRecord.Channel.COUNTER
+                    and matched and matched.participant_id
+                    and data["status"] == SaleRecord.OrderStatus.PAID
+                )) else SaleRecord.State.AWAITING_MEMBER
             ),
             participant=(
+                manual_participant if manual_override is not None else
                 matched.participant if channel == SaleRecord.Channel.COUNTER
                 and matched and matched.participant_id
                 and data["status"] == SaleRecord.OrderStatus.PAID else None

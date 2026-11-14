@@ -136,15 +136,36 @@ class ManualSalesView(APIView):
             if same:
                 return safe_reply({"already_recorded": True, "sale": present_sale(previous, viewer_id=request.user.pk)})
             return safe_reply({"detail": "Referência já usada para outra venda."}, 409)
-        sale = SaleRecord.objects.create(
-            tenant_id=tenant_id, participant=participant, channel=SaleRecord.Channel.COUNTER,
-            external_reference=ref, eligible_amount_cents=amount,
-            reported_paid_at=paid_at, evidence_reference=evidence,
-            state=(SaleRecord.State.AWAITING_REVIEW if participant
-                   else SaleRecord.State.AWAITING_MEMBER),
-            submitted_by=request.user,
-        )
-        return safe_reply({"already_recorded": False, "sale": present_sale(sale, viewer_id=request.user.pk)}, 201)
+        # Único pipeline para vendas de balcão e Flow. A entrada humana não
+        # comprova captura nem cria saldo; revisão continua operacional.
+        from apps.channels.services import ingest_order_event, IngestionConflict
+        try:
+            outcome = ingest_order_event(
+                data={
+                    "tenant_id": member.tenant.pk,
+                    "channel": SaleRecord.Channel.COUNTER,
+                    "external_order_id": ref,
+                    "customer_identifier": f"manual:{participant.pk}" if participant else "",
+                    "total_amount": amount,
+                    "currency": "BRL",
+                    "status": SaleRecord.OrderStatus.PAID,
+                    "source_event_id": "",
+                    "occurred_at": paid_at,
+                },
+                actor=request.user,
+                manual_override={
+                    "participant": participant, "evidence_reference": evidence,
+                },
+            )
+        except IngestionConflict:
+            return safe_reply({"detail": "Evento incompatível com uma venda já registrada."}, 409)
+        return safe_reply({
+            "already_recorded": outcome.duplicate,
+            "sale": present_sale(outcome.sale, viewer_id=request.user.pk),
+            "event_id": str(outcome.event.pk),
+            "identity_status": outcome.identity_status,
+            "payment_verified": False, "points_credited": False,
+        }, 200 if outcome.duplicate else 201)
 
 
 class ManualSaleReviewView(APIView):
