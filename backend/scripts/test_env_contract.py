@@ -62,3 +62,41 @@ def test_worker_smtp_contract_and_nuvemshop_isolation():
     assert any(name == "NUVEMSHOP_WORKER_ISOLATION" and state == "FALHA"
                for name, state, _ in checks)
     assert "dont-leak-this-key" not in str(checks)
+
+
+
+def test_financial_env_flag_never_activates_ledger_or_points():
+    clean = inspect_map(runtime())
+    assert clean["FIDELIZA_POINTS_WRITES_ENABLED"] == "OK"
+    assert clean["FIDELIZA_LEDGER_WRITES_ENABLED"] == "OK"
+    for flag in ("FIDELIZA_POINTS_WRITES_ENABLED", "FIDELIZA_LEDGER_WRITES_ENABLED"):
+        for truthy in ("1", "on", "TRUE", "yes"):
+            result = inspect_map({**runtime(), flag: truthy})
+            assert result[flag] == "FALHA"
+        assert inspect_map({**runtime(), flag: "not-a-boolean"})[flag] == "FALHA"
+        assert inspect_map({**runtime(), flag: "0"})[flag] == "OK"
+
+
+def test_independent_membership_is_visible_and_not_silently_enabled():
+    clean = inspect_map(runtime())
+    assert clean["FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED"] == "OK"
+    assert inspect_map({**runtime(),
+        "FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED": "1",
+    })["FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED"] == "ALERTA"
+    assert inspect_map({**runtime(),
+        "FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED": "wrong",
+    })["FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED"] == "FALHA"
+
+
+def test_merchant_signup_cannot_be_opened_without_email_gate():
+    assert inspect_map({**runtime(),
+        "FIDELIZA_MERCHANT_SIGNUP_ENABLED": "1",
+    })["MERCHANT_SIGNUP_WITHOUT_EMAIL"] == "FALHA"
+    states = inspect_map({**runtime(),
+        "FIDELIZA_MERCHANT_SIGNUP_ENABLED": "1",
+        "FIDELIZA_EMAIL_DELIVERY_ENABLED": "1",
+        "FIDELIZA_PUBLIC_BASE_URL": "https://staging.invalid",
+    })
+    assert states["FIDELIZA_MERCHANT_SIGNUP_ENABLED"] == "ALERTA"
+    assert "MERCHANT_SIGNUP_WITHOUT_EMAIL" not in states
+    assert states["FIDELIZA_EMAIL_DELIVERY_ENABLED"] == "OK"
