@@ -148,6 +148,11 @@ FIDELIZA_POINTS_WRITES_ENABLED = False
 # Bloqueado: concessões e resgates dependem de autorização e eventos verificados.
 FIDELIZA_LEDGER_WRITES_ENABLED = False
 
+# PR20: SEM adaptador PSP autorizado, execução financeira somente sob
+# override_settings em testes de domínio (não há env que ligue isso).
+FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED = False
+FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
+
 # Registro público desativado até a homologação do fluxo de dados pessoais.
 FIDELIZA_PUBLIC_SIGNUP_ENABLED = env_bool("FIDELIZA_PUBLIC_SIGNUP_ENABLED", False)
 

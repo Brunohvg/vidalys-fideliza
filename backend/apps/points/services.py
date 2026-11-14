@@ -19,7 +19,7 @@ MAX_CENTS = 100_000_000
 SOURCE_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,79}$")
 KEY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,179}$")
 HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
-CHANNELS = {"nuvemshop", "counter", "whatsapp"}
+CHANNELS = {"nuvemshop", "counter", "whatsapp", "vidalys_flow"}
 MOVEMENTS = {
     PointEvent.Kind.ACCRUE: {"pending": +1},
     PointEvent.Kind.RELEASE: {"pending": -1, "available": +1},
