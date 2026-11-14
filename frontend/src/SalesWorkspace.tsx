@@ -173,8 +173,7 @@ export default function SalesWorkspace({tenantId,role}:{
   };
 
   const pending=items.filter(item=>item.state==="awaiting_review").length;
-  const canReview=(item:ManualSaleRecord)=>canEdit&&item.state==="awaiting_review"&&
-    true;
+  const canReview=(item:ManualSaleRecord)=>canEdit&&item.state==="awaiting_review";
 
   return <div className="vf-sales-page">
     <header className="vf-sale-intro">
