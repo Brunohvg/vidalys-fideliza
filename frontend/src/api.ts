@@ -397,7 +397,7 @@ export type ParticipantDirectoryResponse = {
 };
 
 export type PaidOrderInspection = {
-  order_id:string;source:"nuvemshop_live_read_only";
+  order_id:string;order_number?:string|null;source:"nuvemshop_live_read_only";
   order_status:"open"|"closed"|"cancelled";
   payment_status:"pending"|"authorized"|"paid"|"partially_paid"|"abandoned"|"refunded"|"partially_refunded"|"voided";
   paid_at:string|null;reported_total_cents:number;currency:string;
@@ -603,6 +603,10 @@ export const merchantApi = {
     getJson<PaidOrderInspection>("/api/v1/tenants/"+
       encodeURIComponent(tenantId)+"/nuvemshop/orders/"+
       encodeURIComponent(orderId)+"/preview/"),
+  inspectPaidOrderNumber:(tenantId:string,orderNumber:string)=>
+    getJson<PaidOrderInspection>("/api/v1/tenants/"+
+      encodeURIComponent(tenantId)+"/nuvemshop/orders/by-number/preview/?number="+
+      encodeURIComponent(orderNumber)),
   nuvemshopStatus: (tenantId: string) =>
     getJson<NuvemshopConnectionStatus>(
       "/api/v1/tenants/" + encodeURIComponent(tenantId) + "/nuvemshop/status/"
