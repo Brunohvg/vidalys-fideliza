@@ -396,6 +396,12 @@ export type ParticipantDirectoryResponse = {
   note: string;
 };
 
+export type RecentOrdersPreview={
+  mode:"read_only";source:"nuvemshop_live_read_only";
+  items:PaidOrderInspection[];page:1;page_size:10;
+  points_credited:false;coupons_created:false;read_only:true;note:string;
+};
+
 export type PaidOrderInspection = {
   order_id:string;order_number?:string|null;source:"nuvemshop_live_read_only";
   order_status:"open"|"closed"|"cancelled";
@@ -599,6 +605,9 @@ export const merchantApi = {
       "/api/v1/tenants/" + encodeURIComponent(tenantId) +
       "/participants/" + encodeURIComponent(participantId) + "/wallet/"
     ),
+  recentNuvemshopOrders:(tenantId:string)=>
+    getJson<RecentOrdersPreview>("/api/v1/tenants/"+
+      encodeURIComponent(tenantId)+"/nuvemshop/orders/recent/preview/"),
   inspectPaidOrder:(tenantId:string,orderId:string)=>
     getJson<PaidOrderInspection>("/api/v1/tenants/"+
       encodeURIComponent(tenantId)+"/nuvemshop/orders/"+
