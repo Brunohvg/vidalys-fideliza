@@ -215,9 +215,9 @@ for(const width of [320,390]){
    channel:"counter",reference:"CUPOM-0098",
    participant_id:member.id,participant_name:"Cliente Confirmado",
    eligible_amount_cents:4590,reported_paid_at:"2026-11-14T10:00:00Z",
-   evidence_reference:"CUPOM-0098",state:"awaiting_review",
+   evidence_reference:"CUPOM-0098",state:"awaiting_review" as "awaiting_review"|"verified_manual",
    submitted_by_me:true,reviewed_at:null,
-   reviewed_by_me:false,review_mode:null,review_note:null,
+   reviewed_by_me:false,review_mode:null as null|"self_review",review_note:null as null|string,
    created_at:"2026-11-14T10:00:00Z",
    points_credited:false,cashback_credited:false,
   };
