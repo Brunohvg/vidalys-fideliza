@@ -16,6 +16,8 @@ urlpatterns = [
          OAuthStartView.as_view(), name="nuvemshop-connect"),
     path("tenants/<uuid:tenant_id>/nuvemshop/catalog/preview/",
          LiveCatalogPreviewView.as_view(), name="nuvemshop-catalog-preview"),
+    path("tenants/<uuid:tenant_id>/nuvemshop/orders/by-number/preview/",
+         OrderPreviewView.as_view(), name="nuvemshop-order-number-preview"),
     path("tenants/<uuid:tenant_id>/nuvemshop/orders/<int:order_id>/preview/",
          OrderPreviewView.as_view(), name="nuvemshop-order-preview"),
     path("oauth/nuvemshop/callback/", oauth_callback, name="nuvemshop-oauth-callback"),
