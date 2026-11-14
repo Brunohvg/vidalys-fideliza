@@ -125,3 +125,22 @@
 .vf-program-operation-link>button:hover{background:#e6f7ee}
 .vf-program-operation-link>button:focus-visible{outline:3px solid #32c2a9;outline-offset:2px}
 @media(max-width:650px){.vf-program-operation-link{display:grid;gap:12px}.vf-program-operation-link>button{justify-content:center}}
+
+/* IA v0.8: uma área por objetivo, configuração avançada fora do caminho principal. */
+.vf-program-connection{display:flex;gap:13px;align-items:center;min-width:0;padding:14px 17px;background:#fff;border:1px solid #d9e8e2;border-radius:14px}
+.vf-program-connection-icon{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:#edf8f1;color:#087f79}
+.vf-program-connection>div:nth-child(2){flex:1;min-width:0}
+.vf-program-connection strong{display:block;color:#1e5949;font-size:13px;line-height:1.45}
+.vf-program-connection p{margin:4px 0 0;color:#5a7769;font-size:11px;line-height:1.6}
+.vf-program-connection button{display:flex;align-items:center;gap:6px;min-height:42px;flex:none;padding:10px 13px;background:#f7fbf8;color:#1a6854;border:1px solid #cbe2d5;border-radius:10px;font-size:11px;font-weight:800;cursor:pointer}
+.vf-program-sections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;border-bottom:1px solid #dae9e0;padding:6px 0 9px}
+.vf-program-sections>button{display:flex;align-items:center;justify-content:center;gap:9px;min-height:49px;background:#f7faf8;color:#456a5c;border:1px solid #d9e8df;border-radius:11px;font-size:12px;font-weight:800;cursor:pointer;min-width:0}
+.vf-program-sections>button.selected{background:#087f79;color:#fff;border-color:#087f79}
+.vf-program-sections>button:hover:not(.selected){background:#edf7f0}
+.vf-program-sections>button:focus-visible,.vf-program-connection button:focus-visible{outline:3px solid #39c6ad;outline-offset:2px}
+.vf-program-area{min-width:0;display:grid;gap:17px}
+.vf-program-area-heading{display:grid;gap:4px;padding:3px 0 0}
+.vf-program-area-heading h3{font:800 clamp(19px,2.3vw,23px)/1.24 Manrope,Inter,system-ui,sans-serif;margin:0;color:#1b4e41}
+.vf-program-area-heading p{margin:0;color:#627d70;font-size:12px;line-height:1.55}
+@media(max-width:680px){.vf-program-connection{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:13px}.vf-program-connection button{grid-column:1/-1;justify-self:start}.vf-program-sections{gap:5px}.vf-program-sections>button{font-size:11px;gap:5px;padding:9px 4px}}
+@media(max-width:350px){.vf-program-sections>button{display:grid;justify-items:center;gap:4px;font-size:10px;min-height:53px}}
