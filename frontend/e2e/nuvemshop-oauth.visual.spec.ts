@@ -135,7 +135,7 @@ test("autorização OAuth não é rotulada como acesso verificado no início",as
   }));
   await page.goto("/");
   await expect(page.getByText("Autorização registrada",{exact:false})).toBeVisible();
-  await expect(page.getByRole("button",{name:"Ver pedidos"})).toBeVisible();
+  await expect(page.locator(".vf-home-integrations").getByRole("button",{name:"Ver pedidos"})).toBeVisible();
   await expect(page.getByText("leitura de pedidos ainda depende",{exact:false})).toBeVisible();
 });
 
