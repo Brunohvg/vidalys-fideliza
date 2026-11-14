@@ -160,7 +160,7 @@ export default function RewardDraftEditor({tenantId,role}:{
         </div>
         <div className="vf-economics-grid">
           <div>
-            <span>Compras elegíveis para juntar os pontos</span>
+            <span>Uma compra elegível para gerar os pontos</span>
             <strong>{preview?.eligibleSpendCents!==null&&preview?.eligibleSpendCents!==undefined
               ?money(preview.eligibleSpendCents):"—"}</strong>
           </div>
@@ -181,8 +181,9 @@ export default function RewardDraftEditor({tenantId,role}:{
           &&preview.benefitRateBps>=10000&&<p className="vf-economics-alert">
             O desconto é igual ou maior que as compras necessárias para acumular os pontos.
             Revise essa combinação antes de avançar.</p>}
-        <p>O valor pressupõe saldo inicial zero, regra constante e todas as compras elegíveis.
-          Não equivale ao desconto na próxima compra nem comprova lucro.
+        <p>A estimativa pressupõe saldo inicial zero e uma compra totalmente elegível.
+          Compras separadas podem arredondar pontos de outra forma. Não equivale a
+          desconto automático no pedido nem comprova lucro.
           Verifique custos, outras promoções e frete antes de publicar.</p>
       </div>
       <div className="vf-benefit-footer">
