@@ -148,12 +148,12 @@ def ingest_order_event(*, data, actor=None):
         tenant_id=tenant.pk, channel=channel, order_id=order_ref,
         event_id=source_event_id, status=data["status"],
     )
-    digests = _payload_digests(data)
+    payload_digests = _payload_digests(data)
     existing_event = SaleEventReceipt.objects.select_related("sale").filter(
         idempotency_key=event_key,
     ).first()
     if existing_event:
-        if existing_event.payload_digest not in digests:
+        if existing_event.payload_digest not in payload_digests:
             raise IngestionConflict("Reenvio com chave de evento e conteúdo divergentes.")
         return IngestionResult(
             sale=existing_event.sale, event=existing_event,
@@ -175,7 +175,7 @@ def ingest_order_event(*, data, actor=None):
            else {"phone_e164": data["customer_identifier"]}),
     )
     identity_status = "verified_contact_match" if matched else "provisional"
-    digests = _contact_digests(tenant_id=tenant.pk, value=data["customer_identifier"])
+    contact_digests = _contact_digests(tenant_id=tenant.pk, value=data["customer_identifier"])
     occurred = data.get("occurred_at")
     now = timezone.now()
     effective_at = occurred or now
@@ -187,7 +187,7 @@ def ingest_order_event(*, data, actor=None):
         sale = SaleRecord.objects.create(
             tenant=tenant, channel=channel, external_reference=order_ref,
             source_order_key=order_key, customer_profile=profile,
-            reported_contact_digest=digests[0],
+            reported_contact_digest=contact_digests[0],
             reported_total_cents=data["total_amount"],
             eligible_amount_cents=0, currency="BRL",
             order_status=data["status"], status_changed_at=effective_at,
@@ -211,7 +211,7 @@ def ingest_order_event(*, data, actor=None):
     else:
         if not sale.source_order_key or sale.source_order_key != order_key:
             raise IngestionConflict("Venda existente criada por fluxo legado; conciliação necessária.")
-        if sale.reported_contact_digest not in digests:
+        if sale.reported_contact_digest not in contact_digests:
             raise IngestionConflict("Cliente informado diverge do pedido já registrado.")
         if sale.reported_total_cents != data["total_amount"]:
             raise IngestionConflict("Valor diferente para a mesma referência de pedido.")
@@ -230,7 +230,7 @@ def ingest_order_event(*, data, actor=None):
 
     receipt = SaleEventReceipt.objects.create(
         tenant=tenant, sale=sale, channel=channel, source_event_id=source_event_id,
-        idempotency_key=event_key, payload_digest=digests[0],
+        idempotency_key=event_key, payload_digest=payload_digests[0],
         reported_status=data["status"], reported_total_cents=data["total_amount"],
         outcome=SaleEventReceipt.Outcome.APPLIED if applied else SaleEventReceipt.Outcome.IGNORED,
         occurred_at=occurred,
