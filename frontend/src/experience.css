@@ -1,0 +1,52 @@
+/* PR21: calm, shared product surfaces. Token source: fideliza-theme.css. */
+:where(.portal-shell,.member-club-shell,.portal-auth-layout) {
+  color:var(--vf-ink);
+  font-family:var(--vf-font);
+  background:var(--vf-canvas);
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+}
+:where(.portal-shell,.member-club-shell) :is(h1,h2,h3,h4){
+  font-family:var(--vf-font-display);
+  letter-spacing:-.025em;
+}
+:where(.portal-shell,.member-club-shell) :is(button,input,select,textarea){
+  font-family:var(--vf-font);
+}
+.portal-shell .portal-nav button{border-radius:10px;font-size:12px}
+.portal-shell .portal-nav button.is-active{background:rgba(8,127,121,.17);color:#EAFBF5}
+.portal-shell .portal-nav-secondary button.is-active{background:rgba(8,127,121,.17)}
+.portal-shell .portal-content-head{max-width:100%;gap:14px}
+.portal-shell .portal-content-head h1{line-height:1.18}
+.portal-shell :is(.portal-panel,.xp-panel,.xp-action-section,.reconcile-card,.cost-panel,.campaign-card){
+  box-shadow:0 5px 20px rgba(16,37,62,.035);
+  border-color:var(--vf-border);
+}
+.member-club-shell .member-club-panel,
+.member-club-shell .member-club-guest-benefits{
+  box-shadow:0 6px 22px rgba(16,37,62,.03);
+  border-color:var(--vf-border);
+}
+.member-club-shell .member-club-main{max-width:1030px}
+.member-club-shell .member-club-account{gap:12px}
+.member-club-shell .member-club-hero-account{min-height:0}
+.member-club-shell .member-club-sections{background:var(--vf-mint-soft);border-color:var(--vf-border)}
+.member-club-shell .member-club-sections button.selected{color:var(--vf-primary)}
+.member-club-shell .member-club-reward{background:#F9FCFB;border-color:var(--vf-border)}
+.member-club-shell .member-club-wallet-number{color:var(--vf-primary)}
+.member-club-shell .member-club-reward-state{background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
+.route-not-found{max-width:580px;margin:15vh auto;padding:25px;font:14px/1.65 var(--vf-font);color:var(--vf-ink)}
+.route-not-found h1{font:750 28px var(--vf-font-display)}
+.route-not-found a{display:inline-flex;color:var(--vf-primary);padding:10px 0}
+@media(max-width:600px){
+  .portal-shell .portal-content{padding-inline:14px}
+  .member-club-shell .member-club-main{padding-inline:12px}
+  .member-club-shell .member-club-panel{padding:17px}
+  .member-club-shell .member-club-hero-account{padding:20px;border-radius:14px}
+  .member-club-shell .member-club-sections button{min-height:45px}
+}
+@media(prefers-reduced-motion:reduce){
+  :where(.portal-shell,.member-club-shell) *, :where(.portal-shell,.member-club-shell) *::before{
+    scroll-behavior:auto;animation-duration:.01ms!important;transition-duration:.01ms!important;
+  }
+}

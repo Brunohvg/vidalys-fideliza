@@ -11,6 +11,7 @@ import {entryRoute} from "./routes";
 import "./styles.css";
 import "./portal.css";
 import "./fideliza-theme.css";
+import "./experience.css";
 
 const entry = entryRoute(window.location.pathname);
 const content = (() => {
