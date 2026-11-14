@@ -99,12 +99,14 @@ export default function MemberClub(){
   const firstName=me?.display_name.split(" ")[0] || "participante";
   const state=me?.status==="active"?"Participando":me?.status==="paused"?"Pausado":"Aguardando ativação";
   const pointsReady=me?.points_status==="verified"&&typeof me.points_balance==="number";
-  const availablePoints=pointsReady?me.points_balance:null;
+  const ledgerOnly=me?.points_status==="ledger_only"&&typeof me.points_balance==="number";
+  const hasLedger=pointsReady||ledgerOnly;
+  const availablePoints=hasLedger?me.points_balance:null;
   const publishedRewards=me?.available_rewards || [];
   const nextReward=publishedRewards
     .filter(item=>item.status!=="paused"&&item.status!=="sold_out"&&item.points_cost>0)
     .sort((a,b)=>a.points_cost-b.points_cost)[0];
-  const nextProgress=availablePoints!==null&&nextReward
+  const nextProgress=pointsReady&&availablePoints!==null&&nextReward
     ?Math.min(100,Math.round(availablePoints/nextReward.points_cost*100)):null;
 
   return <div className="member-club-shell">
@@ -172,18 +174,22 @@ export default function MemberClub(){
           <div className="member-club-wallet-main">
             <div className="member-club-wallet-heading">
               <span className="member-club-kicker"><Gift size={16}/> MINHA CARTEIRA</span>
-              {!pointsReady&&<span className="member-club-wallet-pending"><Clock3 size={13}/> Em preparação</span>}
+              {!pointsReady&&<span className="member-club-wallet-pending"><Clock3 size={13}/>
+                {ledgerOnly?"Saldo em conferência":"Em preparação"}</span>}
             </div>
-            <span className="member-club-wallet-label">Pontos disponíveis</span>
+            <span className="member-club-wallet-label">
+              {ledgerOnly?"Pontos internos, sem resgate":"Pontos disponíveis"}</span>
             <strong className="member-club-wallet-number">
               {availablePoints!==null?availablePoints.toLocaleString("pt-BR"):"—"}
               {availablePoints!==null&&<small>pontos</small>}
             </strong>
             <p>{pointsReady
               ?"Veja as recompensas e acompanhe os pontos de cada compra."
+              :ledgerOnly
+              ?"Os lançamentos internos estão registrados, mas não podem ser trocados por descontos até a conciliação de pagamentos e a ativação do resgate."
               :"O clube ainda não liberou a pontuação. Nenhum saldo foi atribuído."}</p>
           </div>
-          {pointsReady&&<div className="member-club-wallet-aside">
+          {hasLedger&&<div className="member-club-wallet-aside">
             <div><Clock3 size={18}/><span>Pendentes</span>
               <strong>{me.points_pending!==null?me.points_pending.toLocaleString("pt-BR"):"—"}</strong>
             </div>
