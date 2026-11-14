@@ -35,6 +35,8 @@ for (const width of [390, 768, 1440]) {
     const menu=page.getByRole("complementary",{name:"Menu do lojista"});
     await expect(menu.getByRole("button",{name:"Visão geral"})).toBeVisible();
     await expect(menu.getByRole("button",{name:"Clientes"})).toBeVisible();
+    await expect(menu.getByText("Mais ferramentas")).toBeVisible();
+    await menu.locator(".portal-advanced-menu > summary").click();
     await expect(menu.getByRole("button",{name:/Campanhas/})).toBeVisible();
     await expect(menu.getByRole("button",{name:/Sair da conta/})).toBeAttached();
     await menu.getByRole("button",{name:"Clientes"}).click();
