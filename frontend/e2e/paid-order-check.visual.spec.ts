@@ -61,9 +61,9 @@ for(const width of [320,390,1440]){
   });
   await page.goto("/");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
-  await page.getByText("Conferir pedido Nuvemshop antes de liberar pontos").click();
-  await expect(page.getByRole("heading",{name:"Localize uma compra"})).toBeVisible();
+  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+  await page.getByRole("navigation",{name:"Canais de vendas"}).getByRole("button",{name:"Nuvemshop"}).click();
+  await expect(page.getByRole("heading",{name:"Pedidos da Nuvemshop"})).toBeVisible();
   const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
   await input.fill("invalido");
   await expect(page.getByRole("button",{name:"Buscar pedido"})).toBeDisabled();
@@ -95,8 +95,8 @@ test("Cancelamento e falta de autorização não geram pontos",async({page})=>{
  });
  await page.goto("/");
  await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
- await page.getByText("Conferir pedido Nuvemshop antes de liberar pontos").click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+ await page.getByRole("navigation",{name:"Canais de vendas"}).getByRole("button",{name:"Nuvemshop"}).click();
  const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
  await input.fill("#14111");
  await page.getByRole("button",{name:"Buscar pedido"}).click();
@@ -121,8 +121,8 @@ test("Link administrativo e ID interno explícito não confundem com #numero",as
  });
  await page.goto("/");
  await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
- await page.getByText("Conferir pedido Nuvemshop antes de liberar pontos").click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+ await page.getByRole("navigation",{name:"Canais de vendas"}).getByRole("button",{name:"Nuvemshop"}).click();
  const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
  await input.fill("https://bibelo8.lojavirtualnuvem.com.br/admin/orders/2120958234");
  await expect(page.getByText("Consulta pelo ID interno da URL")).toBeVisible();
