@@ -728,6 +728,10 @@ export type MemberClubPrivate = {
   available_rewards:MemberClubReward[];
   transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;
   redemption_enabled:boolean;orders_verified:boolean;note:string;
+  vip_level?:string|null;vip_next_level?:string|null;vip_progress_percent?:number|null;
+  cashback_balance_cents?:number|null;cashback_pending_cents?:number|null;
+  cashback_status?:"ledger_only"|"not_active";
+  missions?:Array<{id:string;title:string;state:"eligible"|"planned"}>;
 };
 
 export type EmailActionResult = {
@@ -742,6 +746,9 @@ export type EmailActionResult = {
 export const publicEnrollmentApi = {
   club:(slug:string)=>getJson<MemberClubPublic>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/"),
   clubMe:(slug:string)=>getJson<MemberClubPrivate>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/"),
+  clubIssueVoucher:(slug:string,unit:"points"|"cashback",amount:number)=>postJson<{
+    code:string;voucher_id:string;discount_cents:number;expires_at:string;external_coupon_created:false;
+  }>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/vouchers/issue/",{unit,amount}),
   clubRequestAccess:(slug:string,email:string)=>postJson<{status:"accepted"}>(
     "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/request/",{email}),
   clubConfirmAccess:(slug:string,token:string)=>postJson<{authenticated:true}>(

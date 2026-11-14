@@ -268,7 +268,11 @@ for(const width of [320,390]){
   await expect(page.getByText("Conferência do responsável registrada e auditada.",{exact:false}))
    .toBeVisible();
   expect(submitted).toBe(true);expect(reviewed).toBe(true);
-  await expect(page.getByText("Conferência do responsável",{exact:true})).toBeVisible();
+  // 'self_review' é conferência pelo próprio proprietário, não por outra pessoa.
+  // A frase de feedback é diferente do selo permanente do registro.
+  await expect(page.locator(".vf-sale-record").getByText(
+    "Conferência do proprietário", {exact:true},
+  )).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

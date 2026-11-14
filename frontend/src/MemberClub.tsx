@@ -2,9 +2,11 @@ import {useEffect, useState, type FormEvent} from "react";
 import {ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock3, Gift, HeartHandshake, LockKeyhole, Mail, ShieldCheck, TicketPercent, ShoppingBag, LogOut} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type MemberClubPublic, type MemberClubPrivate} from "./api";
 import {readableForeground} from "./brand-contrast";
+import {clubSectionForPath, clubSectionPath, clubSlugFromPath} from "./routes";
+import {MemberMissions, MemberRedeemAction, MemberVipCard, MemberWalletOverview} from "./MemberOverview";
 import "./member-club.css";
 
-const slug = decodeURIComponent(window.location.pathname.match(/^\/clube\/([a-z0-9-]+)\/?$/i)?.[1] || "");
+const slug = clubSlugFromPath(window.location.pathname) || "";
 const money=(cents:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(cents/100);
 
 export default function MemberClub(){
@@ -18,7 +20,19 @@ export default function MemberClub(){
   const [busy,setBusy] = useState(false);
   const [sent,setSent] = useState(false);
   const [error,setError] = useState("");
-  const [section,setSection] = useState<"rewards"|"history"|"rules">("rewards");
+  const [section,setSection] = useState<"rewards"|"history"|"rules">(
+    () => clubSectionForPath(window.location.pathname)
+  );
+  useEffect(()=>{
+    const restore = () => setSection(clubSectionForPath(window.location.pathname));
+    window.addEventListener("popstate",restore);
+    return ()=>window.removeEventListener("popstate",restore);
+  },[]);
+  const openSection = (next:"rewards"|"history"|"rules") => {
+    setSection(next);
+    const url=clubSectionPath(slug,next);
+    if(window.location.pathname !== url)window.history.pushState(null,"",url);
+  };
 
   useEffect(()=>{
     // Links recebidos no mesmo navegador também precisam ser reconhecidos,
@@ -215,51 +229,27 @@ export default function MemberClub(){
           <span className="member-club-hero-note"><CheckCircle2 size={15}/> {state}</span>
           <p className="member-club-hero-subtitle">Suas conquistas e benefícios em um só lugar.</p>
         </section>
-        <section className="member-club-wallet member-club-panel" aria-label="Resumo da minha carteira">
-          <div className="member-club-wallet-main">
-            <div className="member-club-wallet-heading">
-              <span className="member-club-kicker"><Gift size={16}/> MINHA CARTEIRA</span>
-              {!pointsReady&&<span className="member-club-wallet-pending"><Clock3 size={13}/>
-                {ledgerOnly?"Saldo em conferência":"Em preparação"}</span>}
-            </div>
-            <span className="member-club-wallet-label">
-              {ledgerOnly?"Pontos internos, sem resgate":"Pontos disponíveis"}</span>
-            <strong className="member-club-wallet-number">
-              {availablePoints!==null?availablePoints.toLocaleString("pt-BR"):"—"}
-              {availablePoints!==null&&<small>pontos</small>}
-            </strong>
-            <p>{pointsReady
-              ?"Veja as recompensas e acompanhe os pontos de cada compra."
-              :ledgerOnly
-              ?"Os lançamentos internos estão registrados, mas não podem ser trocados por descontos até a conciliação de pagamentos e a ativação do resgate."
-              :"O clube ainda não liberou a pontuação. Nenhum saldo foi atribuído."}</p>
-          </div>
-          {hasLedger&&<div className="member-club-wallet-aside">
-            <div><Clock3 size={18}/><span>Pendentes</span>
-              <strong>{me.points_pending!==null?me.points_pending.toLocaleString("pt-BR"):"—"}</strong>
-            </div>
-            <div><Gift size={18}/><span>A vencer</span>
-              <strong>{me.points_expiring!==null?me.points_expiring.toLocaleString("pt-BR"):"—"}</strong>
-            </div>
-          </div>}
-        </section>
+        <MemberVipCard me={me}/>
+        <MemberWalletOverview me={me} pointsReady={pointsReady} ledgerOnly={ledgerOnly}/>
+        <MemberRedeemAction slug={slug} me={me} rewardPoints={nextReward?.points_cost ?? null}/>
+        <MemberMissions me={me}/>
         <nav className="member-club-sections" aria-label="Seu clube">
           <button type="button" aria-pressed={section==="rewards"}
             aria-controls="member-rewards-panel"
             className={section==="rewards"?"selected":""}
-            onClick={()=>setSection("rewards")}>
+            onClick={()=>openSection("rewards")}>
             <Gift size={17}/><span>Recompensas</span>
           </button>
           <button type="button" aria-pressed={section==="history"}
             aria-controls="member-history-panel"
             className={section==="history"?"selected":""}
-            onClick={()=>setSection("history")}>
+            onClick={()=>openSection("history")}>
             <Clock3 size={17}/><span>Histórico</span>
           </button>
           <button type="button" aria-pressed={section==="rules"}
             aria-controls="member-rules-panel"
             className={section==="rules"?"selected":""}
-            onClick={()=>setSection("rules")}>
+            onClick={()=>openSection("rules")}>
             <BookOpen size={17}/><span>Regras</span>
           </button>
         </nav>
