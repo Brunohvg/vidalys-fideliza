@@ -1,6 +1,7 @@
 """Rascunhos de benefícios. Sem publicar cupom, debitar pontos ou enviar campanha."""
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -29,7 +30,10 @@ def _reward(item):
         "discount_cents":item.discount_cents,
         "min_order_cents":item.min_order_cents,
         "max_redemptions":item.max_redemptions,
-        "status":"draft","published":False,"redemption_enabled":False,
+        "status":item.publication_status,
+        "published":item.publication_status == DiscountRewardDraft.PublicationStatus.PUBLISHED,
+        "published_at":item.published_at.isoformat() if item.published_at else None,
+        "redemption_enabled":False,
     }
 
 
@@ -88,6 +92,8 @@ class DiscountRewardDraftDetailView(APIView):
             DiscountRewardDraft.objects.select_for_update(),
             pk=reward_id, tenant_id=tenant_id,
         )
+        if obj.publication_status == DiscountRewardDraft.PublicationStatus.PUBLISHED:
+            return safe_reply({"detail":"Despublique a recompensa antes de editar."},409)
         keys = {"title", "points_cost", "discount_cents", "min_order_cents", "max_redemptions"}
         data = request.data
         if not isinstance(data, dict) or set(data) != keys:
@@ -121,8 +127,43 @@ class DiscountRewardDraftDetailView(APIView):
             DiscountRewardDraft.objects.select_for_update(),
             pk=reward_id, tenant_id=tenant_id,
         )
+        if obj.publication_status == DiscountRewardDraft.PublicationStatus.PUBLISHED:
+            return safe_reply({"detail":"Despublique a recompensa antes de excluir."},409)
         obj.delete()
         return safe_reply({"deleted": True, "id": str(reward_id), "coupon_created": False})
+
+class DiscountRewardPublicationView(APIView):
+    """Publica/despublica somente o CATÁLOGO. Não emite cupom nem debita pontos."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["patch", "options"]
+
+    @transaction.atomic
+    def patch(self, request, tenant_id, reward_id):
+        member, err = _allowed(request, tenant_id, writing=True)
+        if err is not None:
+            return err
+        data = request.data
+        if not isinstance(data, dict) or set(data) != {"published"} or type(data["published"]) is not bool:
+            return safe_reply({"detail":"Informe somente published=true ou false."},400)
+        obj = get_object_or_404(
+            DiscountRewardDraft.objects.select_for_update(), pk=reward_id, tenant_id=tenant_id,
+        )
+        published = data["published"]
+        wanted = (
+            DiscountRewardDraft.PublicationStatus.PUBLISHED if published
+            else DiscountRewardDraft.PublicationStatus.DRAFT
+        )
+        if obj.publication_status != wanted:
+            obj.publication_status = wanted
+            obj.published_at = timezone.now() if published else None
+            obj.updated_by = request.user
+            obj.save(update_fields=["publication_status","published_at","updated_by"])
+        return safe_reply({
+            "reward":_reward(obj), "catalog_published":published,
+            "redemption_enabled":False,"coupon_created":False,
+            "points_credited":False,"points_debited":False,
+        })
+
 
 def _campaign(obj):
     return {
