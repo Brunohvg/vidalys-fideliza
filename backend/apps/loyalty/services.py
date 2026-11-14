@@ -689,7 +689,7 @@ def reverse_grant(*, grant_id, refund_evidence_id):
     _execution_enabled()
     base = LoyaltyGrant.objects.get(pk=grant_id)
     tenant = Tenant.objects.select_for_update().get(pk=base.tenant_id, status=Tenant.Status.ACTIVE)
-    grant = LoyaltyGrant.objects.select_for_update().select_related(
+    grant = LoyaltyGrant.objects.select_for_update(of=("self",)).select_related(
         "sale", "participant", "rule", "point_lot", "cashback_event",
     ).get(pk=grant_id, tenant=tenant)
     if grant.status in (LoyaltyGrant.Status.REVERSED, LoyaltyGrant.Status.RECOVERY):

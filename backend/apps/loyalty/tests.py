@@ -39,6 +39,7 @@ from .tasks import release_due_grants, scan_winback, reconcile_verified_refunds,
     FIDELIZA_LEDGER_WRITES_ENABLED=True,
     FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED=True,
     FIDELIZA_TRUSTED_PAYMENT_ADAPTERS=frozenset({"psp_test"}),
+    SECURE_SSL_REDIRECT=False,  # HTTP test client; proxy HTTPS has a separate smoke
 )
 class LoyaltyFinancialTests(TestCase):
     def setUp(self):
