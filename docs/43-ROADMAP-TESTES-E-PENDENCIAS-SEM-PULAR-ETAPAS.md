@@ -930,3 +930,52 @@ as flags financeiras permanecem desligadas no código.
 **Status:** implementação em `homolog` e CI da revisão final a conferir;
 sem evidência de deploy no Coolify. Não transformar QA sintético em
 declaração de integração real.
+
+## 14/11/2026 — Publicação informativa do catálogo de recompensas
+
+Motivo: o editor só possuía rascunhos e desabilitava o botão de publicar,
+enquanto `MemberClubMeView` retornava sempre `available_rewards: []`.
+Isso impedia o piloto visual mesmo com regras/recompensas configuradas.
+
+**Contrato implementado (somente `homolog`):**
+- Migração não destrutiva `sales.0003_reward_publication` adiciona
+  `publication_status` (`draft` por padrão) e `published_at` ao modelo
+  existente. Rascunhos antigos continuam ocultos após migrar.
+- API do lojista: `PATCH
+  /api/v1/tenants/{tenant_id}/loyalty/reward-drafts/{reward_id}/publication/`
+  recebe exclusivamente `{"published":true|false}`. Exige sessão,
+  CSRF, papel owner/admin, tenant ativo e UUID do tenant correto.
+  Estados repetidos são idempotentes e transações usam lock no registro.
+- Publicar/despublicar muda apenas o catálogo; resposta informa
+  `redemption_enabled:false`, `coupon_created:false`,
+  `points_credited:false` e `points_debited:false`.
+- Recompensas publicadas não podem ser editadas ou excluídas;
+  despublique primeiro. Evita mudanças silenciosas em benefícios
+  já anunciados.
+- Meu Clube `/clube/:slug`: somente participante logado e com e-mail
+  confirmado recebe as recompensas da própria loja com status
+  `locked`, sem saldo, progresso inventado ou botão de resgate.
+  Lista limitada a 30 e nenhum detalhe de participantes é divulgado.
+- Interface oferece `Publicar no Meu Clube` com confirmação,
+  `Despublicar` e rótulos explícitos de resgate em preparação.
+- Testes de backend para isolamento, 409, 403, 404, CSRF,
+  idempotência, reversão e ausência de carteira/cupons; Playwright
+  desktop e mobile para publicar, cancelar, despublicar e ver o
+  catálogo autenticado.
+
+**Importante:** publicação neste incremento é somente **visibilidade
+de recompensas**, não oferta de cupom válido nem autorização para
+consumir pontos na Nuvemshop. A flag financeira continua bloqueada
+em `settings.py`, nenhuma nova variável .env é necessária e o app
+não solicita `write_coupons`. A próxima camada de resgate deve
+considerar escopos oficiais, consentimento, reserva atômica,
+idempotência, estorno e conciliação de pedidos pagos antes de ser
+autorizada.
+
+**Homologação operacional pendente:** confirmar CI final, conferir backup
+antes de migrar `sales.0003`, implantar exatamente o SHA validado no
+Coolify Raw existente, testar como owner e entrar como participante no
+mesmo tenant para verificar publicar/despublicar, sem alterar Bibelô,
+`main` ou aplicativos conectados. A publicação efetiva de recompensas
+na instância remota só ocorre após o novo código estar implantado e
+o lojista clicar na ação.
