@@ -1,4 +1,5 @@
 """Vouchers vinculados à recompensa comercial e às origens de cashback."""
+import uuid
 from django.db import migrations, models
 from django.db.models import Q
 import django.db.models.deletion
