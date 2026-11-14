@@ -5,6 +5,7 @@ podem declarar comprovação. Um e-mail digitado em um pedido não é prova.
 """
 import re
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
@@ -46,12 +47,16 @@ def normalize_phone(value):
     return value
 
 
-def _digest(*, tenant_id, kind, value):
-    return salted_hmac(
-        "vidalys.customer-contact.v1",
-        f"{tenant_id}:{kind}:{value}",
-        algorithm="sha256",
-    ).hexdigest()
+def _digests(*, tenant_id, kind, value):
+    """Permite rotação de SECRET_KEY enquanto chaves antigas forem mantidas."""
+    message = f"{tenant_id}:{kind}:{value}"
+    secrets = [settings.SECRET_KEY, *getattr(settings, "SECRET_KEY_FALLBACKS", [])]
+    return tuple(dict.fromkeys(
+        salted_hmac(
+            "vidalys.customer-contact.v1", message, secret=secret, algorithm="sha256",
+        ).hexdigest()
+        for secret in secrets
+    ))
 
 
 def find_verified_customer(*, tenant_id, email=None, phone_e164=None):
@@ -60,12 +65,14 @@ def find_verified_customer(*, tenant_id, email=None, phone_e164=None):
         raise ValueError("Informe apenas um contato.")
     kind = VerifiedCustomerContact.Kind.EMAIL if email is not None else VerifiedCustomerContact.Kind.PHONE
     value = normalize_email(email) if email is not None else normalize_phone(phone_e164)
-    match = VerifiedCustomerContact.objects.select_related("profile").filter(
+    matches = list(VerifiedCustomerContact.objects.select_related("profile").filter(
         tenant_id=tenant_id,
         kind=kind,
-        lookup_digest=_digest(tenant_id=tenant_id, kind=kind, value=value),
-    ).first()
-    return match.profile if match is not None else None
+        lookup_digest__in=_digests(tenant_id=tenant_id, kind=kind, value=value),
+    ))
+    if len({item.profile_id for item in matches}) > 1:
+        raise IdentityConflict("Contato duplicado em perfis divergentes.")
+    return matches[0].profile if matches else None
 
 
 @transaction.atomic
@@ -99,10 +106,13 @@ def attach_verified_contact(
     ):
         raise IdentityConflict("E-mail divergente do participante já confirmado.")
 
-    lookup_digest = _digest(tenant_id=tenant.pk, kind=kind, value=value)
-    contact = VerifiedCustomerContact.objects.select_related("profile").filter(
-        tenant=tenant, kind=kind, lookup_digest=lookup_digest
-    ).first()
+    digests = _digests(tenant_id=tenant.pk, kind=kind, value=value)
+    matches = list(VerifiedCustomerContact.objects.select_related("profile").filter(
+        tenant=tenant, kind=kind, lookup_digest__in=digests,
+    ))
+    if len({item.profile_id for item in matches}) > 1:
+        raise IdentityConflict("Contato duplicado em perfis divergentes.")
+    contact = matches[0] if matches else None
     current = CustomerProfile.objects.filter(
         tenant=tenant, participant=participant
     ).first()
@@ -121,7 +131,7 @@ def attach_verified_contact(
             tenant=tenant, participant=participant, display_name=participant.display_name,
         )
     VerifiedCustomerContact.objects.create(
-        tenant=tenant, profile=profile, kind=kind, lookup_digest=lookup_digest,
+        tenant=tenant, profile=profile, kind=kind, lookup_digest=digests[0],
         proof_method=proof_method, verified_at=timezone.now(),
     )
     return profile, True

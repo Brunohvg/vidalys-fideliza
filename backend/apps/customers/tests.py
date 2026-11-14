@@ -134,6 +134,28 @@ class OmnichannelIdentityTests(TestCase):
         self.assertEqual(normalize_phone("+5531999999999"), "+5531999999999")
         self.assertFalse(CustomerProfile.objects.exists())
 
+    def test_secret_rotation_fallback_keeps_existing_identity(self):
+        with override_settings(SECRET_KEY="first-test-key", SECRET_KEY_FALLBACKS=[]):
+            first, created = attach_verified_contact(
+                tenant_id=self.tenant.pk, participant_id=self.member.pk,
+                email=self.member.contact_email, proof_method="email_otp",
+            )
+        self.assertTrue(created)
+        with override_settings(
+            SECRET_KEY="second-test-key", SECRET_KEY_FALLBACKS=["first-test-key"],
+        ):
+            found = find_verified_customer(
+                tenant_id=self.tenant.pk, email=self.member.contact_email,
+            )
+            same, duplicated = attach_verified_contact(
+                tenant_id=self.tenant.pk, participant_id=self.member.pk,
+                email=self.member.contact_email, proof_method="email_otp",
+            )
+        self.assertEqual(first.pk, found.pk)
+        self.assertEqual(first.pk, same.pk)
+        self.assertFalse(duplicated)
+        self.assertEqual(VerifiedCustomerContact.objects.count(), 1)
+
     def test_channel_external_reference_is_never_reassigned(self):
         attach_verified_contact(
             tenant_id=self.tenant.pk, participant_id=self.member.pk,
