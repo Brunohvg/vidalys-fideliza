@@ -146,3 +146,13 @@
   .vf-sale-record-top{flex-direction:column}
   .vf-sale-record-right{text-align:left;justify-items:start}
 }
+
+/* Loja online e balcão compartilham uma área, sem duplicar pedidos do site. */
+.vf-sales-online{min-width:0;overflow:hidden;background:#fff;border:1px solid #dce9e3;border-radius:18px}
+.vf-sales-online-head{padding:23px 23px 15px;border-bottom:1px solid #e4eee8}
+.vf-sales-online-head h3{margin:6px 0;color:#164a3f;font:800 clamp(19px,2.6vw,24px)/1.25 Manrope,Inter,system-ui,sans-serif}
+.vf-sales-online-head p{margin:0;color:#60766a;font-size:12px;line-height:1.65}
+.vf-sales-online .vf-order-check-head{display:none}
+.vf-sales-online-footnote{padding:13px 20px;margin:0;border-top:1px solid #e4eee8;color:#5c766b;font-size:11px;line-height:1.65;background:#f7fbf8}
+@media(max-width:760px){.vf-sale-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:6px}.vf-sale-tabs button{min-width:0;font-size:11px;padding:10px 7px;min-height:52px;justify-content:center}.vf-sales-online-head{padding:18px 15px}}
+@media(max-width:360px){.vf-sale-tabs button{font-size:10px;padding:9px 4px}}
