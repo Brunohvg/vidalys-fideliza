@@ -37,3 +37,13 @@
 .vf-draft-actions button:disabled{cursor:not-allowed;color:#647a72;background:#f5f8f6;opacity:.75}
 .vf-draft-actions button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
 @media(max-width:480px){.vf-draft-actions button{flex:1 1 130px}}
+
+/* Confirmação local: substitui o diálogo nativo, sem apagar no primeiro toque. */
+.vf-draft-confirm{display:grid;gap:11px;padding:13px;border:1px solid #edc8c0;border-radius:11px;background:#fff7f5}
+.vf-draft-confirm p{margin:0;color:#784036;font-size:12px;line-height:1.55}
+.vf-draft-confirm-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.vf-draft-confirm-actions button{display:inline-flex;justify-content:center;align-items:center;gap:7px;min-width:0;min-height:44px;padding:10px 12px;background:#fff;border:1px solid #c9dcd4;border-radius:9px;color:#24584f;font:750 12px/1.3 Inter,system-ui,sans-serif;cursor:pointer}
+.vf-draft-confirm-actions button.danger{background:#a33138;border-color:#a33138;color:#fff}
+.vf-draft-confirm-actions button:disabled{opacity:.65;cursor:not-allowed}
+.vf-draft-confirm-actions button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+@media(max-width:360px){.vf-draft-confirm-actions{grid-template-columns:1fr}}
