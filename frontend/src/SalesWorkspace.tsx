@@ -162,8 +162,8 @@ export default function SalesWorkspace({tenantId,role}:{
         tenantId,reviewing.id,decision,reviewNote,
       );
       setMessage(decision==="approve"
-        ?confirmed.review_mode==="owner_self_review"
-          ?"Conferência do proprietário registrada e auditada. Nenhum ponto foi creditado."
+        ?confirmed.review_mode==="self_review"
+          ?"Conferência do responsável registrada e auditada. Nenhum ponto foi creditado."
           :"Conferência registrada. Nenhum ponto foi creditado."
         :"Venda rejeitada. Nenhum ponto foi creditado.");
       setReviewing(null);setReviewNote("");setVersion(v=>v+1);
@@ -174,7 +174,7 @@ export default function SalesWorkspace({tenantId,role}:{
 
   const pending=items.filter(item=>item.state==="awaiting_review").length;
   const canReview=(item:ManualSaleRecord)=>canEdit&&item.state==="awaiting_review"&&
-    (!item.submitted_by_me||role==="owner");
+    true;
 
   return <div className="vf-sales-page">
     <header className="vf-sale-intro">
@@ -358,16 +358,16 @@ export default function SalesWorkspace({tenantId,role}:{
                 item.state==="awaiting_review"&&item.submitted_by_me?
                   <span>Aguarda outro administrador</span>:
                 item.state==="verified_manual"?
-                  <span>{item.review_mode==="owner_self_review"
+                  <span>{item.review_mode==="self_review"
                     ?"Conferência do proprietário":"Conferida por outro operador"}</span>:null}
             </div>
             {reviewing?.id===item.id&&<div className="vf-sale-review">
               <h4>Conferir o comprovante</h4>
               <p>Verifique o recibo <strong>{item.evidence_reference}</strong> e o valor
                 de <strong>{money(item.eligible_amount_cents)}</strong> antes de concluir.</p>
-              {item.submitted_by_me&&role==="owner"&&
+              {item.submitted_by_me&&
                 <p className="vf-sale-review-caution">Você está conferindo o próprio lançamento
-                  como proprietário. A justificativa será registrada, mas não será considerada
+                  como responsável. A justificativa será registrada, mas não será considerada
                   confirmação independente de pagamento e não gera pontos.</p>}
               <label htmlFor="vf-sale-review-note">Como você conferiu?
                 <textarea id="vf-sale-review-note" value={reviewNote}
