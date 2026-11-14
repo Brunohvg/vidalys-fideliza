@@ -44,7 +44,7 @@ async function navigateCosts(page: Page, width: number) {
   if (width <= 1020) {
     await expect.poll(() => page.locator(".portal-side").evaluate(el => el.getBoundingClientRect().right)).toBeLessThan(2);
   }
-  await expect(page.getByRole("heading", { name: "Custos e variantes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Quanto custa vender cada produto?" })).toBeVisible();
 }
 
 function mockCosts(page: Page, items: Record[], tracking: { writes: number }) {
@@ -132,13 +132,13 @@ for (const width of [390, 768, 1440]) {
     await mockCosts(page, items, tracking);
 
     await navigateCosts(page, width);
-    await expect(page.getByText("Seu catálogo começa aqui")).toBeVisible();
+    await expect(page.getByText("Cadastro manual opcional")).toBeVisible();
     expect((await page.evaluate(()=>document.documentElement.scrollWidth))).toBeLessThanOrEqual(width+1);
-    await page.getByRole("button", { name: "Cadastrar primeiro item" }).click();
+    await page.getByRole("button", { name: "Cadastrar um produto para teste" }).click();
     await page.getByRole("textbox", { name: /Nome do produto/ }).fill("Argola transparente 100 mm");
-    await page.getByRole("textbox", { name: /Referência interna/ }).fill("ARG-100-T");
+    await page.getByRole("textbox", { name: /Código de referência interno/ }).fill("ARG-100-T");
     await page.getByRole("textbox", { name: /SKU \(opcional\)/ }).fill("SKU-ARG100");
-    await page.getByRole("textbox", { name: /Custo unitário manual/ }).fill("7,00");
+    await page.getByRole("textbox", { name: /Quanto a loja pagou por unidade/ }).fill("7,00");
     await page.getByRole("textbox", { name: /Preço de venda manual/ }).fill("29,90");
     await page.getByRole("dialog").getByRole("button", { name: "Cadastrar item", exact: true }).click();
     await expect(page.getByText("Item salvo com sucesso.")).toBeVisible();
