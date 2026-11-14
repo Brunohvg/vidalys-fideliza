@@ -1269,3 +1269,92 @@ Faltam: testes de evento real Flow/PDV, reconsulta Nuvemshop OAuth com
 prova da origem, fila/retry, conciliação PSP, publicação e benchmark UX.
 Estado: CÓDIGO EM REVISÃO até CI; NÃO HOMOLOGADO nem autorizado a
 crédito, cupom, desconto, alteração de estoque ou deploy real.
+
+
+## 14/11/2026 — PR #20: Loyalty, ledger e vouchers (CÓDIGO OFFLINE)
+
+**Dependências:** PR #18 (customers) e PR #19 (channels)
+ainda em draft, sem merge em homolog. PR #20 empilhado no #19;
+não implantar nem migrar no Coolify antes de consolidar as dependências.
+
+**Domínios reaproveitados:**
+- sales.SaleRecord recebe status reportado por canal; paid NÃO prova captura.
+  channels.services consulta loyalty.sale_readiness sem dar crédito.
+- loyalty.LoyaltyRule é uma versão de regra de execução: não substitui
+  campaigns.CampaignDraft ou os editores de rascunho. Regras usadas
+  e LoyaltyTier são imutáveis; nova estratégia exige nova versão.
+- loyalty.FinancialEvidence modela captura/estorno de fonte autenticada.
+  A tabela não prova PSP por si mesma; adaptadores oficiais e sua
+  cadeia de confiança permanecem pendentes de G7.
+- loyalty.LoyaltyGrant é único por venda e vincula regra, prova,
+  points.PointLot e wallets.CashbackEvent, em transação única.
+- points mantém ledger integer com lotes por pedido; wallets mantém
+  ledger de centavos BRL sem conversão implícita; não houve migração
+  nem lançamento em saldos antigos.
+- loyalty.LoyaltyVoucher conserva hash HMAC do código (nunca token
+  em claro no banco); reserva lotes FIFO ou saldo BRL disponível,
+  permite cancelamento/uso único e recibo por tenant/canal.
+  Código é retornado uma vez ao consumidor. Nenhuma criação automática
+  de cupom na Nuvemshop.
+- loyalty.LoyaltyRecovery registra benefício já gasto que não pode
+  ser estornado por saldo insuficiente; bloqueia novos resgates. Nunca
+  apresenta saldo negativo silenciosamente como estorno resolvido.
+- loyalty.LoyaltyEngagement marca elegibilidade de aniversário,
+  cadastro verificado e winback SEM emitir pontos, cashback ou mensagens.
+  CustomerProfile tem nascimento opcional, com consentimento e prova;
+  nenhuma coleta de dados reais foi executada.
+- Celery Beat: detecção de candidatos inativos (somente registros
+  de elegibilidade) e liberação de grants após carência, ambas OFF
+  até infraestrutura/flags verificadas.
+
+**Proteções financeiras ainda vigentes:**
+FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED=False,
+FIDELIZA_TRUSTED_PAYMENT_ADAPTERS=frozenset(),
+FIDELIZA_POINTS_WRITES_ENABLED=False,
+FIDELIZA_LEDGER_WRITES_ENABLED=False. Nenhum deles tem env para
+ativação acidental neste PR; só testes sintéticos usam override_settings.
+
+**Regra de margem:** exige variante com SKU + custo verificado, taxas,
+frete e despesas conhecidas; usa margin.simulate_margin e compara
+exposição de pontos (valor de referência por ponto) + cashback com
+margem segura e orçamento de regra. O PR #19 ainda não fornece itens
+do pedido para provar o vínculo com CostItem. O objeto OrderCosts é
+parâmetro apenas de testes internos, nunca de HTTP. Não usar esses
+cálculos para autorizar cliente real enquanto G7 estiver bloqueado.
+
+**Fluxos internos de execução:**
+1. Ingestão do canal -> pedido informado -> diagnóstico sem crédito.
+2. Captura autenticada e reconciliada -> identidade, custo, margem,
+   teto e consentimento -> lançamento pending com sale+rule idempotente.
+3. Celery após carência e com flags aprovadas -> disponível nos ledgers.
+4. Voucher -> reserva atômica -> validação -> uso único confirmado
+   pelo PDV/Flow autorizado -> lançamento redeem no ledger.
+5. Estorno provado -> cancelar reservas não usadas -> lançar eventos
+   de reversão imutáveis -> abrir recovery se algo já foi gasto.
+   Não misturar pontos com dinheiro ou esconder passivos.
+
+**Rotas protegidas planejadas, todas sem ação real no ambiente atual:**
+- POST /api/v1/public/clubs/{slug}/vouchers/issue/:
+  sessão do membro confirmado + CSRF, unit e amount.
+- POST /api/v1/tenants/{tenant_id}/loyalty/vouchers/validate/:
+  owner/admin ou credencial Flow do tenant; code.
+- POST /api/v1/tenants/{tenant_id}/loyalty/vouchers/redeem/:
+  mesmos controles e redemption_reference. É a atestação de benefício
+  aplicado pelo operador/canal, não um cupom Nuvemshop.
+- Nuvemshop checkout exige OAuth e escopo oficial de escrita
+  aprovado, emissão idempotente, confirmação de uso e rollback.
+  NÃO existe tal integração financeira neste PR.
+
+**Limitações reais antes de G8:** cashback agregado sem lotes por compra
+não oferece expiração/reversão parcial atribuível perfeita; não
+habilitar em produção sem conciliação e desenho de passivos. Benefícios
+de missões ainda não podem criar PointLot sem simular compra fictícia:
+aqui ficam só elegibilidade, aguardando ledger nativo não-transacional.
+Winback não envia publicidade/WhatsApp sem opt-in e mensageria aprovada.
+
+**Teste exigido:** unitário de cotação, tier e boost; serviço com PSP
+sintético, margens/custos, orçamentos, isolamento tenant, rejeição por
+status pago sozinho, idempotência por venda+regra; concessão, carência,
+estorno, voucher, recuperação e missões sem saldo indevido.
+Executar CI e makemigrations --check, revisar SHA e backup antes de
+qualquer deploy. **Estado G7/G8 = BLOQUEADO (integração real).**
