@@ -132,7 +132,7 @@ def reconcile_payment_facts(snapshot, facts, *, tenant_id, store_id):
 
     status = snapshot.get("review_status")
     if snapshot.get("order_status") == "cancelled" or status in (
-        "blocked_cancelled", "blocked_refund",
+        "blocked_cancelled", "blocked_refund", "blocked_chargeback",
     ):
         result = "order_cancelled_or_refunded"
     elif charged_back:
