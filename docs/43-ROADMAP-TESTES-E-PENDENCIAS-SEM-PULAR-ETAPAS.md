@@ -812,3 +812,38 @@ colher intenção de pagamento, **sem vender pontuação e resgate como ativos**
 homologar esse SHA no Coolify Raw existente após backup e isolamento
 de secrets, exercitando cadastro/SMTP. Evitar criar outro planejador,
 flag, compose ou trilha paralela.
+
+## 13/11/2026 — Meu Clube v0.6: UX mobile de consumidor (benchmark Smile.io)
+
+A página pública `/clube/:slug` foi reorganizada no frontend, sem mudar
+modelos, endpoints, saldos ou permissões. Referências de UX: Smile.io
+`https://smile.io/smile-ui` e
+`https://smile.io/features/loyalty-landing-page`. Aplicados
+princípios, não layouts ou identidade visual de terceiros:
+- acesso sem senha e mensagem direta ao consumidor;
+- saudação curta, carteira de pontos em primeiro plano e estado de
+  indisponibilidade visível sem exibir saldo fictício;
+- navegação compacta por recompensas, histórico e regras;
+- orientação visual comprar -> acompanhar -> resgatar, com texto
+  condicional sobre ativação (não promete crédito imediato);
+- cartões de benefícios e empty state com hierarquia simplificada;
+- cuidado em 320, 390, 768 e 1440px, com screenshots de QA e
+  navegação por abas exercitadas em Playwright.
+
+**Controle de segurança:** login de participante separado do lojista;
+confirmação por link efêmero existente; `points_status=not_active` gera
+saldo "—", nunca zero, ganhos ou cupons falsos. A ausência de publicação
+não pode sugerir resgate disponível. A personalização de cores do lojista
+continua no destaque sem copiar marca Smile. Nada foi ativado no checkout.
+
+Arquivos: `frontend/src/MemberClub.tsx`,
+`frontend/src/member-club.css`,
+`frontend/e2e/member-club.visual.spec.ts`. CI da revisão final deve
+ser conferido antes de promover ao Coolify. Teste visual automatizado
+não substitui revisão de prints no aparelho, navegação por teclado,
+leitor de tela nem validação do checkout real.
+
+**Próxima evolução após homologação:** painel público de recompensas
+alimentado por regras realmente publicadas, com instruções de
+acúmulo não inventadas e integração Nuvemshop de resgate sob
+idempotência, sem substituir a página por dados de demonstração.
