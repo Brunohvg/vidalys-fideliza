@@ -725,3 +725,23 @@ Ao preparar a validação do HEAD, identificado erro real de semântica em Benef
 Corrigido: custos da cesta sempre começam desconhecidos; referência ao SKU é somente identificação, com alerta explícito de que não equivale ao custo da compra. Teste de regressão visual ampliado para exigir custos vazios antes do preenchimento, com cálculo financeiro ainda somente local e sem crédito.
 
 **Estado:** mudança na homolog; testes não executados nem CI confirmada; sem deploy. Uma única ação necessária antes de Coolify: verificar o resultado da workflow quality (seis jobs) do novo HEAD. Não presumir funcionamento baseado apenas em commits.
+
+## 13/11/2026 — G0: confirmação de exclusão de campanhas (sem ativação)
+
+Na `homolog`, a exclusão de um rascunho de campanha deixou de depender do
+`window.confirm` do navegador: o próprio cartão exibe aviso claro e ações
+`Cancelar exclusão` / `Confirmar exclusão`. Cancelar não envia `DELETE`;
+o teste Playwright de edição/exclusão agora cobre ambos os caminhos.
+CSS responsivo e foco visível acompanham a mudança. Não há alteração de API,
+schema, mensagens, carteira de pontos, publicação nem loja externa.
+
+**Prova de código:** commits `b6c6e889`, `2c29bfce` e `ee344168`
+em `homolog`, com diff revisto. **CI e execução do Playwright desta revisão
+ainda não comprovados**, assim como deploy no Coolify. Manter G0 como
+código alterado aguardando validação, sem elevar a homologação.
+
+**Prioridade operacional permanece G1/G3:** conferir backup e o SHA real na
+aplicação Coolify Raw existente; aplicar migrações pendentes e testar o
+cadastro de lojista, worker, eventos EmailDispatch, confirmação, login,
+reenvio e reset comparando SMTP aceito versus entrega. Não habilitar
+recompensas/cupom/cashback em contas reais.
