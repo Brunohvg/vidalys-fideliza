@@ -10,6 +10,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.core.models import EmailDispatch
+from apps.sales.models import DiscountRewardDraft
+from apps.points.models import PointWallet,PointEvent
 from apps.tenants.models import Tenant, TenantMembership
 from .email_proof import digest, make_token
 from .enrollment_models import (
@@ -160,3 +162,53 @@ class MemberClubAccessTests(TestCase):
         challenge.save(update_fields=["expires_at"])
         self.assertEqual(self.call("member-club-access-confirm",{"token":token}).status_code,410)
         self.assertFalse(ProgramParticipant.objects.exists())
+
+    def test_published_rewards_appear_only_to_verified_member_without_redemption(self):
+        author=get_user_model().objects.create_user(username="reward-qa-owner")
+        self.assertEqual(self.api.get(reverse("member-club-me",kwargs={
+            "slug":self.tenant.slug,
+        })).status_code,401)
+        reward=DiscountRewardDraft.objects.create(
+            tenant=self.tenant,updated_by=author,
+            title="Desconto teste R$ 5",points_cost=200,
+            discount_cents=500,min_order_cents=3000,max_redemptions=2,
+            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+            published_at=timezone.now(),
+        )
+        DiscountRewardDraft.objects.create(
+            tenant=self.tenant,updated_by=author,
+            title="NÃO visível",points_cost=100,discount_cents=300,
+            min_order_cents=3000,max_redemptions=1,
+        )
+        DiscountRewardDraft.objects.create(
+            tenant=self.other,updated_by=author,
+            title="Outra loja privada",points_cost=100,discount_cents=200,
+            min_order_cents=3000,max_redemptions=1,
+            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+            published_at=timezone.now(),
+        )
+        self.request_link()
+        token=make_token(MemberAccessChallenge.objects.get().id,"member")
+        self.assertEqual(self.call("member-club-access-confirm",{"token":token}).status_code,200)
+        response=self.api.get(reverse("member-club-me",kwargs={"slug":self.tenant.slug}))
+        self.assertEqual(response.status_code,200,response.data)
+        self.assertEqual(len(response.data["available_rewards"]),1)
+        offer=response.data["available_rewards"][0]
+        self.assertEqual(offer["id"],str(reward.id))
+        self.assertEqual(offer["title"],"Desconto teste R$ 5")
+        self.assertEqual(offer["status"],"locked")
+        self.assertFalse(offer["redemption_enabled"])
+        self.assertIsNone(offer["points_missing"])
+        self.assertIsNone(response.data["points_balance"])
+        self.assertFalse(response.data["redemption_enabled"])
+        self.assertFalse(response.data["orders_verified"])
+        self.assertFalse(PointWallet.objects.exists())
+        self.assertFalse(PointEvent.objects.exists())
+        self.assertEqual(self.api.get(reverse("member-club-me",kwargs={
+            "slug":self.other.slug,
+        })).status_code,401)
+        reward.publication_status=DiscountRewardDraft.PublicationStatus.DRAFT
+        reward.published_at=None
+        reward.save(update_fields=["publication_status","published_at"])
+        response=self.api.get(reverse("member-club-me",kwargs={"slug":self.tenant.slug}))
+        self.assertEqual(response.data["available_rewards"],[])
