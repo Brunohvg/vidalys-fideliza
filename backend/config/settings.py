@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "apps.sales.apps.SalesConfig",
     "apps.points.apps.PointsConfig",
     "apps.channels.apps.ChannelsConfig",
+    "apps.loyalty.apps.LoyaltyConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
