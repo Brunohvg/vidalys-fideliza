@@ -166,3 +166,6 @@
 .vf-sales-manual-search>summary:focus-visible{outline:3px solid #37d5bb;outline-offset:-3px}
 .vf-sales-manual-search[open]>.vf-order-check{border-top:1px solid #e6efe8}
 @media(max-width:700px){.vf-sales-manual-search>summary{padding:15px 13px;flex-wrap:wrap}.vf-sales-manual-search>summary::after{flex:none}}
+
+.vf-sale-review-caution{border:1px solid #e3d8b9;background:#fffaf0;color:#7b5a21;border-radius:10px;padding:11px 12px;font-size:12px;line-height:1.6}
+.vf-sale-card-heading p{margin:5px 0 0;color:#5d786b;font-size:12px;line-height:1.5}
