@@ -83,6 +83,47 @@ class MemberClubAccessTests(TestCase):
         self.assertEqual(me.status_code,401)
         self.assertNotIn("Pessoa Teste",str(me.data))
 
+    def test_public_page_shows_only_published_rewards_no_private_member_data(self):
+        author=get_user_model().objects.create_user(username="public-reward-test")
+        live=DiscountRewardDraft.objects.create(
+            tenant=self.tenant,updated_by=author,title="R$ 5 em compras",
+            points_cost=200,discount_cents=500,min_order_cents=3000,
+            max_redemptions=30,
+            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+            published_at=timezone.now(),
+        )
+        DiscountRewardDraft.objects.create(
+            tenant=self.tenant,updated_by=author,title="Rascunho oculto",
+            points_cost=10,discount_cents=200,min_order_cents=2000,max_redemptions=20,
+        )
+        DiscountRewardDraft.objects.create(
+            tenant=self.other,updated_by=author,title="Oferta secreta do outro tenant",
+            points_cost=10,discount_cents=300,min_order_cents=3000,max_redemptions=20,
+            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+            published_at=timezone.now(),
+        )
+        response=self.api.get(reverse("member-club-public",kwargs={"slug":self.tenant.slug}))
+        self.assertEqual(response.status_code,200,response.data)
+        items=response.data["published_rewards"]
+        self.assertEqual(len(items),1)
+        self.assertEqual(items[0]["id"],str(live.id))
+        self.assertEqual(items[0]["title"],"R$ 5 em compras")
+        self.assertEqual(items[0]["discount_cents"],500)
+        self.assertFalse(items[0]["redemption_enabled"])
+        self.assertEqual(items[0]["status"],"locked")
+        self.assertFalse(response.data["points_enabled"])
+        self.assertFalse(response.data["redemption_enabled"])
+        self.assertNotIn("membro@example.invalid",str(response.data))
+        self.assertNotIn("Rascunho oculto",str(response.data))
+        self.assertNotIn("Oferta secreta",str(response.data))
+        self.assertFalse(PointWallet.objects.exists())
+        self.assertFalse(PointEvent.objects.exists())
+        live.publication_status=DiscountRewardDraft.PublicationStatus.DRAFT
+        live.published_at=None
+        live.save(update_fields=["publication_status","published_at"])
+        response=self.api.get(reverse("member-club-public",kwargs={"slug":self.tenant.slug}))
+        self.assertEqual(response.data["published_rewards"],[])
+
     def test_generic_email_and_private_token_from_verified_submission(self):
         missing,mail=self.request_link(email="inexistente@example.invalid")
         self.assertEqual(missing.status_code,202)
