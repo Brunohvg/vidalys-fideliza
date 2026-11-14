@@ -1,8 +1,9 @@
 import {useEffect,useState,type FormEvent} from "react";
 import {ArrowRight,Gift,LockKeyhole,Plus,ShieldCheck,TicketPercent,Pencil,Trash2,X} from "lucide-react";
 import {
-  ApiError,merchantApi,type DiscountRewardDraft,type Store,
+  ApiError,merchantApi,type DiscountRewardDraft,type PointRuleDraft,type Store,
 } from "./api";
+import {estimateReward} from "./reward-economics";
 import "./benefit-studio.css";
 
 const toCents=(value:string):number|null=>{
@@ -26,6 +27,9 @@ export default function RewardDraftEditor({tenantId,role}:{
   const [limit,setLimit]=useState("50");
   const [advanced,setAdvanced]=useState(false);
   const [editingId,setEditingId]=useState<string|null>(null);
+  const [deleteConfirmId,setDeleteConfirmId]=useState<string|null>(null);
+  const [pointRule,setPointRule]=useState<PointRuleDraft|null>(null);
+  const [ruleLoadError,setRuleLoadError]=useState(false);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
@@ -42,23 +46,39 @@ export default function RewardDraftEditor({tenantId,role}:{
     return()=>{active=false};
   },[tenantId]);
 
+  useEffect(()=>{
+    let active=true;
+    setPointRule(null);setRuleLoadError(false);
+    merchantApi.getPointRuleDraft(tenantId).then(result=>{
+      if(active)setPointRule(result.rule);
+    }).catch(()=>{if(active)setRuleLoadError(true)});
+    return()=>{active=false};
+  },[tenantId]);
+
+  const preview=estimateReward(Number(points),toCents(discount)??NaN,Number(limit),pointRule);
+  const percent=(bps:number)=>(bps/100).toLocaleString("pt-BR",{
+    maximumFractionDigits:2,
+  })+"%";
 
   const reset=()=>{
-    setEditingId(null);setTitle("");setPoints("200");setDiscount("5,00");
+    setEditingId(null);setDeleteConfirmId(null);
+    setTitle("");setPoints("200");setDiscount("5,00");
     setMinOrder("30,00");setLimit("50");setAdvanced(false);
   };
   const edit=(item:DiscountRewardDraft)=>{
-    setEditingId(item.id);setTitle(item.title);setPoints(String(item.points_cost));
+    setDeleteConfirmId(null);setEditingId(item.id);
+    setTitle(item.title);setPoints(String(item.points_cost));
     setDiscount((item.discount_cents/100).toFixed(2).replace(".",","));
     setMinOrder((item.min_order_cents/100).toFixed(2).replace(".",","));
     setLimit(String(item.max_redemptions));setAdvanced(true);setError("");setMessage("");
   };
   const remove=async(item:DiscountRewardDraft)=>{
-    if(busy||!canEdit||!window.confirm("Excluir o rascunho '"+item.title+"'? Esta ação não pode ser desfeita."))return;
+    if(busy||!canEdit||deleteConfirmId!==item.id)return;
     setBusy(true);setError("");setMessage("");
     try{
       await merchantApi.deleteDiscountRewardDraft(tenantId,item.id);
       setDrafts(v=>v.filter(x=>x.id!==item.id));
+      setDeleteConfirmId(null);
       if(editingId===item.id)reset();
       setMessage("Rascunho excluído. Nenhum cupom ou saldo foi alterado.");
     }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível excluir.");}
@@ -131,8 +151,39 @@ export default function RewardDraftEditor({tenantId,role}:{
         <TicketPercent size={20}/><span>
           O cliente trocará <strong>{Number(points)||"—"} pontos</strong> por
           <strong> {toCents(discount)!==null?money(toCents(discount)!):"—"}</strong> na próxima compra.
-          O limite não garante que a loja tenha margem suficiente: confira os custos antes de publicar.
         </span>
+      </div>
+      <div className="vf-economics" aria-label="Conferência da recompensa planejada">
+        <div className="vf-economics-head">
+          <strong>Antes de oferecer este desconto</strong>
+          <span>Estimativa, não publicada</span>
+        </div>
+        <div className="vf-economics-grid">
+          <div>
+            <span>Compras elegíveis para juntar os pontos</span>
+            <strong>{preview?.eligibleSpendCents!==null&&preview?.eligibleSpendCents!==undefined
+              ?money(preview.eligibleSpendCents):"—"}</strong>
+          </div>
+          <div>
+            <span>Desconto equivalente</span>
+            <strong>{preview?.benefitRateBps!==null&&preview?.benefitRateBps!==undefined
+              ?percent(preview.benefitRateBps):"—"}</strong>
+          </div>
+          <div>
+            <span>Descontos nominais até o limite de resgates</span>
+            <strong>{preview?money(preview.nominalExposureCents):"—"}</strong>
+          </div>
+        </div>
+        {!pointRule&&<p>{ruleLoadError
+          ?"Não foi possível conferir a regra de pontos; a estimativa de compras está indisponível."
+          :"Salve uma regra de pontos para estimar quanto o cliente precisará comprar."}</p>}
+        {preview?.benefitRateBps!==null&&preview?.benefitRateBps!==undefined
+          &&preview.benefitRateBps>=10000&&<p className="vf-economics-alert">
+            O desconto é igual ou maior que as compras necessárias para acumular os pontos.
+            Revise essa combinação antes de avançar.</p>}
+        <p>O valor pressupõe saldo inicial zero, regra constante e todas as compras elegíveis.
+          Não equivale ao desconto na próxima compra nem comprova lucro.
+          Verifique custos, outras promoções e frete antes de publicar.</p>
       </div>
       <div className="vf-benefit-footer">
         <span><ShieldCheck size={17}/> Ainda não aparece como benefício resgatável no Meu Clube.</span>
@@ -154,10 +205,24 @@ export default function RewardDraftEditor({tenantId,role}:{
             <p>{item.points_cost.toLocaleString("pt-BR")} pontos ·
               Pedido mínimo {money(item.min_order_cents)}</p>
             <small>Sem cupom, sem resgate e sem consumo de pontos.</small>
+            <small>Limite nominal planejado: {money(item.discount_cents*item.max_redemptions)}</small>
             {canEdit&&<div className="vf-draft-actions">
               <button type="button" onClick={()=>edit(item)} disabled={busy}><Pencil size={15}/> Editar</button>
-              <button type="button" onClick={()=>void remove(item)} disabled={busy}><Trash2 size={15}/> Excluir</button>
+              {deleteConfirmId!==item.id&&<button type="button"
+                onClick={()=>{setDeleteConfirmId(item.id);setError("");setMessage("");}}
+                disabled={busy}><Trash2 size={15}/> Excluir</button>}
               <button type="button" disabled title="Publicação indisponível até a validação dos pontos e checkout"><LockKeyhole size={15}/> Publicar (em breve)</button>
+            </div>}
+            {canEdit&&deleteConfirmId===item.id&&<div className="vf-draft-confirm"
+              role="group" aria-label="Confirmação de exclusão da recompensa">
+              <p>Excluir “{item.title}”? Não é possível desfazer. Nenhum cupom será alterado.</p>
+              <div className="vf-draft-confirm-actions">
+                <button type="button" disabled={busy} onClick={()=>setDeleteConfirmId(null)}>
+                  Cancelar exclusão</button>
+                <button type="button" className="danger" disabled={busy}
+                  onClick={()=>void remove(item)}><Trash2 size={15}/>
+                  {busy?"Excluindo…":"Confirmar exclusão"}</button>
+              </div>
             </div>}
           </article>)}
         </div>}
