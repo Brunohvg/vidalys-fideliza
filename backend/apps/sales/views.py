@@ -49,7 +49,7 @@ def present_sale(sale, *, viewer_id=None):
         "submitted_by_me": bool(viewer_id is not None and sale.submitted_by_id == viewer_id),
         "reviewed_by_me": bool(viewer_id is not None and sale.reviewed_by_id == viewer_id),
         "review_mode": (
-            "owner_self_review" if sale.reviewed_by_id and sale.reviewed_by_id == sale.submitted_by_id
+            "self_review" if sale.reviewed_by_id and sale.reviewed_by_id == sale.submitted_by_id
             else "another_operator" if sale.reviewed_by_id else None
         ),
         "review_note": sale.review_note if sale.reviewed_at else None,
@@ -185,7 +185,7 @@ class ManualSaleReviewView(APIView):
         return safe_reply({
             "sale": present_sale(sale, viewer_id=request.user.pk),
             "manual_evidence_reviewed": True,
-            "review_mode": "owner_self_review" if self_review else "another_operator",
+            "review_mode": "self_review" if self_review else "another_operator",
             "independent_payment_proof": False,
             "points_credited": False,
         })
