@@ -13,7 +13,7 @@ const status=(value:string)=>{
     paid:"Pago na loja",pending:"Pendente",authorized:"Autorizado",
     partially_paid:"Pagamento parcial",refunded:"Estornado",
     partially_refunded:"Estorno parcial",voided:"Cancelado",
-    abandoned:"Abandonado",
+    abandoned:"Abandonado",expired:"Pagamento expirado",chargeback:"Contestado",
   };
   return labels[value]||"Em análise";
 };
