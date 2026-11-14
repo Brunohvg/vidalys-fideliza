@@ -179,9 +179,11 @@ def transition_points(*, lot_id, kind, amount, idempotency_key, external_receipt
     if kind == PointEvent.Kind.RELEASE:
         if now < lot.unlock_at or now >= lot.expires_at:
             raise ValueError("Carência não cumprida ou pontos expirados.")
-    elif kind in (PointEvent.Kind.RESERVE, PointEvent.Kind.CANCEL_RESERVE):
+    elif kind == PointEvent.Kind.RESERVE:
         if now >= lot.expires_at:
             raise ValueError("Pontos expirados; reserva indisponível.")
+    # Cancelar reserva após expiração é permitido para transferir
+    # reservado -> disponível -> expirado em uma transação atômica.
     elif kind in (PointEvent.Kind.EXPIRE_PENDING, PointEvent.Kind.EXPIRE_AVAILABLE):
         if now < lot.expires_at:
             raise ValueError("Expiração ainda não atingida.")

@@ -235,6 +235,10 @@ def ingest_order_event(*, data, actor=None):
         outcome=SaleEventReceipt.Outcome.APPLIED if applied else SaleEventReceipt.Outcome.IGNORED,
         occurred_at=occurred,
     )
+    # A transição de status aciona somente DIAGNÓSTICO, jamais concessão.
+    # G7/G8 exigem evidência PSP e economia por SKU vinculada ao pedido.
+    from apps.loyalty.services import sale_readiness
+    sale_readiness(sale=sale)
     return IngestionResult(
         sale=sale, event=receipt, created=created, duplicate=False,
         identity_status=identity_status,
