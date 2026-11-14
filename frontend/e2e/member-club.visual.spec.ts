@@ -11,8 +11,8 @@ const info={
   signup_available:true,points_enabled:false,rewards_enabled:false,redemption_enabled:false,
 };
 
-for(const width of [390,768,1440]){
-  test("Meu Clube possui login separado e não inventa pontos em "+width+"px",async ({page})=>{
+for(const width of [320,390,768,1440]){
+  test("Meu Clube possui login separado e não inventa pontos em "+width+"px",async ({page},testInfo)=>{
     await page.setViewportSize({width,height:900});
     await page.context().addCookies([{
       name:"csrftoken",value:"csrf-member-only",url:"http://127.0.0.1:4173",
@@ -42,7 +42,9 @@ for(const width of [390,768,1440]){
         body:JSON.stringify({authenticated:true})});
     });
     await page.goto("/clube/loja-jardim");
+    await expect(page.getByRole("heading",{name:"Seu clube, suas vantagens."})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Entre no seu clube"})).toBeVisible();
+    await page.screenshot({path:testInfo.outputPath("club-guest-"+width+".png"),fullPage:true});
     await expect(page.getByRole("link",{name:"Fazer adesão"})).toBeVisible();
     await expect(page.getByText("Como funciona",{exact:true})).toBeVisible().catch(()=>{});
     await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
@@ -52,6 +54,17 @@ for(const width of [390,768,1440]){
     await expect(page.getByText("O clube ainda não liberou a pontuação.",{exact:false})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Recompensas em preparação"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Como funcionará seu clube"})).toBeVisible();
+    await expect(page.getByText("Nenhum saldo foi atribuído.",{exact:false})).toBeVisible();
+    await expect(page.getByText("Em preparação",{exact:true})).toBeVisible();
+    await page.screenshot({path:testInfo.outputPath("club-member-"+width+".png"),fullPage:true});
+    await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Histórico"}).click();
+    await expect(page.getByRole("heading",{name:"Histórico de pontos"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toHaveCount(0);
+    await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Regras"}).click();
+    await expect(page.getByRole("heading",{name:"Regras e privacidade"})).toBeVisible();
+    await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Recompensas"}).click();
+    await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
     await page.getByText("Como vou usar meus pontos no site?").click();
     await expect(page.getByText("Esse resgate ainda não está disponível.",{exact:false}))
       .toBeVisible();
