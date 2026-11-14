@@ -298,6 +298,13 @@ class LoyaltyFinancialTests(TestCase):
         self.assertTrue(new)
         self.assertFalse(again)
         self.assertEqual(voucher.pk, same.pk)
+        other_sale, other_evidence = self.redemption_evidence("REDEEM-OTHER-PROOF")
+        with self.assertRaises(LoyaltyBlocked):
+            redeem_voucher(
+                tenant_id=self.tenant.pk, code=code, channel="counter",
+                external_receipt="Balcao-100", sale_id=other_sale.pk,
+                capture_evidence_id=other_evidence.pk,
+            )
         self.assertEqual(lot_balances(grant.point_lot)["reserved"], 0)
         self.assertEqual(lot_balances(grant.point_lot)["available"], 70)
         self.assertEqual(VoucherPointAllocation.objects.count(), 1)

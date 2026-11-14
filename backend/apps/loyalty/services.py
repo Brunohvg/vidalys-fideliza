@@ -599,9 +599,11 @@ def redeem_voucher(*, tenant_id, code, channel, external_receipt, sale_id, captu
     if not voucher:
         raise LoyaltyBlocked("Voucher não encontrado.")
     if voucher.state == LoyaltyVoucher.State.REDEEMED:
-        if (voucher.redemption_channel, voucher.redemption_reference) == (channel, external_receipt):
+        if (voucher.redemption_channel, voucher.redemption_reference,
+                voucher.redemption_sale_id, voucher.redemption_evidence_id) == (
+                channel, external_receipt, sale_id, capture_evidence_id):
             return voucher, False
-        raise LoyaltyBlocked("Voucher já utilizado.")
+        raise LoyaltyBlocked("Voucher já utilizado com dados diferentes.")
     if voucher.state != LoyaltyVoucher.State.RESERVED or voucher.expires_at <= timezone.now():
         raise LoyaltyBlocked("Voucher indisponível ou expirado.")
     if voucher.participant.status != ProgramParticipant.Status.ACTIVE:
