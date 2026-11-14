@@ -213,6 +213,13 @@ class LoyaltyVoucher(models.Model):
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
     participant = models.ForeignKey("participants.ProgramParticipant", on_delete=models.PROTECT)
     rule = models.ForeignKey(LoyaltyRule, on_delete=models.PROTECT)
+    reward = models.ForeignKey(
+        "sales.DiscountRewardDraft", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="loyalty_vouchers",
+    )
+    # Snapshot imutável dos termos comerciais no momento da emissão.
+    minimum_order_cents = models.PositiveBigIntegerField(default=0)
+    allowed_channels = models.CharField(max_length=100, default="counter,vidalys_flow")
     code_digest = models.CharField(max_length=64, unique=True)
     unit = models.CharField(max_length=8, choices=Unit.choices)
     amount = models.PositiveBigIntegerField()
@@ -272,3 +279,31 @@ class LoyaltyEngagement(models.Model):
                 name="loyalty_engagement_once",
             ),
         ]
+
+class VoucherCashbackAllocation(models.Model):
+    """Reserva de cashback por crédito de compra e voucher, imutável."""
+    voucher = models.ForeignKey(
+        LoyaltyVoucher, on_delete=models.PROTECT, related_name="cashback_allocations",
+    )
+    origin_event = models.ForeignKey(
+        "wallets.CashbackEvent", on_delete=models.PROTECT, related_name="voucher_allocations",
+    )
+    amount_cents = models.PositiveBigIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["voucher", "origin_event"], name="loyalty_cash_voucher_origin_once",
+            ),
+            models.CheckConstraint(
+                condition=Q(amount_cents__gt=0), name="loyalty_cash_allocation_positive",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Alocação de cashback é imutável.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Alocação de cashback não pode ser excluída.")

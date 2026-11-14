@@ -154,6 +154,13 @@ class DiscountRewardDraft(models.Model):
     discount_cents = models.PositiveIntegerField()
     min_order_cents = models.PositiveIntegerField(default=0)
     max_redemptions = models.PositiveIntegerField(default=100)
+    # Redeem unit explicitly belongs to the catalog, never chosen by voucher input.
+    redemption_unit = models.CharField(max_length=8, choices=[
+        ("points", "Pontos"), ("cashback", "Cashback (centavos)"),
+    ], default="points")
+    valid_from = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    allowed_channels = models.CharField(max_length=100, default="counter,vidalys_flow")
     publication_status = models.CharField(
         max_length=12, choices=PublicationStatus.choices, default=PublicationStatus.DRAFT,
     )
