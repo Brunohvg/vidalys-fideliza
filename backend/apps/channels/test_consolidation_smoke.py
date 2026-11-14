@@ -27,6 +27,9 @@ from apps.wallets.models import CashbackEntry, CashbackEvent, CashbackWallet
 
 
 @override_settings(
+    # Only the isolated APIClient uses HTTP; the separate Compose proxy smoke
+    # continues to enforce HTTPS and CSRF for deployed requests.
+    SECURE_SSL_REDIRECT=False,
     FIDELIZA_POINTS_WRITES_ENABLED=False,
     FIDELIZA_LEDGER_WRITES_ENABLED=False,
     FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED=False,
@@ -87,14 +90,9 @@ class ConsolidationCrossAppSmokeTests(TestCase):
             accepted_at=self.now, email_verified_at=self.now,
             status=EnrollmentSubmission.Status.MEMBER,
         )
-        # Compose homolog exige HTTPS. O proxy real injeta X-Forwarded-Proto;
-        # fixtures exercitam a mesma condição sem relaxar SecurityMiddleware.
-        self.flow = APIClient(HTTP_X_FORWARDED_PROTO="https")
-        self.member = APIClient(
-            enforce_csrf_checks=True,
-            HTTP_X_FORWARDED_PROTO="https",
-            HTTP_REFERER="https://testserver/",
-        )
+        # APIClient atua só em banco descartável; HTTPS/proxy tem job próprio.
+        self.flow = APIClient()
+        self.member = APIClient(enforce_csrf_checks=True)
         self.member.get(reverse("auth-session"))
         self.csrf = self.member.cookies["csrftoken"].value
 
