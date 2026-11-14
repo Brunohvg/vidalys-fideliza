@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation
-from .order_readonly import OrderReadError, OrderNotFound, read_order, summarize_order, safe_id
+from .order_readonly import OrderReadError, OrderNotFound, read_order, read_order_by_number, summarize_order, safe_id
 from .scopes import has_customer_access, has_order_access
 from .security import OAuthConfigurationError, config, decrypt_token
 from .views import member_for
@@ -23,7 +23,8 @@ class OrderPreviewView(APIView):
         response["X-Robots-Tag"] = "noindex, nofollow"
         return response
 
-    def get(self, request, tenant_id, order_id):
+    def get(self, request, tenant_id, order_id=None):
+        number = request.query_params.get("number") if order_id is None else None
         member = member_for(request.user, tenant_id)
         tenant = member.tenant
         if member.role not in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN):
@@ -32,8 +33,11 @@ class OrderPreviewView(APIView):
             return self.answer({"detail": "Loja indisponível."}, 409)
         if not settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED:
             return self.answer({"detail": "Consulta de pedidos desativada."}, 409)
-        if not safe_id(order_id):
-            return self.answer({"detail": "Pedido inválido."}, 400)
+        if order_id is None:
+            if not safe_id(number):
+                return self.answer({"detail": "Número comercial de pedido inválido."},400)
+        elif not safe_id(order_id):
+            return self.answer({"detail": "ID interno do pedido inválido."}, 400)
         try:
             cfg = config()
         except OAuthConfigurationError:
@@ -47,10 +51,19 @@ class OrderPreviewView(APIView):
             return self.answer({"detail": "Consulta recente. Aguarde antes de atualizar."}, 429)
         try:
             token = decrypt_token(installed.token_ciphertext, cfg.token_keys)
-            order = read_order(
-                store_id=int(installed.store_id), order_id=order_id,
-                access_token=token, user_agent=cfg.user_agent,
-            )
+            if order_id is None:
+                order = read_order_by_number(
+                    store_id=int(installed.store_id),number=number,
+                    access_token=token,user_agent=cfg.user_agent,
+                )
+                order_id = safe_id(order.get("id"))
+                if not order_id:
+                    raise OrderReadError("Identificador interno ausente")
+            else:
+                order = read_order(
+                    store_id=int(installed.store_id), order_id=order_id,
+                    access_token=token, user_agent=cfg.user_agent,
+                )
             # Nunca usar email/nome do pedido como prova de identidade.
             customer = order.get("customer")
             customer_id = safe_id(customer.get("id")) if isinstance(customer, dict) else None
@@ -63,9 +76,12 @@ class OrderPreviewView(APIView):
                     status=ProgramParticipant.Status.ACTIVE,
                 ).exists()
             )
-            return self.answer(summarize_order(
-                order, order_id=order_id, participant_verified=verified
-            ))
+            normalized=summarize_order(
+                order,order_id=order_id,participant_verified=verified
+            )
+            if number is not None and normalized.get("order_number") != safe_id(number):
+                raise OrderReadError("Número comercial divergente")
+            return self.answer(normalized)
         except OrderNotFound:
             return self.answer({"detail": "Pedido não encontrado."}, 404)
         except OAuthConfigurationError:
