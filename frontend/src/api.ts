@@ -299,6 +299,12 @@ export type PointRuleDraftResult = PointRuleDraft & {
 export type ProgramParticipant = {
   id: string;
   customer_reference: string;
+  nuvemshop_customer_linked:boolean;
+  manual_sales_count:number;
+  manual_sales_reviewed:number;
+  manual_sales_pending:number;
+  manual_sales_reported_cents:number;
+  last_manual_sale_at:string|null;
   display_name: string;
   contact_email: string;
   status: "active" | "paused";
