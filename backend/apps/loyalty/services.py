@@ -11,7 +11,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
@@ -22,14 +22,14 @@ from apps.points.models import PointEvent, PointLot, PointWallet
 from apps.points.services import (
     create_pending_lot, lot_balances, transition_points, wallet_balances as point_wallet_balances,
 )
-from apps.sales.models import SaleRecord
+from apps.sales.models import DiscountRewardDraft, SaleRecord
 from apps.tenants.models import Tenant
 from apps.wallets.models import CashbackEvent, CashbackWallet
-from apps.wallets.services import append_cashback_event, wallet_balances as cashback_wallet_balances
+from apps.wallets.services import (append_cashback_event, origin_balances, wallet_balances as cashback_wallet_balances)
 
 from .models import (
     FinancialEvidence, LoyaltyEngagement, LoyaltyGrant, LoyaltyRecovery, LoyaltyRule,
-    LoyaltyTier, LoyaltyVoucher, MemberTierSnapshot, VoucherPointAllocation,
+    LoyaltyTier, LoyaltyVoucher, MemberTierSnapshot, VoucherPointAllocation, VoucherCashbackAllocation,
 )
 
 SAFE_RECEIPT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,99}$")
@@ -343,13 +343,14 @@ def release_grant(*, grant_id):
         )
     if grant.cashback_event_id:
         wallet = grant.cashback_event.wallet
-        if cashback_wallet_balances(wallet)["pending_cents"] < grant.cashback_cents:
-            raise LoyaltyBlocked("Pendente de cashback insuficiente.")
+        if origin_balances(grant.cashback_event)["pending_cents"] != grant.cashback_cents:
+            raise LoyaltyBlocked("Crédito de origem pendente divergente.")
         append_cashback_event(
             participant=grant.participant, kind=CashbackEvent.Kind.RELEASE,
             amount_cents=grant.cashback_cents,
             idempotency_key=f"grant:{grant.pk}:release",
             source_order_id=str(grant.sale_id), rule_version=f"rule:{grant.rule.version}",
+            origin_event=grant.cashback_event,
         )
     grant.status = LoyaltyGrant.Status.RELEASED
     grant.save(update_fields=["status"])
@@ -391,18 +392,19 @@ def verify_voucher(*, tenant_id, code):
 
 
 @transaction.atomic
-def issue_voucher(*, tenant_id, participant_id, unit, amount):
-    """Reserva carteira e cria voucher único sem disponibilizar cupom na Nuvemshop."""
+def issue_voucher(*, tenant_id, participant_id, reward_id):
+    """Emite apenas recompensa publicada; preço/desconto vêm do catálogo.
+
+    Pedido mínimo é conferido no resgate contra compra+PSP verificáveis,
+    porque o carrinho futuro ainda não existe no momento da emissão.
+    """
     _execution_enabled()
-    if unit not in LoyaltyVoucher.Unit.values or not _integer(amount, minimum=1):
-        raise LoyaltyBlocked("Unidade ou quantidade inválida.")
     tenant = Tenant.objects.select_for_update().get(pk=tenant_id, status=Tenant.Status.ACTIVE)
     participant = ProgramParticipant.objects.get(
         pk=participant_id, tenant=tenant, status=ProgramParticipant.Status.ACTIVE,
     )
-    if not getattr(participant, "customer_profile", None):
-        raise LoyaltyBlocked("Participante não possui perfil unificado.")
-    if not participant.customer_profile.verified_contacts.exists():
+    profile = getattr(participant, "customer_profile", None)
+    if not profile or not profile.verified_contacts.exists():
         raise LoyaltyBlocked("Participante sem contato verificado.")
     if LoyaltyRecovery.objects.filter(
         grant__tenant=tenant, grant__participant=participant,
@@ -424,22 +426,51 @@ def issue_voucher(*, tenant_id, participant_id, unit, amount):
         expires_at__gt=now,
     ).exists():
         raise LoyaltyBlocked("Não existe benefício confirmado e válido.")
-    discount = amount * rule.point_value_cents if unit == LoyaltyVoucher.Unit.POINTS else amount
-    if not 0 < discount <= MAX_CENTS:
-        raise LoyaltyBlocked("Valor de desconto fora do limite.")
+    reward = DiscountRewardDraft.objects.select_for_update().filter(
+        pk=reward_id, tenant=tenant,
+        publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+        published_at__isnull=False, published_at__lte=now,
+    ).first()
+    if not reward:
+        raise LoyaltyBlocked("Recompensa não publicada para esta loja.")
+    if (reward.valid_from and reward.valid_from > now) or (reward.expires_at and reward.expires_at <= now):
+        raise LoyaltyBlocked("Recompensa fora de validade.")
+    if reward.valid_from and reward.expires_at and reward.expires_at <= reward.valid_from:
+        raise LoyaltyBlocked("Validade da recompensa inconsistente.")
+    channels = tuple(reward.allowed_channels.split(","))
+    if not channels or len(set(channels)) != len(channels) or not set(channels) <= REDEMPTION_CHANNELS:
+        raise LoyaltyBlocked("Canais de resgate não homologados.")
+    unit = reward.redemption_unit
+    amount = reward.points_cost
+    discount = reward.discount_cents
+    if unit not in LoyaltyVoucher.Unit.values or not _integer(amount, minimum=1, maximum=MAX_POINTS):
+        raise LoyaltyBlocked("Custo da recompensa inválido.")
+    if (not _integer(discount, minimum=1)
+            or not _integer(reward.min_order_cents, minimum=discount)
+            or discount > amount * rule.point_value_cents and unit == LoyaltyVoucher.Unit.POINTS):
+        raise LoyaltyBlocked("Recompensa fora do limite financeiro previsto.")
+    used_slots = LoyaltyVoucher.objects.filter(reward=reward).exclude(
+        state=LoyaltyVoucher.State.CANCELLED,
+    ).count()
+    if used_slots >= reward.max_redemptions:
+        raise LoyaltyBlocked("Limite de emissões atingido.")
     token = "VF" + secrets.token_hex(12).upper()
     voucher = LoyaltyVoucher.objects.create(
-        tenant=tenant, participant=participant, rule=rule,
+        tenant=tenant, participant=participant, rule=rule, reward=reward,
         code_digest=_code_digests(token)[0],
         unit=unit, amount=amount, discount_cents=discount,
-        expires_at=now + timedelta(days=7),
+        minimum_order_cents=reward.min_order_cents,
+        allowed_channels=reward.allowed_channels,
+        expires_at=min(
+            now + timedelta(days=7),
+            reward.expires_at or now + timedelta(days=7),
+        ),
     )
     if unit == LoyaltyVoucher.Unit.POINTS:
         wallet = PointWallet.objects.filter(participant=participant, tenant=tenant).first()
         if not wallet or point_wallet_balances(wallet)["available"] < amount:
             raise LoyaltyBlocked("Pontos disponíveis insuficientes.")
         remaining = amount
-        # FIFO pelo vencimento da compra. Não reservar valores pendentes/expirados.
         for lot in PointLot.objects.filter(
             wallet=wallet, tenant=tenant, expires_at__gt=now,
         ).order_by("expires_at", "pk"):
@@ -463,12 +494,30 @@ def issue_voucher(*, tenant_id, participant_id, unit, amount):
         wallet = CashbackWallet.objects.filter(participant=participant, tenant=tenant).first()
         if not wallet or cashback_wallet_balances(wallet)["available_cents"] < amount:
             raise LoyaltyBlocked("Cashback disponível insuficiente.")
-        append_cashback_event(
-            participant=participant, kind=CashbackEvent.Kind.RESERVE,
-            amount_cents=amount,
-            idempotency_key=f"voucher:{voucher.pk}:reserve",
-            source_order_id=str(voucher.pk), rule_version=f"rule:{rule.version}",
-        )
+        remaining = amount
+        for grant in LoyaltyGrant.objects.filter(
+            tenant=tenant, participant=participant, status=LoyaltyGrant.Status.RELEASED,
+            cashback_event__isnull=False, expires_at__gt=now,
+        ).select_related("cashback_event").order_by("expires_at", "pk"):
+            available = origin_balances(grant.cashback_event)["available_cents"]
+            take = min(available, remaining)
+            if take <= 0:
+                continue
+            append_cashback_event(
+                participant=participant, kind=CashbackEvent.Kind.RESERVE,
+                amount_cents=take,
+                idempotency_key=f"voucher:{voucher.pk}:reserve:{grant.pk}",
+                source_order_id=str(voucher.pk), rule_version=f"rule:{rule.version}",
+                origin_event=grant.cashback_event,
+            )
+            VoucherCashbackAllocation.objects.create(
+                voucher=voucher, origin_event=grant.cashback_event, amount_cents=take,
+            )
+            remaining -= take
+            if not remaining:
+                break
+        if remaining:
+            raise LoyaltyBlocked("Créditos de origem disponíveis insuficientes.")
     return voucher, token
 
 
@@ -490,12 +539,20 @@ def _cancel_reserved_voucher(voucher):
                     idempotency_key=f"voucher:{voucher.pk}:expire:{allocation.lot_id}",
                 )
     else:
-        append_cashback_event(
-            participant=voucher.participant,
-            kind=CashbackEvent.Kind.CANCEL_RESERVATION, amount_cents=voucher.amount,
-            idempotency_key=f"voucher:{voucher.pk}:cancel",
-            source_order_id=str(voucher.pk), rule_version=f"rule:{voucher.rule.version}",
-        )
+        allocations = list(VoucherCashbackAllocation.objects.filter(
+            voucher=voucher,
+        ).select_related("origin_event"))
+        if sum(a.amount_cents for a in allocations) != voucher.amount:
+            raise LoyaltyBlocked("Voucher com alocações de origem incompletas.")
+        for allocation in allocations:
+            append_cashback_event(
+                participant=voucher.participant,
+                kind=CashbackEvent.Kind.CANCEL_RESERVATION,
+                amount_cents=allocation.amount_cents,
+                idempotency_key=f"voucher:{voucher.pk}:cancel:{allocation.origin_event_id}",
+                source_order_id=str(voucher.pk), rule_version=f"rule:{voucher.rule.version}",
+                origin_event=allocation.origin_event,
+            )
     voucher.state = LoyaltyVoucher.State.CANCELLED
     voucher.save(update_fields=["state"])
     return True
@@ -566,12 +623,19 @@ def redeem_voucher(*, tenant_id, code, channel, external_receipt):
                 external_receipt=external_receipt,
             )
     else:
-        append_cashback_event(
-            participant=voucher.participant, kind=CashbackEvent.Kind.REDEEM,
-            amount_cents=voucher.amount,
-            idempotency_key=f"voucher:{voucher.pk}:redeem",
-            source_order_id=external_receipt, rule_version=f"rule:{voucher.rule.version}",
-        )
+        allocations = list(VoucherCashbackAllocation.objects.filter(
+            voucher=voucher,
+        ).select_related("origin_event"))
+        if sum(a.amount_cents for a in allocations) != voucher.amount:
+            raise LoyaltyBlocked("Voucher não possui alocação financeira válida.")
+        for allocation in allocations:
+            append_cashback_event(
+                participant=voucher.participant, kind=CashbackEvent.Kind.REDEEM,
+                amount_cents=allocation.amount_cents,
+                idempotency_key=f"voucher:{voucher.pk}:redeem:{allocation.origin_event_id}",
+                source_order_id=external_receipt, rule_version=f"rule:{voucher.rule.version}",
+                origin_event=allocation.origin_event,
+            )
     voucher.state = LoyaltyVoucher.State.REDEEMED
     voucher.redeemed_at = timezone.now()
     voucher.redemption_channel = channel
@@ -616,7 +680,10 @@ def reverse_grant(*, grant_id, refund_evidence_id):
     vouchers = LoyaltyVoucher.objects.select_for_update().filter(
         tenant=tenant, participant=grant.participant,
         state=LoyaltyVoucher.State.RESERVED,
-    )
+    ).filter(
+        Q(point_allocations__lot_id=grant.point_lot_id) |
+        Q(cashback_allocations__origin_event_id=grant.cashback_event_id)
+    ).distinct()
     for voucher in vouchers:
         _cancel_reserved_voucher(voucher)
     missing_points = 0
@@ -638,7 +705,11 @@ def reverse_grant(*, grant_id, refund_evidence_id):
             lot=lot, kind=PointEvent.Kind.REDEEM,
         ).aggregate(total=Sum("amount"))["total"] or 0
     if grant.cashback_event_id:
-        balance = cashback_wallet_balances(grant.cashback_event.wallet)
+        # Nunca usar o saldo agregado da carteira: outro grant pode estar intacto.
+        origin = grant.cashback_event
+        balance = origin_balances(origin)
+        if balance["reserved_cents"]:
+            raise LoyaltyBlocked("Origem ainda tem reservas; conciliação necessária.")
         remaining = grant.cashback_cents
         for bucket, kind in (
             ("pending_cents", CashbackEvent.Kind.REVERSE_PENDING),
@@ -650,6 +721,7 @@ def reverse_grant(*, grant_id, refund_evidence_id):
                     participant=grant.participant, kind=kind, amount_cents=take,
                     idempotency_key=f"grant:{grant.pk}:refund:{bucket}",
                     source_order_id=str(grant.sale_id), rule_version=f"rule:{grant.rule.version}",
+                    origin_event=origin,
                 )
                 remaining -= take
         missing_cashback = remaining
