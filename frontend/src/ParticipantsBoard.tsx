@@ -43,6 +43,7 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
   const [offset, setOffset] = useState(0);
   const [version, setVersion] = useState(0);
   const [selected, setSelected] = useState<ProgramParticipant | null>(null);
+  const [profile, setProfile] = useState<ProgramParticipant | null>(null);
   const [wallet, setWallet] = useState<CashbackWalletView | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletError, setWalletError] = useState("");
@@ -73,6 +74,7 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
     return () => {active=false;};
   }, [tenantId,search,status,offset,version]);
 
+  useEffect(()=>{setProfile(null);setSelected(null);},[tenantId]);
   const submit = (e:FormEvent) => {e.preventDefault();setOffset(0);setSearch(searchText.trim());};
 
   return <div className="experience-page">
@@ -128,7 +130,7 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
             </button>}
         </div> : !error && response && <>
         <div className="xp-table-wrap">
-          <table className="xp-table"><thead><tr><th>Cliente participante</th><th>Adesão</th><th>Situação</th><th>Benefícios / atividade</th></tr></thead>
+          <table className="xp-table"><thead><tr><th>Cliente participante</th><th>Adesão</th><th>Situação</th><th>Benefícios / atividade</th><th>Ações</th></tr></thead>
           <tbody>{response.items.map(item=><tr key={item.id}>
             <td><div className="xp-person"><span className="xp-person-avatar">{displayName(item).slice(0,1).toUpperCase()}</span>
               <span><strong>{displayName(item)}</strong><small>{item.contact_email || "Contato não informado"}</small></span></div></td>
@@ -140,6 +142,9 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
               {item.points_status==="ledger_only"&&item.points_pending!==null&&
                 <small>Pendentes: {item.points_pending.toLocaleString("pt-BR")} pontos</small>}
               <small>Atividade: {dateString(item.last_program_activity_at)}</small>
+              <small>Vendas no balcão: {item.manual_sales_count??0}
+                {item.manual_sales_pending>0?" · "+item.manual_sales_pending+" aguardando conferência":""}
+              </small>
               {item.balance_status === "ledger_only" && item.cashback_balance_cents !== null &&
                 <details className="vf-wallet-technical">
                   <summary>Registros internos de teste</summary>
@@ -149,6 +154,8 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
                   </button>
                 </details>}
             </td>
+            <td><button type="button" className="vf-client-view"
+              onClick={()=>setProfile(item)}>Ver detalhes <ArrowRight size={15}/></button></td>
           </tr>)}</tbody></table>
         </div>
         <ul className="vf-clients-mobile-list" aria-label="Participantes encontrados">
@@ -173,6 +180,13 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
               {item.points_status==="ledger_only"&&item.points_pending!==null&&
                 <span>{item.points_pending.toLocaleString("pt-BR")} pendentes</span>}
             </div>
+            <div className="vf-clients-mobile-pulse">
+              <span>Vendas do balcão: {item.manual_sales_count??0}</span>
+              {item.manual_sales_pending>0&&
+                <strong>{item.manual_sales_pending} aguardando conferência</strong>}
+            </div>
+            <button type="button" className="vf-client-view"
+              onClick={()=>setProfile(item)}>Ver detalhes <ArrowRight size={15}/></button>
             {item.balance_status==="ledger_only"&&item.cashback_balance_cents!==null&&
               <details className="vf-wallet-technical">
                 <summary>Dados internos de teste</summary>
@@ -190,6 +204,48 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
           <button aria-label="Próxima página" disabled={offset+20>=response.total_filtered} onClick={()=>setOffset(n=>n+20)}><ChevronRight size={18}/></button></div>
       </div>}
     </section>
+
+    {profile&&<section className="xp-panel vf-client-profile" aria-label="Detalhes do participante">
+      <header className="vf-client-profile-heading">
+        <div><span className="portal-eyebrow">PERFIL DO PARTICIPANTE</span>
+          <h2>{displayName(profile)}</h2>
+          <p>{profile.contact_email||"Contato não informado"}</p>
+        </div>
+        <button type="button" onClick={()=>setProfile(null)}>Fechar detalhes</button>
+      </header>
+      <div className="vf-client-profile-grid">
+        <div><span>Participação</span><strong>
+          {profile.status==="active"?"Participando":"Pausado"}</strong>
+          <small>Desde {dateString(profile.joined_at)}</small></div>
+        <div><span>Nuvemshop</span><strong>
+          {profile.nuvemshop_customer_linked?"Cliente associado":"Sem cliente associado"}</strong>
+          <small>O vínculo não comprova pagamento ou adesão automática</small></div>
+        <div><span>Saldo de pontos</span><strong>
+          {profile.points_status==="ledger_only"&&profile.points_balance!==null
+            ?profile.points_balance.toLocaleString("pt-BR")+" internos":"Não ativo"}</strong>
+          <small>{profile.points_status==="ledger_only"
+            ?(profile.points_pending??0)+" pendentes · sem resgate":"Sem pontuação disponível"}</small></div>
+        <div><span>Última atividade conhecida</span>
+          <strong>{dateString(profile.last_program_activity_at||profile.last_manual_sale_at)}</strong>
+          <small>Somente eventos registrados no Fideliza</small></div>
+      </div>
+      <div className="vf-client-profile-sales">
+        <div><strong>Compras registradas no balcão</strong>
+          <p>Os valores abaixo foram informados manualmente; não representam
+            receita paga confirmada ou compras completas da Nuvemshop.</p></div>
+        <div className="vf-client-profile-sales-grid">
+          <span><strong>{profile.manual_sales_count??0}</strong> Registros</span>
+          <span><strong>{profile.manual_sales_reviewed??0}</strong> Conferidos</span>
+          <span><strong>{profile.manual_sales_pending??0}</strong> Pendentes</span>
+          <span><strong>{money(profile.manual_sales_reported_cents??0)}</strong> Valor informado</span>
+        </div>
+      </div>
+      <p className="vf-client-profile-note">
+        Aceite: {dateString(profile.consented_at)} ·
+        {profile.consent_channel==="customer_portal"?" Portal do participante":" Formulário da loja"}.
+        Os pedidos do site não são incluídos como vendas confirmadas nesta ficha.
+      </p>
+    </section>}
 
     {selected && <section className="xp-panel vf-wallet-detail" aria-label="Extrato interno do participante">
       <div className="vf-wallet-heading">
