@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Sum
 
 from apps.participants.models import ProgramParticipant
-from .models import CashbackEntry, CashbackEvent, CashbackWallet
+from .models import CashbackEntry, CashbackEvent, CashbackOriginEntry, CashbackWallet
 
 MAX_EVENT_CENTS = 100_000_000  # R$ 1 milhão por evento, limite defensivo interno
 
@@ -30,6 +30,18 @@ def wallet_balances(wallet):
     if wallet is None:
         return None
     rows = (CashbackEntry.objects.filter(event__wallet=wallet)
+            .values("bucket").annotate(total=Sum("delta_cents")))
+    for row in rows:
+        result[row["bucket"] + "_cents"] = row["total"]
+    return result
+
+
+def origin_balances(origin_event):
+    """Saldo por concessão de origem, sem utilizar créditos de outras compras."""
+    if not isinstance(origin_event, CashbackEvent) or origin_event.kind != CashbackEvent.Kind.ACCRUAL:
+        raise ValueError("A origem deve ser um evento de concessão.")
+    result = {"pending_cents": 0, "available_cents": 0, "reserved_cents": 0}
+    rows = (CashbackOriginEntry.objects.filter(origin_event=origin_event)
             .values("bucket").annotate(total=Sum("delta_cents")))
     for row in rows:
         result[row["bucket"] + "_cents"] = row["total"]
@@ -61,7 +73,7 @@ def balances_for_participants(*, tenant_id, participant_ids):
 
 @transaction.atomic
 def append_cashback_event(
-    *, participant, kind, amount_cents, idempotency_key, source_order_id="", rule_version=""
+    *, participant, kind, amount_cents, idempotency_key, source_order_id="", rule_version="", origin_event=None
 ):
     """Somente pipeline interno futuro; sem permissão de gravação por HTTP.
 
@@ -94,6 +106,13 @@ def append_cashback_event(
     wallet = CashbackWallet.objects.select_for_update().get(pk=wallet.pk)
     if wallet.tenant_id != participant.tenant_id:
         raise ValueError("Participante e carteira de lojas diferentes.")
+    if origin_event is not None:
+        if (not isinstance(origin_event, CashbackEvent)
+                or origin_event.kind != CashbackEvent.Kind.ACCRUAL
+                or origin_event.wallet_id != wallet.pk):
+            raise ValueError("Crédito de origem inválido para esta carteira.")
+    if kind == CashbackEvent.Kind.ACCRUAL and origin_event is not None:
+        raise ValueError("Crédito novo cria sua própria origem.")
 
     previous = CashbackEvent.objects.filter(
         wallet=wallet, idempotency_key=idempotency_key,
@@ -105,13 +124,20 @@ def append_cashback_event(
             or previous.rule_version != rule_version
         ):
             raise ValueError("Chave idempotente reutilizada com conteúdo diferente.")
+        if origin_event is not None and not CashbackOriginEntry.objects.filter(
+            event=previous, origin_event=origin_event,
+        ).exists():
+            raise ValueError("Chave reutilizada com outra origem.")
         return previous, False
 
     deltas = {bucket: multiplier * amount_cents for bucket, multiplier in MOVEMENTS[kind].items()}
     balances = wallet_balances(wallet)
+    source_balances = origin_balances(origin_event) if origin_event is not None else None
     for bucket, delta in deltas.items():
         if balances[bucket + "_cents"] + delta < 0:
             raise ValueError("Saldo insuficiente; operação rejeitada.")
+        if source_balances is not None and source_balances[bucket + "_cents"] + delta < 0:
+            raise ValueError("Saldo da compra de origem insuficiente.")
 
     event = CashbackEvent.objects.create(
         wallet=wallet, kind=kind, amount_cents=amount_cents,
@@ -122,4 +148,14 @@ def append_cashback_event(
         CashbackEntry(event=event, bucket=bucket, delta_cents=delta)
         for bucket, delta in deltas.items()
     ])
+    # Todo accrual define uma origem. Transições do Loyalty exigem a referência
+    # explícita, gerando somas independentes por compra em paralelo ao ledger.
+    root = event if kind == CashbackEvent.Kind.ACCRUAL else origin_event
+    if root is not None:
+        CashbackOriginEntry.objects.bulk_create([
+            CashbackOriginEntry(
+                origin_event=root, event=event, bucket=bucket, delta_cents=delta,
+            )
+            for bucket, delta in deltas.items()
+        ])
     return event, True
