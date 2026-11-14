@@ -15,6 +15,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
  const [ruleRefresh,setRuleRefresh]=useState(0);
  const [rewardsRefresh,setRewardsRefresh]=useState(0);
  const [area,setArea]=useState<Area>("benefits");
+ const [benefitPanel,setBenefitPanel]=useState<"rewards"|"earning">("rewards");
  const [connection,setConnection]=useState<NuvemshopConnectionStatus|null>(null);
  const [connectionError,setConnectionError]=useState(false);
  useEffect(()=>{
@@ -39,29 +40,20 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
   <section className="vf-program-intro">
    <div><span className="portal-eyebrow">SEU CLUBE DE VANTAGENS</span>
     <h2>Seu clube em três passos.</h2>
-    <p>Configure os pontos, divulgue as recompensas e convide clientes.
-      Cada tarefa tem seu lugar, sem precisar cadastrar de novo as vendas do site.</p>
+    <p>Recompensas, regras de pontos e participantes em áreas separadas.
+      As compras do site ficam em Vendas.</p>
    </div>
    <div className="vf-program-intro-actions">
     <a className="vf-program-outline" href={"/clube/"+encodeURIComponent(storeSlug)}
       target="_blank" rel="noopener noreferrer">
-      <HeartHandshake size={17}/> Ver Meu Clube <ArrowRight size={16}/>
+      <HeartHandshake size={17}/> Prévia do Meu Clube <ArrowRight size={16}/>
     </a>
-    <button className="vf-program-outline" type="button" onClick={onViewClients}>
-     <UsersRound size={17}/> Ver clientes <ArrowRight size={16}/>
-    </button>
    </div>
   </section>
-  <div className="vf-program-connection" role="status">
-    <div className="vf-program-connection-icon"><PlugZap size={19}/></div>
-    <div>
-      <strong>{connectionTitle}</strong>
-      <p>{ordersTitle}. Pontos automáticos e cupons ainda dependem de
-        validação financeira; autorização OAuth, sozinha, não comprova pagamento.</p>
-    </div>
-    <button type="button" onClick={onOpenSettings}>
-      <Settings2 size={16}/> Configurações
-    </button>
+  <div className="vf-program-connection vf-program-connection-slim" role="status">
+    <PlugZap size={17}/>
+    <span>{connectionTitle} · {ordersTitle}.</span>
+    <button type="button" onClick={onOpenSettings}>Ver integração <ArrowRight size={15}/></button>
   </div>
   <nav className="vf-program-sections" aria-label="Áreas do programa">
     <button type="button" className={area==="benefits"?"selected":""}
@@ -82,10 +74,21 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
       <h3>Benefícios do seu clube</h3>
       <p>Uma regra de pontos e as recompensas que o cliente poderá consultar.</p>
     </div>
-    <PointRuleDraftEditor tenantId={tenantId} role={role}
-      onRuleSaved={()=>setRuleRefresh(value=>value+1)}/>
-    <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}
-      onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>
+    <div className="vf-program-benefit-switch" role="group" aria-label="Editar benefícios">
+      <button type="button" className={benefitPanel==="rewards"?"is-active":""}
+        aria-pressed={benefitPanel==="rewards"} onClick={()=>setBenefitPanel("rewards")}>
+        <Gift size={16}/> Recompensas
+      </button>
+      <button type="button" className={benefitPanel==="earning"?"is-active":""}
+        aria-pressed={benefitPanel==="earning"} onClick={()=>setBenefitPanel("earning")}>
+        <Settings2 size={16}/> Regra de pontos
+      </button>
+    </div>
+    {benefitPanel==="rewards"&&<RewardDraftEditor tenantId={tenantId} role={role}
+      ruleRefresh={ruleRefresh}
+      onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>}
+    {benefitPanel==="earning"&&<PointRuleDraftEditor tenantId={tenantId} role={role}
+      onRuleSaved={()=>setRuleRefresh(value=>value+1)}/>}
   </section>}
   {area==="participants"&&<section className="vf-program-area" aria-label="Gerenciar adesões do clube">
     <div className="vf-program-area-heading">
@@ -93,6 +96,8 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
       <p>Regulamento, convites e adesão com consentimento. Os clientes que já fazem parte
         do programa aparecem na área Clientes.</p>
     </div>
+    <button type="button" className="vf-program-outline vf-program-view-clients"
+      onClick={onViewClients}><UsersRound size={16}/> Consultar clientes do clube <ArrowRight size={16}/></button>
     <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
       tenantStatus={tenantStatus}/>
   </section>}
