@@ -7,7 +7,7 @@ const base={
   rule:{points:1,per_cents:100,hold_days:7,validity_days:180},
   reward:{points_cost:200,discount_cents:500,min_order_cents:3000},
 };
-const run=(changes:Partial<typeof base>={})=>simulateTrial({...base,...changes});
+const run=(changes:Partial<Parameters<typeof simulateTrial>[0]>={})=>simulateTrial({...base,...changes});
 
 describe("laboratório local do programa sem escrita financeira",()=>{
   it("simula compra paga e resgate elegível, sem fingir uso de cupom",()=>{
