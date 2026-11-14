@@ -156,3 +156,13 @@
 .vf-sales-online-footnote{padding:13px 20px;margin:0;border-top:1px solid #e4eee8;color:#5c766b;font-size:11px;line-height:1.65;background:#f7fbf8}
 @media(max-width:760px){.vf-sale-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:6px}.vf-sale-tabs button{min-width:0;font-size:11px;padding:10px 7px;min-height:52px;justify-content:center}.vf-sales-online-head{padding:18px 15px}}
 @media(max-width:360px){.vf-sale-tabs button{font-size:10px;padding:9px 4px}}
+
+/* Pesquisa avulsa é exceção, não a rotina da Nuvemshop. */
+.vf-sales-manual-search{border-top:1px solid #edf1eb}
+.vf-sales-manual-search>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 22px;color:#205a4b;font-size:12px;font-weight:800;cursor:pointer}
+.vf-sales-manual-search>summary::-webkit-details-marker{display:none}
+.vf-sales-manual-search>summary::after{content:"Mostrar pesquisa";color:#3d7969;font-size:10px;border:1px solid #d0e4d7;border-radius:99px;padding:6px 10px}
+.vf-sales-manual-search[open]>summary::after{content:"Ocultar pesquisa"}
+.vf-sales-manual-search>summary:focus-visible{outline:3px solid #37d5bb;outline-offset:-3px}
+.vf-sales-manual-search[open]>.vf-order-check{border-top:1px solid #e6efe8}
+@media(max-width:700px){.vf-sales-manual-search>summary{padding:15px 13px;flex-wrap:wrap}.vf-sales-manual-search>summary::after{flex:none}}
