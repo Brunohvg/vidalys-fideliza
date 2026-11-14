@@ -34,7 +34,7 @@ describe("prévia de custo de recompensa (sem lançamento financeiro)",()=>{
     });
   });
   it("expõe percentual muito alto para revisão, sem classificar margem como segura",()=>{
-    const result=estimateReward(100,1500,100,{points:1,per_cents:100});
+    const result=estimateReward(10,1500,100,{points:1,per_cents:100});
     expect(result?.benefitRateBps).toBe(15000);
     expect(result?.nominalExposureCents).toBe(150000);
     expect(result).not.toHaveProperty("approved");
