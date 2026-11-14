@@ -168,7 +168,7 @@ test("Segundo administrador confere venda sem gerar pontos",async ({page})=>{
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByRole("button",{name:/Conferir vendas/}).click();
   await expect(page.locator(".vf-sale-record").first().locator(".vf-sale-state")).toContainText("Aguardando conferência");
-  await page.getByRole("button",{name:"Conferir venda"}).click();
+  await page.locator(".vf-sale-record").getByRole("button",{name:"Conferir venda"}).click();
   await expect(page.getByText("CUPOM-0042",{exact:false})).toBeVisible();
   await page.getByPlaceholder("Ex.: Cupom e pagamento conferidos no caixa.")
     .fill("Cupom e pagamento conferidos no caixa.");
@@ -258,8 +258,8 @@ for(const width of [320,390]){
   await page.getByLabel("Número do cupom ou recibo").fill("0098");
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Vendas do balcão"})).toBeVisible();
-  await expect(page.getByRole("button",{name:"Conferir venda"})).toBeVisible();
-  await page.getByRole("button",{name:"Conferir venda"}).click();
+  await expect(page.locator(".vf-sale-record").getByRole("button",{name:"Conferir venda"})).toBeVisible();
+  await page.locator(".vf-sale-record").getByRole("button",{name:"Conferir venda"}).click();
   await expect(page.getByText("Você está conferindo o próprio lançamento",{exact:false}))
    .toBeVisible();
   await page.getByPlaceholder("Ex.: Cupom e pagamento conferidos no caixa.")
