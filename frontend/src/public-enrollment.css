@@ -1,57 +1,40 @@
-.public-enroll-shell {min-height:100vh;background:linear-gradient(150deg,#0F273E,#087F79);
-  padding:38px 16px;color:#10253E;display:flex;flex-direction:column;align-items:center;gap:14px;
-  font-family:Inter,system-ui,Arial,sans-serif}
-.public-enroll-card {max-width:665px;width:100%;background:#FFF;border-radius:22px;
-  padding:35px;box-shadow:0 25px 85px rgba(7,26,40,.2);border:1px solid rgba(255,255,255,.5)}
-.public-enroll-brand {display:flex;align-items:center;gap:11px;color:#10253E;margin-bottom:35px}
-.public-enroll-brand>span {background:#DCF7ED;border-radius:11px;display:grid;place-items:center;
-  width:43px;height:43px;color:#087F79}
-.public-enroll-brand strong {display:block;font-size:17px;letter-spacing:.16em}
-.public-enroll-brand small {display:block;font-size:10px;letter-spacing:.1em;color:#6A8092;margin-top:4px}
-.public-enroll-eyebrow {display:flex;align-items:center;gap:7px;font-size:11px;
-  color:#087F79;letter-spacing:.08em;font-weight:800}
-.public-enroll-top h1,.public-enroll-done h1 {font-family:Manrope,Inter,sans-serif;
-  font-size:clamp(26px,5vw,38px);line-height:1.25;margin:15px 0;color:#10253E}
-.public-enroll-top>p,.public-enroll-done p {color:#526B7D;font-size:14px;line-height:1.75}
-.public-enroll-terms {margin:24px 0 20px;border:1px solid #C9DDE1;background:#F5FAFA;
-  border-radius:14px;max-height:300px;overflow:auto;padding:20px}
-.public-enroll-terms>div {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.public-enroll-terms strong {color:#10253E;font-size:14px}
-.public-enroll-terms span {color:#087F79;font-size:12px;font-weight:750}
-.public-enroll-terms p {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;
-  font-size:13px;color:#38546A;margin-bottom:0}
-.public-enroll-fields {display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:21px}
-.public-enroll-fields label {display:grid;gap:7px;font-size:13px;font-weight:700}
-.public-enroll-fields input {width:100%;min-height:46px;background:#fff;color:#10253E;
-  border:1px solid #C8D7E2;border-radius:11px;font:inherit;padding:12px}
-.public-enroll-choice {display:flex;align-items:flex-start;gap:11px;margin:15px 0;
-  color:#344F64;line-height:1.55;font-size:13px}
-.public-enroll-choice input {width:20px;height:20px;accent-color:#087F79;flex-shrink:0}
-.public-enroll-submit {width:100%;border:0;border-radius:12px;background:#087F79;
-  color:white;min-height:50px;font-size:14px;font-weight:750;cursor:pointer;margin:13px 0 17px}
-.public-enroll-submit:disabled {opacity:.54;cursor:not-allowed}
-.public-enroll-warning {display:flex;align-items:start;gap:9px;color:#526B7D;font-size:12px;line-height:1.65}
-.public-enroll-warning svg {flex-shrink:0}
-.public-enroll-error {padding:12px;background:#FFF0F2;color:#9B304A;border:1px solid #F5CFD8;
-  border-radius:11px;font-size:13px;margin:15px 0}
-.public-enroll-done>svg {color:#087F79}
-.public-enroll-done>span {display:block;background:#F4F8FA;padding:12px;
-  border-radius:10px;color:#597183;overflow-wrap:anywhere;font-size:11px}
-.public-enroll-shell>footer {color:#D4EBE8;max-width:600px;text-align:center;
-  font-size:11px;line-height:1.65}
-.public-enroll-state {padding:36px;color:#51697B;text-align:center}
-.public-enroll-card input:focus-visible,.public-enroll-card button:focus-visible {
-  outline:3px solid #37D5BB;outline-offset:3px}
-@media(max-width:600px) {
- .public-enroll-shell {padding:16px 12px}
- .public-enroll-card {padding:22px 19px;border-radius:17px}
- .public-enroll-brand {margin-bottom:26px}
- .public-enroll-fields {grid-template-columns:1fr;gap:12px}
- .public-enroll-terms {max-height:260px;padding:15px}
-}
-
-.public-enroll-privacy-link {margin-top:24px;color:#526B7D;font-size:12px;line-height:1.6}
-.public-enroll-privacy-link a {display:inline-block;margin-left:6px;color:#087F79;font-weight:750;text-decoration:underline;text-underline-offset:3px}
-
-.public-enroll-club-link{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:12px 16px;line-height:1.4}
-.public-enroll-club-link:hover,.public-enroll-club-link:focus-visible{background:#075f59}
+/* Public join — one-step sign-up, readable rules, branded but restrained. */
+.public-enroll-shell{min-height:100vh;background:radial-gradient(circle at 100% 0,#e4f3e9 0,transparent 38%),#f6f8f5;padding:34px 15px;color:#1b4035;display:flex;flex-direction:column;align-items:center;gap:15px;font-family:Inter,system-ui,Arial,sans-serif}
+.public-enroll-shell *, .public-enroll-shell *::before,.public-enroll-shell *::after{box-sizing:border-box}
+.public-enroll-card{width:100%;max-width:690px;background:#fff;border:1px solid #dfece4;border-radius:22px;padding:35px 38px;box-shadow:0 15px 50px #183e2a0b;min-width:0}
+.public-enroll-brand{display:flex;align-items:center;gap:11px;margin-bottom:31px;min-width:0}
+.public-enroll-brand>span{display:grid;place-items:center;flex:none;width:43px;height:43px;border-radius:13px}
+.public-enroll-brand strong{display:block;color:#1c4338;font:850 17px/1.35 Manrope,Inter,sans-serif;overflow-wrap:anywhere}
+.public-enroll-brand small{display:block;color:#728678;margin-top:3px;font-size:11px}
+.public-enroll-top{display:grid;gap:8px;margin-bottom:20px}
+.public-enroll-eyebrow{display:flex;align-items:center;gap:7px;color:#137c6a;font-size:10px;font-weight:850;letter-spacing:.11em}
+.public-enroll-top h1,.public-enroll-done h1{font:850 clamp(26px,4.5vw,35px)/1.2 Manrope,Inter,sans-serif;letter-spacing:-.04em;color:#1a4236;margin:3px 0}
+.public-enroll-top>p,.public-enroll-done p{font-size:13px;line-height:1.7;color:#667d71;margin:0}
+.public-enroll-card form{display:grid;gap:18px}
+.public-enroll-value{display:flex;align-items:flex-start;gap:11px;padding:13px 15px;background:#eff8f1;border:1px solid #dbeee1;border-radius:12px;font-size:12px;line-height:1.6;color:#316956}
+.public-enroll-value svg{flex:none;color:#18836b;margin-top:1px}
+.public-enroll-fields{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.public-enroll-fields label{display:grid;gap:7px;color:#315847;font-size:12px;font-weight:800;min-width:0}
+.public-enroll-fields input{width:100%;min-height:49px;border:1px solid #cbddd3;border-radius:10px;padding:10px 13px;color:#163b30;font-size:15px;background:#fff;min-width:0}
+.public-enroll-policies{display:grid;gap:8px}
+.public-enroll-terms{border:1px solid #e0ece4;background:#f7faf7;border-radius:10px;margin:0;overflow:hidden}
+.public-enroll-terms summary{padding:12px 15px;color:#1b6753;line-height:1.5;font-size:12px;font-weight:800;cursor:pointer}
+.public-enroll-terms p{max-height:230px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.75;color:#52695d;margin:0;padding:15px;border-top:1px solid #e1eee4;background:#fff}
+.public-enroll-choice{display:flex;align-items:flex-start;gap:10px;color:#365d4b;font-size:12px;line-height:1.65;cursor:pointer}
+.public-enroll-choice input{width:19px;height:19px;flex:none;margin:1px 0 0;accent-color:#087f79}
+.public-enroll-choice strong{color:#155b47}
+.public-enroll-submit{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:49px;border:0;border-radius:11px;padding:12px 16px;color:#fff;font-size:13px;font-weight:850;cursor:pointer}
+.public-enroll-submit:disabled{opacity:.45;cursor:not-allowed}
+.public-enroll-warning{display:flex;align-items:flex-start;gap:8px;color:#768a7b;font-size:11px;line-height:1.6}
+.public-enroll-warning svg{flex:none;margin-top:1px}
+.public-enroll-error{background:#fff2ef;border:1px solid #eacfc8;color:#9b4638;border-radius:10px;padding:12px 15px;font-size:12px}
+.public-enroll-done{display:grid;gap:13px;justify-items:start}
+.public-enroll-done>svg{color:#12816b}
+.public-enroll-done>span{background:#f6faf7;color:#728474;border-radius:10px;padding:12px;overflow-wrap:anywhere;font-size:11px}
+.public-enroll-privacy-link{font-size:11px;line-height:1.65;color:#73877a;margin:18px 0 0}
+.public-enroll-privacy-link a{display:inline-flex;align-items:center;gap:5px;color:#0b7866;font-weight:800;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.public-enroll-state{padding:27px;color:#687d70;text-align:center;font-size:13px}
+.public-enroll-shell>footer{max-width:690px;text-align:center;font-size:10px;color:#778c7d;line-height:1.6}
+.public-enroll-card input:focus-visible,.public-enroll-card button:focus-visible,.public-enroll-card summary:focus-visible,.public-enroll-card a:focus-visible{outline:3px solid #37d5bb;outline-offset:3px}
+@media(max-width:640px){.public-enroll-shell{padding:15px 11px;gap:12px}.public-enroll-card{padding:24px 18px;border-radius:17px}.public-enroll-brand{margin-bottom:24px}.public-enroll-fields{grid-template-columns:1fr;gap:13px}.public-enroll-card form{gap:15px}}
+@media(max-width:340px){.public-enroll-card{padding:20px 14px}.public-enroll-brand small{font-size:10px}}
