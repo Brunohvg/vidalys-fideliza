@@ -277,3 +277,7 @@ export default function RewardDraftEditor({tenantId,role,ruleRefresh=0,onDraftsC
               </div>
             </div>}
           </article>)}
+        </div>}
+    </div>
+  </section>;
+}
