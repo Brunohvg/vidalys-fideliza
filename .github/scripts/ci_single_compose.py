@@ -5,6 +5,7 @@ Não toca Coolify, nunca imprime senhas, URLs de DB ou tokens.
 """
 import argparse
 import os
+import re
 from pathlib import Path
 import secrets
 import subprocess
@@ -49,12 +50,20 @@ conn.close()
 """
 
 
-def execute(args, env, *, label, stdin=None, timeout=600):
+def execute(args, env, *, label, stdin=None, timeout=600, synthetic_test_output=False):
     result = subprocess.run(
         args, cwd=ROOT, env=env, input=stdin, text=True,
         capture_output=True, timeout=timeout,
     )
     if result.returncode:
+        if synthetic_test_output:
+            # Apenas as fixtures test_* e banco efêmero, nunca dados de loja.
+            tail = (result.stdout + "\n" + result.stderr).splitlines()[-65:]
+            for line in tail:
+                line = re.sub(r"postgres(?:ql)?://[^\\s]+", "[DB_URL_REDACTED]", line)
+                line = re.sub(r"vf_[0-9a-f]{32}\\.[A-Za-z0-9_-]+", "[TOKEN_REDACTED]", line)
+                line = re.sub(r"(?i)(password|secret|token)\\s*[:=]\\s*\\S+", "[SECRET_REDACTED]", line)
+                print("CI_SYNTHETIC_TEST: " + line[:500], file=sys.stderr, flush=True)
         raise RuntimeError("ETAPA_FALHOU: " + label)
     print("OK: " + label, flush=True)
     return result.stdout.strip()
@@ -206,7 +215,8 @@ def main():
                 "exec", "-T", "api", "python", "manage.py", "test",
                 "apps.channels.test_consolidation_smoke",
                 "apps.core.test_pr22_legacy_upgrade", "--verbosity=1",
-            ], env, label="smoke PR22 Flow-identidade-portal no PostgreSQL isolado")
+            ], env, label="smoke PR22 Flow-identidade-portal no PostgreSQL isolado",
+               synthetic_test_output=True)
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
     finally:
         subprocess.run(
