@@ -152,6 +152,21 @@ FIDELIZA_LEDGER_WRITES_ENABLED = False
 # override_settings em testes de domínio (não há env que ligue isso).
 FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED = False
 FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
+FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
+
+# Agendamentos somente para elegibilidade, sem mensagens ou créditos por padrão.
+# Requer processo Celery Beat em ambiente homologado (não ativado por aqui).
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    "loyalty-winback-candidates-daily": {
+        "task": "loyalty.scan_winback",
+        "schedule": crontab(hour=9, minute=15),
+    },
+    "loyalty-release-due-grants-hourly": {
+        "task": "loyalty.release_due_grants",
+        "schedule": crontab(minute=0),
+    },
+}
 
 # Registro público desativado até a homologação do fluxo de dados pessoais.
 FIDELIZA_PUBLIC_SIGNUP_ENABLED = env_bool("FIDELIZA_PUBLIC_SIGNUP_ENABLED", False)

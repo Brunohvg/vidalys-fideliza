@@ -326,6 +326,8 @@ def release_grant(*, grant_id):
         return grant, False
     if grant.status != LoyaltyGrant.Status.PENDING:
         raise LoyaltyBlocked("Concessão revertida ou indisponível.")
+    if grant.sale.order_status != SaleRecord.OrderStatus.PAID:
+        raise LoyaltyBlocked("Pedido alterado: revalide antes de liberar saldo.")
     now = timezone.now()
     if now < grant.unlock_at or now >= grant.expires_at:
         raise LoyaltyBlocked("Carência não cumprida ou validade encerrada.")
@@ -405,6 +407,14 @@ def issue_voucher(*, tenant_id, participant_id, unit, amount):
         resolved_at__isnull=True,
     ).exists():
         raise LoyaltyBlocked("Resgate suspenso por recuperação de saldo.")
+    if LoyaltyGrant.objects.filter(
+        tenant=tenant, participant=participant,
+        sale__order_status__in=[
+            SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED,
+        ],
+        status__in=[LoyaltyGrant.Status.PENDING, LoyaltyGrant.Status.RELEASED],
+    ).exists():
+        raise LoyaltyBlocked("Venda estornada ainda exige reconciliação.")
     rule = _rule(tenant)
     now = timezone.now()
     if not LoyaltyGrant.objects.filter(
@@ -530,6 +540,14 @@ def redeem_voucher(*, tenant_id, code, channel, external_receipt):
         resolved_at__isnull=True,
     ).exists():
         raise LoyaltyBlocked("Saldo em recuperação.")
+    if LoyaltyGrant.objects.filter(
+        tenant_id=tenant_id, participant=voucher.participant,
+        sale__order_status__in=[
+            SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED,
+        ],
+        status__in=[LoyaltyGrant.Status.PENDING, LoyaltyGrant.Status.RELEASED],
+    ).exists():
+        raise LoyaltyBlocked("Venda estornada ainda exige reconciliação.")
     if LoyaltyVoucher.objects.filter(
         tenant_id=tenant_id, redemption_channel=channel,
         redemption_reference=external_receipt,
@@ -648,3 +666,44 @@ def reverse_grant(*, grant_id, refund_evidence_id):
         now=timezone.now(),
     )
     return grant, True
+
+
+
+@transaction.atomic
+def record_engagement_eligibility(*, participant_id, kind, now=None):
+    """Missão verificada é evento de elegibilidade; NÃO emite pontos falsos.
+
+    Fluxo futuro terá regras de eventos não transacionais no ledger e
+    verificação antifraude. Não criar PointLot como se missão fosse compra.
+    """
+    if kind not in (LoyaltyEngagement.Kind.PROFILE, LoyaltyEngagement.Kind.BIRTHDAY):
+        raise LoyaltyBlocked("Missão inválida.")
+    now = now or timezone.now()
+    participant = ProgramParticipant.objects.select_related("customer_profile").get(
+        pk=participant_id, status=ProgramParticipant.Status.ACTIVE,
+    )
+    tenant = Tenant.objects.select_for_update().get(
+        pk=participant.tenant_id, status=Tenant.Status.ACTIVE,
+    )
+    profile = getattr(participant, "customer_profile", None)
+    if not profile or profile.tenant_id != tenant.pk:
+        raise LoyaltyBlocked("Perfil verificado obrigatório.")
+    proven = set(profile.verified_contacts.values_list("kind", flat=True))
+    if proven != {"email", "phone"}:
+        raise LoyaltyBlocked("Telefone e e-mail ainda não foram confirmados.")
+    if not (
+        profile.birth_date and profile.birth_date_consent_at and profile.birth_date_verified_at
+        and profile.birth_date_verified_at <= now
+    ):
+        raise LoyaltyBlocked("Nascimento não confirmado com consentimento.")
+    if kind == LoyaltyEngagement.Kind.BIRTHDAY:
+        if (profile.birth_date.month, profile.birth_date.day) != (now.month, now.day):
+            raise LoyaltyBlocked("Fora da data de aniversário.")
+        period = str(now.year)
+    else:
+        period = "once"
+    event, created = LoyaltyEngagement.objects.get_or_create(
+        tenant=tenant, participant=participant, kind=kind,
+        period_key=period, defaults={"eligible_at": now},
+    )
+    return event, created

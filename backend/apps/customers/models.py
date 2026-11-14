@@ -19,6 +19,10 @@ class CustomerProfile(models.Model):
         null=True, blank=True, related_name="customer_profile",
     )
     display_name = models.CharField(max_length=140, blank=True, default="")
+    # Opcional e privado: sem consentimento e comprovação não autoriza missão.
+    birth_date = models.DateField(null=True, blank=True)
+    birth_date_consent_at = models.DateTimeField(null=True, blank=True)
+    birth_date_verified_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
