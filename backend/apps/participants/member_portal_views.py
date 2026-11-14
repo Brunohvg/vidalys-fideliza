@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.delivery_tracking import enqueue_email
+from apps.sales.models import DiscountRewardDraft
 from apps.core.models import EmailDispatch
 from apps.tenants.branding_models import TenantBranding
 from apps.tenants.models import Tenant
@@ -218,6 +219,21 @@ class MemberClubMeView(APIView):
         ):
             participant = None
         active = bool(participant and participant.status == ProgramParticipant.Status.ACTIVE)
+        # Somente catálogo publicado pelo tenant. A carteira permanece desativada,
+        # sem assumir saldo, elegibilidade ou existência de cupom.
+        catalog = DiscountRewardDraft.objects.filter(
+            tenant=tenant,
+            publication_status=DiscountRewardDraft.PublicationStatus.PUBLISHED,
+        ).order_by("points_cost", "created_at", "id")[:30]
+        published_rewards = [
+            {
+                "id":str(item.id),"title":item.title,
+                "points_cost":item.points_cost,"discount_cents":item.discount_cents,
+                "min_order_cents":item.min_order_cents,"status":"locked",
+                "points_missing":None,"redemption_enabled":False,
+            }
+            for item in catalog
+        ]
         return secure(Response({
             "store_name": tenant.name,
             "display_name": submission.name,
@@ -229,11 +245,11 @@ class MemberClubMeView(APIView):
             "points_balance": None,
             "points_pending": None,
             "points_status": "not_active",
-            "available_rewards": [],
+            "available_rewards": published_rewards,
             "transactions": [],
             "redemption_enabled": False,
             "orders_verified": False,
-            "note": "Sua adesão pode estar ativa, mas pontos, compras e resgates ainda não estão disponíveis no Fideliza.",
+            "note": "As recompensas publicadas são apenas para consulta. Pontos e resgates ainda não estão ativos; nenhum cupom é gerado.",
         }))
 
 
