@@ -11,7 +11,7 @@ from apps.tenants.models import Tenant, TenantMembership
 from apps.participants.models import ProgramParticipant
 from apps.wallets.models import CashbackEvent
 from .models import NuvemshopInstallation
-from .order_readonly import OrderReadError, OrderNotFound, summarize_order, read_order, read_order_by_number
+from .order_readonly import OrderReadError, OrderNotFound, summarize_order, read_order, read_order_by_number, read_orders_page
 
 def order(**kwargs):
     value = {
@@ -98,6 +98,24 @@ class OrderNormalizationTests(SimpleTestCase):
             read_order_by_number(**{**args,"number":"#14111"})
         with self.assertRaises(OrderReadError):
             summarize_order(order(number="pedido-14111"),order_id=87412)
+
+    def test_recent_orders_page_only_reads_ten_orders_from_tenant_api(self):
+        transport=Transport([order(id=2120958234,number=14111)])
+        result=read_orders_page(store_id=54321,
+            access_token="synthetic-token-123456",
+            user_agent="Fideliza Test (x@example.invalid)",opener=transport)
+        self.assertEqual(len(result),1)
+        self.assertIn("/54321/orders?page=1&per_page=10&fields=",transport.request.full_url)
+        self.assertEqual(transport.request.get_method(),"GET")
+        self.assertEqual(transport.timeout,8)
+        with self.assertRaises(OrderReadError):
+            read_orders_page(store_id=54321,access_token="synthetic-token-123456",
+                user_agent="Fideliza Test (x@example.invalid)",
+                opener=Transport([{"id":str(i)} for i in range(11)]))
+        with self.assertRaises(OrderReadError):
+            read_orders_page(store_id=54321,access_token="synthetic-token-123456",
+                user_agent="Fideliza Test (x@example.invalid)",
+                opener=Transport({"items":[]}))
 
     def test_customer_reported_paid_amount_is_a_cross_check_not_psp_proof(self):
         # Até valores iguais na API da plataforma exigem reconciliação no gateway.
@@ -237,6 +255,42 @@ class OrderPreviewApiTests(TestCase):
              patch("apps.nuvemshop.order_preview_views.read_order_by_number",return_value=order(
                  id=2120958234,number=14112)):
             self.assertEqual(self.client.get(url,{"number":"14111"},secure=True).status_code,502)
+
+    def test_recent_orders_are_scoped_sanitized_and_read_only(self):
+        url=reverse("nuvemshop-recent-orders-preview",kwargs={"tenant_id":self.tenant.id})
+        with (patch("apps.nuvemshop.recent_order_views.config",return_value=self.cfg),
+              patch("apps.nuvemshop.recent_order_views.decrypt_token",
+                    return_value="synthetic-token-123456"),
+              patch("apps.nuvemshop.recent_order_views.read_orders_page",
+                    return_value=[order(id=2120958234,number=14111)]) as reader):
+            response=self.client.get(url,secure=True)
+        self.assertEqual(response.status_code,200,response.content)
+        data=response.json()
+        self.assertEqual(len(data["items"]),1)
+        self.assertEqual(data["items"][0]["order_number"],"14111")
+        self.assertEqual(data["items"][0]["order_id"],"2120958234")
+        self.assertTrue(data["items"][0]["participant_verified"])
+        self.assertFalse(data["items"][0]["credit_eligible"])
+        self.assertFalse(data["points_credited"])
+        self.assertFalse(data["coupons_created"])
+        self.assertEqual(data["page"],1)
+        self.assertEqual(reader.call_args.kwargs["store_id"],54321)
+        self.assertNotIn("secret@example.invalid",response.content.decode())
+        self.assertEqual(self.client.get(url,secure=True).status_code,429)
+        self.client.force_login(self.analyst)
+        self.assertEqual(self.client.get(url,secure=True).status_code,403)
+        self.client.force_login(self.foreign)
+        self.assertEqual(self.client.get(url,secure=True).status_code,404)
+        self.assertFalse(CashbackEvent.objects.exists())
+
+    def test_recent_orders_require_scopes_and_readonly_feature(self):
+        url=reverse("nuvemshop-recent-orders-preview",kwargs={"tenant_id":self.tenant.id})
+        with override_settings(FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=False):
+            self.assertEqual(self.client.get(url,secure=True).status_code,409)
+        self.installed.scope="read_products"
+        self.installed.save(update_fields=["scope"])
+        with patch("apps.nuvemshop.recent_order_views.config",return_value=self.cfg):
+            self.assertEqual(self.client.get(url,secure=True).status_code,409)
 
     def test_scopes_disabled_roles_and_tenant_isolation(self):
         with override_settings(FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=False), \
