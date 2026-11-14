@@ -45,7 +45,7 @@ for(const width of [320,390,768,1440]){
     await expect(page.getByRole("heading",{name:"Mais motivos para voltar à Loja Jardim."})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Bem-vindo de volta"})).toBeVisible();
     await page.screenshot({path:testInfo.outputPath("club-guest-"+width+".png"),fullPage:true});
-    await expect(page.getByRole("link",{name:"Fazer adesão"})).toBeVisible();
+    await expect(page.getByRole("link",{name:"Quero participar"})).toBeVisible();
     await expect(page.getByText("Como funciona",{exact:true})).toBeVisible().catch(()=>{});
     await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
     await expect(page.getByRole("heading",{name:"Confirme seu acesso"})).toBeVisible();
