@@ -212,6 +212,18 @@ def inspect(env, host):
     else:
         result.append(("FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED","FALHA",
                        "Valor inválido"))
+    # Uma env financeira "ligada" é insegura e enganosa: os motores reais
+    # continuam hardcoded OFF em settings.py. Falhar em vez de ignorar.
+    points = env.get("FIDELIZA_POINTS_WRITES_ENABLED", "").lower().strip()
+    if points in ("1", "true", "yes", "on"):
+        result.append(("FIDELIZA_POINTS_WRITES_ENABLED", "FALHA",
+                       "Não configure ativação de pontos no .env; pagamentos e resgates não homologados"))
+    elif points not in ("0", "false", "", "no", "off"):
+        result.append(("FIDELIZA_POINTS_WRITES_ENABLED", "FALHA",
+                       "Valor inválido; remova a variável financeira do .env"))
+    else:
+        result.append(("FIDELIZA_POINTS_WRITES_ENABLED", "OK",
+                       "Crédito de pontos permanece bloqueado em código"))
     ledger = env.get("FIDELIZA_LEDGER_WRITES_ENABLED", "").lower().strip()
     if ledger in ("1", "true", "yes", "on"):
         result.append(("FIDELIZA_LEDGER_WRITES_ENABLED", "FALHA",
