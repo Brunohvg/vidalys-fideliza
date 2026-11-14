@@ -31,6 +31,7 @@ export default function CampaignGuide({tenantId,role}:{
   const [limit,setLimit]=useState("50");
   const [step,setStep]=useState<1|2|3>(1);
   const [editingId,setEditingId]=useState<string|null>(null);
+  const [deleteConfirmId,setDeleteConfirmId]=useState<string|null>(null);
   const [drafts,setDrafts]=useState<PointCampaignDraft[]>([]);
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
@@ -48,21 +49,23 @@ export default function CampaignGuide({tenantId,role}:{
     return()=>{active=false};
   },[tenantId]);
   const reset=()=>{
-    setEditingId(null);setGoal("second_purchase");setBonus("20");
+    setEditingId(null);setDeleteConfirmId(null);
+    setGoal("second_purchase");setBonus("20");
     setLimit("50");setStep(1);
   };
   const edit=(draft:PointCampaignDraft)=>{
-    setEditingId(draft.id);setGoal(draft.goal);
+    setDeleteConfirmId(null);setEditingId(draft.id);setGoal(draft.goal);
     setBonus(String(draft.bonus_points));setLimit(String(draft.max_customers));
     setError("");setMessage("");setStep(1);
     window.scrollTo({top:0,behavior:"smooth"});
   };
   const remove=async(draft:PointCampaignDraft)=>{
-    if(!canSave||busy||!window.confirm("Excluir este rascunho de campanha? Esta ação não pode ser desfeita."))return;
+    if(!canSave||busy||deleteConfirmId!==draft.id)return;
     setBusy(true);setError("");setMessage("");
     try{
       await merchantApi.deletePointCampaignDraft(tenantId,draft.id);
       setDrafts(v=>v.filter(x=>x.id!==draft.id));
+      setDeleteConfirmId(null);
       if(editingId===draft.id)reset();
       setMessage("Campanha excluída. Nenhum ponto ou mensagem foi enviado.");
     }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível excluir o rascunho.");}
@@ -181,8 +184,22 @@ export default function CampaignGuide({tenantId,role}:{
           <small>Nenhum cliente foi contatado ou pontuado.</small>
           {canSave&&<div className="vf-draft-actions">
             <button type="button" onClick={()=>edit(item)} disabled={busy}><Pencil size={16}/> Editar</button>
-            <button type="button" onClick={()=>void remove(item)} disabled={busy}><Trash2 size={16}/> Excluir</button>
+            {deleteConfirmId!==item.id&&<button type="button"
+              onClick={()=>{setDeleteConfirmId(item.id);setError("");setMessage("");}}
+              disabled={busy}><Trash2 size={16}/> Excluir</button>}
             <span className="vf-campaign-locked" title="A publicação exige carteira e regras de pontos verificadas"><LockKeyhole size={15}/> Publicação ainda não disponível</span>
+          </div>}
+          {canSave&&deleteConfirmId===item.id&&<div className="vf-draft-confirm"
+            role="group" aria-label="Confirmação de exclusão">
+            <p>Excluir este rascunho? Esta ação não pode ser desfeita.
+              Nenhum cliente ou ponto será afetado.</p>
+            <div className="vf-draft-confirm-actions">
+              <button type="button" disabled={busy}
+                onClick={()=>setDeleteConfirmId(null)}>Cancelar exclusão</button>
+              <button type="button" className="danger" disabled={busy}
+                onClick={()=>void remove(item)}><Trash2 size={16}/>
+                {busy?"Excluindo…":"Confirmar exclusão"}</button>
+            </div>
           </div>}
         </article>)}</div>}
     </section>
