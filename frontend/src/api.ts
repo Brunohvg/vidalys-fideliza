@@ -405,13 +405,13 @@ export type RecentOrdersPreview={
 export type PaidOrderInspection = {
   order_id:string;order_number?:string|null;source:"nuvemshop_live_read_only";
   order_status:"open"|"closed"|"cancelled";
-  payment_status:"pending"|"authorized"|"paid"|"partially_paid"|"abandoned"|"refunded"|"partially_refunded"|"voided";
+  payment_status:"pending"|"authorized"|"paid"|"partially_paid"|"abandoned"|"refunded"|"partially_refunded"|"voided"|"expired"|"chargeback";
   paid_at:string|null;reported_total_cents:number;currency:string;
   reported_customer_paid_cents:number|null;
   reported_payment_differs_from_total:boolean|null;
   reported_paid_amount_is_not_psp_proof:true;
   participant_verified:boolean;
-  review_status:"blocked_cancelled"|"blocked_refund"|"not_paid"|
+  review_status:"blocked_cancelled"|"blocked_refund"|"blocked_chargeback"|"not_paid"|
     "payment_date_missing"|"customer_not_verified"|
     "manual_payment_review"|"reported_paid_amount_review"|
     "reported_paid_requires_reconciliation";
