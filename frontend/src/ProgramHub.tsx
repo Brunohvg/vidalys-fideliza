@@ -1,4 +1,5 @@
 import {ArrowRight, HeartHandshake, UsersRound} from "lucide-react";
+import {useState} from "react";
 import EnrollmentManagement from "./EnrollmentManagement";
 import PointRuleDraftEditor from "./PointRuleDraftEditor";
 import RewardDraftEditor from "./RewardDraftEditor";
@@ -9,6 +10,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
  tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"];
  onViewClients:()=>void;
 }){
+ const [ruleRefresh,setRuleRefresh]=useState(0);
  return <div className="vf-program-page">
   <section className="vf-program-intro">
    <div><span className="portal-eyebrow">SEU CLUBE DE VANTAGENS</span>
@@ -27,8 +29,9 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
   </section>
   <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
    tenantStatus={tenantStatus}/>
-  <PointRuleDraftEditor tenantId={tenantId} role={role} />
-  <RewardDraftEditor tenantId={tenantId} role={role}/>
+  <PointRuleDraftEditor tenantId={tenantId} role={role}
+   onRuleSaved={()=>setRuleRefresh(value=>value+1)} />
+  <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}/>
   <p className="vf-program-status-note">
     A pontuação e os resgates ainda não estão disponíveis.
     As regras são apenas rascunhos e nenhuma compra é pontuada nesta fase.
