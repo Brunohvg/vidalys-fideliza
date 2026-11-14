@@ -139,6 +139,15 @@ def main():
         # DB do runner é descartável, sem dado real: migração explicitamente
         # controlada aqui; startup do Compose deve SOMENTE verificar migrations.
         execute(compose + ["build", "api"], env, label="build API descartável")
+        # Provar que o boot novo não migra a base automaticamente.
+        preflight = subprocess.run(
+            compose + ["run", "--rm", "--no-deps", "-T",
+                       "api", "python", "manage.py", "migrate", "--check"],
+            cwd=ROOT, env=env, capture_output=True, text=True, timeout=120,
+        )
+        if preflight.returncode == 0:
+            raise RuntimeError("Base nova com migrations pendentes foi aceita")
+        print("OK: boot bloqueia migrations pendentes", flush=True)
         execute(compose + [
             "run", "--rm", "--no-deps", "-T",
             "api", "python", "manage.py", "migrate", "--noinput",
@@ -171,6 +180,9 @@ def main():
             "exec", "-T", "api", "python", "scripts/audit_runtime_env.py",
             "--host", HOST,
         ], env, label="auditoria de ambiente")
+        execute(compose + [
+            "exec", "-T", "api", "python", "manage.py", "migrate", "--check",
+        ], env, label="API sobe com migrations explicitamente verificadas")
         if args.mode in ("proxy", "full"):
             execute(compose + ["exec", "-T", "api", "python", "-"], env,
                     stdin=PROXY_CHECK, label="HTTPS, sessão, CSRF")
@@ -190,6 +202,10 @@ def main():
                 "exec", "-T", "-e", "FIDELIZA_CI_ISOLATED=1",
                 "api", "python", "-",
             ], env, stdin=script, label="login/CSRF/tenant/campanhas")
+            execute(compose + [
+                "exec", "-T", "api", "python", "manage.py", "test",
+                "apps.channels.test_consolidation_smoke", "--verbosity=1",
+            ], env, label="smoke PR22 Flow-identidade-portal no PostgreSQL isolado")
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
     finally:
         subprocess.run(

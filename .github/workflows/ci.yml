@@ -22,6 +22,13 @@ jobs:
           enable-cache: true
       - run: uv lock --check
       - run: uv sync --locked --python 3.12
+      - name: Script de backup syntax e falha fechada
+        run: |
+          bash -n ../scripts/homolog_backup_migrate.sh
+          if FIDELIZA_ENVIRONMENT=production bash ../scripts/homolog_backup_migrate.sh; then
+            echo "ERRO: script aceitou ambiente nao homolog"
+            exit 1
+          fi
       - run: uv run --locked python manage.py check
       - run: uv run --locked python manage.py makemigrations --check --dry-run
       - run: uv run --locked pytest -q
