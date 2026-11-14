@@ -60,9 +60,9 @@ def execute(args, env, *, label, stdin=None, timeout=600, synthetic_test_output=
             # Apenas as fixtures test_* e banco efêmero, nunca dados de loja.
             tail = (result.stdout + "\n" + result.stderr).splitlines()[-65:]
             for line in tail:
-                line = re.sub(r"postgres(?:ql)?://[^\\s]+", "[DB_URL_REDACTED]", line)
-                line = re.sub(r"vf_[0-9a-f]{32}\\.[A-Za-z0-9_-]+", "[TOKEN_REDACTED]", line)
-                line = re.sub(r"(?i)(password|secret|token)\\s*[:=]\\s*\\S+", "[SECRET_REDACTED]", line)
+                line = re.sub(r"postgres(?:ql)?://[^\s]+", "[DB_URL_REDACTED]", line)
+                line = re.sub(r"vf_[0-9a-f]{32}\.[A-Za-z0-9_-]+", "[TOKEN_REDACTED]", line)
+                line = re.sub(r"(?i)(password|secret|token)\s*[:=]\s*\S+", "[SECRET_REDACTED]", line)
                 print("CI_SYNTHETIC_TEST: " + line[:500], file=sys.stderr, flush=True)
         raise RuntimeError("ETAPA_FALHOU: " + label)
     print("OK: " + label, flush=True)
