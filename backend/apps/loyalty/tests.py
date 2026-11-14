@@ -31,7 +31,7 @@ from .services import (
     record_engagement_eligibility,
 )
 
-from .tasks import release_due_grants, scan_winback
+from .tasks import release_due_grants, scan_winback, reconcile_verified_refunds
 
 
 @override_settings(
@@ -526,3 +526,27 @@ class LoyaltyFinancialTests(TestCase):
             evidence.save()
         with self.assertRaises(ValueError):
             evidence.delete()
+
+
+    def test_refund_worker_requires_psp_proof_not_only_status(self):
+        sale, grant, _ = self.create_grant("PSP-REFUND-TASK")
+        self.change_sale(sale, "refunded")
+        result = reconcile_verified_refunds()
+        self.assertEqual(result["reversed"], 0)
+        self.assertEqual(result["pending_review"], 1)
+        self.assertEqual(LoyaltyGrant.objects.get(pk=grant.pk).status,
+                         LoyaltyGrant.Status.PENDING)
+        self.assertEqual(lot_balances(grant.point_lot)["pending"], 100)
+        self.proof(sale, kind="refund", minutes=1)
+        processed = reconcile_verified_refunds()
+        self.assertEqual(processed["reversed"], 1)
+        grant.refresh_from_db()
+        self.assertEqual(grant.status, LoyaltyGrant.Status.REVERSED)
+        self.assertEqual(lot_balances(grant.point_lot)["pending"], 0)
+        self.assertEqual(reconcile_verified_refunds()["reversed"], 0)
+
+    def test_refund_worker_is_disabled_in_runtime_default(self):
+        with override_settings(FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED=False):
+            result = reconcile_verified_refunds()
+        self.assertTrue(result["skipped"])
+        self.assertEqual(result["reversed"], 0)

@@ -9,8 +9,8 @@ from django.utils import timezone
 from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant
 
-from .models import LoyaltyEngagement, LoyaltyGrant, LoyaltyRule
-from .services import LoyaltyBlocked, release_grant
+from .models import FinancialEvidence, LoyaltyEngagement, LoyaltyGrant, LoyaltyRule
+from .services import LoyaltyBlocked, release_grant, reverse_grant
 
 
 @shared_task(name="loyalty.scan_winback", ignore_result=True)
@@ -67,3 +67,40 @@ def release_due_grants():
             # A conciliação operacional deve analisar a pendência.
             continue
     return {"skipped": False, "released": released}
+
+
+
+@shared_task(name="loyalty.reconcile_verified_refunds", ignore_result=True)
+def reconcile_verified_refunds():
+    """Inverte somente compras com comprovante PSP normalizado e aprovado."""
+    if not (
+        getattr(settings, "FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED", False)
+        and getattr(settings, "FIDELIZA_POINTS_WRITES_ENABLED", False)
+        and getattr(settings, "FIDELIZA_LEDGER_WRITES_ENABLED", False)
+    ):
+        return {"skipped": True, "reversed": 0, "pending_review": 0}
+    trusted = getattr(settings, "FIDELIZA_TRUSTED_PAYMENT_ADAPTERS", frozenset())
+    if not trusted:
+        return {"skipped": True, "reversed": 0, "pending_review": 0}
+    candidates = LoyaltyGrant.objects.filter(
+        status__in=[LoyaltyGrant.Status.PENDING, LoyaltyGrant.Status.RELEASED],
+        sale__order_status__in=["cancelled", "refunded"],
+    ).values_list("pk", "sale_id")[:200]
+    reversed_count = 0
+    review_count = 0
+    for grant_id, sale_id in candidates:
+        proof = FinancialEvidence.objects.filter(
+            sale_id=sale_id, kind=FinancialEvidence.Kind.REFUND,
+            provider__in=trusted,
+        ).order_by("created_at", "pk").first()
+        if proof is None:
+            review_count += 1
+            continue
+        try:
+            _, changed = reverse_grant(
+                grant_id=grant_id, refund_evidence_id=proof.pk,
+            )
+            reversed_count += int(changed)
+        except (LoyaltyBlocked, PermissionError):
+            review_count += 1
+    return {"skipped": False, "reversed": reversed_count, "pending_review": review_count}

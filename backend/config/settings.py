@@ -166,6 +166,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "loyalty.release_due_grants",
         "schedule": crontab(minute=0),
     },
+    "loyalty-reconcile-refunds-half-hourly": {
+        "task": "loyalty.reconcile_verified_refunds",
+        "schedule": crontab(minute="*/30"),
+    },
 }
 
 # Registro público desativado até a homologação do fluxo de dados pessoais.
