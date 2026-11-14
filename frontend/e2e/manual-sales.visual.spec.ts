@@ -203,3 +203,73 @@ test("Não participante exige escolha explícita e data antiga fica oculta",asyn
     .toBeVisible();
   expect(captured).toMatchObject({participant_id:null,reference:"CUPOM-0071"});
 });
+
+
+for(const width of [320,390]){
+ test("Um único administrador registra e confere venda do balcão em "+width+"px",async({page})=>{
+  await page.setViewportSize({width,height:850});
+  await mock(page);
+  let submitted=false,reviewed=false;
+  const sale={
+   id:"b17a1939-9f41-4a27-872e-b05cc87e7d5f",
+   channel:"counter",reference:"CUPOM-0098",
+   participant_id:member.id,participant_name:"Cliente Confirmado",
+   eligible_amount_cents:4590,reported_paid_at:"2026-11-14T10:00:00Z",
+   evidence_reference:"CUPOM-0098",state:"awaiting_review",
+   submitted_by_me:true,reviewed_at:null,
+   reviewed_by_me:false,review_mode:null,review_note:null,
+   created_at:"2026-11-14T10:00:00Z",
+   points_credited:false,cashback_credited:false,
+  };
+  await page.route("**/api/v1/tenants/**/sales/manual/",route=>{
+   if(route.request().method()==="GET")return route.fulfill({
+    contentType:"application/json",body:JSON.stringify({
+     mode:"manual_review_only",points_credited:false,items:submitted?[sale]:[],
+    }),
+   });
+   expect(route.request().method()).toBe("POST");
+   expect(route.request().postDataJSON()).toMatchObject({
+    reference:"CUPOM-0098",participant_id:member.id,eligible_amount_cents:4590,
+   });
+   submitted=true;
+   return route.fulfill({status:201,contentType:"application/json",body:JSON.stringify({
+    already_recorded:false,sale,
+   })});
+  });
+  await page.route("**/api/v1/tenants/**/sales/manual/**/review/",route=>{
+   expect(route.request().postDataJSON()).toEqual({
+    decision:"approve",note:"Conferência do cupom realizada no meu próprio caixa.",
+   });
+   reviewed=true;
+   sale.state="verified_manual";
+   sale.review_mode="self_review";
+   sale.reviewed_by_me=true;
+   sale.review_note="Conferência do cupom realizada no meu próprio caixa.";
+   return route.fulfill({contentType:"application/json",body:JSON.stringify({
+    sale,review_mode:"self_review",manual_evidence_reviewed:true,
+    independent_payment_proof:false,points_credited:false,
+   })});
+  });
+  await page.goto("/");
+  await page.getByRole("button",{name:"Abrir menu"}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+  await page.locator("#vf-sale-client").selectOption(member.id);
+  await page.getByLabel("Qual foi o valor?").fill("45,90");
+  await page.getByLabel("Número do cupom ou recibo").fill("0098");
+  await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"Vendas do balcão"})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Conferir venda"})).toBeVisible();
+  await page.getByRole("button",{name:"Conferir venda"}).click();
+  await expect(page.getByText("Você está conferindo o próprio lançamento",{exact:false}))
+   .toBeVisible();
+  await page.getByPlaceholder("Ex.: Cupom e pagamento conferidos no caixa.")
+   .fill("Conferência do cupom realizada no meu próprio caixa.");
+  await page.getByRole("button",{name:"Confirmar conferência"}).click();
+  await expect(page.getByText("Conferência do responsável registrada e auditada.",{exact:false}))
+   .toBeVisible();
+  expect(submitted).toBe(true);expect(reviewed).toBe(true);
+  await expect(page.getByText("Conferência do responsável",{exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
+   .toBeLessThanOrEqual(1);
+ });
+}
