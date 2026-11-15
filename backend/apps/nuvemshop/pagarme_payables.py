@@ -40,7 +40,7 @@ def fetch_payables(*, charge_id, secret_key, opener=None, max_pages=8):
     seen_cursors = set()
     pages = []
     for _ in range(max_pages):
-        query = {"charge_id": charge_id, "size": 100, "type": "credit"}
+        query = {"charge_id": charge_id, "size": 100}
         if cursor:
             query["forward_cursor"] = cursor
         req = Request(
