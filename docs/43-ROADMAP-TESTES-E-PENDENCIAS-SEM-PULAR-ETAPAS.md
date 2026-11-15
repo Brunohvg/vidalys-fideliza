@@ -1580,3 +1580,13 @@ cupons externos OFF. O `--mode qa --dry-run` expõe
 
 Não copiar UUID da loja Bibelô de produção para fazer parecer um tenant
 QA, nem conectar integrações externas não autorizadas.
+
+### Compose Raw — propagação das variáveis do piloto
+
+O `compose.yaml` agora encaminha ao serviço `api` os quatro campos
+`FIDELIZA_ENVIRONMENT`, `FIDELIZA_PILOT_ACTIVATION_APPROVAL`,
+`FIDELIZA_DEPLOYED_SHA` e `FIDELIZA_QA_ALLOWED_TENANT_IDS`.
+O contrato é fail-closed: padrões `unconfigured`/vazio. Uma variável
+cadastrada no Coolify **não chegava à API** antes deste ajuste, mesmo
+quando o operador a configurava. Não substituir o modo **Raw** por
+Managed nem replicar esses campos nos demais serviços.

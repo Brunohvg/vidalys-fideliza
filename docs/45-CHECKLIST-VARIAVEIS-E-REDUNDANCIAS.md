@@ -120,3 +120,20 @@ Confirmar Traefik/rotas e backup antes de trocar modo e implantar.
 ## Acesso do lojista sem Nuvemshop
 
 A autenticação de comerciantes funciona por e-mail após confirmação. O controle `FIDELIZA_MERCHANT_SIGNUP_ENABLED` só habilita o cadastro de comerciantes e nunca abre o cadastro de clientes. Reutiliza `FIDELIZA_EMAIL_DELIVERY_ENABLED` e a mesma fila SMTP restrita ao worker; não criar novas credenciais SMTP. O app Nuvemshop é opcional, nunca bloqueia login, tenant ou simulação sem escrita financeira. Django Admin permanece separado em `/admin/` e só aceita staff com permissão.
+
+## Variáveis exclusivas da API para testes controlados — 15/11/2026
+
+O Compose **Raw** passa apenas ao serviço `api`:
+- `FIDELIZA_ENVIRONMENT=homolog`: ambiente de QA, não produção.
+- `FIDELIZA_PILOT_ACTIVATION_APPROVAL=YES_VERIFIED_QA_ONLY`: aprovação
+  do piloto e auditoria, a configurar após conferir backup e SHA.
+- `FIDELIZA_DEPLOYED_SHA=<SHA real verificado no Coolify>`: vincula a
+  aprovação ao código efetivamente publicado.
+- `FIDELIZA_QA_ALLOWED_TENANT_IDS=<UUID1>,<UUID2>`: lista de tenants de
+  teste cadastrados com nomes normais, sem exigência de prefixo na marca.
+
+Ausência de qualquer condição de segurança causa recusa do comando.
+Não atribuir esses valores ao frontend, Redis ou worker. Nunca definir
+`FIDELIZA_*WRITES_ENABLED` como true para destravar a UI. O banco de QA
+precisa ser independente e validado com backup/restauração. `main` e
+configuração comercial não mudam com este procedimento.
