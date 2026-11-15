@@ -172,6 +172,36 @@ class VerifiedPaymentProof(models.Model):
         raise ValueError("Prova validada não pode ser removida.")
 
 
+class VerifiedPspFeeReceipt(models.Model):
+    """Immutable, tenant-bound settlement of Pagar.me charge receivables.
+
+    Does not contain PSP bearer tokens, customer identity or raw HTTP data.
+    The gross amount is captured payment; the net is AFTER verified gateway
+    receivable, anticipation and antifraud fees.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    proof = models.OneToOneField(
+        VerifiedPaymentProof, on_delete=models.PROTECT,
+        related_name="fee_receipt",
+    )
+    charge_digest = models.CharField(max_length=64, unique=True)
+    payables_digest = models.CharField(max_length=64)
+    gross_cents = models.PositiveBigIntegerField()
+    fee_cents = models.PositiveBigIntegerField()
+    net_cents = models.PositiveBigIntegerField()
+    payable_count = models.PositiveSmallIntegerField()
+    verified_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Recibo PSP não pode ser alterado")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Recibo PSP não pode ser removido")
+
+
 class CashClosing(models.Model):
     """Caixa fechado por operador autenticado, sem confiança em usuário externo."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
