@@ -1461,3 +1461,23 @@ real de homologação foi executado por esta sessão.**
 - G7/G8 e o merge na homolog seguem BLOQUEADOS até que o operador
   autorizado produza evidência do dump, restore, migrações e
   E2E autenticado no ambiente real, sem atingir a Bibelô.
+
+
+## 14/11/2026 — PR #23/#24: conformance concluída no CI; homologação real ainda pendente
+
+- PR #23, SHA 2aa3168ca40b361a8095c2345a2c6aae0ebacb3b: 400 testes backend,
+  192 subtestes, 139 testes Playwright, seis jobs SUCCESS. Triggers PostgreSQL
+  verificados em banco descartável; fluxos por origem, reward_id e PDV
+  corrigidos. Consultar docs/PR23-COMPLIANCE-CONFORMANCE.md.
+- PR #24 (feature/pr24-homolog-release-e2e-protocol) NÃO ativa funcionalidades
+  financeiras nem concede benefício. Formaliza runbook de merge stacked
+  sequencial #18→#23, preflight GitHub fail-closed, backup SHA256, restore
+  com transação única, **migração primeiro no scratch restaurado**,
+  migrate explícito no banco declarado, auditoria de triggers/FK e role
+  runtime, smoke HTTPS de Flow com telefone QA verificado, DB read-only
+  e Playwright remoto autenticado com sessão QA.
+- Documento operacional: docs/PR24-HOMOLOGACAO-REAL-E2E.md.
+- **Merge, backup real, deploy Coolify, migrate real e Playwright remoto
+  ainda NÃO EXECUTADOS.** Todo gate financeiro segue OFF.
+- Somente o operador com permissões autorizadas e janela de manutenção
+  poderá executar o runbook; falha na cópia, prova de acesso ou CI implica NO-GO.
