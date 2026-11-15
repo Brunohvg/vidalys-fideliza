@@ -18,7 +18,7 @@ from apps.tenants.models import Tenant
 from .coupon_client import (
     CouponRemoteError, coupon_payload, create_coupon_once, find_coupon_exact,
 )
-from .models import NuvemshopCouponIntent, NuvemshopInstallation
+from .models import NuvemshopCouponIntent, NuvemshopInstallation, NuvemshopCouponOwnershipIncident
 from .scopes import parse_scopes
 from .security import config, decrypt_token, encrypt_token
 
@@ -73,6 +73,11 @@ def _context(voucher):
             or not settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED
             or not settings.FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED):
         raise PilotCouponBlocked("Piloto/cupom externo ainda bloqueado.")
+    if NuvemshopCouponOwnershipIncident.objects.filter(
+        tenant=tenant, intent__voucher__participant_id=voucher.participant_id,
+        reviewed_at__isnull=True,
+    ).exists():
+        raise PilotCouponBlocked("Titularidade em revisão; novas emissões suspensas.")
     if voucher.state != LoyaltyVoucher.State.RESERVED or voucher.expires_at <= timezone.now():
         raise PilotCouponBlocked("Voucher não está reservado e válido.")
     if (not voucher.reward_id or "nuvemshop" not in voucher.allowed_channels.split(",")

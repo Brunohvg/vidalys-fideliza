@@ -232,6 +232,12 @@ def grant_for_captured_sale(*, sale_id, evidence_id, costs):
         return existing, False
     if sale.order_status != SaleRecord.OrderStatus.PAID or sale.reported_total_cents <= 0:
         raise LoyaltyBlocked("Pedido não está elegível como pagamento.")
+    from apps.nuvemshop.models import NuvemshopCouponOwnershipIncident
+    if NuvemshopCouponOwnershipIncident.objects.filter(
+        tenant=tenant, intent__order_id=sale.external_reference,
+        reviewed_at__isnull=True,
+    ).exists():
+        raise LoyaltyBlocked("Pedido associado a suspeita de uso indevido de cupom.")
     profile = sale.customer_profile
     participant = profile.participant if profile else None
     if (
@@ -406,6 +412,14 @@ def issue_voucher(*, tenant_id, participant_id, reward_id):
     participant = ProgramParticipant.objects.get(
         pk=participant_id, tenant=tenant, status=ProgramParticipant.Status.ACTIVE,
     )
+    # A leaked code can be abused by a third party. The issuer's account
+    # is frozen for new vouchers until a reviewed incident is closed.
+    from apps.nuvemshop.models import NuvemshopCouponOwnershipIncident
+    if NuvemshopCouponOwnershipIncident.objects.filter(
+        tenant=tenant, intent__voucher__participant=participant,
+        reviewed_at__isnull=True,
+    ).exists():
+        raise LoyaltyBlocked("Emissão suspensa por incidente de titularidade.")
     profile = getattr(participant, "customer_profile", None)
     if not profile or not profile.verified_contacts.exists():
         raise LoyaltyBlocked("Participante sem contato verificado.")

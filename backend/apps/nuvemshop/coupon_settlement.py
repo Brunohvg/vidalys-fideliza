@@ -10,7 +10,7 @@ from apps.loyalty.models import FinancialEvidence, VerifiedPaymentProof, Loyalty
 from apps.tenants.models import Tenant
 from apps.loyalty.services import LoyaltyBlocked, redeem_voucher
 from apps.sales.models import SaleRecord
-from .models import NuvemshopCouponIntent
+from .models import NuvemshopCouponIntent, NuvemshopCouponOwnershipIncident
 from .security import config, decrypt_token
 
 
@@ -37,6 +37,10 @@ def settle_coupon_after_psp_capture(*, intent_id, capture_evidence_id):
             or not intent.order_id
             or intent.state not in (intent.State.APPLIED, intent.State.SETTLED)):
         raise CouponSettlementBlocked("Cupom sem uso confirmado e loja piloto autorizada.")
+    if NuvemshopCouponOwnershipIncident.objects.filter(
+        intent=intent, reviewed_at__isnull=True,
+    ).exists():
+        raise CouponSettlementBlocked("Incidente de titularidade não revisado.")
     sale = SaleRecord.objects.filter(
         tenant=intent.tenant, channel=SaleRecord.Channel.NUVEMSHOP,
         external_reference=intent.order_id,

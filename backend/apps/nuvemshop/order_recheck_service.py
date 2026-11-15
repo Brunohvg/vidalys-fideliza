@@ -17,6 +17,7 @@ from apps.loyalty.models import LoyaltyVoucher
 from apps.sales.models import SaleRecord
 from apps.tenants.models import Tenant
 from .models import NuvemshopCouponIntent, NuvemshopInstallation, NuvemshopOrderRecheck
+from .coupon_ownership import check_paid_coupon_ownership
 from .order_readonly import (
     INTEGRATION_FIELDS, OrderReadError, read_order, safe_id, summarize_order,
 )
@@ -211,6 +212,16 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
         and safe_id(order["store_id"]) != event.store_id
     ):
         raise RecheckBlocked("OAuth retornou pedido de outra loja")
+    incident = check_paid_coupon_ownership(event=event, order=order)
+    if incident in ("ownership_violation","requires_review"):
+        NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
+            "status": "ownership_violation" if incident == "ownership_violation"
+                      else "needs_review",
+            "checked_at": timezone.now(),
+        })
+        # An external discount may have been consumed, but ZERO loyalty
+        # points/cashback are issued to either shopper or voucher issuer.
+        return incident
     identity, profile = _buyer_identity(order, tenant)
     summary = summarize_order(order, order_id=event.order_id,
                               participant_verified=profile is not None)
