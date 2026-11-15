@@ -133,10 +133,33 @@ services:
       FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED:-0}
       FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED:-0}
       FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED:-0}
+      FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED: ${FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED:-0}
     depends_on:
       api:
         condition: service_healthy
     command: celery -A config worker --loglevel=INFO --concurrency=1 --queues=nuvemshop --hostname=nuvemshop@%h
+    logging: *bounded_logs
+
+
+  nuvemshop-scheduler:
+    build: ./backend
+    restart: unless-stopped
+    # Single Celery Beat for this Compose. No HTTP, OAuth keys or SMTP.
+    # Schedule is static; scheduler needs Redis, not direct PostgreSQL access.
+    user: "65534:65534"
+    networks: [app]
+    mem_limit: 160m
+    cpus: 0.10
+    environment:
+      <<: *django_env
+      HOME: /tmp
+      FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED: ${FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED:-0}
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: celery -A config beat --loglevel=INFO --schedule=/tmp/nuvemshop-beat
     logging: *bounded_logs
 
   frontend:

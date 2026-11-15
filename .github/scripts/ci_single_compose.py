@@ -170,7 +170,7 @@ def main():
         import json
         from check_coolify_env_isolation import verify_service_env
         live = {}
-        for name in ("api", "worker", "nuvemshop-sync", "frontend", "redis"):
+        for name in ("api", "worker", "nuvemshop-sync", "nuvemshop-scheduler", "frontend", "redis"):
             identifier = execute(compose + ["ps", "-q", name], env,
                                  label="identificar container " + name)
             raw = execute(["docker", "inspect", "--format",
@@ -209,6 +209,12 @@ def main():
         ], env, label="UID do worker OAuth isolado")
         if sync_uid == "0":
             raise RuntimeError("Worker OAuth executa com privilegios de root")
+        schedule_uid = execute(compose + [
+            "exec", "-T", "nuvemshop-scheduler", "python", "-c",
+            "import os; print(os.geteuid())",
+        ], env, label="UID do scheduler sem OAuth")
+        if schedule_uid == "0":
+            raise RuntimeError("Scheduler Celery executando com privilegios de root")
         execute(compose + [
             "exec", "-T", "worker", "celery", "-A", "config",
             "inspect", "ping", "--timeout", "5",
