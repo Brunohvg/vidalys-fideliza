@@ -1,4 +1,4 @@
-import {useEffect, useState, type FormEvent} from "react";
+import {useEffect, useState, type CSSProperties, type FormEvent} from "react";
 import {ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock3, Gift, HeartHandshake, LockKeyhole, Mail, ShieldCheck, TicketPercent, ShoppingBag, LogOut} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type MemberClubPublic, type MemberClubPrivate} from "./api";
 import {readableForeground} from "./brand-contrast";
@@ -109,6 +109,16 @@ export default function MemberClub(){
 
   const color=club?.branding.primary_color || "#087F79";
   const accent=club?.branding.accent_color || "#37D5BB";
+  const standardPalette=color.toLowerCase()==="#087f79" && accent.toLowerCase()==="#37d5bb";
+  const heroStyle=standardPalette
+    ?{background:"linear-gradient(122deg,#10253E 0%,#0B575A 62%,#087F79 100%)",color:"#FFFFFF"}
+    :{background:color,color:readableForeground(color)};
+  const clubStyle={
+    "--mc-primary":color,
+    "--mc-primary-text":readableForeground(color),
+    "--mc-secondary":accent,
+    "--mc-secondary-text":readableForeground(accent),
+  } as CSSProperties;
   const program=club?.branding.program_name || (club ? "Clube "+club.store_name : "Meu Clube");
   const firstName=me?.display_name.split(" ")[0] || "participante";
   const state=me?.status==="active"?"Participando":me?.status==="paused"?"Pausado":"Aguardando ativação";
@@ -124,7 +134,7 @@ export default function MemberClub(){
   const nextProgress=pointsReady&&availablePoints!==null&&nextReward
     ?Math.min(100,Math.round(availablePoints/nextReward.points_cost*100)):null;
 
-  return <div className="member-club-shell">
+  return <div className="member-club-shell" style={clubStyle}>
     <header className="member-club-top">
       <div className="member-club-mark" style={{background:accent,color:readableForeground(accent)}}>
         <HeartHandshake size={23}/>
@@ -142,11 +152,16 @@ export default function MemberClub(){
       {error&&<div className="member-club-error" role="alert">{error}</div>}
       {!loading&&club&&!me&&<div className="member-club-guest">
         <section className="member-club-hero member-club-hero-guest"
-          style={{background:color,color:readableForeground(color)}}>
+          style={heroStyle}>
           <div className="member-club-hero-decoration" aria-hidden="true"><Gift size={130} strokeWidth={1.1}/></div>
-          <span className="member-club-eyebrow"><Gift size={16}/> CLUBE DE VANTAGENS</span>
-          <h1>Mais motivos para voltar à {club.store_name}.</h1>
-          <p>Conheça as recompensas do clube, participe com seu e-mail e acompanhe tudo em um único lugar.</p>
+          <span className="member-club-eyebrow"><Gift size={16}/> UM CLUBE FEITO PARA VOCÊ</span>
+          <h1>Mais motivos para voltar. <em>Mais vantagens para descobrir.</em></h1>
+          <p>Entre para o clube de {club.store_name}, acompanhe as novidades e conheça as recompensas que a loja preparou para você.</p>
+          <div className="member-club-highlights" aria-label="Vantagens de participar">
+            <span><CheckCircle2 size={17}/> Adesão gratuita</span>
+            <span><Gift size={17}/> Recompensas para conhecer</span>
+            <span><LockKeyhole size={17}/> Acesso por e-mail</span>
+          </div>
           <div className="member-club-hero-actions">
             {club.signup_available&&<a className="member-club-hero-join"
               href={"/participar/"+encodeURIComponent(slug)}>
@@ -155,7 +170,7 @@ export default function MemberClub(){
             <a href="#entrar-no-clube" className="member-club-hero-signin">Já sou participante</a>
           </div>
           <span className="member-club-hero-note"><ShieldCheck size={16}/>
-            A participação exige aceite. Pontos e descontos ainda não estão liberados.
+            A adesão depende do seu consentimento. Pontos e resgates estão em preparação.
           </span>
         </section>
         <section className="member-club-panel member-club-entry" id="entrar-no-clube"
@@ -193,22 +208,25 @@ export default function MemberClub(){
         aria-label="Recompensas apresentadas pela loja">
         <div className="member-club-guest-benefits-head">
           <div><span className="member-club-kicker"><TicketPercent size={16}/> BENEFÍCIOS DO CLUBE</span>
-            <h2>Um bom motivo para voltar</h2>
-            <p>Veja o que {club.store_name} preparou para seus participantes.</p>
+            <h2>Recompensas que fazem voltar</h2>
+            <p>Conheça os benefícios que {club.store_name} está preparando para quem faz parte do clube.</p>
           </div>
           {club.signup_available&&<a href={"/participar/"+encodeURIComponent(slug)}>
             Fazer parte do clube <ArrowRight size={16}/></a>}
         </div>
         {guestRewards.length>0?
           <div className="member-club-guest-perks">
-            {guestRewards.slice(0,6).map(reward=><article key={reward.id}>
+            {guestRewards.slice(0,6).map(reward=><article key={reward.id} className="member-club-benefit-card">
               <span className="member-club-guest-perk-icon"><TicketPercent size={24}/></span>
-              <strong>{money(reward.discount_cents)}</strong>
-              <h3>{reward.title}</h3>
-              <p>{reward.points_cost.toLocaleString("pt-BR")} pontos previstos
-                {reward.min_order_cents>0?" · Compra mínima "+money(reward.min_order_cents):""}
-              </p>
-              <span className="member-club-guest-perk-status">Resgate em preparação</span>
+              <div className="member-club-benefit-copy">
+                <span className="member-club-benefit-eyebrow">BENEFÍCIO PUBLICADO</span>
+                <h3>{reward.title}</h3>
+                <strong className="member-club-benefit-amount">{money(reward.discount_cents)}</strong>
+                <p>{reward.points_cost.toLocaleString("pt-BR")} pontos previstos
+                  {reward.min_order_cents>0?" · Compra mínima "+money(reward.min_order_cents):""}
+                </p>
+              </div>
+              <span className="member-club-guest-perk-status"><LockKeyhole size={14}/> Em preparação</span>
             </article>)}
           </div>:
           <div className="member-club-guest-perks-empty">
