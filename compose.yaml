@@ -113,6 +113,31 @@ services:
     command: celery -A config worker --loglevel=INFO --concurrency=1
     logging: *bounded_logs
 
+  nuvemshop-sync:
+    build: ./backend
+    restart: unless-stopped
+    # Dedicated OAuth read-only worker; SMTP remains on generic worker.
+    user: "65534:65534"
+    networks: [app, database]
+    mem_limit: 256m
+    cpus: 0.25
+    environment:
+      <<: *django_env
+      HOME: /tmp
+      NUVEMSHOP_CLIENT_ID: ${NUVEMSHOP_CLIENT_ID:-}
+      NUVEMSHOP_CLIENT_SECRET: ${NUVEMSHOP_CLIENT_SECRET:-}
+      NUVEMSHOP_TOKEN_KEYS: ${NUVEMSHOP_TOKEN_KEYS:-}
+      NUVEMSHOP_OAUTH_CALLBACK_URL: ${NUVEMSHOP_OAUTH_CALLBACK_URL:-}
+      NUVEMSHOP_API_USER_AGENT: ${NUVEMSHOP_API_USER_AGENT:-}
+      FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED:-0}
+      FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED:-0}
+      FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED:-0}
+    depends_on:
+      api:
+        condition: service_healthy
+    command: celery -A config worker --loglevel=INFO --concurrency=1 --queues=nuvemshop --hostname=nuvemshop@%h
+    logging: *bounded_logs
+
   frontend:
     build: ./frontend
     restart: unless-stopped

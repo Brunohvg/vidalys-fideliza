@@ -129,9 +129,13 @@ def order_webhook(request, kind):
                     "event_launch_ts": launched,
                 },
             )
-            # A inbox é uma outbox durável. O comando controlado do API
-            # container fará reconsulta OAuth. O worker genérico não tem
-            # credenciais da Nuvemshop (isolamento de segredos intencional).
+            if getattr(settings, "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED", False):
+                # Um retry da mesma notificação pode recuperar uma publicação
+                # de task interrompida. O worker OAuth usa a fila isolada.
+                from .tasks import recheck_nuvemshop_order_event
+                transaction.on_commit(
+                    lambda: recheck_nuvemshop_order_event.delay(str(receipt.pk))
+                )
         return _response()
     except Exception:
         # Não gravar payload, exceção ou identificadores no log.
