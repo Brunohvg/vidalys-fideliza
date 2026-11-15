@@ -402,11 +402,25 @@ class LoyaltyFinancialTests(TestCase):
         sale = self.make_sale("CROSS-TENANT")
         capture = self.proof(sale)
         capture.tenant = self.another_tenant
-        # Simula adulteração entre dois tenants no banco; a execução falha fechada.
-        FinancialEvidence.objects.filter(pk=capture.pk).update(tenant=self.another_tenant)
-        capture.tenant_id = self.another_tenant.pk
-        with self.assertRaises(LoyaltyBlocked):
-            grant_for_captured_sale(sale_id=sale.pk, evidence_id=capture.pk, costs=self.costs)
+        # PostgreSQL PR26 impede a adulteração direto no banco. SQLite não
+        # tem trigger PG, então simula o dado inconsistente para validar motor.
+        from django.db import connection, DatabaseError, transaction
+        if connection.vendor == "postgresql":
+            with self.assertRaises(DatabaseError), transaction.atomic():
+                FinancialEvidence.objects.filter(pk=capture.pk).update(
+                    tenant=self.another_tenant,
+                )
+            capture.refresh_from_db()
+            self.assertEqual(capture.tenant_id, self.tenant.pk)
+        else:
+            FinancialEvidence.objects.filter(pk=capture.pk).update(
+                tenant=self.another_tenant,
+            )
+            capture.tenant_id = self.another_tenant.pk
+            with self.assertRaises(LoyaltyBlocked):
+                grant_for_captured_sale(
+                    sale_id=sale.pk, evidence_id=capture.pk, costs=self.costs,
+                )
         self.assertFalse(LoyaltyGrant.objects.exists())
 
     def test_duplicate_receipt_cannot_redeem_different_voucher(self):
