@@ -156,6 +156,11 @@ FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
 # Nunca usar env booleano para liberar dinheiro em um deploy sem homologação.
 FIDELIZA_PAYMENT_PROOF_ENABLED = False
 FIDELIZA_CASH_DUAL_CONTROL_ENABLED = False
+# Não existe integração preventiva comprovada de titularidade do cupom no
+# checkout da loja, nem cofre de credenciais PSP multi-tenant. Fail-closed.
+FIDELIZA_PAYMENT_PROOF_STRICT_ORIGIN_ENABLED = False
+FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED = False
+FIDELIZA_PSP_PER_TENANT_CREDENTIALS_VERIFIED = False
 FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
 
 # Agendamentos somente para elegibilidade, sem mensagens ou créditos por padrão.

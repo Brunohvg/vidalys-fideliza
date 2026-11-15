@@ -21,13 +21,21 @@ class Command(BaseCommand):
         group.add_argument("--enable", action="store_true")
         group.add_argument("--disable", action="store_true")
         parser.add_argument("--confirm", required=True)
+        parser.add_argument("--mode", choices=("qa", "commercial"), default="qa")
 
     @transaction.atomic
     def handle(self, *args, **opts):
-        if os.getenv("FIDELIZA_ENVIRONMENT") != "homolog":
-            raise CommandError("Comando exclusivo de homologação")
-        if os.getenv("FIDELIZA_PILOT_ACTIVATION_APPROVAL") != "YES_VERIFIED_QA_ONLY":
-            raise CommandError("Aprovação do piloto QA ausente")
+        mode = opts["mode"]
+        if mode == "qa":
+            if os.getenv("FIDELIZA_ENVIRONMENT") != "homolog":
+                raise CommandError("Modo QA exclusivo de homologação")
+            if os.getenv("FIDELIZA_PILOT_ACTIVATION_APPROVAL") != "YES_VERIFIED_QA_ONLY":
+                raise CommandError("Aprovação do piloto QA ausente")
+        else:
+            if os.getenv("FIDELIZA_ENVIRONMENT") != "production":
+                raise CommandError("Comercial exige ambiente production")
+            if os.getenv("FIDELIZA_COMMERCIAL_ACTIVATION_APPROVAL") != "YES_COMMERCIAL_APPROVED":
+                raise CommandError("Aprovação comercial formal ausente")
         if not re.fullmatch(r"[0-9a-f]{40}", opts["approved_sha"]):
             raise CommandError("Informe SHA completo aprovado")
         deployed = os.getenv("FIDELIZA_DEPLOYED_SHA", "").strip().lower()
@@ -35,7 +43,10 @@ class Command(BaseCommand):
             raise CommandError("SHA aprovado difere do commit efetivamente publicado")
         if not re.fullmatch(r"[A-Za-z0-9._-]{6,100}", opts["ticket"]):
             raise CommandError("Ticket de aprovação inválido")
-        if opts["confirm"] != ("ENABLE_QA_ONLY" if opts["enable"] else "DISABLE_QA_ONLY"):
+        confirmation = ("ENABLE_QA_ONLY" if opts["enable"] else "DISABLE_QA_ONLY") if mode == "qa" else (
+            "ENABLE_COMMERCIAL" if opts["enable"] else "DISABLE_COMMERCIAL"
+        )
+        if opts["confirm"] != confirmation:
             raise CommandError("Confirmação de operação incorreta")
         try:
             tid = uuid.UUID(opts["tenant_id"])
@@ -46,19 +57,28 @@ class Command(BaseCommand):
         if actor is None:
             raise CommandError("Operador precisa ser superusuário Django autorizado")
         tenant = Tenant.objects.select_for_update().filter(pk=tid).first()
-        if tenant is None or not re.fullmatch(r"(qa|homolog)-[a-z0-9-]{3,52}", tenant.slug):
-            raise CommandError("Apenas tenant explicitamente criado para QA")
-        if "bibel" in tenant.name.casefold():
-            raise CommandError("Loja Bibelô fora do escopo")
+        if tenant is None:
+            raise CommandError("Tenant não encontrado")
+        if mode == "qa" and not re.fullmatch(r"(qa|homolog)-[a-z0-9-]{3,52}", tenant.slug):
+            raise CommandError("Modo QA exige loja explicitamente de QA")
+        if mode == "qa" and "bibel" in tenant.name.casefold():
+            raise CommandError("Loja Bibelô fora do escopo QA")
         if opts["enable"] and tenant.status != Tenant.Status.ACTIVE:
             raise CommandError("Tenant QA deve estar ativo")
-        if opts["enable"] and (
+        if mode == "qa" and opts["enable"] and (
             settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED
             or settings.FIDELIZA_LEDGER_WRITES_ENABLED
             or settings.FIDELIZA_POINTS_WRITES_ENABLED
             or getattr(settings, "FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED", False)
         ):
             raise CommandError("Piloto QA preparatório deve manter dinheiro e cupons externos desligados")
+        gates_digest = ""
+        if mode == "commercial" and opts["enable"]:
+            from apps.tenants.commercial_gates import CommercialGateBlocked, commercial_readiness
+            try:
+                gates_digest = commercial_readiness(tenant=tenant, check_live_get=True)
+            except CommercialGateBlocked:
+                raise CommandError("Go-Live NO-GO: prova técnica de pagamento/checkout incompleta.") from None
         enabled = bool(opts["enable"])
         if not enabled:
             from apps.nuvemshop.models import NuvemshopCouponIntent
@@ -81,5 +101,6 @@ class Command(BaseCommand):
         TenantLoyaltyActivationAudit.objects.create(
             tenant=tenant, actor=actor, before_enabled=before, after_enabled=enabled,
             approved_sha=opts["approved_sha"], ticket=opts["ticket"],
+            mode=mode, gates_digest=gates_digest,
         )
-        self.stdout.write("PILOT_STATE_UPDATED tenant_scope=QA financial_global=OFF")
+        self.stdout.write("LOYALTY_STATE_CHANGED mode=" + mode + " gate_audited=YES")

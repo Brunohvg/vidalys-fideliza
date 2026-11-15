@@ -59,4 +59,6 @@ class TenantLoyaltyActivationAudit(models.Model):
     after_enabled = models.BooleanField()
     approved_sha = models.CharField(max_length=40)
     ticket = models.CharField(max_length=100)
+    mode = models.CharField(max_length=12, default="qa")
+    gates_digest = models.CharField(max_length=64, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
