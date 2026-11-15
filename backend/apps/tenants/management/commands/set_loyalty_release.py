@@ -21,6 +21,7 @@ from apps.nuvemshop.order_readonly import read_orders_page, OrderReadError
 from apps.nuvemshop.scopes import parse_scopes
 from apps.nuvemshop.security import config, decrypt_token
 from apps.tenants.models import Tenant, TenantLoyaltyActivationAudit
+from apps.tenants.management.commands.set_loyalty_pilot import qa_scope_authorized
 
 
 REQUIRED_TRIGGERS = (
@@ -130,6 +131,7 @@ class Command(BaseCommand):
             qa_namespace_ok = bool(re.fullmatch(
                 r"(qa|homolog)-[a-z0-9-]{3,52}", tenant.slug,
             ))
+            qa_scope_ok = qa_scope_authorized(tenant)
             financial_gates_off = not any((
                 settings.FIDELIZA_POINTS_WRITES_ENABLED,
                 settings.FIDELIZA_LEDGER_WRITES_ENABLED,
@@ -143,7 +145,7 @@ class Command(BaseCommand):
             )
             qa_ready = bool(
                 tenant.status == Tenant.Status.ACTIVE
-                and qa_namespace_ok and qa_environment_ok and qa_approval_ok
+                and qa_scope_ok and qa_environment_ok and qa_approval_ok
                 and financial_gates_off and not tenant.loyalty_live_enabled
             )
             commercial_preview_ready = bool(
@@ -160,6 +162,7 @@ class Command(BaseCommand):
                 "tenant_live_disabled":not tenant.loyalty_live_enabled,
                 "platform":tenant.platform,
                 "qa_namespace_valid":qa_namespace_ok,
+                "qa_scope_authorized":qa_scope_ok,
                 "qa_environment":qa_environment_ok,
                 "qa_approval_configured":qa_approval_ok,
                 "financial_gates_off":financial_gates_off,

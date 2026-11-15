@@ -1566,3 +1566,17 @@ real de homologação foi executado por esta sessão.**
   ainda NÃO EXECUTADOS.** Todo gate financeiro segue OFF.
 - Somente o operador com permissões autorizadas e janela de manutenção
   poderá executar o runbook; falha na cópia, prova de acesso ou CI implica NO-GO.
+
+### Lojas com nomes comuns cadastradas pelo próprio comerciante
+
+O cadastro por e-mail gera slug de nome + sufixo aleatório. Para não
+forçar troca de marca/slug, `set_loyalty_pilot` também admite
+`FIDELIZA_QA_ALLOWED_TENANT_IDS` como lista CSV de UUIDs autorizados
+para teste no banco QA. IDs não listados nem com namespace `qa-*`
+continuam bloqueados. A aprovação requer superusuário, ticket, SHA
+implantado idêntico e `FIDELIZA_ENVIRONMENT=homolog`, com dinheiro e
+cupons externos OFF. O `--mode qa --dry-run` expõe
+`qa_scope_authorized` sem alterar dados.
+
+Não copiar UUID da loja Bibelô de produção para fazer parecer um tenant
+QA, nem conectar integrações externas não autorizadas.

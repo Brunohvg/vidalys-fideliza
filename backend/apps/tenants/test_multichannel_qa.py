@@ -94,7 +94,7 @@ class MultichannelPilotTests(TestCase):
         self.tenant.slug = "bibeloo-prod"
         self.tenant.save(update_fields=["slug"])
         with patch.dict(os.environ, self.env):
-            with self.assertRaisesRegex(CommandError, "criado para QA"):
+            with self.assertRaisesRegex(CommandError, "autorizado para QA"):
                 call_command(
                     "set_loyalty_pilot", enable=True,
                     confirm="ENABLE_QA_ONLY", **self.opts,
@@ -110,3 +110,27 @@ class MultichannelPilotTests(TestCase):
         data = json.loads(out.getvalue())
         self.assertEqual(data["status"], "NOT_READY_FOR_HOMOLOG_ACTIVATION")
         self.assertEqual(data["commercial_status"], "NO_GO_COMMERCIAL")
+
+    def test_regular_merchant_slug_can_be_qa_when_id_explicitly_allowlisted(self):
+        # O cadastro normal nao deve exigir renomear a loja para 'qa-*'.
+        self.tenant.slug = "artesanato-do-bairro-123456"
+        self.tenant.save(update_fields=["slug"])
+        report = io.StringIO()
+        with patch.dict(os.environ, {
+            **self.env, "FIDELIZA_QA_ALLOWED_TENANT_IDS": str(self.tenant.pk),
+        }):
+            call_command(
+                "set_loyalty_release", mode="qa", dry_run=True,
+                confirm="ENABLE_QA_ONLY", stdout=report, **self.opts,
+            )
+            call_command(
+                "set_loyalty_pilot", enable=True,
+                confirm="ENABLE_QA_ONLY", stdout=io.StringIO(), **self.opts,
+            )
+        check = json.loads(report.getvalue())
+        self.assertTrue(check["checks"]["qa_scope_authorized"])
+        self.assertFalse(check["checks"]["qa_namespace_valid"])
+        self.assertEqual(check["commercial_status"], "NO_GO_COMMERCIAL")
+        self.assertEqual(check["status"], "READY_FOR_HOMOLOG_ACTIVATION")
+        self.tenant.refresh_from_db()
+        self.assertTrue(self.tenant.loyalty_live_enabled)

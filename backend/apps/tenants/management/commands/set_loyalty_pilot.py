@@ -9,6 +9,17 @@ from django.db import transaction
 from apps.tenants.models import Tenant, TenantLoyaltyActivationAudit
 
 
+def qa_scope_authorized(tenant):
+    """Autorização somente para tenant QA ou ID explicitamente revisado."""
+    slug_qa = bool(re.fullmatch(r"(qa|homolog)-[a-z0-9-]{3,52}", tenant.slug))
+    allowed_ids = {
+        item.strip().lower()
+        for item in os.getenv("FIDELIZA_QA_ALLOWED_TENANT_IDS", "").split(",")
+        if item.strip()
+    }
+    return slug_qa or str(tenant.pk).lower() in allowed_ids
+
+
 class Command(BaseCommand):
     help = "Ativa/desativa tenant QA isolado de qualquer marca/canal, sem operações financeiras."
 
@@ -46,11 +57,10 @@ class Command(BaseCommand):
         if actor is None:
             raise CommandError("Operador precisa ser superusuário Django autorizado")
         tenant = Tenant.objects.select_for_update().filter(pk=tid).first()
-        # O escopo é identificado pelo namespace QA, nunca pelo nome da marca.
-        # Isso permite demonstrar lojas de qualquer setor/canal sem vincular
-        # uma instalação de produção nem liberar dinheiro no checkout.
-        if tenant is None or not re.fullmatch(r"(qa|homolog)-[a-z0-9-]{3,52}", tenant.slug):
-            raise CommandError("Apenas tenant explicitamente criado para QA")
+        # QA aceita namespace de testes ou IDs explicitamente aprovados.
+        # Não inferimos permissão pelo nome ou pelo canal da loja.
+        if tenant is None or not qa_scope_authorized(tenant):
+            raise CommandError("Apenas tenant autorizado para QA (slug ou allowlist de IDs)")
         if opts["enable"] and tenant.status != Tenant.Status.ACTIVE:
             raise CommandError("Tenant QA deve estar ativo")
         if opts["enable"] and (
