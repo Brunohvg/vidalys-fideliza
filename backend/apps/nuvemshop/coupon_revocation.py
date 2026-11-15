@@ -4,6 +4,7 @@ External DELETE is not transactional with PostgreSQL. The operation first
 marks REVOKING, then verifies the provider by GET and records the result.
 A timeout stays REVOKING until subsequent GET confirms it is unusable.
 """
+from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 from apps.loyalty.models import FinancialEvidence, LoyaltyVoucher
@@ -34,7 +35,7 @@ def _eligibility(intent, reason):
     if NuvemshopCouponRevocationAudit.objects.filter(intent=intent).exists():
         return
     if reason == "expired":
-        if voucher.expires_at > timezone.now() or intent.order_id:
+        if voucher.expires_at + timedelta(minutes=30) > timezone.now() or intent.order_id:
             raise RevocationBlocked("Voucher ainda válido ou associado a pedido")
     elif reason == "cancelled_unpaid":
         if not intent.order_id:
@@ -69,7 +70,10 @@ def revoke_and_release(*, intent_id, reason, opener=None):
         if existing:
             if existing.reason != reason:
                 raise RevocationBlocked("Motivo difere da revogação existente")
-            if intent.voucher.state == LoyaltyVoucher.State.RESERVED:
+            # Cancelled checkout is not proof of non-capture. Only unused
+            # expired coupons may restore the original reservation.
+            if (existing.reason == "expired"
+                    and intent.voucher.state == LoyaltyVoucher.State.RESERVED):
                 from apps.loyalty.services import _execution_enabled
                 _execution_enabled()
                 _cancel_reserved_voucher(intent.voucher)
@@ -89,24 +93,29 @@ def revoke_and_release(*, intent_id, reason, opener=None):
         if intent.state != intent.State.REVOKING:
             intent.state = intent.State.REVOKING
             intent.save(update_fields=["state", "updated_at"])
-    # GET verifies ownership and usage. If a previous DELETE timed out,
-    # a missing/deleted coupon is accepted only for OUR previously stored ID.
+    # An expired/invalid code can still be reactivated remotely. The DELETE
+    # must be attempted for valid=False, used=0, deleted_at=None as well.
+    # Never treat valid=False alone as proof that the code is revoked.
     try:
         found = inspect_coupon_by_id(
             store_id=intent.store_id, token=token, agent=cfg.user_agent,
             remote_id=remote_id, opener=opener,
         )
+        if found is None and intent.verified_unused_at is None:
+            raise RevocationBlocked(
+                "Cupom não localizado sem prova anterior de ausência de uso"
+            )
         if found is not None:
             if found.get("code") != code:
                 raise RevocationBlocked("Cupom remoto pertence a outro código")
-            # A resposta pode informar valid=false porque o cupom JÁ FOI
-            # consumido. Isso nunca autoriza devolver pontos por expiração.
-            used = found.get("used")
-            if type(used) is not int or used < 0 or used > 1:
-                raise RevocationBlocked("Contagem de usos do cupom inconclusiva")
-            if used and reason != "cancelled_unpaid":
-                raise RevocationBlocked("Cupom já utilizado: revisão necessária")
-            if found.get("valid") is True and found.get("deleted_at") is None:
+            if type(found.get("used")) is not int or found["used"] != 0:
+                raise RevocationBlocked("Uso remoto incerto ou confirmado")
+            if found.get("deleted_at") is None:
+                # Record a verified unused snapshot BEFORE an uncertain HTTP
+                # DELETE; the next invocation may only observe a remote 404.
+                NuvemshopCouponIntent.objects.filter(pk=intent.pk).update(
+                    verified_unused_at=timezone.now(),
+                )
                 delete_coupon_once(
                     store_id=intent.store_id, token=token, agent=cfg.user_agent,
                     remote_id=remote_id, opener=opener,
@@ -115,11 +124,13 @@ def revoke_and_release(*, intent_id, reason, opener=None):
                     store_id=intent.store_id, token=token, agent=cfg.user_agent,
                     remote_id=remote_id, opener=opener,
                 )
-        # "valid=false" sozinho NÃO comprova DELETE: pode ser apenas
-        # validade expirada ou max_uses alcançado e ser reativado no painel.
-        # Só 404 ou deleted_at fornecem prova de revogação persistente.
-        if found is not None and found.get("deleted_at") is None:
-            raise RevocationBlocked("API não confirmou exclusão definitiva do cupom")
+        if found is not None and (
+            found.get("code") != code
+            or type(found.get("used")) is not int
+            or found["used"] != 0
+            or found.get("deleted_at") is None
+        ):
+            raise RevocationBlocked("DELETE não confirmado ou cupom usado")
     except CouponRemoteError:
         raise RevocationBlocked("Revogação remota pendente de confirmação") from None
 
@@ -142,8 +153,13 @@ def revoke_and_release(*, intent_id, reason, opener=None):
             intent=locked,
             defaults={"tenant_id":locked.tenant_id,"remote_id":remote_id,"reason":reason},
         )
-        try:
-            _cancel_reserved_voucher(locked.voucher)
-        except LoyaltyBlocked:
-            raise RevocationBlocked("Reservas exigem conciliação") from None
-        return locked, True
+        if reason == "expired":
+            try:
+                _cancel_reserved_voucher(locked.voucher)
+            except LoyaltyBlocked:
+                raise RevocationBlocked("Reservas exigem conciliação") from None
+            return locked, True
+        # A Nuvemshop cancelou o pedido, mas a ausência de prova CAPTURE
+        # local NÃO é uma prova PSP de não captura nem de estorno. No caso
+        # cancelado, revogar externamente sem devolver pontos automaticamente.
+        return locked, False

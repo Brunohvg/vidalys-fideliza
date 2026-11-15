@@ -61,7 +61,7 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         intent=self._issued_coupon()
         self.assertEqual(lot_balances(lot)["reserved"],10)
         LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
-            expires_at=timezone.now()-timedelta(minutes=2))
+            expires_at=timezone.now()-timedelta(minutes=35))
         self.voucher.refresh_from_db()
         remote={"id":876,"code":self.code,"valid":True,"deleted_at":None,"used":0}
         deleted={"id":876,"code":self.code,"valid":False,
@@ -87,11 +87,57 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         again,once=revoke_and_release(intent_id=intent.pk,reason="expired")
         self.assertFalse(once)
 
+    def test_expired_invalid_but_unused_coupon_must_be_deleted_before_refund(self):
+        lot = self._credit_reservation()
+        intent = self._issued_coupon()
+        LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
+            expires_at=timezone.now()-timedelta(minutes=35))
+        invalid = {"id":876,"code":self.code,"valid":False,
+                   "deleted_at":None,"used":0}
+        removed = {"id":876,"code":self.code,"valid":False,
+                   "deleted_at":timezone.now().isoformat(),"used":0}
+        with (
+            patch("apps.nuvemshop.coupon_revocation.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_revocation.inspect_coupon_by_id",
+                  side_effect=[invalid, removed]) as fetch,
+            patch("apps.nuvemshop.coupon_revocation.delete_coupon_once",
+                  return_value=True) as delete,
+        ):
+            _, changed = revoke_and_release(intent_id=intent.pk, reason="expired")
+        self.assertTrue(changed)
+        self.assertEqual(fetch.call_count, 2)
+        delete.assert_called_once()
+        self.assertEqual(lot_balances(lot)["reserved"], 0)
+        self.assertEqual(lot_balances(lot)["available"], 10)
+        self.assertEqual(NuvemshopCouponRevocationAudit.objects.count(), 1)
+        intent.refresh_from_db()
+        self.assertIsNotNone(intent.verified_unused_at)
+        _, repeated = revoke_and_release(intent_id=intent.pk, reason="expired")
+        self.assertFalse(repeated)
+        self.assertEqual(lot_balances(lot)["available"], 10)
+
+    def test_preexisting_remote_404_without_unused_proof_does_not_refund(self):
+        lot = self._credit_reservation()
+        intent = self._issued_coupon()
+        LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
+            expires_at=timezone.now()-timedelta(minutes=35))
+        with (
+            patch("apps.nuvemshop.coupon_revocation.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_revocation.inspect_coupon_by_id",
+                  return_value=None),
+            patch("apps.nuvemshop.coupon_revocation.delete_coupon_once") as delete,
+            self.assertRaises(RevocationBlocked),
+        ):
+            revoke_and_release(intent_id=intent.pk, reason="expired")
+        delete.assert_not_called()
+        self.assertEqual(lot_balances(lot)["reserved"], 10)
+        self.assertEqual(NuvemshopCouponRevocationAudit.objects.count(), 0)
+
     def test_unconfirmed_delete_never_refunds_ledger(self):
         lot=self._credit_reservation()
         intent=self._issued_coupon()
         LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
-            expires_at=timezone.now()-timedelta(minutes=2))
+            expires_at=timezone.now()-timedelta(minutes=35))
         from apps.nuvemshop.coupon_client import CouponRemoteError
         with (
             patch("apps.nuvemshop.coupon_revocation.config", return_value=self.cfg),
@@ -111,7 +157,7 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         lot=self._credit_reservation()
         intent=self._issued_coupon()
         LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
-            expires_at=timezone.now()-timedelta(minutes=2))
+            expires_at=timezone.now()-timedelta(minutes=35))
         self.voucher.refresh_from_db()
         used={"id":876,"code":self.code,"valid":False,
               "deleted_at":None,"used":1}
@@ -134,7 +180,7 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self._credit_reservation()
         intent=self._issued_coupon()
         LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
-            expires_at=timezone.now()-timedelta(minutes=1))
+            expires_at=timezone.now()-timedelta(minutes=35))
         remote={"id":876,"code":self.code,"valid":True,
                 "deleted_at":None,"used":0}
         disabled={"id":876,"code":self.code,"valid":False,

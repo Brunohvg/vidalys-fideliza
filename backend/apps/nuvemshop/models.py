@@ -63,6 +63,7 @@ class NuvemshopCouponIntent(models.Model):
     encrypted_code = models.TextField()
     code_sha256 = models.CharField(max_length=64, unique=True)
     remote_coupon_id = models.CharField(max_length=64, blank=True, default="")
+    verified_unused_at = models.DateTimeField(null=True, blank=True)
     order_id = models.CharField(max_length=32, blank=True, default="")
     state = models.CharField(max_length=24, choices=State.choices,
                              default=State.PREPARED)
