@@ -152,6 +152,10 @@ FIDELIZA_LEDGER_WRITES_ENABLED = False
 # override_settings em testes de domínio (não há env que ligue isso).
 FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED = False
 FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
+# PR26: provas PSP/fechamento criadas apenas em testes com override_settings.
+# Nunca usar env booleano para liberar dinheiro em um deploy sem homologação.
+FIDELIZA_PAYMENT_PROOF_ENABLED = False
+FIDELIZA_CASH_DUAL_CONTROL_ENABLED = False
 FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
 
 # Agendamentos somente para elegibilidade, sem mensagens ou créditos por padrão.

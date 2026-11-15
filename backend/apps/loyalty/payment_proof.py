@@ -8,7 +8,7 @@ import hashlib
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from django.conf import settings
@@ -68,7 +68,7 @@ def _valid_timestamp(value):
     except ValueError:
         raise PaymentProofBlocked("Data de captura inválida.") from None
     if (timezone.is_naive(when) or when > timezone.now()
-            or when < timezone.now() - timezone.timedelta(days=365 * 3)):
+            or when < timezone.now() - timedelta(days=365 * 3)):
         raise PaymentProofBlocked("Data de captura fora do intervalo.")
     return when
 
@@ -96,11 +96,13 @@ def validate_pagarme_capture(*, charge, sale, charge_id):
             or charge.get("amount") != sale.reported_total_cents
             or charge.get("paid_amount") != sale.reported_total_cents
             or last.get("amount") != sale.reported_total_cents
-            or type(charge.get("refunded_amount", 0)) is not int
-            or charge.get("refunded_amount", 0) != 0):
+            or type(charge.get("refunded_amount")) is not int
+            or charge.get("refunded_amount") != 0
+            or type(last.get("refunded_amount")) is not int
+            or last.get("refunded_amount") != 0):
         raise PaymentProofBlocked("Captura total e irreversões não comprovadas.")
     paid_at = _valid_timestamp(charge.get("paid_at"))
-    if paid_at < sale.created_at - timezone.timedelta(minutes=5):
+    if paid_at < sale.created_at - timedelta(minutes=5):
         raise PaymentProofBlocked("Captura anterior ao pedido persistido.")
     return paid_at
 
@@ -221,7 +223,7 @@ def record_cash_dual_control(*, sale_id, receipt_reference, operator_id,
             or operator_id == reviewer_id):
         raise PaymentProofBlocked("Fechamento, valor ou dupla conferência inválidos.")
     if (timezone.is_naive(received_at) or received_at > timezone.now()
-            or received_at < sale.created_at - timezone.timedelta(minutes=5)):
+            or received_at < sale.created_at - timedelta(minutes=5)):
         raise PaymentProofBlocked("Horário de caixa inválido.")
     members = TenantMembership.objects.filter(
         tenant=sale.tenant, user_id__in=[operator_id, reviewer_id],
@@ -234,7 +236,11 @@ def record_cash_dual_control(*, sale_id, receipt_reference, operator_id,
         raise PaymentProofBlocked("Operador de recebimento diverge da venda lançada.")
     return _record_proof(
         sale=sale, provider="cash_dual_control", external_id=receipt_reference,
-        captured_at=received_at, operator_id=operator_id, reviewer_id=reviewer_id,
+        captured_at=received_at,
+        operator=next(m.user for m in TenantMembership.objects.select_related("user").filter(
+            tenant=sale.tenant, user_id=operator_id)),
+        reviewer=next(m.user for m in TenantMembership.objects.select_related("user").filter(
+            tenant=sale.tenant, user_id=reviewer_id)),
     )
 
 
