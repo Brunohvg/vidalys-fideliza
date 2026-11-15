@@ -68,27 +68,63 @@ function cookie(name: string): string | null {
   return pair ? decodeURIComponent(pair.slice(name.length + 1)) : null;
 }
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
+function apiErrorMessage(body: unknown): string {
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    const record = body as Record<string, unknown>;
+    if (typeof record.detail === "string" && record.detail.trim()) return record.detail.slice(0, 350);
+    // DRF serializer errors are often {field: ["message"]} without detail.
+    const parts = Object.entries(record).slice(0, 3).map(([field, issue]) => {
+      const messages = Array.isArray(issue) ? issue : [issue];
+      const first = messages.find(v => typeof v === "string");
+      return typeof first === "string" ? field + ": " + first : "";
+    }).filter(Boolean);
+    if (parts.length) return parts.join(" | ").slice(0, 350);
+  }
+  return "Não foi possível concluir a solicitação.";
+}
+
+async function requestWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  let expired = false;
+  const timeout = setTimeout(() => {
+    expired = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch {
+    throw new ApiError(
+      expired ? "A consulta demorou demais. Tente novamente." :
+        "Não foi possível conectar ao servidor. Verifique a conexão.",
+      expired ? 408 : 0,
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function readResponse<T>(response: Response): Promise<T> {
   let body: unknown = null;
-  try { body = await response.json(); } catch { /* error fallback */ }
+  try { body = await response.json(); } catch { /* no JSON body */ }
   if (!response.ok) {
-    const detail = body && typeof body === "object" && "detail" in body
-      ? String(body.detail)
-      : "Não foi possível concluir a solicitação.";
-    throw new ApiError(detail, response.status);
+    throw new ApiError(apiErrorMessage(body), response.status);
   }
   return body as T;
 }
 
 async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { method: "GET", credentials: "same-origin", cache: "no-store" });
+  const response = await requestWithTimeout(url, {
+    method: "GET", credentials: "same-origin", cache: "no-store",
+  });
   return readResponse<T>(response);
 }
 
 async function writeJson<T>(method: "POST" | "PATCH", url: string, body: object): Promise<T> {
   const csrf = cookie("csrftoken");
   if (!csrf) throw new ApiError("Sessão de segurança não iniciada. Atualize a página.", 403);
-  const response = await fetch(url, {
+  const response = await requestWithTimeout(url, {
     method,
     credentials: "same-origin",
     cache: "no-store",
@@ -98,11 +134,10 @@ async function writeJson<T>(method: "POST" | "PATCH", url: string, body: object)
   return readResponse<T>(response);
 }
 
-
 async function deleteJson<T>(url: string): Promise<T> {
   const csrf = cookie("csrftoken");
   if (!csrf) throw new ApiError("Sessão de segurança não iniciada. Atualize a página.", 403);
-  return readResponse<T>(await fetch(url, {
+  return readResponse<T>(await requestWithTimeout(url, {
     method: "DELETE", credentials: "same-origin", cache: "no-store",
     headers: { "X-CSRFToken": csrf }
   }));
