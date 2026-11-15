@@ -170,10 +170,23 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
 
 
 def _signature(sale, quote):
+    # Bind EVERY financial field and the exact quantity/cost mapping; signing
+    # only the snapshot hash would let an in-process caller replace fields.
+    payload = json.dumps([
+        str(sale.tenant_id), str(sale.pk), quote.snapshot_digest,
+        quote.order_id, quote.tenant_id, quote.sale_total_cents,
+        quote.gross_subtotal_cents, quote.discounts_cents,
+        quote.eligible_net_cents, quote.shipping_owner_cents,
+        quote.shipping_customer_cents, quote.shipping_subsidy_cents,
+        quote.cogs_cents, quote.contribution_before_rewards_cents,
+        [[str(pk), qty] for pk, qty in quote.costs.lines],
+        quote.costs.payment_fee_cents, quote.costs.shipping_subsidy_cents,
+        quote.costs.other_variable_costs_cents,
+        list(quote.cost_versions),
+    ], separators=(",", ":"), ensure_ascii=True)
     return salted_hmac(
-        "vidalys.oauth-order-cost-quote.v1",
-        str(sale.tenant_id) + ":" + str(sale.pk) + ":" + quote.snapshot_digest,
-        secret=settings.SECRET_KEY,algorithm="sha256",
+        "vidalys.oauth-order-cost-quote.v2", payload,
+        secret=settings.SECRET_KEY, algorithm="sha256",
     ).hexdigest()
 
 
@@ -183,6 +196,15 @@ def verify_verified_quote(*, sale, quote):
             or quote.order_id != sale.external_reference
             or quote.tenant_id != str(sale.tenant_id)
             or quote.sale_total_cents != sale.reported_total_cents
+            or quote.eligible_net_cents !=
+               quote.gross_subtotal_cents - quote.discounts_cents
+            or quote.shipping_subsidy_cents !=
+               max(quote.shipping_owner_cents - quote.shipping_customer_cents, 0)
+            or quote.contribution_before_rewards_cents !=
+               quote.eligible_net_cents - quote.cogs_cents
+               - quote.shipping_subsidy_cents - quote.costs.payment_fee_cents
+               - quote.costs.other_variable_costs_cents
+            or quote.costs.shipping_subsidy_cents != quote.shipping_subsidy_cents
             or not quote.verified_signature
             or not hmac.compare_digest(quote.verified_signature,
                                        _signature(sale,quote))):
@@ -194,11 +216,16 @@ def verify_verified_quote(*, sale, quote):
     if (len(actual) != len(identifiers)
             or len(set(identifiers)) != len(identifiers)):
         raise OrderItemCostBlocked("Linhas de custo alteradas")
+    cost_sum = 0
     for pk, version in quote.cost_versions:
         item = current.get(pk)
         if (item is None or item.version != version or not item.verified_at
                 or item.verified_by_id is None or not item.unit_cost_cents):
             raise OrderItemCostBlocked("Custo por variante perdeu verificação")
+    for pk, quantity in quote.costs.lines:
+        cost_sum += current[str(pk)].unit_cost_cents * quantity
+    if cost_sum != quote.cogs_cents:
+        raise OrderItemCostBlocked("Custo unitário mudou após consulta OAuth")
     return quote
 
 

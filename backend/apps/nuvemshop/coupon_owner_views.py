@@ -4,6 +4,7 @@ Not exposed to anonymous storefront scripts: such scripts could forge a
 customer_id and reveal whether a shopper owns a reward. Integration with a
 checkout-side trusted identity is a separate, currently UNVERIFIED gate.
 """
+import uuid
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -26,6 +27,12 @@ class CouponValidateOwnerView(APIView):
         }:
             return Response({"detail":"Parâmetros inválidos"},status=400)
         tenant_id = data.get("tenant_id")
+        if not isinstance(tenant_id, str):
+            return Response({"detail":"Loja inválida"},status=400)
+        try:
+            tenant_id = uuid.UUID(tenant_id)
+        except (TypeError,ValueError,AttributeError):
+            return Response({"detail":"Loja inválida"},status=400)
         member = get_object_or_404(
             TenantMembership.objects.select_related("tenant"),
             tenant_id=tenant_id,user=request.user,
