@@ -52,7 +52,7 @@ from .branding_models import TenantBranding, TenantBrandingAudit  # noqa: E402,F
 
 class TenantLoyaltyActivationAudit(models.Model):
     """Trilha de aprovação de piloto; alterações apenas pelo comando controlado."""
-    id = models.BigAutoField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name="loyalty_activation_history")
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     before_enabled = models.BooleanField()

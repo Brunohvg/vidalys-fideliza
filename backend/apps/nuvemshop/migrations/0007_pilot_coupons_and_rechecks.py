@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="NuvemshopOrderRecheck",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True,
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False,
                     serialize=False)),
                 ("status", models.CharField(max_length=24, default="pending")),
                 ("summary_digest", models.CharField(max_length=64, blank=True, default="")),

@@ -1,0 +1,1 @@
+# Nuvemshop managed commands

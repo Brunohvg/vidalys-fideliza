@@ -79,6 +79,7 @@ class NuvemshopCouponIntent(models.Model):
 
 class NuvemshopOrderRecheck(models.Model):
     """Resultado mínimo da reconsulta OAuth, sem PII ou prova PSP inventada."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     event = models.OneToOneField("nuvemshop.OrderWebhookEvent",
         on_delete=models.PROTECT, related_name="order_recheck")
     status = models.CharField(max_length=24, default="pending")

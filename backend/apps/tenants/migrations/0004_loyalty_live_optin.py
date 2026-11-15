@@ -1,4 +1,5 @@
 """PR25: loja piloto nunca é ativada por instalação OAuth ou migração."""
+import uuid
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
@@ -14,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="TenantLoyaltyActivationAudit",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
                 ("before_enabled", models.BooleanField()),
                 ("after_enabled", models.BooleanField()),
                 ("approved_sha", models.CharField(max_length=40)),
