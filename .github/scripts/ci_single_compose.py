@@ -228,6 +228,7 @@ def main():
                 "apps.nuvemshop.test_pr26_revocation",
                 "apps.loyalty.test_pr26_payment_proof",
                 "apps.costs.test_pr29_order_costs",
+                "apps.nuvemshop.test_pr30_payables",
                 "apps.loyalty.test_pr29_verified_order_grant",
                 "apps.nuvemshop.test_pr29_owner_advisory",
                 "apps.tenants.test_pr28_cost_gate", "--verbosity=1",

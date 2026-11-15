@@ -1,6 +1,8 @@
 """PR28: 100% live sellable variant cost coverage and commercial command gate."""
 import os
 import secrets
+import io
+import json
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.management import call_command, CommandError
@@ -10,6 +12,8 @@ from django.utils import timezone
 from apps.costs.catalog_gate import verify_active_catalog_costs, CatalogCostCoverageBlocked
 from apps.costs.models import CostItem
 from apps.tenants.models import Tenant
+from apps.loyalty.models import LoyaltyRule
+from apps.nuvemshop.models import NuvemshopInstallation
 
 
 @override_settings(
@@ -75,6 +79,27 @@ class CompleteCatalogGateTests(TestCase):
             patch("apps.costs.catalog_gate.read_products_page", side_effect=[self.products]),
         ):
             return call_command("set_loyalty_release", **self.options)
+
+    def test_dry_run_reports_homolog_ready_without_enabling_money(self):
+        LoyaltyRule.objects.create(
+            tenant=self.tenant,version=1,enabled=True,budget_cents=100000,
+        )
+        NuvemshopInstallation.objects.create(
+            tenant=self.tenant,store_id="54321",client_id="test-pr30",
+            scope="read_orders",token_ciphertext="encrypted-qa-only",
+        )
+        buffer=io.StringIO()
+        opts={**self.options,"enable":False,"disable":False,"dry_run":True}
+        with patch("apps.tenants.management.commands.set_loyalty_release.check_oauth") as oauth:
+            call_command("set_loyalty_release",stdout=buffer,**opts)
+        report=json.loads(buffer.getvalue())
+        self.assertEqual(report["status"],"READY_FOR_HOMOLOG_ACTIVATION")
+        self.assertEqual(report["commercial_status"],"NO_GO_COMMERCIAL")
+        self.assertTrue(report["dry_run"])
+        self.assertFalse(report["loyalty_live_enabled"])
+        oauth.assert_not_called()
+        self.tenant.refresh_from_db()
+        self.assertFalse(self.tenant.loyalty_live_enabled)
 
     def test_commercial_fails_without_real_psp_fee_reconciliation(self):
         self._cost(201, "ABC-01")
