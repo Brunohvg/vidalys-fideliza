@@ -38,7 +38,7 @@ for(const width of [390,768,1440]){
     await page.setViewportSize({width,height:850});
     await setup(page);
     await page.goto("/participar#convite=token-qa-somente-front");
-    await expect(page.getByRole("heading",{name:"Entre para o clube de vantagens."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Faça parte. É simples começar."})).toBeVisible();
     await expect(page.getByText("Regulamento de adesão")).toBeVisible();
     await page.getByText("Ler regulamento",{exact:false}).click();
     await expect(page.getByText("não significa receber saldo ou crédito",{exact:false})).toBeVisible();
