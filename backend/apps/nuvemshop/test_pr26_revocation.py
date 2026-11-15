@@ -116,6 +116,62 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self.assertFalse(repeated)
         self.assertEqual(lot_balances(lot)["available"], 10)
 
+    def test_stale_unused_snapshot_and_remote_404_do_not_refund(self):
+        lot = self._credit_reservation()
+        intent = self._issued_coupon()
+        LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
+            expires_at=timezone.now()-timedelta(minutes=35))
+        intent.verified_unused_at = timezone.now()-timedelta(minutes=10)
+        intent.save(update_fields=["verified_unused_at"])
+        with (
+            patch("apps.nuvemshop.coupon_revocation.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_revocation.inspect_coupon_by_id", return_value=None),
+            patch("apps.nuvemshop.coupon_revocation.delete_coupon_once") as remover,
+            self.assertRaises(RevocationBlocked),
+        ):
+            revoke_and_release(intent_id=intent.pk, reason="expired")
+        remover.assert_not_called()
+        self.assertEqual(lot_balances(lot)["reserved"], 10)
+
+    def test_preexisting_revoking_intent_does_not_repeat_external_delete(self):
+        intent = self._issued_coupon()
+        NuvemshopCouponIntent.objects.filter(pk=intent.pk).update(
+            state=NuvemshopCouponIntent.State.REVOKING)
+        LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
+            expires_at=timezone.now()-timedelta(minutes=35))
+        with (
+            patch("apps.nuvemshop.coupon_revocation.inspect_coupon_by_id") as fetch,
+            patch("apps.nuvemshop.coupon_revocation.delete_coupon_once") as delete,
+            self.assertRaises(RevocationBlocked),
+        ):
+            revoke_and_release(intent_id=intent.pk, reason="expired")
+        fetch.assert_not_called()
+        delete.assert_not_called()
+
+    def test_psp_evidence_without_verified_receipt_cannot_settle(self):
+        from apps.loyalty.models import FinancialEvidence
+        from apps.nuvemshop.coupon_settlement import (
+            settle_coupon_after_psp_capture, CouponSettlementBlocked)
+        intent = self._issued_coupon()
+        NuvemshopCouponIntent.objects.filter(pk=intent.pk).update(
+            order_id="9876", state=NuvemshopCouponIntent.State.APPLIED)
+        sale = SaleRecord.objects.create(
+            tenant=self.tenant, channel=SaleRecord.Channel.NUVEMSHOP,
+            external_reference="9876", order_status=SaleRecord.OrderStatus.PAID,
+            reported_total_cents=1990, eligible_amount_cents=1990,
+        )
+        evidence = FinancialEvidence.objects.create(
+            tenant=self.tenant, sale=sale, kind=FinancialEvidence.Kind.CAPTURE,
+            provider="pagarme_v5", external_event_id="synthetic-fake",
+            amount_cents=1990, verification_digest="a"*64,
+            occurred_at=timezone.now(), verified_at=timezone.now(),
+        )
+        with self.assertRaises(CouponSettlementBlocked):
+            settle_coupon_after_psp_capture(
+                intent_id=intent.pk, capture_evidence_id=evidence.pk)
+        intent.refresh_from_db()
+        self.assertEqual(intent.state, NuvemshopCouponIntent.State.APPLIED)
+
     def test_preexisting_remote_404_without_unused_proof_does_not_refund(self):
         lot = self._credit_reservation()
         intent = self._issued_coupon()

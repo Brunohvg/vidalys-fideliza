@@ -6,7 +6,8 @@ do PSP. Só o adaptador autorizado pode chamar esta rotina com prova autenticada
 from django.conf import settings
 from django.db import transaction
 
-from apps.loyalty.models import FinancialEvidence, LoyaltyVoucher
+from apps.loyalty.models import FinancialEvidence, VerifiedPaymentProof, LoyaltyVoucher
+from apps.tenants.models import Tenant
 from apps.loyalty.services import LoyaltyBlocked, redeem_voucher
 from apps.sales.models import SaleRecord
 from .models import NuvemshopCouponIntent
@@ -23,9 +24,15 @@ def settle_coupon_after_psp_capture(*, intent_id, capture_evidence_id):
             and settings.FIDELIZA_POINTS_WRITES_ENABLED
             and settings.FIDELIZA_LEDGER_WRITES_ENABLED):
         raise CouponSettlementBlocked("Execução financeira desligada.")
+    # Lock order matches revocation and ledger: tenant -> intent -> voucher.
+    # Intent-first would deadlock against concurrent revocation.
+    base = NuvemshopCouponIntent.objects.only("tenant_id").get(pk=intent_id)
+    Tenant.objects.select_for_update().get(
+        pk=base.tenant_id, status=Tenant.Status.ACTIVE,
+    )
     intent = NuvemshopCouponIntent.objects.select_for_update().select_related(
         "tenant", "voucher",
-    ).get(pk=intent_id)
+    ).get(pk=intent_id, tenant_id=base.tenant_id)
     if (not intent.tenant.loyalty_live_enabled
             or not intent.order_id
             or intent.state not in (intent.State.APPLIED, intent.State.SETTLED)):
@@ -43,6 +50,12 @@ def settle_coupon_after_psp_capture(*, intent_id, capture_evidence_id):
     ).first()
     if evidence is None:
         raise CouponSettlementBlocked("Prova PSP independente inexistente.")
+    if (evidence.provider != "pagarme_v5" or not
+            VerifiedPaymentProof.objects.filter(
+                evidence=evidence, tenant=intent.tenant,
+                proof_method="pagarme_v5_get",
+            ).exists()):
+        raise CouponSettlementBlocked("Evidência sem verificação PSP autenticada.")
     code = decrypt_token(intent.encrypted_code, config().token_keys)
     reference = f"nuvemshop:{intent.store_id}:{intent.order_id}"
     try:

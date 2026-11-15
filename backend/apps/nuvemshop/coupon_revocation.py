@@ -5,6 +5,7 @@ marks REVOKING, then verifies the provider by GET and records the result.
 A timeout stays REVOKING until subsequent GET confirms it is unusable.
 """
 from datetime import timedelta
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from apps.loyalty.models import FinancialEvidence, LoyaltyVoucher
@@ -58,6 +59,10 @@ def _eligibility(intent, reason):
 
 def revoke_and_release(*, intent_id, reason, opener=None):
     """Idempotent effect, but remote network uncertainty fails closed."""
+    from apps.loyalty.services import _execution_enabled
+    _execution_enabled()
+    if not settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED:
+        raise RevocationBlocked("Revogação externa não autorizada")
     # All revocations of this tenant are serialized: no second caller can
     # cancel or settle a voucher while its remote state is unresolved.
     with transaction.atomic():
@@ -66,6 +71,9 @@ def revoke_and_release(*, intent_id, reason, opener=None):
         intent = NuvemshopCouponIntent.objects.select_for_update().select_related(
             "voucher", "tenant",
         ).get(pk=intent_id)
+        if (intent.tenant.status != Tenant.Status.ACTIVE
+                or not intent.tenant.loyalty_live_enabled):
+            raise RevocationBlocked("Loja não habilitada para revogação")
         existing = NuvemshopCouponRevocationAudit.objects.filter(intent=intent).first()
         if existing:
             if existing.reason != reason:
@@ -78,6 +86,9 @@ def revoke_and_release(*, intent_id, reason, opener=None):
                 _execution_enabled()
                 _cancel_reserved_voucher(intent.voucher)
             return intent, False
+        if intent.state == intent.State.REVOKING:
+            # A preceding DELETE may still be in flight; never retry blindly.
+            raise RevocationBlocked("DELETE anterior incerto: conciliação manual")
         _eligibility(intent, reason)
         cfg = config()
         installation = NuvemshopInstallation.objects.filter(
@@ -101,10 +112,10 @@ def revoke_and_release(*, intent_id, reason, opener=None):
             store_id=intent.store_id, token=token, agent=cfg.user_agent,
             remote_id=remote_id, opener=opener,
         )
-        if found is None and intent.verified_unused_at is None:
-            raise RevocationBlocked(
-                "Cupom não localizado sem prova anterior de ausência de uso"
-            )
+        if found is None:
+            # GET 404 before a confirmed DELETE is not proof of non-consumption.
+            # Even a previous used=0 snapshot can be stale after checkout.
+            raise RevocationBlocked("Cupom ausente: conciliação manual obrigatória")
         if found is not None:
             if found.get("code") != code:
                 raise RevocationBlocked("Cupom remoto pertence a outro código")
