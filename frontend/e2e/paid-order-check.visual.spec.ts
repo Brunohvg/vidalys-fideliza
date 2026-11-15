@@ -59,7 +59,7 @@ for(const width of [320,390,1440]){
    expect(r.request().method()).toBe("GET");
    return r.fulfill({contentType:"application/json",body:JSON.stringify(order)});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByRole("navigation",{name:"Canais de vendas"}).getByRole("button",{name:"Nuvemshop"}).click();
@@ -94,7 +94,7 @@ test("Cancelamento e falta de autorização não geram pontos",async({page})=>{
   return r.fulfill({status:409,contentType:"application/json",
    body:JSON.stringify({detail:"Autorize a leitura de pedidos nesta loja."})});
  });
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
  await page.getByRole("navigation",{name:"Canais de vendas"}).getByRole("button",{name:"Nuvemshop"}).click();
@@ -121,7 +121,7 @@ test("Link administrativo e ID interno explícito não confundem com #numero",as
   seen.push("id");return r.fulfill({contentType:"application/json",
    body:JSON.stringify({...order,order_id:"363573290",order_number:"14112"})});
  });
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
  await page.getByRole("navigation",{name:"Canais de vendas"}).getByRole("button",{name:"Nuvemshop"}).click();

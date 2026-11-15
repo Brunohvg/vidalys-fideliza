@@ -64,7 +64,7 @@ for(const width of [320,390,1440]){
   await page.route("**/api/v1/tenants/**/nuvemshop/orders/2120958234/preview/",r=>{
    inspects++;return r.fulfill({contentType:"application/json",body:JSON.stringify(order)});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByRole("navigation",{name:"Canais de vendas"})
@@ -93,7 +93,7 @@ test("Sem read_orders, painel avisa e não inventa ausência de vendas",async({p
   r.fulfill({status:409,contentType:"application/json",body:JSON.stringify({
    detail:"Autorize a leitura de pedidos nesta loja.",
   })}));
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
  await page.getByRole("navigation",{name:"Canais de vendas"})

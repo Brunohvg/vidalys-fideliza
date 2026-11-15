@@ -29,7 +29,7 @@ for (const width of [390, 768, 1440]) {
   test("Menu acessível em viewport baixa: "+width+"x700",async ({page})=>{
     await page.setViewportSize({width,height:700});
     await loginMock(page);
-    await page.goto("/");
+    await page.goto("/app/visao-geral");
     if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
 
     const menu=page.getByRole("complementary",{name:"Menu do lojista"});

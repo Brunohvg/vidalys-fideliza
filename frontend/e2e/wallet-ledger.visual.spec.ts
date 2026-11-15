@@ -48,7 +48,7 @@ for(const width of [390,768,1440]){
   test("Extrato visível, sem resgate, em "+width+"px",async ({page},info)=>{
     await page.setViewportSize({width,height:850});
     await mockPortal(page);
-    await page.goto("/");
+    await page.goto("/app/visao-geral");
     if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.getByRole("complementary",{name:"Menu do lojista"}).getByRole("button",{name:"Clientes",exact:true}).click();
     if(width<=760){

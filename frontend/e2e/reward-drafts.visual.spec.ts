@@ -54,7 +54,7 @@ for(const width of [390,1440]){
       coupon_created:false,points_credited:false}),
    });
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
   await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
@@ -104,7 +104,7 @@ test("Recompensa existente pode ser editada e excluída com confirmação",async
    deleted:true,id,coupon_created:false,
   })});
  });
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
  await page.getByRole("button",{name:"Editar",exact:true}).click();
@@ -138,7 +138,7 @@ test("Recompensa mostra esforço real em pontos, taxa e orçamento sem publicar"
    mode:"draft_only",activation_available:false,items:[],
   }),
  }));
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
  const economics=page.getByLabel("Conferência da recompensa planejada");
@@ -180,7 +180,7 @@ test("Salvar regra recalcula economia da recompensa na mesma tela",async({page})
   route.fulfill({contentType:"application/json",body:JSON.stringify({
    mode:"draft_only",activation_available:false,items:[],
   })}));
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
  const econ=page.getByLabel("Conferência da recompensa planejada");
@@ -232,7 +232,7 @@ for(const width of [390,1440]){
     coupon_created:false,points_credited:false,points_debited:false,
    })});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
   const catalog=page.locator(".vf-benefit-saved");
