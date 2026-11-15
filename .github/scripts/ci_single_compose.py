@@ -228,6 +228,7 @@ def main():
                 "apps.loyalty.tests",
                 "apps.nuvemshop.test_pr25_pilot",
                 "apps.loyalty.test_pr26_proof",
+                "apps.loyalty.test_pr26_full_cycle",
                 "apps.nuvemshop.test_pr26_revocation", "--verbosity=1",
             ], env, label="smoke PR25 cupom único, OAuth e triggers PostgreSQL descartável",
                synthetic_test_output=True)
