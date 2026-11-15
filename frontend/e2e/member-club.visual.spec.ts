@@ -42,7 +42,7 @@ for(const width of [320,390,768,1440]){
         body:JSON.stringify({authenticated:true})});
     });
     await page.goto("/clube/loja-jardim");
-    await expect(page.getByRole("heading",{name:"Mais motivos para voltar à Loja Jardim."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:/Mais motivos para voltar/})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Bem-vindo de volta"})).toBeVisible();
     await page.screenshot({path:testInfo.outputPath("club-guest-"+width+".png"),fullPage:true});
     await expect(page.getByRole("link",{name:"Quero participar"})).toBeVisible();
@@ -197,13 +197,16 @@ for(const width of [320,390]){
    status:401,contentType:"application/json",body:JSON.stringify({detail:"Sem acesso"}),
   }));
   await page.goto("/clube/loja-jardim");
-  await expect(page.getByRole("heading",{name:"Mais motivos para voltar à Loja Jardim."})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Um bom motivo para voltar"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:/Mais motivos para voltar/})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Recompensas que fazem voltar"})).toBeVisible();
   const perks=page.getByRole("region",{name:"Recompensas apresentadas pela loja"});
+  await expect(perks.locator(".member-club-benefit-card")).toHaveCount(1);
+  await expect(perks.locator(".member-club-benefit-amount")).toContainText("R$");
+  await expect(page.locator(".member-club-hero-guest")).toHaveCSS("background-image",/linear-gradient/);
   await expect(perks).toContainText("R$ 5 no próximo pedido");
   await expect(perks).toContainText("200 pontos previstos");
   await expect(perks).toContainText("R$ 30,00");
-  await expect(perks).toContainText("Resgate em preparação");
+  await expect(perks).toContainText("Em preparação");
   await expect(page.getByRole("link",{name:"Quero participar"}))
    .toHaveAttribute("href","/participar/loja-jardim");
   await expect(page.getByRole("heading",{name:"Bem-vindo de volta"})).toBeVisible();
