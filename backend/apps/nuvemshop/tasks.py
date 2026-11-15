@@ -20,3 +20,23 @@ def sanitize_store_after_redact(self, receipt_id: str):
         logger.warning("Limpeza de dados da loja pendente, tentativa=%s",
                        self.request.retries+1)
         raise self.retry(exc=RuntimeError("privacy_cleanup_failed")) from None
+
+
+@shared_task(bind=True, max_retries=5, retry_backoff=True, retry_jitter=True,
+             retry_backoff_max=600, acks_late=True, ignore_result=True)
+def recheck_nuvemshop_order_event(self, event_id: str):
+    """Reconsulta GET após webhook HMAC; não marca pagamento conciliado."""
+    from .order_recheck_service import RecheckBlocked, recheck_order_event
+    from .order_readonly import OrderReadError
+    from .security import OAuthConfigurationError
+    try:
+        return recheck_order_event(event_id=event_id)
+    except RecheckBlocked:
+        # Recurso sem escopo, divergência de identidade ou status exige revisão,
+        # não tempestade de retries.
+        logger.warning("Reconsulta de pedido Nuvemshop requer revisão manual")
+        return "requires_review"
+    except (OrderReadError, OAuthConfigurationError):
+        logger.warning("Reconsulta temporariamente indisponível; tentativa=%s",
+                       self.request.retries + 1)
+        raise self.retry(exc=RuntimeError("nuvemshop_recheck_unavailable")) from None

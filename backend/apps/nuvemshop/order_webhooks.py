@@ -119,7 +119,7 @@ def order_webhook(request, kind):
                 valid_installation.scope, preview_enabled=True
             ):
                 return _response()
-            OrderWebhookEvent.objects.get_or_create(
+            receipt, _ = OrderWebhookEvent.objects.get_or_create(
                 dedupe_key=dedupe_key,
                 defaults={
                     "tenant": tenant,
@@ -129,6 +129,12 @@ def order_webhook(request, kind):
                     "event_launch_ts": launched,
                 },
             )
+            if getattr(settings, "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED", False):
+                from .tasks import recheck_nuvemshop_order_event
+                # Mesmo um replay pode corrigir falha prévia no broker/worker.
+                transaction.on_commit(
+                    lambda: recheck_nuvemshop_order_event.delay(str(receipt.pk))
+                )
         return _response()
     except Exception:
         # Não gravar payload, exceção ou identificadores no log.
