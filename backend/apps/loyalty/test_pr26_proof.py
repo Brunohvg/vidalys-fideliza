@@ -16,7 +16,7 @@ from apps.loyalty.payment_proof import (
 )
 from apps.nuvemshop.order_recheck_service import _buyer_identity
 from apps.participants.models import ProgramParticipant
-from apps.sales.models import SaleRecord
+from apps.sales.models import SaleRecord, SaleEventReceipt
 from apps.tenants.models import Tenant, TenantMembership
 
 
@@ -128,6 +128,39 @@ class ProofTests(TestCase):
         self.assertEqual(audit.operator_id,self.op.pk)
         self.assertEqual(audit.reviewer_id,self.reviewer.pk)
         self.assertEqual(evidence.provider,"cash_dual_control")
+
+    @override_settings(
+        FIDELIZA_CASH_DUAL_CONTROL_ENABLED=True,
+        FIDELIZA_TRUSTED_PAYMENT_ADAPTERS=frozenset({"cash_dual_control"}),
+    )
+    def test_flow_sale_requires_authenticated_ingestion_receipt_plus_dual_cash_check(self):
+        flow = SaleRecord.objects.create(
+            tenant=self.tenant, channel=SaleRecord.Channel.VIDALYS_FLOW,
+            external_reference="FLOW-ORDER-26",
+            source_order_key="a" * 64, eligible_amount_cents=0,
+            reported_total_cents=2500, order_status=SaleRecord.OrderStatus.PAID,
+        )
+        now=timezone.now()
+        args=dict(
+            sale_id=flow.pk, receipt_reference="FLOW-CASH-REC-26",
+            operator_id=self.op.pk, reviewer_id=self.reviewer.pk,
+            received_at=now, counted_cents=2500,
+        )
+        with self.assertRaises(PaymentProofBlocked):
+            record_cash_dual_control(**args)
+        SaleEventReceipt.objects.create(
+            tenant=self.tenant, sale=flow,
+            channel=SaleRecord.Channel.VIDALYS_FLOW,
+            source_event_id="signed-flow-26",
+            idempotency_key="d" * 64, payload_digest="e" * 64,
+            reported_status=SaleRecord.OrderStatus.PAID,
+            reported_total_cents=2500,
+            outcome=SaleEventReceipt.Outcome.APPLIED,
+        )
+        evidence, fresh=record_cash_dual_control(**args)
+        self.assertTrue(fresh)
+        self.assertEqual(evidence.sale_id, flow.pk)
+        self.assertEqual(evidence.provider, "cash_dual_control")
 
     @override_settings(
         FIDELIZA_PAYMENT_PROOF_ENABLED=True,
