@@ -55,7 +55,7 @@ def normalize_cpf(value):
     if not re.fullmatch(r"[0-9]{11}", digits) or len(set(digits)) == 1:
         raise ValueError("CPF inválido.")
     def digit(n):
-        total = sum(int(digits[i]) * (n + 1 - i) for i in range(n - 1))
+        total = sum(int(digits[i]) * (n - i) for i in range(n - 1))
         result = 11 - (total % 11)
         return 0 if result >= 10 else result
     if digit(10) != int(digits[9]) or digit(11) != int(digits[10]):
