@@ -198,10 +198,10 @@ class CouponIdempotencyTests(TestCase):
         self.assertFalse(NuvemshopCouponIntent.objects.exists())
 
     def test_one_post_retry_only_get_and_encrypted_code(self):
-        with patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg), (
-            patch("apps.nuvemshop.coupon_service.create_coupon_once", return_value="876")
-        ) as posted, (
-            patch("apps.nuvemshop.coupon_service.find_coupon_exact") as found
+        with (
+            patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_service.create_coupon_once", return_value="876") as posted,
+            patch("apps.nuvemshop.coupon_service.find_coupon_exact") as found,
         ):
             intent, code = provision_coupon(
                 voucher_id=self.voucher.pk, issued_code=self.code,
@@ -220,12 +220,12 @@ class CouponIdempotencyTests(TestCase):
         self.assertEqual(NuvemshopCouponIntent.objects.count(), 1)
 
     def test_timeout_creates_uncertain_intent_no_second_post(self):
-        with patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg), (
+        with (
+            patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg),
             patch("apps.nuvemshop.coupon_service.create_coupon_once",
-                  side_effect=CouponRemoteError("timeout"))
-        ) as posted, (
-            patch("apps.nuvemshop.coupon_service.find_coupon_exact", return_value=None)
-        ) as found:
+                  side_effect=CouponRemoteError("timeout")) as posted,
+            patch("apps.nuvemshop.coupon_service.find_coupon_exact", return_value=None) as found,
+        ):
             with self.assertRaises(PilotCouponBlocked):
                 provision_coupon(voucher_id=self.voucher.pk, issued_code=self.code)
             intent = NuvemshopCouponIntent.objects.get()
@@ -247,8 +247,9 @@ class CouponIdempotencyTests(TestCase):
             tenant_id=self.tenant.pk, participant_id=self.participant.pk,
             email=self.participant.contact_email, proof_method="email_otp",
         )
-        with patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg), (
-            patch("apps.nuvemshop.coupon_service.create_coupon_once", return_value="876")
+        with (
+            patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_service.create_coupon_once", return_value="876"),
         ):
             provision_coupon(voucher_id=self.voucher.pk, issued_code=self.code)
         event = OrderWebhookEvent.objects.create(
@@ -265,9 +266,10 @@ class CouponIdempotencyTests(TestCase):
             "coupon_id": 876, "coupon": [{"id": 876, "code": self.code}],
             "discount_coupon": "1.00",
         }
-        with patch("apps.nuvemshop.order_recheck_service.config", return_value=self.cfg), (
-            patch("apps.nuvemshop.order_recheck_service.read_order", return_value=order)
-        ) as read:
+        with (
+            patch("apps.nuvemshop.order_recheck_service.config", return_value=self.cfg),
+            patch("apps.nuvemshop.order_recheck_service.read_order", return_value=order) as read,
+        ):
             state = recheck_order_event(event_id=event.pk)
             self.assertEqual(state, "applied_pending_independent_capture")
             self.assertEqual(recheck_order_event(event_id=event.pk), "already_checked")
