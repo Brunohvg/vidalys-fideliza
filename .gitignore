@@ -13,3 +13,10 @@ coverage/
 .coverage
 staticfiles/
 .DS_Store
+
+# PR24: estado autenticado do navegador contém cookies/PII, nunca versionar.
+frontend/.auth/
+frontend/homolog/.auth/
+frontend/test-results-homolog/
+*storage-state*.json
+*.storageState.json
