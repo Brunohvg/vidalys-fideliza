@@ -400,11 +400,17 @@ class LoyaltyFinancialTests(TestCase):
 
     def test_cross_tenant_financial_proof_rejected(self):
         sale = self.make_sale("CROSS-TENANT")
-        capture = self.proof(sale)
-        capture.tenant = self.another_tenant
-        # Simula adulteração entre dois tenants no banco; a execução falha fechada.
-        FinancialEvidence.objects.filter(pk=capture.pk).update(tenant=self.another_tenant)
-        capture.tenant_id = self.another_tenant.pk
+        # Um comprovante criado já com tenant incorreto deve ser rejeitado.
+        # Depois do PR26, UPDATE no PostgreSQL é bloqueado por trigger.
+        capture = FinancialEvidence.objects.create(
+            tenant=self.another_tenant, sale=sale,
+            kind=FinancialEvidence.Kind.CAPTURE,
+            provider="psp_test", external_event_id="cross-tenant-test",
+            amount_cents=sale.reported_total_cents,
+            verification_digest="a"*64,
+            occurred_at=timezone.now()-timedelta(minutes=10),
+            verified_at=timezone.now(),
+        )
         with self.assertRaises(LoyaltyBlocked):
             grant_for_captured_sale(sale_id=sale.pk, evidence_id=capture.pk, costs=self.costs)
         self.assertFalse(LoyaltyGrant.objects.exists())
