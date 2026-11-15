@@ -45,3 +45,36 @@ def recheck_nuvemshop_order_event(self, event_id: str):
                        self.request.retries + 1)
         raise self.retry(exc=RuntimeError("nuvemshop_order_recheck_retry")) from None
 
+
+
+@shared_task(bind=True, name="nuvemshop.revoke_expired_coupons",
+             queue="nuvemshop", max_retries=2, retry_backoff=True,
+             retry_jitter=True, acks_late=True, ignore_result=True)
+def revoke_expired_nuvemshop_coupons(self):
+    """Bounded expiration scan: no automatic store mutation unless all gates pass."""
+    from django.conf import settings
+    from django.utils import timezone
+    from .coupon_revocation import revoke_and_release, RevocationBlocked
+    from .models import NuvemshopCouponIntent
+    if not (
+        settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED
+        and settings.FIDELIZA_POINTS_WRITES_ENABLED
+        and settings.FIDELIZA_LEDGER_WRITES_ENABLED
+        and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
+    ):
+        return "financial_gates_off"
+    candidates = list(NuvemshopCouponIntent.objects.filter(
+        tenant__loyalty_live_enabled=True,
+        state__in=(NuvemshopCouponIntent.State.ISSUED,
+                   NuvemshopCouponIntent.State.REVOKING),
+        order_id="", voucher__expires_at__lte=timezone.now(),
+    ).order_by("created_at").values_list("pk",flat=True)[:20])
+    completed = 0
+    for identifier in candidates:
+        try:
+            _, changed = revoke_and_release(intent_id=identifier, reason="expired")
+            completed += int(changed)
+        except RevocationBlocked:
+            # No free balance on failure. Next scan or operator inspects it.
+            logger.warning("Revogação automática de cupom requer revisão")
+    return f"checked={len(candidates)} revoked={completed}"
