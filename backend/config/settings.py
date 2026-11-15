@@ -30,10 +30,13 @@ INSTALLED_APPS = [
     "apps.catalog.apps.CatalogConfig",
     "apps.nuvemshop.apps.NuvemshopConfig",
     "apps.participants.apps.ParticipantsConfig",
+    "apps.customers.apps.CustomersConfig",
     "apps.campaigns.apps.CampaignsConfig",
     "apps.wallets.apps.WalletsConfig",
     "apps.sales.apps.SalesConfig",
     "apps.points.apps.PointsConfig",
+    "apps.channels.apps.ChannelsConfig",
+    "apps.loyalty.apps.LoyaltyConfig",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -104,6 +107,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_THROTTLE_RATES": {"orders_ingest": "60/min"},
 }
 # Somente use com proxy que substitua X-Forwarded-Proto e sem acesso externo direto à API.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -144,6 +148,58 @@ FIDELIZA_POINTS_WRITES_ENABLED = False
 # Bloqueado: concessões e resgates dependem de autorização e eventos verificados.
 FIDELIZA_LEDGER_WRITES_ENABLED = False
 
+# PR20: SEM adaptador PSP autorizado, execução financeira somente sob
+# override_settings em testes de domínio (não há env que ligue isso).
+FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED = False
+FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
+# PR26: recording a PSP/cash attestation also remains OFF in real runtime.
+# Only isolated tests may override this explicit hardcoded gate.
+FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED = False
+# No documented binding of Admin API coupon codes to a checkout identity.
+# Mandatory commercial gates: no environment override can claim verification.
+FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED = False
+# Until order-item IDs, quantities, discounts and freight are reconciled
+# against the signed Nuvemshop order snapshot, costs cannot authorize money.
+FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED = False
+# Real Pagar.me recipient fee reconciliation is NOT approved by QA-only tests.
+FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED = False
+FIDELIZA_CHECKOUT_ALLOWED_ORIGINS = tuple(
+    part.strip() for part in
+    os.getenv("FIDELIZA_CHECKOUT_ALLOWED_ORIGINS", "").split(",")
+    if part.strip().startswith("https://") and "*" not in part
+)
+FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED = False
+FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
+
+# Agendamentos somente para elegibilidade, sem mensagens ou créditos por padrão.
+# Requer processo Celery Beat em ambiente homologado (não ativado por aqui).
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    "loyalty-birthdays-daily": {
+        "task": "loyalty.scan_verified_birthdays",
+        "schedule": crontab(hour=9, minute=0),
+    },
+    "loyalty-winback-candidates-daily": {
+        "task": "loyalty.scan_winback",
+        "schedule": crontab(hour=9, minute=15),
+    },
+    "loyalty-release-due-grants-hourly": {
+        "task": "loyalty.release_due_grants",
+        "schedule": crontab(minute=0),
+    },
+    "loyalty-reconcile-refunds-half-hourly": {
+        "task": "loyalty.reconcile_verified_refunds",
+        "schedule": crontab(minute="*/30"),
+    },
+    # PR26: must run on dedicated Nuvemshop OAuth worker, never generic SMTP.
+    # Without Celery Beat deployment this schedule is inert.
+    "nuvemshop-revoke-expired-hourly": {
+        "task": "nuvemshop.revoke_expired_coupons",
+        "schedule": crontab(minute=10),
+        "options": {"queue": "nuvemshop"},
+    },
+}
+
 # Registro público desativado até a homologação do fluxo de dados pessoais.
 FIDELIZA_PUBLIC_SIGNUP_ENABLED = env_bool("FIDELIZA_PUBLIC_SIGNUP_ENABLED", False)
 
@@ -165,6 +221,14 @@ FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED = env_bool(
 # Recepção de eventos autenticados somente no piloto, sem crédito de saldo.
 FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED = env_bool(
     "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", False
+)
+# PR25: a autorização de escopo e o envio HTTP de cupons são dois gates
+# separados; jamais inferir habilitação pela mera instalação de um app.
+FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED = env_bool(
+    "FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED", False
+)
+FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED = env_bool(
+    "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED", False
 )
 
 # Manual approval of verified participants; NO cashback/ledger activation.

@@ -1,7 +1,63 @@
 # 43 — Vidalys Fideliza: roteiro de execução com gates e pendências
 
-Atualizado em 13/11/2026. Fonte da verdade para a ordem de trabalho na
-branch homolog. Não confundir código, CI, implantação e aprovação real.
+## CHECKPOINT ATUAL — 15/11/2026: integração de código PRs #18–#30
+
+> **Este checkpoint substitui os estados cronológicos antigos abaixo.**
+> O histórico anterior permanece para auditoria; não executar seus passos
+> como se fossem instruções vigentes. Manter o foco no próximo gate real.
+
+**Fonte integrada:** cadeia linear #18 → #19 → #20 → #21 → #22 → #23 →
+#24 → #25 → #28 → #29 → #30. Os PRs #26 e #27 são alternativas
+paralelas para PSP/revogação: #27 está representado na árvore final;
+#26 possui migrações e serviços alternativos que não devem ser misturados
+com as migrações consolidadas de #28–#30. Fechar ambos como substituídos,
+sem reexecutar ou apagar commits. Preservar `main`.
+
+**Estado real:** a versão do PR #30
+[`01962c05d0da8891afa5053159d86ca02dbaa569`](https://github.com/Brunohvg/vidalys-fideliza/commit/01962c05d0da8891afa5053159d86ca02dbaa569)
+passou em [GitHub Actions #989](https://github.com/Brunohvg/vidalys-fideliza/actions/runs/43734850370):
+6/6 jobs; 477 testes backend aprovados, 4 ignorados, 224 subtestes,
+6 arquivos Vitest, 139 Playwright, PostgreSQL descartável, Docker e
+Compose Raw. **Isso valida o código, não o deploy.** Após a integração,
+usar o **SHA efetivo de `homolog`** e o CI de push desse SHA como prova
+definitiva, sem copiar o SHA antigo para o Coolify.
+
+| Gate | Estado comprovado | Próxima prova indispensável |
+| --- | --- | --- |
+| G0 — UI lojista/participante | CÓDIGO VALIDADO | Revisão visual real em 390/768/1440 e fluxo simples por usuário |
+| **G1 — Coolify Raw/PostgreSQL** | **CÓDIGO VALIDADO; DEPLOY DO SHA INTEGRADO NÃO COMPROVADO** | Identificar SHA publicado; backup + restauração isolada; migrações e isolamento de env/health sem segredos |
+| G2 — OAuth Nuvemshop | CÓDIGO VALIDADO | Autorização oficial em loja **QA** e GET legítimo |
+| G3 — cadastro e e-mail | CÓDIGO VALIDADO; relatos de SMTP anteriores | Cadastro novo, entrega real da mensagem, confirmação, sessão, vínculo e remoção |
+| G4/G5 — webhook e reconsulta | CÓDIGO VALIDADO | Evento assinado real, duplicação, reordenação e cancelamento na QA |
+| G6 — regras/recompensas simuladas | CÓDIGO VALIDADO | Jornada visível de pontos e resgate simulado para consumidor |
+| G7 — PSP + CMV SKU + frete/taxa | CÓDIGO VALIDADO COM DADOS SINTÉTICOS | Captura e payables reais **sandbox/autorizados**, total, custo e estorno conferidos |
+| G8 — concessão/resgate financeiro | **BLOQUEADO COM SEGURANÇA** | Prova de titularidade no checkout não contornável e revogação real; nenhuma concessão comercial |
+| G9/G10 — gamificação avançada, IA e canais adicionais | FORA DO ESCOPO DO PILOTO | Somente depois do teste ponta a ponta |
+
+**Próxima ação ÚNICA (G1):** no Coolify Raw de homologação,
+conferir o SHA em execução e a configuração do PostgreSQL externo;
+validar backup com restauração isolada, isolamento de segredos, migrações
+e serviços. Se estiver em versão antiga, só atualizar após essas provas.
+A aprovação do CI isolado **não autoriza** um deploy automático nem
+alteração de loja/PSP real.
+
+**Depois de G1:** G3 cadastro+SMTP, G2 OAuth de loja QA, G4/G5 pedidos,
+G7 captura/taxas, G8 resgate **somente controlado e sem valor comercial**.
+Critérios de teste e campos de evidência:
+[PR30-RELEASE-AND-PILOT-QA.md](PR30-RELEASE-AND-PILOT-QA.md).
+
+**GO-LIVE permanece NO-GO.**
+`Tenant.loyalty_live_enabled=False` é o padrão;
+`FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED=False` e
+`FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED=False` permanecem desligadas.
+Script NubeSDK é fonte de QA, **não foi instalado** nem demonstrou
+restrição de checkout não contornável. A conexão da loja Bibelô
+não foi utilizada para alterações neste merge.
+
+---
+
+Atualizado originalmente em 13/11/2026. Histórico abaixo; o checkpoint acima
+é a referência vigente. Não confundir CI, implantação e aprovação real.
 A conexão Nuvemshop já disponível no ChatGPT não substitui a instalação
 OAuth do aplicativo Fideliza no servidor de testes. Não usar TinyFish.
 
@@ -1116,3 +1172,368 @@ reversão. Não alegar que a integração financeira está pronta.
 `write_*` no .env e não ativar motores financeiros. Só considerar
 automação efetiva de pontos depois de validar o adaptador
 independente de conciliação e resgate da Nuvemshop.
+
+
+## 14/11/2026 — Refatoração segura: identidade omnichannel (corte 1)
+
+**Origem:** auditoria da branch homolog no SHA c25d668. A infraestrutura
+G1 e a homologação de OAuth/SMTP/PSP seguem bloqueadas pelos critérios
+anteriores; esta é uma alteração offline de domínio, sem mudança em
+main, Coolify, OAuth, saldos ou conta real.
+
+**Diagnóstico:**
+- tenants e participants já permitem adesão independente; a Nuvemshop
+  NÃO é atualmente obrigatória para criar uma loja.
+- points/PointLot/PointEvent/PointEntry e wallets/CashbackEvent/CashbackEntry
+  são ledgers separados, ambos bloqueados para escrita operacional.
+  Consolidar a interface de domínio depois, sem migrar ou zerar saldos.
+- sales/SaleRecord já permite entrada manual com conferência por
+  dono único. Não criar outra tabela paralela de vendas.
+- campaigns/CampaignDraft, sales/PointCampaignDraft e
+  sales/DiscountRewardDraft são rascunhos; não confundir publicação
+  visual com resgate transacional.
+- O frontend autenticado real usa Portal.tsx e o consumidor MemberClub.tsx;
+  App.tsx é somente /demo. Há CSS distribuído em muitos arquivos.
+- CI de c25d668: backend/frontend e smoke passaram; visual_qa falhou
+  em Playwright. Não declarar interface homologada.
+
+**Mapa de modelos (migração progressiva, sem renomeação destrutiva):**
+1. tenants: Tenant, TenantMembership e branding são mantidos.
+2. customers: CustomerProfile, VerifiedCustomerContact (HMAC por tenant
+   de contato normalizado e efetivamente verificado) e
+   ChannelCustomerReference (único por tenant/canal/ID).
+3. participants: ProgramParticipant + prova de aceite continuam como
+   titular da carteira. O vínculo com customers é 1:1 opcional e
+   nunca cria adesão a partir de contato informado por terceiros.
+4. ledger: consolidar **serviços/interfaces** de points e wallets;
+   preservar as tabelas e unidades atuais até migração auditada.
+5. loyalty: evolução gradual de campaigns e sales/drafts, sem
+   implementar cópias de regras/campanhas em apps concorrentes.
+6. channels: interfaces adaptadoras para Nuvemshop, PDV e Flow;
+   ingressos não equivalem a pagamento. Autorização, verificação,
+   cancelamento, deduplicação e políticas de reversão vêm antes de
+   conceder qualquer ponto/cashback.
+
+**Mapa de telas alvo:**
+- /app: Visão Geral (indicadores verificados), Clientes (perfil e
+  carteira), Programa (regras/recompensas/níveis), Campanhas (templates),
+  Vendas (lista por canal e lançamento rápido) e Configurações.
+- Custos, margem, SKU e conciliação: ferramentas avançadas dentro
+  do fluxo, sem perder funcionalidade.
+- /clube/:slug_loja: nível e progresso, saldo, resgate comprovado,
+  benefícios, missões e extrato; white-label por TenantBranding.
+- /demo continua isolado, sem números reais nem acesso autenticado.
+- Tokens existentes --vf-ink/navy, --vf-primary/jade, mint, reward/gold
+  e canvas são a base; eliminar estilos conflitantes e testar
+  320/390/768/1440, keyboard e estados de loading/vazio/erro.
+
+**Incremento offline implementado na branch de revisão:**
+- Adiciona customers com unicidade de contato e referência por tenant.
+  Normalização de e-mail e telefone EXCLUSIVAMENTE E.164; contato
+  fica indexado por HMAC, não como dado adicional claro.
+- Reutiliza a prova de e-mail consumida na adesão independente e
+  na vinculação Nuvemshop já verificada para criar o perfil universal.
+- Nenhum merge automático de participantes com contato conflitante.
+  Sem migração em massa dos participantes antigos (exige amostra e
+  tratamento de duplicidades); sem transferência de saldo.
+- Testes sintéticos: independente, idempotência, isolamento tenant,
+  e-mail + telefone, ligação entre canais, conflito de identidade
+  e zero crédito. Execução no CI ainda deve ser verificada.
+- HMAC usa DJANGO_SECRET_KEY: rotação exige SECRET_KEY_FALLBACKS
+  temporário ou estratégia futura de versionamento/rehash; nenhuma
+  chave/contato é exibida em logs.
+- Os endpoints /api/v1/customers/identify/ e /api/v1/events/orders/
+  permanecem PENDENTES: só serão abertos com autenticação do canal,
+  escopos tenant, assinatura/replay, prova financeira e rate-limit.
+- **Não ativar** FIDELIZA_POINTS_WRITES_ENABLED ou
+  FIDELIZA_LEDGER_WRITES_ENABLED. Sem emissão de cupom real.
+
+**Fronteiras e decisões futuras:**
+- Política de vínculo: dados autodeclarados nunca unem carteiras;
+  confirmação OTP ou fonte autenticada é obrigatória.
+- Fonte de pagamento: PDV poderá usar conferência auditada de operador;
+  Nuvemshop/Flow exigem contrato de pagamento/estorno por canal.
+- Modelo comercial: pontos são o benefício inicial, cashback em R$
+  exige regras de custo, expiração e elegibilidade explícitas.
+- A fonte de métrica ROI não poderá atribuir toda recompra ao programa
+  sem método incremental. Não inventar ROI a partir de vendas totais.
+
+
+## 14/11/2026 — PR #19: ingestão segura multicanal (corte de backend)
+
+**Dependência:** PR #18 (CustomerProfile) ainda aberto em draft; PR #19 é
+empilhado sobre a branch de trabalho #18. Não incorporar à homologação
+sem concluir o PR predecessor e conferir as migrações/CI.
+
+**Mapa de arquivos:** evolui apps/sales/models.py e sales/0004,
+adiciona apps/channels (models/credencial, serializer, services,
+views, adapter Nuvemshop, urls, migração e tests) e adiciona urls/
+INSTALLED_APPS/throttle em config. Atualiza apenas docs/43.
+
+**Contrato POST /api/v1/events/orders/** (BRL apenas neste MVP):
+- tenant_id: UUID da loja; channel: vidalys_flow ou counter.
+- external_order_id: referência interna do canal (1–80 caracteres seguros).
+- customer_identifier: e-mail normalizado ou telefone E.164 já com DDI.
+- total_amount: string decimal (ex. "149.90"), nunca float.
+- currency: "BRL"; status: pending, paid, cancelled ou refunded.
+- source_event_id: opcional, identificador único do evento no canal;
+  ocorreu_at é representado por occurred_at ISO8601 com fuso (opcional).
+  Sem source_event_id, reenvios do mesmo status usam a mesma chave,
+  e conteúdo divergente retorna 409.
+- Resposta inclui sale_id, event_id, created, duplicate, event_outcome,
+  payment_verified=false, points_credited=false, cashback_credited=false.
+- O identificador do PEDIDO combina tenant+canal+external_order_id;
+  o identificador do EVENTO soma source_event_id ou status. Transições
+  legítimas pending→paid→refunded preservam UM registro de venda e
+  acrescentam eventos append-only; retornos de status são ignorados e
+  auditados, sem crédito.
+- Reenvio com mesma chave e conteúdo diferente dá 409; valor e contato
+  divergentes no mesmo pedido exigem revisão. Anotações reportadas como
+  paid NÃO são captura independente nem autorização de fidelização.
+
+**Identidade:** lookup usa VerifiedCustomerContact do PR #18. Sem
+contato previamente verificado, cria CustomerProfile PROVISÓRIO por
+pedido, sem gravar novo contato verificado, sem juntar carteiras e sem
+transferir histórico a participante existente apenas pelo texto recebido.
+Perfil reconhecido por contato verificado pode ser referenciado para
+conferência; nenhuma pontuação é derivada dessa ligação.
+
+**Autorização:** Flow requer Bearer key aleatória por loja, armazenada
+somente com hash Django e revogável. Só componente interno com actor OWNER/ADMIN do tenant
+pode provisionar via issue_flow_key(tenant_id=..., label=..., actor=...),
+que retorna segredo uma vez, sem armazenamento em claro.
+PDV exige sessão Django/CSRF e membership OWNER/ADMIN daquela loja;
+o mesmo dono pode revisar a própria venda no fluxo legado de
+conferência, sem comprovar liquidação externa.
+Nuvemshop NÃO aceita POST público deste contrato. A inbox HMAC atual
+continua intacta; somente a reconsulta OAuth autorizada do pedido
+fornece snapshot normalizado ao adaptador interno, a ser conectado após
+verificação dos dados. O evento do webhook cru tem apenas IDs/tópico.
+Throttle por escopo orders_ingest (60/min/IP) e no-store.
+
+**Migração/compatibilidade:** SaleRecord existente continua canônico;
+registros manuais antigos são preservados e não convertidos em pedidos
+novos silenciosamente. Campos de total/status/origem ficam adicionais,
+sem creditar nada a partir de migrações. É obrigatório BACKUP verificável
+e CI/makemigrations --check antes de rodar sales.0004 no Coolify.
+
+**Teste/aceite:** pytest de canais, migrações e testes existentes de
+sales/nuvemshop; duplicatas, conflito, mudança de status, concorrência
+por tenant, autenticação, dois tenants, identidade verificada vs.
+provisória, cancelamento/estorno, backend sem Nuvemshop e zero ledger.
+Faltam: testes de evento real Flow/PDV, reconsulta Nuvemshop OAuth com
+prova da origem, fila/retry, conciliação PSP, publicação e benchmark UX.
+Estado: CÓDIGO EM REVISÃO até CI; NÃO HOMOLOGADO nem autorizado a
+crédito, cupom, desconto, alteração de estoque ou deploy real.
+
+
+## 14/11/2026 — PR #20: Loyalty, ledger e vouchers (CÓDIGO OFFLINE)
+
+**Dependências:** PR #18 (customers) e PR #19 (channels)
+ainda em draft, sem merge em homolog. PR #20 empilhado no #19;
+não implantar nem migrar no Coolify antes de consolidar as dependências.
+
+**Domínios reaproveitados:**
+- sales.SaleRecord recebe status reportado por canal; paid NÃO prova captura.
+  channels.services consulta loyalty.sale_readiness sem dar crédito.
+- loyalty.LoyaltyRule é uma versão de regra de execução: não substitui
+  campaigns.CampaignDraft ou os editores de rascunho. Regras usadas
+  e LoyaltyTier são imutáveis; nova estratégia exige nova versão.
+- loyalty.FinancialEvidence modela captura/estorno de fonte autenticada.
+  A tabela não prova PSP por si mesma; adaptadores oficiais e sua
+  cadeia de confiança permanecem pendentes de G7.
+- loyalty.LoyaltyGrant é único por venda e vincula regra, prova,
+  points.PointLot e wallets.CashbackEvent, em transação única.
+- points mantém ledger integer com lotes por pedido; wallets mantém
+  ledger de centavos BRL sem conversão implícita; não houve migração
+  nem lançamento em saldos antigos.
+- loyalty.LoyaltyVoucher conserva hash HMAC do código (nunca token
+  em claro no banco); reserva lotes FIFO ou saldo BRL disponível,
+  permite cancelamento/uso único e recibo por tenant/canal.
+  Código é retornado uma vez ao consumidor. Nenhuma criação automática
+  de cupom na Nuvemshop.
+- loyalty.LoyaltyRecovery registra benefício já gasto que não pode
+  ser estornado por saldo insuficiente; bloqueia novos resgates. Nunca
+  apresenta saldo negativo silenciosamente como estorno resolvido.
+- loyalty.LoyaltyEngagement marca elegibilidade de aniversário,
+  cadastro verificado e winback SEM emitir pontos, cashback ou mensagens.
+  CustomerProfile tem nascimento opcional, com consentimento e prova;
+  nenhuma coleta de dados reais foi executada.
+- Celery Beat: detecção de candidatos inativos (somente registros
+  de elegibilidade) e liberação de grants após carência, ambas OFF
+  até infraestrutura/flags verificadas.
+
+**Proteções financeiras ainda vigentes:**
+FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED=False,
+FIDELIZA_TRUSTED_PAYMENT_ADAPTERS=frozenset(),
+FIDELIZA_POINTS_WRITES_ENABLED=False,
+FIDELIZA_LEDGER_WRITES_ENABLED=False. Nenhum deles tem env para
+ativação acidental neste PR; só testes sintéticos usam override_settings.
+
+**Regra de margem:** exige variante com SKU + custo verificado, taxas,
+frete e despesas conhecidas; usa margin.simulate_margin e compara
+exposição de pontos (valor de referência por ponto) + cashback com
+margem segura e orçamento de regra. O PR #19 ainda não fornece itens
+do pedido para provar o vínculo com CostItem. O objeto OrderCosts é
+parâmetro apenas de testes internos, nunca de HTTP. Não usar esses
+cálculos para autorizar cliente real enquanto G7 estiver bloqueado.
+
+**Fluxos internos de execução:**
+1. Ingestão do canal -> pedido informado -> diagnóstico sem crédito.
+2. Captura autenticada e reconciliada -> identidade, custo, margem,
+   teto e consentimento -> lançamento pending com sale+rule idempotente.
+3. Celery após carência e com flags aprovadas -> disponível nos ledgers.
+4. Voucher -> reserva atômica -> validação -> uso único confirmado
+   pelo PDV/Flow autorizado -> lançamento redeem no ledger.
+5. Estorno provado -> cancelar reservas não usadas -> lançar eventos
+   de reversão imutáveis -> abrir recovery se algo já foi gasto.
+   Não misturar pontos com dinheiro ou esconder passivos.
+
+**Rotas protegidas planejadas, todas sem ação real no ambiente atual:**
+- POST /api/v1/public/clubs/{slug}/vouchers/issue/:
+  sessão do membro confirmado + CSRF, unit e amount.
+- POST /api/v1/tenants/{tenant_id}/loyalty/vouchers/validate/:
+  owner/admin ou credencial Flow do tenant; code.
+- POST /api/v1/tenants/{tenant_id}/loyalty/vouchers/redeem/:
+  mesmos controles e redemption_reference. É a atestação de benefício
+  aplicado pelo operador/canal, não um cupom Nuvemshop.
+- Nuvemshop checkout exige OAuth e escopo oficial de escrita
+  aprovado, emissão idempotente, confirmação de uso e rollback.
+  NÃO existe tal integração financeira neste PR.
+
+**Limitações reais antes de G8:** cashback agregado sem lotes por compra
+não oferece expiração/reversão parcial atribuível perfeita; não
+habilitar em produção sem conciliação e desenho de passivos. Benefícios
+de missões ainda não podem criar PointLot sem simular compra fictícia:
+aqui ficam só elegibilidade, aguardando ledger nativo não-transacional.
+Winback não envia publicidade/WhatsApp sem opt-in e mensageria aprovada.
+
+**Teste exigido:** unitário de cotação, tier e boost; serviço com PSP
+sintético, margens/custos, orçamentos, isolamento tenant, rejeição por
+status pago sozinho, idempotência por venda+regra; concessão, carência,
+estorno, voucher, recuperação e missões sem saldo indevido.
+Executar CI e makemigrations --check, revisar SHA e backup antes de
+qualquer deploy. **Estado G7/G8 = BLOQUEADO (integração real).**
+
+
+## 14/11/2026 — PR #21: Frontend em duas áreas e correção Playwright
+
+**Dependência:** PR #21 é stacked em PR #20, que depende do PR #19,
+que depende do PR #18. Nenhuma alteração foi aplicada à homolog/prod
+pelo PR #21. Dados financeiros permanecem bloqueados nos serviços.
+
+**Causa raiz do CI visual:**
+- Em frontend/e2e/manual-sales.visual.spec.ts a expectativa textual
+  era "Conferência do responsável", mas o estado self_review da venda
+  feita/conferida pelo dono mostra permanentemente
+  "Conferência do proprietário". O feedback de sucesso usa outra
+  frase. A expectativa passou a inspecionar a venda com selo correto,
+  sem reduzir segurança nem alterar a conferência.
+- Commit 3abb9333 passou o CI de seis jobs integralmente, incluindo
+  o Playwright anterior; os novos testes adicionados depois precisam
+  de verificação no SHA atual.
+
+**Contrato de rotas e de navegação:**
+- frontend/src/routes.ts guarda o mapa tipado de rotas de lojista:
+  /app/visao-geral, /app/clientes, /app/programa, /app/campanhas,
+  /app/vendas, /app/configuracoes e
+  /app/ferramentas/{resultados,margem,custos,conciliacao}.
+- frontend/src/main.tsx resolve explicitamente /app/* e
+  /clube/:slug/{historico,regras}, preservando /clube/:slug como
+  página de benefícios, /demo isolado, rotas de acesso público,
+  confirmação e retiradas. Rota desconhecida devolve página 404
+  amigável, não escolhe conteúdo privado por fallback.
+- / é alias legado de /app/visao-geral para não quebrar OAuth e
+  links antigos. Portal mantém query de OAuth e seleção de loja,
+  navega com history API e restaura estados no popstate/deep link;
+  MemberClub usa seções do histórico da própria rota, sem router
+  pesado nem reuso do estado da sessão do lojista.
+
+**Painel do lojista:**
+- menu principal: Visão geral, Clientes, Programa, Campanhas, Vendas,
+  Configurações, com margem/custos/conciliacao/resultados sob Mais
+  ferramentas. Não foram removidas telas nem regras técnicas existentes.
+- novos estilos sob experience.css adotam os tokens de
+  fideliza-theme.css; navy #10253E, jade #087F79, mint claro
+  #E8F9F4, recompensa #F5BA51 e canvas #F6F8FB, texto Inter e
+  títulos Manrope. Mantêm white-label apenas no clube da loja.
+  Não editar CSS do tema Nuvemshop ou da vitrine.
+
+**Portal do consumidor:**
+- frontend/src/MemberOverview.tsx divide nível VIP (barra baseada
+  apenas em concessão/nível verificados), carteira de pontos e BRL,
+  quick action de voucher (desabilitada pelo backend até G7/G8),
+  elegibilidade de missões e avisos sem números fictícios.
+- API do clubMe adiciona campos read-only por tenant:
+  vip_level, vip_next_level, vip_progress_percent,
+  cashback_balance_cents, cashback_pending_cents,
+  cashback_status e missions. Ausência = null, não zero.
+- Backend continua retornando redemption_enabled=false; nenhum cupom
+  Nuvemshop é criado. Se futuramente liberado em piloto autorizado,
+  emissão exige POST autenticado com CSRF do membro e backend
+  responde explicitamente external_coupon_created=false.
+- Os estados visuais diferenciam pontos internos e cashback interno
+  de saldos economicamente resgatáveis. Notificações de missão
+  são meras elegibilidades, não pontos concedidos.
+
+**QA / Responsividade / gates pendentes:**
+- frontend/src/routes.test.ts verifica rotas tipadas e isolamentos.
+- frontend/e2e/routing-and-club.visual.spec.ts valida deep links,
+  voltar, reload, sessão independente e 320/390/768 px.
+- backend/apps/participants/test_member_dashboard.py cobre leitura
+  real VIP, cashback, isolamento de tenant e ausência de dados.
+- As suítes existentes de login público, participação e Playwright
+  seguem obrigatórias antes do merge.
+- NÃO subir PR #21 antes de revisar gates #18–#20, CI do SHA final,
+  backup de banco, observabilidade de Celery e financeiro G7/G8.
+
+
+## 14/11/2026 — PR #22: consolidação e execução operativa guardada
+
+PR #22 (feature/pr22-consolidation-homolog-gates), base PR #21. O registro
+operacional detalhado fica em docs/PR22-RELATORIO-HOMOLOGACAO.md e não
+substitui este roadmap. **Nenhum merge, backup ou migração no PostgreSQL
+real de homologação foi executado por esta sessão.**
+
+- Confirmadas branches reais e SHAs: #18 base homolog; #19 sobre #18;
+  #20 sobre #19; #21 sobre #20; #22 sobre #21. O PR #18 NÃO usa a
+  branch fictícia "feature/pr18-customer-identity"; a real é
+  refactor/omnichannel-customer-identity.
+- Proteção crítica: API não executa migrate no boot; apenas migrate
+  --check. CI migra seu PostgreSQL descartável por comando explícito.
+  O Coolify Raw não deve fazer auto-deploy antes de dump e restauração
+  verificados em banco separado. Migrações pendentes bloqueiam API.
+- scripts/homolog_backup_migrate.sh: operação manual exclusiva de
+  homolog com janela de manutenção, banco confirmado, SHA aprovado,
+  dump full, SHA256, restore em base scratch vazia, contagens legadas,
+  plano Django, migrate explícito, check Django e FKs validadas.
+  Nunca armazenar dump ou credenciais no Git.
+- Smoke integrado backend/apps/channels/test_consolidation_smoke.py:
+  Flow pending → duplicação → paid → cliente de telefone comprovado →
+  autenticação isolada do portal do participante → refunded sem ponto
+  ou cashback. O novo cliente sem prova fica provisório.
+- backend/apps/core/test_pr22_legacy_upgrade.py testa a evolução de
+  uma venda/participante anteriores a #19 no banco descartável.
+- G7/G8 e o merge na homolog seguem BLOQUEADOS até que o operador
+  autorizado produza evidência do dump, restore, migrações e
+  E2E autenticado no ambiente real, sem atingir a Bibelô.
+
+
+## 14/11/2026 — PR #23/#24: conformance concluída no CI; homologação real ainda pendente
+
+- PR #23, SHA 2aa3168ca40b361a8095c2345a2c6aae0ebacb3b: 400 testes backend,
+  192 subtestes, 139 testes Playwright, seis jobs SUCCESS. Triggers PostgreSQL
+  verificados em banco descartável; fluxos por origem, reward_id e PDV
+  corrigidos. Consultar docs/PR23-COMPLIANCE-CONFORMANCE.md.
+- PR #24 (feature/pr24-homolog-release-e2e-protocol) NÃO ativa funcionalidades
+  financeiras nem concede benefício. Formaliza runbook de merge stacked
+  sequencial #18→#23, preflight GitHub fail-closed, backup SHA256, restore
+  com transação única, **migração primeiro no scratch restaurado**,
+  migrate explícito no banco declarado, auditoria de triggers/FK e role
+  runtime, smoke HTTPS de Flow com telefone QA verificado, DB read-only
+  e Playwright remoto autenticado com sessão QA.
+- Documento operacional: docs/PR24-HOMOLOGACAO-REAL-E2E.md.
+- **Merge, backup real, deploy Coolify, migrate real e Playwright remoto
+  ainda NÃO EXECUTADOS.** Todo gate financeiro segue OFF.
+- Somente o operador com permissões autorizadas e janela de manutenção
+  poderá executar o runbook; falha na cópia, prova de acesso ou CI implica NO-GO.

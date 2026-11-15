@@ -42,3 +42,95 @@ from .privacy_models import PrivacyWebhookRequest  # noqa: E402,F401
 
 # Recebimento mínimo dos avisos de pedido, sem efeito financeiro.
 from .order_webhook_models import OrderWebhookEvent  # noqa: E402,F401
+
+
+class NuvemshopCouponIntent(models.Model):
+    """Um único cupom externo por voucher; sem código bearer em texto puro."""
+    class State(models.TextChoices):
+        PREPARED = "prepared", "Preparado"
+        UNCERTAIN = "uncertain", "Resultado HTTP desconhecido"
+        ISSUED = "issued", "Criado no provedor"
+        APPLIED = "applied_pending_proof", "Aplicado, captura não comprovada"
+        SETTLED = "settled", "Baixa financeira validada"
+        REVOKING = "revoking", "Revogação externa em progresso"
+        REVOKED = "revoked", "Revogação externa confirmada"
+        OWNERSHIP_VIOLATION = "ownership_violation", "Possível uso por terceiro"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    voucher = models.OneToOneField("loyalty.LoyaltyVoucher",
+        on_delete=models.PROTECT, related_name="nuvemshop_coupon")
+    store_id = models.CharField(max_length=64)
+    encrypted_code = models.TextField()
+    code_sha256 = models.CharField(max_length=64, unique=True)
+    remote_coupon_id = models.CharField(max_length=64, blank=True, default="")
+    verified_unused_at = models.DateTimeField(null=True, blank=True)
+    order_id = models.CharField(max_length=32, blank=True, default="")
+    state = models.CharField(max_length=24, choices=State.choices,
+                             default=State.PREPARED)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "order_id"],
+                condition=~models.Q(order_id=""),
+                name="nuv_pilot_one_coupon_per_order",
+            ),
+        ]
+
+
+class NuvemshopCouponOwnershipIncident(models.Model):
+    """Security event for a paid order with unverifiable coupon ownership.
+
+    Never persist CPF, phone, email, cookie, OAuth token or bearer coupon code.
+    An issuer is blocked until an authorized manual review marks reviewed_at.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    intent = models.OneToOneField(
+        NuvemshopCouponIntent, on_delete=models.PROTECT,
+        related_name="ownership_incident",
+    )
+    order_digest = models.CharField(max_length=64)
+    reason = models.CharField(max_length=32, default="identity_mismatch")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["tenant", "reviewed_at"], name="coupon_incident_review_idx"),
+        ]
+
+
+class NuvemshopOrderRecheck(models.Model):
+    """Resultado mínimo da reconsulta OAuth, sem PII ou prova PSP inventada."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    event = models.OneToOneField("nuvemshop.OrderWebhookEvent",
+        on_delete=models.PROTECT, related_name="order_recheck")
+    status = models.CharField(max_length=24, default="pending")
+    summary_digest = models.CharField(max_length=64, blank=True, default="")
+    checked_at = models.DateTimeField(null=True, blank=True)
+
+
+class NuvemshopCouponRevocationAudit(models.Model):
+    """Append-only proof: delete plus GET provider confirming unusable."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    intent = models.OneToOneField(NuvemshopCouponIntent,
+                                  on_delete=models.PROTECT, related_name="revocation_proof")
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    reason = models.CharField(max_length=24, choices=[
+        ("expired", "Voucher expirou"),
+        ("cancelled_unpaid", "Pedido cancelado sem prova de captura"),
+    ])
+    remote_id = models.CharField(max_length=64)
+    confirmed_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Prova de revogação é imutável")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Prova de revogação não pode ser excluída")

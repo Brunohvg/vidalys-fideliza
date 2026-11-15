@@ -79,6 +79,24 @@ class OrderWebhookTests(TestCase):
             **({"HTTP_X_LINKEDSTORE_HMAC_SHA256": sent} if signature else {}),
         )
 
+    @override_settings(FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED=True)
+    def test_hmac_webhook_enqueues_oauth_recheck_only_after_commit(self):
+        # A fila dedicada recebe apenas UUID, nunca corpo com dados pessoais.
+        with patch("apps.nuvemshop.tasks.recheck_nuvemshop_order_event.delay") as queued:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.send()
+            self.assertEqual(response.status_code, 202)
+            inbox = OrderWebhookEvent.objects.get()
+            queued.assert_called_once_with(str(inbox.pk))
+            # Reenvio HMAC é seguro: a tarefa encontra a mesma linha,
+            # e o recheck é idempotente no PostgreSQL.
+            with self.captureOnCommitCallbacks(execute=True):
+                again = self.send(payload=self.payload(retry_count=2))
+            self.assertEqual(again.status_code, 202)
+            self.assertEqual(OrderWebhookEvent.objects.count(), 1)
+            self.assertEqual(queued.call_count, 2)
+            self.assertEqual(queued.call_args.args, (str(inbox.pk),))
+
     def test_authenticated_receipt_is_minimal_and_money_never_moves(self):
         response = self.send()
         self.assertEqual(response.status_code, 202, response.content)

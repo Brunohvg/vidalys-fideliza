@@ -42,7 +42,7 @@ def present_sale(sale, *, viewer_id=None):
         "participant_id": str(sale.participant_id) if sale.participant_id else None,
         "participant_name": sale.participant.display_name if sale.participant_id else None,
         "eligible_amount_cents": sale.eligible_amount_cents,
-        "reported_paid_at": sale.reported_paid_at.isoformat(),
+        "reported_paid_at": sale.reported_paid_at.isoformat() if sale.reported_paid_at else None,
         "evidence_reference": sale.evidence_reference,
         "state": sale.state, "created_at": sale.created_at.isoformat(),
         "reviewed_at": sale.reviewed_at.isoformat() if sale.reviewed_at else None,
@@ -136,15 +136,68 @@ class ManualSalesView(APIView):
             if same:
                 return safe_reply({"already_recorded": True, "sale": present_sale(previous, viewer_id=request.user.pk)})
             return safe_reply({"detail": "Referência já usada para outra venda."}, 409)
-        sale = SaleRecord.objects.create(
-            tenant_id=tenant_id, participant=participant, channel=SaleRecord.Channel.COUNTER,
-            external_reference=ref, eligible_amount_cents=amount,
-            reported_paid_at=paid_at, evidence_reference=evidence,
-            state=(SaleRecord.State.AWAITING_REVIEW if participant
-                   else SaleRecord.State.AWAITING_MEMBER),
-            submitted_by=request.user,
-        )
-        return safe_reply({"already_recorded": False, "sale": present_sale(sale, viewer_id=request.user.pk)}, 201)
+        # Único pipeline para vendas de balcão e Flow. A entrada humana não
+        # comprova captura nem cria saldo; revisão continua operacional.
+        from apps.channels.services import ingest_order_event, IngestionConflict
+        try:
+            outcome = ingest_order_event(
+                data={
+                    "tenant_id": member.tenant.pk,
+                    "channel": SaleRecord.Channel.COUNTER,
+                    "external_order_id": ref,
+                    "customer_identifier": f"manual:{participant.pk}" if participant else "",
+                    "total_amount": amount,
+                    "currency": "BRL",
+                    "status": SaleRecord.OrderStatus.PAID,
+                    "source_event_id": "",
+                    "occurred_at": paid_at,
+                },
+                actor=request.user,
+                manual_override={
+                    "participant": participant, "evidence_reference": evidence,
+                },
+            )
+        except IngestionConflict:
+            return safe_reply({"detail": "Evento incompatível com uma venda já registrada."}, 409)
+        return safe_reply({
+            "already_recorded": outcome.duplicate,
+            "sale": present_sale(outcome.sale, viewer_id=request.user.pk),
+            "event_id": str(outcome.event.pk),
+            "identity_status": outcome.identity_status,
+            "payment_verified": False, "points_credited": False,
+        }, 200 if outcome.duplicate else 201)
+
+
+class ManualSaleLinkView(APIView):
+    """Conecta venda sem CPF/telefone inicial somente ao perfil com OTP comprovado."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["post", "options"]
+
+    def post(self, request, tenant_id, sale_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        if member.tenant.status != Tenant.Status.ACTIVE:
+            return safe_reply({"detail": "Loja inativa."}, 409)
+        if not isinstance(request.data, dict) or set(request.data) != {"participant_id"}:
+            return safe_reply({"detail": "Informe o participante confirmado."}, 400)
+        try:
+            participant_id = uuid.UUID(request.data["participant_id"])
+        except (ValueError, TypeError, AttributeError, KeyError):
+            return safe_reply({"detail": "Identificador de participante inválido."}, 400)
+        from .services import attach_verified_counter_sale, ManualLinkBlocked
+        try:
+            sale = attach_verified_counter_sale(
+                tenant_id=tenant_id, sale_id=sale_id,
+                participant_id=participant_id, operator=request.user,
+            )
+        except (ManualLinkBlocked, SaleRecord.DoesNotExist, ProgramParticipant.DoesNotExist):
+            return safe_reply({"detail": "Venda ou identidade ainda não pode ser vinculada."}, 409)
+        return safe_reply({
+            "sale": present_sale(sale, viewer_id=request.user.pk),
+            "identity_status": "verified_contact_match",
+            "payment_verified": False, "points_credited": False,
+        })
 
 
 class ManualSaleReviewView(APIView):

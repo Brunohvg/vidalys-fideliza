@@ -1,0 +1,172 @@
+import uuid
+
+import django.db.models.deletion
+from django.db import migrations, models
+from django.db.models import Q
+
+
+class Migration(migrations.Migration):
+    initial = True
+    dependencies = [
+        ("tenants", "0003_unconnected_merchant_tenants"),
+        ("customers", "0001_initial"),
+        ("participants", "0007_standalone_participant"),
+        ("sales", "0004_channel_order_ingestion"),
+        ("points", "0001_initial"),
+        ("wallets", "0001_initial"),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="LoyaltyRule",
+            fields=[
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
+                ("version", models.PositiveIntegerField()),
+                ("enabled", models.BooleanField(default=False)),
+                ("points_per_unit", models.PositiveIntegerField(default=1)),
+                ("points_per_cents", models.PositiveIntegerField(default=100)),
+                ("cashback_bps", models.PositiveSmallIntegerField(default=0)),
+                ("point_value_cents", models.PositiveIntegerField(default=1)),
+                ("hold_days", models.PositiveSmallIntegerField(default=7)),
+                ("validity_days", models.PositiveSmallIntegerField(default=180)),
+                ("minimum_margin_bps", models.PositiveSmallIntegerField(default=1000)),
+                ("budget_cents", models.PositiveBigIntegerField()),
+                ("second_purchase_window_days", models.PositiveSmallIntegerField(default=15)),
+                ("second_purchase_multiplier_bps", models.PositiveIntegerField(default=10000)),
+                ("winback_after_days", models.PositiveSmallIntegerField(default=60)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("tenant", models.ForeignKey(to="tenants.tenant", on_delete=django.db.models.deletion.PROTECT, related_name="loyalty_rules")),
+            ],
+        ),
+        migrations.CreateModel(
+            name="LoyaltyTier",
+            fields=[
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
+                ("name", models.CharField(max_length=40)),
+                ("minimum_spend_cents", models.PositiveBigIntegerField()),
+                ("multiplier_bps", models.PositiveIntegerField(default=10000)),
+                ("rule", models.ForeignKey(to="loyalty.loyaltyrule", on_delete=django.db.models.deletion.PROTECT, related_name="tiers")),
+            ],
+            options={"ordering": ["minimum_spend_cents", "id"]},
+        ),
+        migrations.CreateModel(
+            name="FinancialEvidence",
+            fields=[
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
+                ("kind", models.CharField(max_length=8, choices=[("capture","Captura"),("refund","Estorno ou cancelamento confirmado")])),
+                ("provider", models.CharField(max_length=48)),
+                ("external_event_id", models.CharField(max_length=100)),
+                ("amount_cents", models.PositiveBigIntegerField()),
+                ("verification_digest", models.CharField(max_length=64)),
+                ("occurred_at", models.DateTimeField()),
+                ("verified_at", models.DateTimeField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("sale", models.ForeignKey(to="sales.salerecord", on_delete=django.db.models.deletion.PROTECT, related_name="payment_evidence")),
+                ("tenant", models.ForeignKey(to="tenants.tenant", on_delete=django.db.models.deletion.PROTECT)),
+            ],
+        ),
+        migrations.CreateModel(
+            name="LoyaltyGrant",
+            fields=[
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
+                ("points_issued", models.PositiveBigIntegerField(default=0)),
+                ("cashback_cents", models.PositiveBigIntegerField(default=0)),
+                ("exposure_cents", models.PositiveBigIntegerField()),
+                ("eligible_amount_cents", models.PositiveBigIntegerField()),
+                ("captured_at", models.DateTimeField()),
+                ("unlock_at", models.DateTimeField()),
+                ("expires_at", models.DateTimeField()),
+                ("status", models.CharField(max_length=12, choices=[
+                    ("pending","Crédito pendente"),("released","Disponível"),("reversed","Revertido"),("recovery","Recuperação pendente"),
+                ], default="pending")),
+                ("reversed_at", models.DateTimeField(null=True, blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("evidence", models.OneToOneField(to="loyalty.financialevidence", on_delete=django.db.models.deletion.PROTECT)),
+                ("cashback_event", models.OneToOneField(to="wallets.cashbackevent", on_delete=django.db.models.deletion.PROTECT, null=True, blank=True)),
+                ("point_lot", models.OneToOneField(to="points.pointlot", on_delete=django.db.models.deletion.PROTECT, null=True, blank=True)),
+                ("participant", models.ForeignKey(to="participants.programparticipant", on_delete=django.db.models.deletion.PROTECT)),
+                ("rule", models.ForeignKey(to="loyalty.loyaltyrule", on_delete=django.db.models.deletion.PROTECT)),
+                ("sale", models.OneToOneField(to="sales.salerecord", on_delete=django.db.models.deletion.PROTECT, related_name="loyalty_grant")),
+                ("tenant", models.ForeignKey(to="tenants.tenant", on_delete=django.db.models.deletion.PROTECT)),
+            ],
+        ),
+        migrations.CreateModel(
+            name="MemberTierSnapshot",
+            fields=[
+                ("participant", models.OneToOneField(to="participants.programparticipant", on_delete=django.db.models.deletion.PROTECT, primary_key=True, serialize=False, related_name="tier_snapshot")),
+                ("rolling_spend_cents", models.PositiveBigIntegerField(default=0)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("rule", models.ForeignKey(to="loyalty.loyaltyrule", on_delete=django.db.models.deletion.PROTECT)),
+                ("tenant", models.ForeignKey(to="tenants.tenant", on_delete=django.db.models.deletion.PROTECT)),
+                ("tier", models.ForeignKey(to="loyalty.loyaltytier", on_delete=django.db.models.deletion.PROTECT)),
+            ],
+        ),
+        migrations.CreateModel(
+            name="LoyaltyRecovery",
+            fields=[
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
+                ("remaining_points", models.PositiveBigIntegerField(default=0)),
+                ("remaining_cashback_cents", models.PositiveBigIntegerField(default=0)),
+                ("recorded_at", models.DateTimeField(auto_now_add=True)),
+                ("resolved_at", models.DateTimeField(null=True, blank=True)),
+                ("evidence", models.OneToOneField(to="loyalty.financialevidence", on_delete=django.db.models.deletion.PROTECT)),
+                ("grant", models.OneToOneField(to="loyalty.loyaltygrant", on_delete=django.db.models.deletion.PROTECT)),
+            ],
+        ),
+        migrations.CreateModel(
+            name="LoyaltyVoucher",
+            fields=[
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
+                ("code_digest", models.CharField(max_length=64, unique=True)),
+                ("unit", models.CharField(max_length=8, choices=[("points","Pontos"),("cashback","Cashback em centavos")])),
+                ("amount", models.PositiveBigIntegerField()),
+                ("discount_cents", models.PositiveBigIntegerField()),
+                ("state", models.CharField(max_length=12, choices=[("reserved","Reservado"),("redeemed","Resgatado"),("cancelled","Cancelado")], default="reserved")),
+                ("expires_at", models.DateTimeField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("redeemed_at", models.DateTimeField(null=True, blank=True)),
+                ("redemption_channel", models.CharField(max_length=24, blank=True, default="")),
+                ("redemption_reference", models.CharField(max_length=100, blank=True, default="")),
+                ("participant", models.ForeignKey(to="participants.programparticipant", on_delete=django.db.models.deletion.PROTECT)),
+                ("rule", models.ForeignKey(to="loyalty.loyaltyrule", on_delete=django.db.models.deletion.PROTECT)),
+                ("tenant", models.ForeignKey(to="tenants.tenant", on_delete=django.db.models.deletion.PROTECT)),
+            ],
+        ),
+        migrations.CreateModel(
+            name="VoucherPointAllocation",
+            fields=[
+                ("id", models.BigAutoField(primary_key=True, auto_created=True, serialize=False, verbose_name="ID")),
+                ("amount", models.PositiveBigIntegerField()),
+                ("lot", models.ForeignKey(to="points.pointlot", on_delete=django.db.models.deletion.PROTECT)),
+                ("voucher", models.ForeignKey(to="loyalty.loyaltyvoucher", on_delete=django.db.models.deletion.PROTECT, related_name="point_allocations")),
+            ],
+        ),
+        migrations.CreateModel(
+            name="LoyaltyEngagement",
+            fields=[
+                ("id", models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, serialize=False)),
+                ("kind", models.CharField(max_length=12, choices=[("profile","Perfil verificado"),("birthday","Aniversário"),("winback","Reativação")])),
+                ("period_key", models.CharField(max_length=16)),
+                ("eligible_at", models.DateTimeField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("participant", models.ForeignKey(to="participants.programparticipant", on_delete=django.db.models.deletion.PROTECT)),
+                ("tenant", models.ForeignKey(to="tenants.tenant", on_delete=django.db.models.deletion.PROTECT)),
+            ],
+        ),
+        migrations.AddConstraint(model_name="loyaltyrule", constraint=models.UniqueConstraint(fields=("tenant", "version"), name="loyalty_rule_version_once")),
+        migrations.AddConstraint(model_name="loyaltyrule", constraint=models.UniqueConstraint(fields=("tenant",), condition=Q(enabled=True), name="loyalty_single_enabled_rule")),
+        migrations.AddConstraint(model_name="loyaltyrule", constraint=models.CheckConstraint(condition=Q(points_per_cents__gte=1), name="loyalty_points_base_positive")),
+        migrations.AddConstraint(model_name="loyaltyrule", constraint=models.CheckConstraint(condition=Q(cashback_bps__lte=10000), name="loyalty_cashback_max")),
+        migrations.AddConstraint(model_name="loyaltyrule", constraint=models.CheckConstraint(condition=Q(minimum_margin_bps__lte=10000), name="loyalty_min_margin_max")),
+        migrations.AddConstraint(model_name="loyaltyrule", constraint=models.CheckConstraint(condition=Q(budget_cents__gt=0), name="loyalty_budget_positive")),
+        migrations.AddConstraint(model_name="loyaltyrule", constraint=models.CheckConstraint(condition=Q(second_purchase_multiplier_bps__gte=10000), name="loyalty_second_multiplier_min")),
+        migrations.AddConstraint(model_name="loyaltytier", constraint=models.UniqueConstraint(fields=("rule", "minimum_spend_cents"), name="loyalty_tier_threshold_once")),
+        migrations.AddConstraint(model_name="loyaltytier", constraint=models.CheckConstraint(condition=Q(multiplier_bps__gte=10000, multiplier_bps__lte=30000), name="loyalty_tier_multiplier_range")),
+        migrations.AddConstraint(model_name="financialevidence", constraint=models.UniqueConstraint(fields=("tenant", "provider", "external_event_id"), name="loyalty_evidence_event_once")),
+        migrations.AddConstraint(model_name="financialevidence", constraint=models.CheckConstraint(condition=Q(amount_cents__gt=0), name="loyalty_evidence_amount_positive")),
+        migrations.AddConstraint(model_name="loyaltyvoucher", constraint=models.CheckConstraint(condition=Q(amount__gt=0), name="loyalty_voucher_positive_amount")),
+        migrations.AddConstraint(model_name="loyaltyvoucher", constraint=models.CheckConstraint(condition=Q(discount_cents__gt=0), name="loyalty_voucher_positive_discount")),
+        migrations.AddConstraint(model_name="loyaltyvoucher", constraint=models.UniqueConstraint(fields=("tenant", "redemption_channel", "redemption_reference"), condition=~Q(redemption_reference=""), name="loyalty_voucher_redemption_once")),
+        migrations.AddConstraint(model_name="voucherpointallocation", constraint=models.UniqueConstraint(fields=("voucher", "lot"), name="loyalty_voucher_lot_once")),
+        migrations.AddConstraint(model_name="loyaltyengagement", constraint=models.UniqueConstraint(fields=("tenant", "participant", "kind", "period_key"), name="loyalty_engagement_once")),
+    ]

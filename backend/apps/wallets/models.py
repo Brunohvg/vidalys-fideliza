@@ -100,3 +100,39 @@ class CashbackEntry(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Lançamentos do ledger não podem ser excluídos.")
+
+
+class CashbackOriginEntry(models.Model):
+    """Razão auxiliar imutável por crédito de origem (grant -> accrual event).
+
+    O saldo por origem é sempre SUM(delta_cents) por bucket. Nenhum valor de
+    outra compra pode ser usado para reverter um grant específico.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    origin_event = models.ForeignKey(
+        CashbackEvent, on_delete=models.PROTECT, related_name="origin_movements",
+    )
+    event = models.ForeignKey(
+        CashbackEvent, on_delete=models.PROTECT, related_name="origin_entries",
+    )
+    bucket = models.CharField(max_length=12, choices=CashbackEntry.Bucket.choices)
+    delta_cents = models.BigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "bucket"], name="cashback_origin_event_bucket_once",
+            ),
+            models.CheckConstraint(
+                condition=~Q(delta_cents=0), name="cashback_origin_entry_nonzero",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Lançamento de origem é imutável.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Lançamento de origem não pode ser excluído.")

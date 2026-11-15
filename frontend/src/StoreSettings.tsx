@@ -348,6 +348,21 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
 
         <div className="ss-divider"/>
         <div className="ss-integration">
+          <div className="ss-service-label">
+            <span className="ss-service-icon"><ShieldCheck size={20}/></span>
+            <div><strong>Programa piloto de fidelidade</strong>
+              <small>Autorização por loja, independente da conexão com a Nuvemshop</small>
+            </div>
+          </div>
+          <Status ready={settings.features.loyalty_live_enabled}
+            label={settings.features.loyalty_live_enabled
+              ?"Piloto QA autorizado; benefícios ainda exigem liberação financeira"
+              :"Desativado para esta loja"}/>
+        </div>
+        <p className="ss-muted">A ativação não é feita por este painel. Exige operador autorizado,
+          comando auditado, confirmação do tenant e homologação dos pagamentos.</p>
+        <div className="ss-divider"/>
+        <div className="ss-integration">
           <div className="ss-service-label"><span className="ss-service-icon"><Mail size={20}/></span>
             <div><strong>Confirmação por e-mail</strong>
               <small>Para que os participantes confirmem o cadastro com segurança</small>

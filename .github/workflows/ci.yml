@@ -22,6 +22,26 @@ jobs:
           enable-cache: true
       - run: uv lock --check
       - run: uv sync --locked --python 3.12
+      - name: Script de backup syntax e falha fechada
+        run: |
+          bash -n ../scripts/homolog_backup_migrate.sh
+          bash -n ../scripts/homolog_recover_restore.sh
+          if FIDELIZA_ENVIRONMENT=production bash ../scripts/homolog_recover_restore.sh; then
+            echo "ERRO: recovery aceitou ambiente nao homolog"
+            exit 1
+          fi
+          if FIDELIZA_ENVIRONMENT=production bash ../scripts/homolog_backup_migrate.sh; then
+            echo "ERRO: script aceitou ambiente nao homolog"
+            exit 1
+          fi
+      - name: "PR24 protocolos offline: sintaxe, parser e fail-closed"
+        run: |
+          uv run --locked python -m py_compile \
+            ../scripts/homolog_merge_preflight.py \
+            ../scripts/homolog_http_smoke.py \
+            scripts/homolog_post_migrate_check.py \
+            scripts/homolog_smoke_db_audit.py
+          uv run --locked python ../scripts/homolog_merge_preflight.py --self-test
       - run: uv run --locked python manage.py check
       - run: uv run --locked python manage.py makemigrations --check --dry-run
       - run: uv run --locked pytest -q
@@ -40,6 +60,11 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run build
+      - name: "PR24 browser remoto: apenas descoberta dos testes (sem rede)"
+        env:
+          FIDELIZA_HOMOLOG_BASE_URL: https://fideliza-homolog.optarys.com.br
+          FIDELIZA_SMOKE_CLUB_SLUG: qa-pr24-ci
+        run: npx playwright test --list --config=playwright.homolog.config.ts
 
   docker_smoke:
     runs-on: ubuntu-latest

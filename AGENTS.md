@@ -59,7 +59,17 @@ A fonte única de andamento é docs/43. Antes de executar qualquer demanda:
 8. Não expor ou reutilizar segredos compartilhados no chat. Rotação no provedor, backup antes de alterar BD, autorização explícita antes de alteração em infraestrutura, terceiros ou clientes reais. **Não usar TinyFish**. Não ativar ledger até pagamento, estorno, orçamento e resgate auditados.
 9. No fechamento de cada tarefa, comunicar apenas: **gate atual, estado anterior → estado comprovado, evidência, bloqueio restante e próxima ação**. Não reiniciar o planejamento completo nem inventar percentuais novos sem critérios.
 
-**Prioridade operacional atualizada em 13/11/2026:** retomar o cadastro de lojistas e a rastreabilidade Celery/SMTP exatamente após os testes reais de 12/11, sem reconstruir o G1. A homologação Coolify Raw, PostgreSQL externo, Redis, API/HTTPS, worker e envio SMTP foram exercitados; há ressalvas documentadas de restauração isolada e de isolamento de variáveis. O HEAD `27148b71` teve CI 6/6 aprovado, mas publicação desse HEAD não foi comprovada. A próxima ação é confirmar backup disponível e implantar o HEAD validado somente no Coolify Raw de homologação, aplicar `core.0004_email_dispatch` e testar cadastro de lojista, e-mail, confirmação, login, reenvio e reset, comparando aceitação SMTP com entrega real. O G2 OAuth da Nuvemshop e G3 adesão de participantes ficam separados; nenhum cashback/ledger é autorizado. Consultar o topo e a seção de retomada de docs/43 antes de propor novo trabalho.
+**Prioridade operacional atualizada em 15/11/2026:** a cadeia
+#18–#25 e #28–#30 foi consolidada para integração na `homolog`.
+A fonte de verdade vigente é o checkpoint no topo de docs/43; os
+diagnósticos antigos de 12–13/11 são históricos. Após merge e CI
+do SHA final, **próxima única tarefa é G1 — identificar SHA no
+Coolify Raw, confirmar backup/restore, isolamento de segredos, migrações
+e saúde da API/worker**. Não presumir implantação nem instalar NubeSDK
+na Bibelô. O código do PSP/cupom não autoriza benefício financeiro:
+checkout preventivo não homologado e recibo de taxas PSP não exercitado
+em conta externa. Priorizar um piloto completo de adesão→compra→saldo→
+resgate QA antes de qualquer novo recurso, mantendo GO-LIVE NO-GO.
 
 ## Processo para cada tarefa
 1. Inspecione o repo, branch e documentos antes de escrever.

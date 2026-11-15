@@ -66,9 +66,9 @@ class MarginMathTests(SimpleTestCase):
             other_variable_costs_cents=0, proposed_cashback_bps=100,
             minimum_margin_bps=0,
         ))
-        self.assertEqual(r["estimated_cashback_exposure_cents"], 1)
+        self.assertEqual(r["estimated_cashback_exposure_cents"], 0)
         self.assertEqual(r["status"], "within_target")
-        self.assertEqual(r["contribution_after_cents"], 0)
+        self.assertEqual(r["contribution_after_cents"], 1)
 
     def test_max_safe_bps_never_exceeds_budget_due_to_rounding(self):
         r = simulate_margin(payload(
@@ -78,7 +78,7 @@ class MarginMathTests(SimpleTestCase):
             minimum_margin_bps=0,
         ))
         self.assertEqual(r["safe_cashback_budget_cents"], 1)
-        self.assertLessEqual((99 * r["maximum_safe_cashback_bps"] + 5000)//10000, 1)
+        self.assertLessEqual((99 * r["maximum_safe_cashback_bps"])//10000, 1)
 
 
 class MarginApiTests(TestCase):

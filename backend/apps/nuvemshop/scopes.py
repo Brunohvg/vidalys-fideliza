@@ -34,7 +34,8 @@ def has_order_access(value: str, *, preview_enabled: bool) -> bool:
 
 
 def allowed_scopes(value: str, *, customer_preview_enabled: bool,
-                   orders_preview_enabled: bool = False) -> bool:
+                   orders_preview_enabled: bool = False,
+                   coupons_outbound_enabled: bool = False) -> bool:
     """Aceita somente leituras explicitamente habilitadas para uma nova instalação.
 
     A capacidade GET de um token com write_* NÃO justifica armazenar um token
@@ -47,4 +48,6 @@ def allowed_scopes(value: str, *, customer_preview_enabled: bool,
         permitted.add("read_customers")
     if orders_preview_enabled:
         permitted.add("read_orders")
+    if coupons_outbound_enabled:
+        permitted.update(("read_coupons", "write_coupons"))
     return bool(scopes) and scopes.issubset(permitted)

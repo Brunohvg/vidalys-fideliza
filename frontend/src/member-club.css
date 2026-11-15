@@ -1,5 +1,5 @@
 /* Member Club — single source of visual truth; guest + signed-in share the same system. */
-.member-club-shell{--mc-ink:#1a3731;--mc-muted:#687a72;--mc-line:#e2ebe6;--mc-accent:#087f79;min-height:100vh;background:#f6f8f5;color:var(--mc-ink);font-family:Inter,system-ui,sans-serif;overflow-x:clip}
+.member-club-shell{--mc-ink:var(--vf-ink);--mc-muted:var(--vf-muted);--mc-line:var(--vf-border);--mc-accent:var(--vf-primary);min-height:100vh;background:var(--vf-canvas);color:var(--mc-ink);font-family:var(--vf-font);overflow-x:clip}
 .member-club-shell *,.member-club-shell *::before,.member-club-shell *::after{box-sizing:border-box}
 .member-club-shell button,.member-club-shell input{font:inherit}
 .member-club-shell button:focus-visible,.member-club-shell a:focus-visible,.member-club-shell input:focus-visible,.member-club-shell summary:focus-visible{outline:3px solid #40cbb1;outline-offset:3px}

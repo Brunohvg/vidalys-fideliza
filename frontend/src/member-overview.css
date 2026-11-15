@@ -1,0 +1,46 @@
+/* Member-only surfaces inherit the approved Vidalys tokens; merchant brand stays scoped. */
+.member-club-shell .mc-overview-kicker{display:inline-flex;gap:7px;align-items:center;color:var(--vf-primary);font-size:10px;font-weight:800;letter-spacing:.08em}
+.member-club-shell .mc-vip{display:grid;gap:11px;min-width:0;border-radius:17px;background:linear-gradient(115deg,#10253E,#203C51);color:white;padding:19px 21px;box-shadow:0 8px 24px rgba(16,37,62,.09)}
+.member-club-shell .mc-vip-intro{display:flex;align-items:center;gap:12px;min-width:0}
+.member-club-shell .mc-vip-medal{width:42px;height:42px;flex:none;border-radius:13px;background:rgba(245,186,81,.13);color:var(--vf-reward);display:grid;place-items:center}
+.member-club-shell .mc-vip-intro>div{min-width:0;flex:1}
+.member-club-shell .mc-vip .mc-overview-kicker{color:#BDD9D5}
+.member-club-shell .mc-vip h2{font:750 clamp(19px,4vw,25px)/1.2 var(--vf-font-display);margin:3px 0 0;color:#fff}
+.member-club-shell .mc-vip-tag{background:rgba(255,255,255,.1);border-radius:9px;padding:7px 9px;font-size:10px;color:#E5F4F1;max-width:115px;text-align:center}
+.member-club-shell .mc-vip-progress{height:8px;border-radius:9px;overflow:hidden;background:#3C5769}
+.member-club-shell .mc-vip-progress span{height:100%;display:block;border-radius:9px;background:var(--vf-reward);transition:width .15s ease}
+.member-club-shell .mc-vip p{margin:0;color:#D6E5E9;line-height:1.55;font-size:12px}
+.member-club-shell .mc-balance-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch;width:100%}
+.member-club-shell .mc-balance-amount{display:grid;gap:7px;align-content:center;min-width:0}
+.member-club-shell .mc-balance-cashback{padding-left:16px;border-left:1px solid var(--vf-border)}
+.member-club-shell .mc-cashback-number{color:var(--vf-ink);font:800 clamp(20px,4vw,32px)/1.25 var(--vf-font-display)}
+.member-club-shell .mc-balance-cashback small{color:var(--vf-muted);font-size:10px}
+.member-club-shell .mc-redeem{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:13px;min-width:0;background:#fff;border:1px solid var(--vf-border);border-radius:17px;padding:20px 22px}
+.member-club-shell .mc-redeem-copy{flex:1;min-width:190px}
+.member-club-shell .mc-redeem h2,.member-club-shell .mc-missions h2{margin:6px 0;font:750 clamp(17px,3vw,21px)/1.3 var(--vf-font-display);color:var(--vf-ink)}
+.member-club-shell .mc-redeem p,.member-club-shell .mc-missions p{font-size:12px;color:var(--vf-muted);line-height:1.6;margin:0}
+.member-club-shell .mc-redeem-action{display:grid;gap:7px;min-width:172px}
+.member-club-shell .mc-redeem-action button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:47px;background:var(--vf-primary);color:#fff;border:0;border-radius:11px;font-size:13px;font-weight:750;padding:10px 16px}
+.member-club-shell .mc-redeem-action button:disabled{background:#E3E9ED;color:#526B7B;cursor:not-allowed}
+.member-club-shell .mc-redeem-action small{font-size:10px;color:var(--vf-muted);max-width:190px}
+.member-club-shell .mc-issued-voucher,.member-club-shell .mc-redeem-error{width:100%;background:var(--vf-mint-soft);border-radius:11px;padding:12px;overflow-wrap:anywhere}
+.member-club-shell .mc-issued-voucher strong{font-size:12px;color:var(--vf-ink)}
+.member-club-shell .mc-issued-voucher code{font:700 13px monospace}
+.member-club-shell .mc-missions{display:grid;gap:8px;background:#fff;border:1px solid var(--vf-border);border-radius:17px;padding:18px 21px}
+.member-club-shell .mc-missions ul{list-style:none;display:grid;gap:8px;padding:0;margin:0}
+.member-club-shell .mc-missions li{display:flex;gap:9px;flex-wrap:wrap;align-items:center;font-size:12px}
+.member-club-shell .mc-missions li span{color:var(--vf-muted);font-size:11px}
+@media(max-width:540px){
+ .member-club-shell .mc-vip,.member-club-shell .mc-missions,.member-club-shell .mc-redeem{padding:16px;border-radius:14px}
+ .member-club-shell .mc-balance-grid{grid-template-columns:1fr 1fr;gap:8px}
+ .member-club-shell .mc-balance-cashback{padding-left:11px}
+ .member-club-shell .mc-redeem-action{width:100%}
+ .member-club-shell .mc-redeem-action small{max-width:none}
+}
+@media(max-width:350px){
+ .member-club-shell .mc-vip-tag{font-size:9px;max-width:99px}
+ .member-club-shell .mc-vip-intro{gap:8px}
+ .member-club-shell .mc-balance-grid{grid-template-columns:1fr}
+ .member-club-shell .mc-balance-cashback{padding:12px 0 0;border-left:0;border-top:1px solid var(--vf-border)}
+}
+@media(prefers-reduced-motion:reduce){.member-club-shell .mc-vip-progress span{transition:none}}

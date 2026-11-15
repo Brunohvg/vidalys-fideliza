@@ -33,6 +33,8 @@ export type TenantPreferences = {
     email_delivery_enabled: boolean;
     customer_preview_enabled: boolean;
     cashback_activation_enabled: false;
+    loyalty_live_enabled: boolean;
+    loyalty_live_editable_from_panel: false;
     custom_domain_available: false;
   };
   note: string;
@@ -66,27 +68,63 @@ function cookie(name: string): string | null {
   return pair ? decodeURIComponent(pair.slice(name.length + 1)) : null;
 }
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
+function apiErrorMessage(body: unknown): string {
+  if (body && typeof body === "object" && !Array.isArray(body)) {
+    const record = body as Record<string, unknown>;
+    if (typeof record.detail === "string" && record.detail.trim()) return record.detail.slice(0, 350);
+    // DRF serializer errors are often {field: ["message"]} without detail.
+    const parts = Object.entries(record).slice(0, 3).map(([field, issue]) => {
+      const messages = Array.isArray(issue) ? issue : [issue];
+      const first = messages.find(v => typeof v === "string");
+      return typeof first === "string" ? field + ": " + first : "";
+    }).filter(Boolean);
+    if (parts.length) return parts.join(" | ").slice(0, 350);
+  }
+  return "Não foi possível concluir a solicitação.";
+}
+
+async function requestWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  let expired = false;
+  const timeout = setTimeout(() => {
+    expired = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch {
+    throw new ApiError(
+      expired ? "A consulta demorou demais. Tente novamente." :
+        "Não foi possível conectar ao servidor. Verifique a conexão.",
+      expired ? 408 : 0,
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function readResponse<T>(response: Response): Promise<T> {
   let body: unknown = null;
-  try { body = await response.json(); } catch { /* error fallback */ }
+  try { body = await response.json(); } catch { /* no JSON body */ }
   if (!response.ok) {
-    const detail = body && typeof body === "object" && "detail" in body
-      ? String(body.detail)
-      : "Não foi possível concluir a solicitação.";
-    throw new ApiError(detail, response.status);
+    throw new ApiError(apiErrorMessage(body), response.status);
   }
   return body as T;
 }
 
 async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { method: "GET", credentials: "same-origin", cache: "no-store" });
+  const response = await requestWithTimeout(url, {
+    method: "GET", credentials: "same-origin", cache: "no-store",
+  });
   return readResponse<T>(response);
 }
 
 async function writeJson<T>(method: "POST" | "PATCH", url: string, body: object): Promise<T> {
   const csrf = cookie("csrftoken");
   if (!csrf) throw new ApiError("Sessão de segurança não iniciada. Atualize a página.", 403);
-  const response = await fetch(url, {
+  const response = await requestWithTimeout(url, {
     method,
     credentials: "same-origin",
     cache: "no-store",
@@ -96,11 +134,10 @@ async function writeJson<T>(method: "POST" | "PATCH", url: string, body: object)
   return readResponse<T>(response);
 }
 
-
 async function deleteJson<T>(url: string): Promise<T> {
   const csrf = cookie("csrftoken");
   if (!csrf) throw new ApiError("Sessão de segurança não iniciada. Atualize a página.", 403);
-  return readResponse<T>(await fetch(url, {
+  return readResponse<T>(await requestWithTimeout(url, {
     method: "DELETE", credentials: "same-origin", cache: "no-store",
     headers: { "X-CSRFToken": csrf }
   }));
@@ -535,6 +572,10 @@ export const merchantApi = {
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"),
   createManualSale: (tenantId:string,data:ManualSaleInput)=>postJson<ManualSaleResult>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/",data),
+  linkManualSale: (tenantId:string,saleId:string,participantId:string)=>
+    postJson<{sale:ManualSaleRecord;identity_status:string;payment_verified:false;points_credited:false}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+
+      encodeURIComponent(saleId)+"/link/",{participant_id:participantId}),
   reviewManualSale: (tenantId:string,saleId:string,decision:"approve"|"reject",note:string)=>
     postJson<ManualSaleReviewResult>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+
@@ -711,12 +752,12 @@ export type MemberClubPublic = {
   store_name:string; store_slug:string;
   branding:{program_name:string;primary_color:string;accent_color:string;support_email:string};
   terms:ProgramTerms|null;
-  signup_available:boolean;points_enabled:false;rewards_enabled:false;redemption_enabled:false;
+  signup_available:boolean;points_enabled:boolean;rewards_enabled:boolean;redemption_enabled:boolean;
   published_rewards?:MemberClubReward[];
 };
 export type MemberClubReward = {
   id:string;title:string;points_cost:number;discount_cents:number;
-  min_order_cents:number;status:"available"|"locked"|"paused"|"sold_out";
+  min_order_cents:number;redemption_unit:"points"|"cashback";status:"available"|"locked"|"paused"|"sold_out";
   points_missing:number|null;redemption_enabled:boolean;
 };
 export type MemberClubPrivate = {
@@ -728,6 +769,10 @@ export type MemberClubPrivate = {
   available_rewards:MemberClubReward[];
   transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;
   redemption_enabled:boolean;orders_verified:boolean;note:string;
+  vip_level?:string|null;vip_next_level?:string|null;vip_progress_percent?:number|null;
+  cashback_balance_cents?:number|null;cashback_pending_cents?:number|null;
+  cashback_status?:"ledger_only"|"not_active";
+  missions?:Array<{id:string;title:string;state:"eligible"|"planned"}>;
 };
 
 export type EmailActionResult = {
@@ -742,6 +787,9 @@ export type EmailActionResult = {
 export const publicEnrollmentApi = {
   club:(slug:string)=>getJson<MemberClubPublic>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/"),
   clubMe:(slug:string)=>getJson<MemberClubPrivate>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/"),
+  clubIssueVoucher:(slug:string,rewardId:string)=>postJson<{
+    code:string;voucher_id:string;discount_cents:number;expires_at:string;external_coupon_created:false;
+  }>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/vouchers/issue/",{reward_id:rewardId}),
   clubRequestAccess:(slug:string,email:string)=>postJson<{status:"accepted"}>(
     "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/request/",{email}),
   clubConfirmAccess:(slug:string,token:string)=>postJson<{authenticated:true}>(

@@ -15,6 +15,8 @@ class Tenant(models.Model):
     # O canal é independente até existir instalação OAuth autorizada.
     platform = models.CharField(max_length=32, default="independent")
     external_store_id = models.CharField(max_length=64, null=True, blank=True)
+    # PR25: explicit opt-in per tenant; never infer from an OAuth connection.
+    loyalty_live_enabled = models.BooleanField(default=False)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -46,3 +48,15 @@ class TenantMembership(models.Model):
 
 # Importados para reconhecimento do Django e migrações.
 from .branding_models import TenantBranding, TenantBrandingAudit  # noqa: E402,F401
+
+
+class TenantLoyaltyActivationAudit(models.Model):
+    """Trilha de aprovação de piloto; alterações apenas pelo comando controlado."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name="loyalty_activation_history")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    before_enabled = models.BooleanField()
+    after_enabled = models.BooleanField()
+    approved_sha = models.CharField(max_length=40)
+    ticket = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)

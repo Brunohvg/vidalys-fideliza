@@ -25,6 +25,8 @@ from rest_framework.views import APIView
 from apps.core.delivery_tracking import enqueue_email
 from apps.sales.models import DiscountRewardDraft
 from apps.points.models import PointWallet, PointLot, PointEntry, PointEvent
+from apps.loyalty.models import LoyaltyGrant, LoyaltyRule, LoyaltyEngagement
+from apps.wallets.models import CashbackWallet, CashbackEntry
 from apps.core.models import EmailDispatch
 from apps.tenants.branding_models import TenantBranding
 from apps.tenants.models import Tenant
@@ -139,7 +141,107 @@ def _ledger_snapshot(tenant, participant):
     }
 
 
-def _published_catalog(tenant):
+
+
+def _member_vip_snapshot(tenant, participant):
+    """Níveis somente a partir de concessões reais verificadas e regra ativa."""
+    empty = {"vip_level": None, "vip_next_level": None, "vip_progress_percent": None}
+    if not participant:
+        return empty
+    rule = LoyaltyRule.objects.filter(tenant=tenant, enabled=True).first()
+    if rule is None:
+        return empty
+    tiers = list(rule.tiers.order_by("minimum_spend_cents", "pk"))
+    if not tiers or tiers[0].minimum_spend_cents != 0:
+        return empty
+    now = timezone.now()
+    spent = LoyaltyGrant.objects.filter(
+        tenant=tenant, participant=participant,
+        status__in=(LoyaltyGrant.Status.PENDING, LoyaltyGrant.Status.RELEASED),
+        captured_at__gte=now - timedelta(days=365),
+        captured_at__lte=now,
+    ).aggregate(total=Sum("eligible_amount_cents"))["total"] or 0
+    current_index = max(i for i, tier in enumerate(tiers) if tier.minimum_spend_cents <= spent)
+    current = tiers[current_index]
+    next_tier = tiers[current_index + 1] if current_index + 1 < len(tiers) else None
+    if next_tier:
+        gap = next_tier.minimum_spend_cents - current.minimum_spend_cents
+        percent = min(100, max(0, (spent - current.minimum_spend_cents) * 100 // gap))
+    else:
+        percent = 100
+    return {
+        "vip_level": current.name,
+        "vip_next_level": next_tier.name if next_tier else None,
+        "vip_progress_percent": percent,
+    }
+
+
+def _member_cashback_snapshot(tenant, participant):
+    """Saldo do ledger, não disponibilidade de pagamento ou checkout."""
+    empty = {
+        "cashback_balance_cents": None,
+        "cashback_pending_cents": None,
+        "cashback_status": "not_active",
+    }
+    if not participant:
+        return empty
+    wallet = CashbackWallet.objects.filter(tenant=tenant, participant=participant).first()
+    if wallet is None:
+        return empty
+    balances = dict(CashbackEntry.objects.filter(event__wallet=wallet).values_list(
+        "bucket",
+    ).annotate(total=Sum("delta_cents")))
+    available = balances.get("available", 0) or 0
+    pending = balances.get("pending", 0) or 0
+    if type(available) is not int or type(pending) is not int or available < 0 or pending < 0:
+        return empty
+    return {
+        "cashback_balance_cents": available,
+        "cashback_pending_cents": pending,
+        "cashback_status": "ledger_only",
+    }
+
+
+def _member_missions(tenant, participant):
+    """Candidaturas verificadas; não gera nem afirma benefício concedido."""
+    if not participant:
+        return []
+    titles = {
+        LoyaltyEngagement.Kind.PROFILE: "Perfil confirmado",
+        LoyaltyEngagement.Kind.BIRTHDAY: "Aniversário verificado",
+        LoyaltyEngagement.Kind.WINBACK: "Retorno ao clube",
+    }
+    return [
+        {"id": str(item.pk), "title": titles[item.kind], "state": "eligible"}
+        for item in LoyaltyEngagement.objects.filter(
+            tenant=tenant, participant=participant,
+        ).order_by("-created_at")[:6]
+    ]
+
+
+def _pilot_redemption_ready(tenant):
+    # A flag local NÃO basta: exigimos gates financeiros + comprovante PSP
+    # e autorização de cupons do mesmo OAuth/tenant.
+    if not (tenant.status == Tenant.Status.ACTIVE
+            and tenant.platform == "nuvemshop"
+            and tenant.loyalty_live_enabled
+            and settings.FIDELIZA_POINTS_WRITES_ENABLED
+            and settings.FIDELIZA_LEDGER_WRITES_ENABLED
+            and settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED
+            and settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS
+            and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
+            and settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
+            and settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED
+            and settings.FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED):
+        return False
+    from apps.nuvemshop.models import NuvemshopInstallation
+    from apps.nuvemshop.scopes import parse_scopes
+    return NuvemshopInstallation.objects.filter(
+        tenant=tenant, store_id=tenant.external_store_id,
+    ).filter(scope__contains="write_coupons").exists()
+
+
+def _published_catalog(tenant, *, points_balance=None, live=False):
     """Somente ofertas marcadas como publicadas no próprio tenant.
 
     A mesma lista alimenta visitante e participante. Não contém dados do
@@ -149,8 +251,28 @@ def _published_catalog(tenant):
         {
             "id":str(item.id), "title":item.title,
             "points_cost":item.points_cost, "discount_cents":item.discount_cents,
-            "min_order_cents":item.min_order_cents, "status":"locked",
-            "points_missing":None, "redemption_enabled":False,
+            "min_order_cents":item.min_order_cents,
+            "redemption_unit":item.redemption_unit,
+            "status": "available" if (
+                live and points_balance is not None and
+                item.redemption_unit == "points" and
+                points_balance >= item.points_cost and
+                "nuvemshop" in item.allowed_channels.split(",") and
+                (item.expires_at is None or item.expires_at > timezone.now()) and
+                (item.valid_from is None or item.valid_from <= timezone.now())
+            ) else "locked",
+            "points_missing": (
+                max(0, item.points_cost - points_balance)
+                if live and points_balance is not None else None
+            ),
+            "redemption_enabled": bool(
+                live and points_balance is not None and
+                item.redemption_unit == "points" and
+                points_balance >= item.points_cost and
+                "nuvemshop" in item.allowed_channels.split(",") and
+                (item.expires_at is None or item.expires_at > timezone.now()) and
+                (item.valid_from is None or item.valid_from <= timezone.now())
+            ),
         }
         for item in DiscountRewardDraft.objects.filter(
             tenant=tenant,
@@ -167,6 +289,7 @@ class MemberClubPublicView(APIView):
         tenant = _tenant(slug)
         terms = ProgramTerms.objects.filter(tenant=tenant, active=True).first()
         brand = TenantBranding.objects.filter(tenant=tenant).first()
+        live = _pilot_redemption_ready(tenant)
         return secure(Response({
             "store_name": tenant.name,
             "store_slug": tenant.slug,
@@ -176,9 +299,9 @@ class MemberClubPublicView(APIView):
                 settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED and terms
                 and len(terms.privacy_notice.strip()) >= 120
             ),
-            "points_enabled": False,
-            "rewards_enabled": False,
-            "redemption_enabled": False,
+            "points_enabled": live,
+            "rewards_enabled": live,
+            "redemption_enabled": live,
             "published_rewards": _published_catalog(tenant),
         }))
 
@@ -304,7 +427,14 @@ class MemberClubMeView(APIView):
             participant = None
         active = bool(participant and participant.status == ProgramParticipant.Status.ACTIVE)
         ledger = _ledger_snapshot(tenant,participant) if active else None
-        published_rewards = _published_catalog(tenant)
+        vip = _member_vip_snapshot(tenant, participant if active else None)
+        cashback = _member_cashback_snapshot(tenant, participant if active else None)
+        missions = _member_missions(tenant, participant if active else None)
+        live = _pilot_redemption_ready(tenant) and active and ledger is not None
+        published_rewards = _published_catalog(
+            tenant, points_balance=ledger["points_balance"] if ledger else None,
+            live=live,
+        )
         return secure(Response({
             "store_name": tenant.name,
             "display_name": submission.name,
@@ -316,12 +446,19 @@ class MemberClubMeView(APIView):
             "points_balance": ledger["points_balance"] if ledger else None,
             "points_pending": ledger["points_pending"] if ledger else None,
             "points_expiring": ledger["points_expiring"] if ledger else None,
-            "points_status": "ledger_only" if ledger else "not_active",
+            "points_status": ("verified" if live else "ledger_only") if ledger else "not_active",
+            **vip,
+            **cashback,
+            "missions": missions,
             "available_rewards": published_rewards,
             "transactions": ledger["transactions"] if ledger else [],
-            "redemption_enabled": False,
+            "redemption_enabled": live,
             "orders_verified": False,
-            "note": "Catálogo disponível para consulta. Saldos internos são informativos e não estão liberados para compras; não há resgate nem cupom ativo.",
+            "note": (
+                "Benefícios sujeitos a comprovação independente de pagamento e validação do canal."
+                if live else
+                "Catálogo disponível para consulta. Saldos internos não estão liberados; não há resgate nem cupom ativo."
+            ),
         }))
 
 

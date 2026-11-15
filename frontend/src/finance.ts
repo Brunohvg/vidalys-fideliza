@@ -60,7 +60,8 @@ export function parsePercent(raw: string): number {
   return bps;
 }
 
-const roundBps = (cents: number, bps: number): number => Math.floor((cents * bps + 5000) / 10000);
+// O backend de fidelidade trunca centavos fracionários no crédito real.
+const roundBps = (cents: number, bps: number): number => Math.floor((cents * bps) / 10000);
 const ceilBps = (cents: number, bps: number): number => Math.floor((cents * bps + 9999) / 10000);
 
 function maximumSafeBps(net: number, budget: number): number {

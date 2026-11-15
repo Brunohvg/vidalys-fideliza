@@ -10,6 +10,7 @@ from apps.nuvemshop.models import NuvemshopInstallation
 from apps.nuvemshop.privacy_models import PrivacyWebhookRequest
 from apps.nuvemshop.scopes import has_customer_access
 from apps.tenants.models import Tenant
+from apps.customers.services import attach_channel_reference, attach_verified_contact
 
 from .enrollment_models import EnrollmentCustomerLink, EnrollmentSubmission
 from .models import ProgramParticipant
@@ -96,4 +97,13 @@ def link_verified_submission(
     submission.status=EnrollmentSubmission.Status.LINKED
     submission.participant=participant
     submission.save(update_fields=["status", "participant"])
+    # Fluxo existente já conferiu e-mail, tenant, OAuth e identidade exata.
+    attach_verified_contact(
+        tenant_id=tenant.pk, participant_id=participant.pk,
+        email=submission.email, proof_method="email_otp",
+    )
+    attach_channel_reference(
+        tenant_id=tenant.pk, participant_id=participant.pk,
+        channel="nuvemshop", external_id=customer_id,
+    )
     return link, True

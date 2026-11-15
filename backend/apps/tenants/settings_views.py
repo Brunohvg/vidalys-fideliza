@@ -102,6 +102,8 @@ class TenantSettingsView(APIView):
                 "email_delivery_enabled": settings.FIDELIZA_EMAIL_DELIVERY_ENABLED,
                 "customer_preview_enabled": settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED,
                 "cashback_activation_enabled": False,
+                "loyalty_live_enabled": member.tenant.loyalty_live_enabled,
+                "loyalty_live_editable_from_panel": False,
                 "custom_domain_available": False,
             },
             "note": "A identidade salva não ativa inscrições ou recompensas.",

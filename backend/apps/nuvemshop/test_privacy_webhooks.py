@@ -313,6 +313,51 @@ class NuvemshopPrivacyWebhookTests(TestCase):
                         "secret@example.invalid","Pessoa testada"):
             self.assertNotIn(private,str(receipt.sanitization_summary))
 
+    def test_store_redact_scrubs_customer_identity_and_handles_null_external_id(self):
+        from datetime import date
+        from apps.customers.models import (
+            CustomerProfile, VerifiedCustomerContact, ChannelCustomerReference)
+        member = ProgramParticipant.objects.create(
+            tenant=self.tenant, external_customer_id=None,
+            display_name="Dado pessoal de teste",
+            contact_email="private-person@example.invalid",
+            consent_at=timezone.now(), consent_channel="customer_portal",
+            terms_version="v1",
+        )
+        profile = CustomerProfile.objects.create(
+            tenant=self.tenant, participant=member,
+            display_name="Nome sensível",
+            birth_date=date(1998, 2, 3),
+            birth_date_consent_at=timezone.now(),
+            birth_date_verified_at=timezone.now(),
+        )
+        VerifiedCustomerContact.objects.create(
+            tenant=self.tenant, profile=profile, kind="email",
+            lookup_digest="c"*64, proof_method="email_otp",
+            verified_at=timezone.now(),
+        )
+        ChannelCustomerReference.objects.create(
+            tenant=self.tenant, profile=profile,
+            channel="nuvemshop", external_id="PRIVATE-REMOTE-ID",
+        )
+        self.assertEqual(self.send("store-redact", {"store_id":91834}).status_code, 202)
+        receipt = PrivacyWebhookRequest.objects.get(
+            topic=PrivacyWebhookRequest.Topic.STORE_REDACT)
+        self.assertEqual(sanitize_store_privacy(str(receipt.pk)),
+                         "sanitized_pending_review")
+        member.refresh_from_db()
+        profile.refresh_from_db()
+        receipt.refresh_from_db()
+        self.assertTrue(member.external_customer_id.startswith("anon:"))
+        self.assertEqual(profile.display_name, "")
+        self.assertIsNone(profile.birth_date)
+        self.assertIsNone(profile.birth_date_consent_at)
+        self.assertIsNone(profile.birth_date_verified_at)
+        self.assertFalse(VerifiedCustomerContact.objects.filter(tenant=self.tenant).exists())
+        self.assertFalse(ChannelCustomerReference.objects.filter(tenant=self.tenant).exists())
+        self.assertEqual(receipt.sanitization_summary["customer_profiles_scrubbed"], 1)
+        self.assertTrue(receipt.sanitization_summary["manual_retention_review_required"])
+
     def test_store_erasure_is_isolated_and_requires_revoked_connection(self):
         foreign=Tenant.objects.create(
             name="Loja intacta",slug="other-privacy-intact",

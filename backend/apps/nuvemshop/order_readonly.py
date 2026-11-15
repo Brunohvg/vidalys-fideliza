@@ -18,6 +18,16 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 FIELDS = "id,number,status,payment_status,paid_at,cancelled_at,total,total_paid_by_customer,currency,gateway,customer"
+# Uso EXCLUSIVO do adaptador servidor (inclui contato/cupom, nunca API pública).
+INTEGRATION_FIELDS = (
+    FIELDS + ",store_id,contact_email,contact_phone,contact_identification,coupon,coupon_id,discount_coupon"
+)
+# Private-only finance scope: full order lines, discounts and both freight legs.
+# Never use this fieldset in an unauthenticated preview endpoint.
+COST_FIELDS = (
+    INTEGRATION_FIELDS +
+    ",products,subtotal,discount,discount_gateway,shipping_cost_owner,shipping_cost_customer"
+)
 
 def safe_id(value):
     if isinstance(value, bool) or not isinstance(value, (str, int)):
@@ -27,15 +37,18 @@ def safe_id(value):
         return None
     return str(int(text)) if int(text) > 0 else None
 
-def read_order(*, store_id, order_id, access_token, user_agent, opener=None, pause=time.sleep):
+def read_order(*, store_id, order_id, access_token, user_agent, opener=None,
+               pause=time.sleep, fields=FIELDS):
     if not safe_id(store_id) or not safe_id(order_id):
         raise ValueError("Identificador inválido")
     if not isinstance(access_token, str) or not 16 <= len(access_token) <= 4096:
         raise ValueError("Credencial ausente")
     if not isinstance(user_agent, str) or not 4 <= len(user_agent) <= 150:
         raise ValueError("User-Agent inválido")
+    if fields not in (FIELDS, INTEGRATION_FIELDS, COST_FIELDS):
+        raise OrderReadError("Campos de pedido não autorizados")
     request = Request(
-        f"{API_ROOT}/{store_id}/orders/{order_id}?fields={FIELDS}",
+        f"{API_ROOT}/{store_id}/orders/{order_id}?fields={fields}",
         headers={"Authorization": f"Bearer {access_token}", "User-Agent": user_agent,
                  "Accept": "application/json"},
         method="GET",

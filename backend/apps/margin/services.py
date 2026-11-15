@@ -7,8 +7,8 @@ que o cliente resgatará ou que a recompensa seja contabilizada como despesa ime
 
 
 def _round_basis_points(amount_cents: int, bps: int) -> int:
-    # Inteiros não negativos: arredondamento half-up em centavos.
-    return (amount_cents * bps + 5000) // 10000
+    # Alinhar com o cashback real do motor financeiro: floor de centavos.
+    return amount_cents * bps // 10000
 
 
 def _ceil_basis_points(amount_cents: int, bps: int) -> int:

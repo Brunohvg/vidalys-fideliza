@@ -13,11 +13,12 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.campaigns.models import CampaignDraft
+from apps.customers.models import CustomerProfile, ChannelCustomerReference, VerifiedCustomerContact
 from apps.costs.models import CostItem
 from apps.participants.enrollment_models import (
     EnrollmentCustomerLink,
     EnrollmentEmailChallenge,
-    EnrollmentSubmission,
+    EnrollmentSubmission, EnrollmentInvite, MemberAccessChallenge,
 )
 from apps.participants.models import ProgramParticipant
 from apps.tenants.branding_models import TenantBranding, TenantBrandingAudit
@@ -51,6 +52,13 @@ def sanitize_store_privacy(receipt_id: str) -> str:
         pending_challenges = EnrollmentEmailChallenge.objects.filter(
             submission__tenant=tenant, consumed_at__isnull=True,
         ).update(consumed_at=now)
+        # Invalidate all outstanding public invitation/access tokens as well.
+        pending_invites = EnrollmentInvite.objects.filter(
+            tenant=tenant, consumed_at__isnull=True,
+        ).update(consumed_at=now)
+        pending_access = MemberAccessChallenge.objects.filter(
+            submission__tenant=tenant, consumed_at__isnull=True,
+        ).update(consumed_at=now)
         submissions = EnrollmentSubmission.objects.filter(tenant=tenant).update(
             name="", email="", marketing_opt_in=False,
             status=EnrollmentSubmission.Status.WITHDRAWN,
@@ -65,12 +73,15 @@ def sanitize_store_privacy(receipt_id: str) -> str:
         for participant in ProgramParticipant.objects.filter(
             tenant=tenant,
         ).iterator(chunk_size=200):
-            if participant.external_customer_id.startswith("anon:"):
-                new_ref = participant.external_customer_id
+            old_ref = participant.external_customer_id
+            if old_ref and old_ref.startswith("anon:"):
+                new_ref = old_ref
             else:
+                # Standalone members may have NULL external customer IDs.
+                # Use the internal UUID to keep pseudonyms distinct.
+                source = old_ref or ("local:" + str(participant.pk))
                 new_ref = pseudonymous_customer_id(
-                    receipt.store_id, participant.external_customer_id,
-                    settings.SECRET_KEY,
+                    receipt.store_id, source, settings.SECRET_KEY,
                 )
             participant.external_customer_id = new_ref
             participant.display_name = ""
@@ -112,6 +123,20 @@ def sanitize_store_privacy(receipt_id: str) -> str:
                 link_batch, ["external_customer_id"],batch_size=200,
             )
 
+        # Verified contact digests, names, birth dates and channel IDs are
+        # not needed to retain the immutable financial ledger after uninstall.
+        # Preserve CustomerProfile UUID/FKs, but remove identifying fields.
+        verified_contacts, _ = VerifiedCustomerContact.objects.filter(
+            tenant=tenant,
+        ).delete()
+        channel_references, _ = ChannelCustomerReference.objects.filter(
+            tenant=tenant,
+        ).delete()
+        profiles_scrubbed = CustomerProfile.objects.filter(tenant=tenant).update(
+            display_name="", birth_date=None, birth_date_consent_at=None,
+            birth_date_verified_at=None,
+        )
+
         # Configurações comerciais próprias do aplicativo podem ser
         # eliminadas após desligar a loja; não são escrituração fiscal.
         branding_audits, _ = TenantBrandingAudit.objects.filter(
@@ -130,6 +155,11 @@ def sanitize_store_privacy(receipt_id: str) -> str:
         receipt.reason_code = "retention_review_required"
         receipt.sanitization_summary = {
             "email_challenges_disabled": int(pending_challenges),
+            "invites_disabled": int(pending_invites),
+            "member_access_disabled": int(pending_access),
+            "verified_contacts_deleted": int(verified_contacts),
+            "channel_references_deleted": int(channel_references),
+            "customer_profiles_scrubbed": int(profiles_scrubbed),
             "enrollment_submissions_sanitized": int(submissions),
             "participants_sanitized": int(participants_changed),
             "customer_links_pseudonymized": int(links_changed),

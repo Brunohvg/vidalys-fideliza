@@ -89,7 +89,7 @@ class PlannerMathTests(SimpleTestCase):
             campaign_budget_cents=37, already_committed_cents=0
         ))
         limit = plan["suggested_limit_rate_bps"]
-        issued_per_order = (101 * limit + 5000) // 10000
+        issued_per_order = (101 * limit) // 10000
         self.assertLessEqual(issued_per_order * 37, 37)
 
 

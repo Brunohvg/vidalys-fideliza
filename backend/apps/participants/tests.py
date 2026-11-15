@@ -172,7 +172,11 @@ class ParticipantDirectoryTests(TestCase):
         self.assertEqual(row["points_pending"],0)
         self.assertEqual(row["points_status"],"ledger_only")
         self.assertIsNone(row["cashback_balance_cents"])
-        self.assertNotIn("900",str(response.data))
+        # Evitar falso positivo com UUID/timestamp contendo acidentalmente
+        # "900"; conferir valores por estrutura, não substring em repr().
+        self.assertNotIn(str(foreign.pk), [item["id"] for item in response.data["items"]])
+        self.assertEqual(response.data["summary"]["total"], 1)
+        self.assertEqual(response.data["items"][0]["points_balance"], 37)
         self.client.force_authenticate(self.stranger)
         other=self.client.get(self.path(self.other.pk))
         self.assertEqual(other.data["items"][0]["points_balance"],900)
