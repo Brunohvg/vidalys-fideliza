@@ -75,6 +75,15 @@ class CompleteCatalogGateTests(TestCase):
         ):
             return call_command("set_loyalty_release", **self.options)
 
+    def test_commercial_fails_without_preventive_checkout_enforcement(self):
+        self._cost(201, "ABC-01")
+        self._cost(202, "ABC-02")
+        with override_settings(FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED=False):
+            with self.assertRaisesRegex(CommandError, "NO-GO"):
+                self._command()
+        self.tenant.refresh_from_db()
+        self.assertFalse(self.tenant.loyalty_live_enabled)
+
     def test_commercial_fails_without_authenticated_order_line_cost_binding(self):
         self._cost(201, "ABC-01")
         self._cost(202, "ABC-02")

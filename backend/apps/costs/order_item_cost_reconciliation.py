@@ -128,6 +128,12 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
         if max(cogs, subtotal) > 1_000_000_000:
             raise OrderItemCostBlocked("Subtotal ultrapassa limite")
 
+    # The same variant can appear as distinct cart lines (e.g. promotions).
+    # Aggregate quantities for the ledger's unique CostItem allocation.
+    combined = {}
+    for cost_id, qty in variants:
+        combined[cost_id] = combined.get(cost_id, 0) + qty
+    versions = list(dict.fromkeys(versions))
     declared_subtotal = _money(order.get("subtotal"), "subtotal")
     discount = _money(order.get("discount"), "desconto total")
     coupon_discount = _money(order.get("discount_coupon", "0.00"), "desconto cupom")
@@ -148,14 +154,14 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
     contribution = eligible - cogs - subsidy - payment_fee_cents
     fingerprint = hashlib.sha256(json.dumps({
         "tenant":str(tenant.pk), "store":str(tenant.external_store_id),
-        "order":str(expected_order_id), "lines":[[str(i),q] for i,q in variants],
+        "order":str(expected_order_id), "lines":[[str(i),q] for i,q in combined.items()],
         "cost_versions": versions,
         "subtotal":subtotal, "discount":discount, "owner_shipping":owner_shipping,
         "customer_shipping":customer_shipping,"cogs":cogs,"psp_fees":payment_fee_cents,
         "total":total,
     }, sort_keys=True,separators=(",",":")).encode()).hexdigest()
     return ReconciledOrderCosts(
-        costs=OrderCosts(lines=tuple(variants),
+        costs=OrderCosts(lines=tuple(combined.items()),
             payment_fee_cents=payment_fee_cents,
             shipping_subsidy_cents=subsidy),
         gross_subtotal_cents=subtotal, discounts_cents=discount,
