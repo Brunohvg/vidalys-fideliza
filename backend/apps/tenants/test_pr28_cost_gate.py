@@ -1,5 +1,6 @@
 """PR28: 100% live sellable variant cost coverage and commercial command gate."""
 import os
+import secrets
 from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.management import call_command, CommandError
@@ -26,7 +27,7 @@ class CompleteCatalogGateTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_superuser(
             username="pr28-catalog-admin", email="pr28@example.invalid",
-            password="synthetic-not-for-live",
+            password=secrets.token_hex(16),
         )
         self.tenant = Tenant.objects.create(
             name="QA cost check", slug="qa-pr28-cost",
