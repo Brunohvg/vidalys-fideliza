@@ -33,7 +33,10 @@ def _context(voucher):
             or not settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED
             or not settings.FIDELIZA_LEDGER_WRITES_ENABLED
             or not settings.FIDELIZA_POINTS_WRITES_ENABLED
-            or not settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS):
+            or not settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS
+            or not settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
+            or not settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED
+            or not settings.FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED):
         raise PilotCouponBlocked("Piloto/cupom externo ainda bloqueado.")
     if voucher.state != LoyaltyVoucher.State.RESERVED or voucher.expires_at <= timezone.now():
         raise PilotCouponBlocked("Voucher não está reservado e válido.")
