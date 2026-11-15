@@ -12,7 +12,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from apps.loyalty.models import LoyaltyRule, LoyaltyVoucher, VoucherPointAllocation
-from apps.loyalty.services import _code_digests, _cancel_reserved_voucher, LoyaltyBlocked
+from apps.loyalty.services import _code_digests, _cancel_reserved_voucher, issue_voucher, LoyaltyBlocked
 from apps.participants.models import ProgramParticipant
 from apps.customers.services import attach_verified_contact
 from apps.sales.models import SaleRecord
@@ -233,6 +233,22 @@ class CouponIdempotencyTests(TestCase):
             _cancel_reserved_voucher(self.voucher)
         self.voucher.refresh_from_db()
         self.assertEqual(self.voucher.state, LoyaltyVoucher.State.RESERVED)
+
+    def test_repeat_reward_request_cannot_create_second_live_coupon(self):
+        self.participant.contact_email = "pr25-member@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            email=self.participant.contact_email, proof_method="email_otp",
+        )
+        with self.assertRaisesRegex(LoyaltyBlocked, "resgate de loja virtual pendente"):
+            issue_voucher(
+                tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+                reward_id=self.voucher.reward_id,
+            )
+        self.assertEqual(LoyaltyVoucher.objects.filter(
+            tenant=self.tenant, participant=self.participant,
+        ).count(), 1)
 
     def test_timeout_creates_uncertain_intent_no_second_post(self):
         with (
