@@ -56,10 +56,11 @@ export function clubSectionPath(slug: string, section: ClubSection): string {
 
 export type EntryRoute =
   | "merchant" | "member" | "demo" | "merchant-auth"
-  | "email-action" | "withdrawal" | "enrollment" | "not-found";
+  | "email-action" | "withdrawal" | "enrollment" | "marketing" | "not-found";
 
 export function entryRoute(pathname: string): EntryRoute {
   if (pathname === "/demo") return "demo";
+  if (/^\/conhecer(?:\/(?:recursos|segmentos|integracoes))?\/?$/.test(pathname)) return "marketing";
   if (clubSlugFromPath(pathname)) return "member";
   const path = pathname.replace(/\/+$/, "") || "/";
   // Os links de confirmação têm tela própria; cadastro/reset solicitados

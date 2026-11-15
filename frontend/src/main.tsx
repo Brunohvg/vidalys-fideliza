@@ -7,6 +7,7 @@ import PublicEnrollment from "./PublicEnrollment";
 import MemberClub from "./MemberClub";
 import EmailAction from "./EmailAction";
 import WithdrawalRequest from "./WithdrawalRequest";
+import MarketingSite from "./MarketingSite";
 import {entryRoute} from "./routes";
 import "./styles.css";
 import "./portal.css";
@@ -20,6 +21,7 @@ const content = (() => {
     case "withdrawal": return <WithdrawalRequest />;
     case "enrollment": return <PublicEnrollment />;
     case "demo": return <App />;
+    case "marketing": return <MarketingSite />;
     case "member": return <MemberClub />;
     case "merchant-auth": return <MerchantLinkLanding />;
     case "merchant": return <Portal />;

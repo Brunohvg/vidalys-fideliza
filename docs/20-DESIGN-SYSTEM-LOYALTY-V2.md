@@ -86,3 +86,25 @@ como "R$ —" em programas exclusivamente por pontos.
 Recompensas em dourado têm valor semântico e textos explícitos de
 indisponibilidade. Cores de marca de cada tenant seguem no hero do
 consumidor; não inserir a identidade Vidalys no tema da loja.
+
+
+## Apresentação comercial independente — 15/11/2026
+
+O site público da Fidelimax foi usado como referência de **organização de informação**
+(home, segmentos, recursos, integrações). A identidade, textos, componentes e
+paleta são próprios Vidalys v2; nenhuma marca, design ou código concorrente copiado.
+
+**Rota de prévia não publicada:** /conhecer, /conhecer/segmentos,
+ /conhecer/recursos, /conhecer/integracoes. A rota "/" permanece dedicada ao
+login/portal Django para evitar regressão e não comprometer os testes QA.
+
+**Sem prometer funções inexistentes:** integrações com Nuvemshop classificadas
+"Em homologação"; registro presencial como interface sem prova financeira;
+Vidalys Flow e outros ERPs como "Planejado"; previews de desconto sem saldo real.
+Nenhum número de faturamento, depoimento, logo de cliente, preço ou período
+grátis fictício. A página comercial tem CTAs para o cadastro existente, sujeitos
+às flags de acesso do tenant e do ambiente.
+
+**Próximo gate:** revisar capturas reais 390/768/1440, contraste e navegação,
+depois confirmar o SHA implantado no Coolify. Não mover marketing para a raiz
+antes de definir domínio/site público e validar o acesso ao painel autenticado.
