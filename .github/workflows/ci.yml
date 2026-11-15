@@ -25,6 +25,11 @@ jobs:
       - name: Script de backup syntax e falha fechada
         run: |
           bash -n ../scripts/homolog_backup_migrate.sh
+          bash -n ../scripts/homolog_recover_restore.sh
+          if FIDELIZA_ENVIRONMENT=production bash ../scripts/homolog_recover_restore.sh; then
+            echo "ERRO: recovery aceitou ambiente nao homolog"
+            exit 1
+          fi
           if FIDELIZA_ENVIRONMENT=production bash ../scripts/homolog_backup_migrate.sh; then
             echo "ERRO: script aceitou ambiente nao homolog"
             exit 1
