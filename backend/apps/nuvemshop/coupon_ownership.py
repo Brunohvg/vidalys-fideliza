@@ -18,7 +18,7 @@ from .order_readonly import safe_id
 from .security import config, decrypt_token
 
 
-def _coupon_intent(*, tenant, store_id, order):
+def _coupon_intent(*, tenant, store_id, order, cfg):
     remote = safe_id(order.get("coupon_id"))
     if remote is None or not isinstance(order.get("coupon"), list):
         return None
@@ -31,7 +31,7 @@ def _coupon_intent(*, tenant, store_id, order):
                if isinstance(entry,dict) and safe_id(entry.get("id")) == remote]
     if len(matches) != 1 or not isinstance(matches[0],str):
         return None
-    if matches[0] != decrypt_token(found.encrypted_code,config().token_keys):
+    if matches[0] != decrypt_token(found.encrypted_code,cfg.token_keys):
         return None
     return found
 
@@ -81,7 +81,7 @@ def _ownership_matches(*, order, intent):
     return verified > 0
 
 
-def check_paid_coupon_ownership(*, event, order):
+def check_paid_coupon_ownership(*, event, order, cfg=None):
     """Must run AFTER OAuth identity/store/order verification, BEFORE ingestion.
 
     Only a matching coupon belonging to this application is inspected.
@@ -92,6 +92,7 @@ def check_paid_coupon_ownership(*, event, order):
         return None
     intent = _coupon_intent(
         tenant=event.tenant, store_id=event.store_id, order=order,
+        cfg=cfg or config(),
     )
     if intent is None:
         return None

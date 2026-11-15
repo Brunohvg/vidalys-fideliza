@@ -212,7 +212,7 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
         and safe_id(order["store_id"]) != event.store_id
     ):
         raise RecheckBlocked("OAuth retornou pedido de outra loja")
-    incident = check_paid_coupon_ownership(event=event, order=order)
+    incident = check_paid_coupon_ownership(event=event, order=order, cfg=cfg)
     if incident in ("ownership_violation","requires_review"):
         NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
             "status": "ownership_violation" if incident == "ownership_violation"
