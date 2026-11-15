@@ -9,15 +9,20 @@ require() { [[ -n "${!1:-}" ]] || die "Informe $1"; }
 [[ "${FIDELIZA_ENVIRONMENT:-}" == "homolog" ]] || die "Ambiente diferente de homolog"
 [[ "${FIDELIZA_MAINTENANCE_CONFIRMED:-}" == "YES" ]] || die "Confirme manutenção/sem escrita concorrente"
 [[ "${FIDELIZA_APPROVE_MIGRATE:-}" == "YES_HOMOLOG_ONLY" ]] || die "Aprovação explícita ausente"
-for key in DATABASE_URL FIDELIZA_EXPECTED_DATABASE FIDELIZA_RESTORE_VERIFY_DATABASE_URL FIDELIZA_APPROVED_SHA FIDELIZA_BACKUP_DIR DJANGO_SECRET_KEY; do require "$key"; done
+for key in DATABASE_URL FIDELIZA_EXPECTED_DATABASE FIDELIZA_RESTORE_VERIFY_DATABASE_URL FIDELIZA_APPROVED_SHA FIDELIZA_BACKUP_DIR DJANGO_SECRET_KEY FIDELIZA_EXPECTED_PG_HOST FIDELIZA_EXPECTED_RESTORE_PG_HOST; do require "$key"; done
 [[ "$DATABASE_URL" == postgres://* || "$DATABASE_URL" == postgresql://* ]] || die "Origem não PostgreSQL"
 [[ "$FIDELIZA_RESTORE_VERIFY_DATABASE_URL" == postgres://* || "$FIDELIZA_RESTORE_VERIFY_DATABASE_URL" == postgresql://* ]] || die "Restore não PostgreSQL"
 [[ "$DATABASE_URL" != "$FIDELIZA_RESTORE_VERIFY_DATABASE_URL" ]] || die "Origem igual ao destino restore"
-for binary in git pg_dump pg_restore psql sha256sum flock uv; do
+for binary in git pg_dump pg_restore psql sha256sum flock uv python3; do
   command -v "$binary" >/dev/null 2>&1 || die "Dependência ausente: $binary"
 done
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# Comparar a localização declarada antes de qualquer dump ou migração.
+LIVE_HOST="$(python3 -c 'import os,urllib.parse; print(urllib.parse.urlsplit(os.environ["DATABASE_URL"]).hostname or "")')"
+RESTORE_HOST="$(python3 -c 'import os,urllib.parse; print(urllib.parse.urlsplit(os.environ["FIDELIZA_RESTORE_VERIFY_DATABASE_URL"]).hostname or "")')"
+[[ "$LIVE_HOST" == "$FIDELIZA_EXPECTED_PG_HOST" ]] || die "Host de origem não autorizado"
+[[ "$RESTORE_HOST" == "$FIDELIZA_EXPECTED_RESTORE_PG_HOST" ]] || die "Host de restore não autorizado"
 ACTUAL_SHA="$(git rev-parse HEAD)" || die "Checkout Git indisponível"
 [[ "$ACTUAL_SHA" == "$FIDELIZA_APPROVED_SHA" ]] || die "SHA divergente do autorizado"
 [[ "$FIDELIZA_BACKUP_DIR" == /* && -d "$FIDELIZA_BACKUP_DIR" ]] || die "Diretório de backup absoluto precisa existir"
@@ -48,7 +53,7 @@ pg_restore --list "$BACKUP" > "$BACKUP.manifest" || die "Manifest do backup inv�
 sha256sum "$BACKUP" > "$BACKUP.sha256"
 (cd "$DIR" && sha256sum --check --status "$(basename "$BACKUP").sha256") || die "Checksum falhou"
 # Restore REAL, mas somente na base scratch pré-criada, privada e vazia.
-if ! pg_restore --exit-on-error --no-owner --no-acl --dbname="$FIDELIZA_RESTORE_VERIFY_DATABASE_URL" "$BACKUP" > "$BACKUP.restore.log" 2>&1; then
+if ! pg_restore --single-transaction --no-owner --no-acl --dbname="$FIDELIZA_RESTORE_VERIFY_DATABASE_URL" "$BACKUP" > "$BACKUP.restore.log" 2>&1; then
   die "Restore de conferência falhou. Logs protegidos; nenhuma migração"
 fi
 declare -A BEFORE_COUNTS
@@ -64,6 +69,20 @@ for table in django_migrations tenants_tenant participants_programparticipant sa
 done
 printf 'BACKUP_VERIFIED=%s\n' "$BACKUP"
 printf 'BACKUP_SHA256=%s\n' "$(cut -d ' ' -f 1 "$BACKUP.sha256")"
+# Um restore que abre não basta: migrar o esquema restaurado PRIMEIRO,
+# com a mesma revisão de código, e verificar triggers/FKs no scratch.
+(
+  export DATABASE_URL="$FIDELIZA_RESTORE_VERIFY_DATABASE_URL"
+  export FIDELIZA_EXPECTED_DATABASE="$SCRATCH_NAME"
+  export FIDELIZA_EXPECTED_PG_HOST="$FIDELIZA_EXPECTED_RESTORE_PG_HOST"
+  cd "$ROOT/backend"
+  uv run --locked python manage.py check
+  uv run --locked python manage.py migrate --noinput > "$BACKUP.scratch-migration.log" 2>&1
+  uv run --locked python manage.py migrate --check
+  uv run --locked python scripts/homolog_post_migrate_check.py schema
+) || die "MIGRAÇÃO NO RESTORE FALHOU; banco original permanece sem migrate"
+printf 'SCRATCH_MIGRATION_VERIFIED=YES\n'
+# A partir daqui, somente a origem previamente declarada.
 cd "$ROOT/backend"
 uv run --locked python manage.py check || die "Django check pré-migração falhou"
 uv run --locked python manage.py migrate --plan > "$BACKUP.migration-plan" || die "Plano de migração falhou"
@@ -74,6 +93,8 @@ if ! uv run --locked python manage.py migrate --noinput > "$BACKUP.migration.log
 fi
 uv run --locked python manage.py migrate --check || die "Migração incompleta"
 uv run --locked python manage.py check || die "Django check pós-migração falhou"
+uv run --locked python scripts/homolog_post_migrate_check.py schema ||
+  die "Triggers, FKs ou flags pós-migração falharam; NÃO liberar deploy"
 # As migrações PR18–PR22 não devem inserir/remover dados comerciais legados.
 for table in tenants_tenant participants_programparticipant sales_salerecord points_pointentry wallets_cashbackentry; do
   if [[ -v BEFORE_COUNTS["$table"] ]]; then
