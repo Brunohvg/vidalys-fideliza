@@ -15,6 +15,10 @@ class LegacySchemaUpgradeSmokeTests(TransactionTestCase):
         executor = MigrationExecutor(connection)
         final_targets = executor.loader.graph.leaf_nodes()
         old_targets = [
+            # PR25 adiciona coluna NOT NULL ao Tenant. O teste do esquema
+            # legado precisa realmente voltar à migração anterior à flag,
+            # em vez de usar um model histórico contra schema novo.
+            ("tenants", "0003_unconnected_merchant_tenants"),
             ("sales", "0003_reward_publication"),
             ("customers", None),
             ("channels", None),
