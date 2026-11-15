@@ -114,6 +114,7 @@ class PilotCommandTests(TestCase):
         with patch.dict(os.environ, {
             "FIDELIZA_ENVIRONMENT": "homolog",
             "FIDELIZA_PILOT_ACTIVATION_APPROVAL": "YES_VERIFIED_QA_ONLY",
+            "FIDELIZA_DEPLOYED_SHA": "a" * 40,
         }):
             with self.assertRaises(CommandError):
                 call_command("set_loyalty_pilot", tenant_id=str(self.commercial.pk),
