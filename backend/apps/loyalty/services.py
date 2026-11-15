@@ -550,6 +550,8 @@ def _cancel_reserved_voucher(voucher):
             NuvemshopCouponIntent.State.UNCERTAIN,
             NuvemshopCouponIntent.State.ISSUED,
             NuvemshopCouponIntent.State.APPLIED,
+            NuvemshopCouponIntent.State.REVOKING,
+            NuvemshopCouponIntent.State.REVOKE_UNKNOWN,
         ),
     ).exists():
         raise LoyaltyBlocked("Cupom Nuvemshop exige desativação/reconciliação antes de cancelar.")

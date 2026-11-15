@@ -206,6 +206,10 @@ FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED = env_bool(
 FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED = env_bool(
     "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED", False
 )
+# Revogação destrutiva externa separada da emissão; OFF por padrão.
+FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED = env_bool(
+    "FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED", False
+)
 
 # Manual approval of verified participants; NO cashback/ledger activation.
 FIDELIZA_PARTICIPANT_APPROVAL_ENABLED = env_bool(

@@ -87,6 +87,10 @@ def provision_coupon(*, voucher_id, issued_code=None, opener=None):
                 raise PilotCouponBlocked("Não é permitido trocar o código de cupom.")
             if intent.store_id != install.store_id:
                 raise PilotCouponBlocked("Cupom pertence a outra instalação.")
+            if intent.state in (
+                intent.State.REVOKING, intent.State.REVOKE_UNKNOWN, intent.State.REVOKED,
+            ):
+                raise PilotCouponBlocked("Cupom em revogação não pode ser reemitido.")
             if intent.remote_coupon_id and intent.state in (
                 NuvemshopCouponIntent.State.ISSUED,
                 NuvemshopCouponIntent.State.APPLIED,

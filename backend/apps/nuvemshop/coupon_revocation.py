@@ -77,9 +77,12 @@ def revoke_coupon(*, intent_id, reason, opener=None, now=None):
         if intent.state == intent.State.REVOKED:
             return intent, _maybe_cancel_reservation(intent=intent, voucher=voucher, now=now)
         if intent.state not in (
-            intent.State.ISSUED, intent.State.REVOKING, intent.State.REVOKE_UNKNOWN,
+            intent.State.ISSUED, intent.State.APPLIED,
+            intent.State.REVOKING, intent.State.REVOKE_UNKNOWN,
         ):
             raise CouponRevokeBlocked("Cupom não confirmado ou estado de origem desconhecido.")
+        if intent.revoke_reason and intent.revoke_reason != reason:
+            raise CouponRevokeBlocked("Motivo de revogação anterior não pode ser alterado.")
         if reason == "expired":
             if voucher.expires_at + timedelta(minutes=30) > now or intent.order_id:
                 raise CouponRevokeBlocked("Expiração exige carência de checkout e ausência de pedido.")
@@ -97,7 +100,7 @@ def revoke_coupon(*, intent_id, reason, opener=None, now=None):
                 raise CouponRevokeBlocked("Pedido ainda não consta cancelado/estornado.")
         cfg, token = _credentials(intent=intent)
         intent.revoke_reason = reason
-        if intent.state == intent.State.ISSUED:
+        if intent.state in (intent.State.ISSUED, intent.State.APPLIED):
             intent.state = intent.State.REVOKING
         intent.save(update_fields=["state", "revoke_reason", "updated_at"])
         store_id, remote_id, agent, keys = (
@@ -111,7 +114,7 @@ def revoke_coupon(*, intent_id, reason, opener=None, now=None):
         )
         needs_delete = _unused_snapshot(
             intent=intent, remote=before, keys=keys,
-        )
+        ) and not bool(before.get("deleted_at"))
         if needs_delete:
             NuvemshopCouponIntent.objects.filter(pk=intent_id).update(
                 verified_unused_at=now,
