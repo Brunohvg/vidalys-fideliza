@@ -94,9 +94,10 @@ O site público da Fidelimax foi usado como referência de **organização de in
 (home, segmentos, recursos, integrações). A identidade, textos, componentes e
 paleta são próprios Vidalys v2; nenhuma marca, design ou código concorrente copiado.
 
-**Rota de prévia não publicada:** /conhecer, /conhecer/segmentos,
- /conhecer/recursos, /conhecer/integracoes. A rota "/" permanece dedicada ao
-login/portal Django para evitar regressão e não comprometer os testes QA.
+**Rotas de apresentação pública no código:** / (home principal),
+ /conhecer (alias antigo), /conhecer/segmentos, /conhecer/recursos,
+ /conhecer/integracoes. O lojista entra por /entrar e o painel utiliza
+ /app/visao-geral. A sessão e o tenant continuam validados no Django.
 
 **Sem prometer funções inexistentes:** integrações com Nuvemshop classificadas
 "Em homologação"; registro presencial como interface sem prova financeira;
@@ -106,5 +107,24 @@ grátis fictício. A página comercial tem CTAs para o cadastro existente, sujei
 às flags de acesso do tenant e do ambiente.
 
 **Próximo gate:** revisar capturas reais 390/768/1440, contraste e navegação,
-depois confirmar o SHA implantado no Coolify. Não mover marketing para a raiz
-antes de definir domínio/site público e validar o acesso ao painel autenticado.
+confirmar o SHA efetivamente implantado no Coolify e depois definir
+se haverá domínio comercial próprio na produção. O ambiente QA permanece
+com noindex e sem promessa de desconto financeiro ativo.
+
+## Alinhamento da tela Meu Clube e rotas — 15/11/2026
+
+A captura do tenant de teste evidenciou hero teal plano, excesso de áreas brancas e
+recompensa única com cartão pequeno. No código de homologação, o hero usa
+**navy→jade padrão v2** apenas quando o lojista utiliza as cores padrão.
+Cores personalizadas do tenant têm prioridade, inclusive texto de contraste.
+Cartão único de recompensa usa largura disponível em desktop e layout vertical
+em telas pequenas, sem alterar título, valor ou regra original. 
+
+Mapeamento de rotas: `/` apresentação comercial; `/entrar` login;
+`/app/visao-geral` painel; `/clube/<slug>` clube; `/participar/<slug>`
+adesão. OAuth agora retorna a `/app/configuracoes?nuvemshop=...`, mantendo
+`code` e `state` fora do redirecionamento. Os testes end-to-end do lojista
+usam /app em vez do alias legado /.
+
+**Limite:** código e testes não comprovam que o domínio Coolify já serve essa
+versão. Revisar aparência real, identidade do tenant e recompensas no painel.

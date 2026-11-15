@@ -6,7 +6,7 @@ Infraestrutura vigente: apenas compose.yaml **Raw** com PostgreSQL separado e
 privado (docs/44). O modo Managed foi reprovado por vazamento real. Cronologia de homologação: docs/43. Variáveis:
 docs/45. Referências de Compose, escopos e paleta de versões antigas
 no histórico abaixo não substituem o contrato vigente.
-Criar um SaaS multi-tenant de fidelidade para e-commerce, inicialmente Nuvemshop, com pontos/cashback como crédito promocional, carteira auditável, métricas de recompra e custos. A Bibelô é a loja-piloto. É produto separado do Vidalys Flow.
+Criar um SaaS multi-tenant de fidelidade para e-commerce, inicialmente Nuvemshop, com pontos/cashback como crédito promocional, carteira auditável, métricas de recompra e custos. A Bibelô é somente uma possível loja de testes, nunca uma dependência, marca exclusiva ou tenant padrão. É produto separado do Vidalys Flow.
 
 ## Fonte de verdade e precedência
 1. Estado do código, testes e APIs Nuvemshop oficiais atualmente verificadas.
@@ -80,7 +80,7 @@ resgate QA antes de qualquer novo recurso, mantendo GO-LIVE NO-GO.
 
 
 ## Portal autenticado e tenant (P0)
-- A rota / deve exigir sessão válida do Django. Apenas /demo pode mostrar exemplos fictícios.
+- A rota / é a apresentação pública do produto Vidalys Fideliza (sem sessão). O login do lojista usa /entrar e o painel autenticado /app/visao-geral; Django valida as sessões e o tenant em todas as APIs. /demo segue como simulação explicitamente rotulada. O clube de cada lojista usa /clube/:slug; não expor dados de outro tenant.
 - Todas as operações sensíveis pertencem a uma loja: verificar associação por usuário/tenant NO BACKEND, jamais confiar somente em seleção no frontend.
 - Formulários mutáveis e login usam CSRF, sessão HttpOnly, HTTPS e limitação de tentativas; não criar senhas demo, credenciais em README nem token no frontend.
 - A tela autenticada não apresenta métricas fictícias como se fossem reais. Dados sem integração devem exibir estado vazio ou indicação de funcionalidade em desenvolvimento.

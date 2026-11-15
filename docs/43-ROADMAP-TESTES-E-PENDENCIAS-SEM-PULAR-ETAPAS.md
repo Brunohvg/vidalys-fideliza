@@ -43,6 +43,24 @@ venda de balcão sem conceder pontos. A jornada financeira somente avança
 com PSP/cupom/identidade comprovados pelo provedor correto e ainda está
 bloqueada comercialmente.
 
+## CHECKPOINT DE EXPERIÊNCIA — 15/11/2026: domínio principal e Clube v2
+
+A pedido do proprietário, o domínio raiz `/` passou a servir a apresentação
+do Vidalys Fideliza no código. O login agora é `/entrar` e o painel é
+`/app/visao-geral`; `/clube/:slug` continua sendo a experiência white-label
+de cada loja. O callback OAuth foi realocado para `/app/configuracoes`.
+A alteração preserva a validação de sessão por Django e não concede
+pontos/cupons.
+
+No Clube de um tenant com paleta padrão, a composição usa navy→jade e destaque
+dourado para recompensas. Paletas personalizadas prevalecem; a recompensa
+única passa a ocupar largura total. Validar em navegador QA 390/768/1440 e
+conferir SHAs atuais, sem confundir CI com deploy ou desligar gates financeiros.
+O texto do nome da loja e o título do benefício são dados cadastrados pelo
+lojista, não corrigidos automaticamente pela interface.
+
+---
+
 ## CHECKPOINT ATUAL — 15/11/2026: integração de código PRs #18–#30
 
 > **Este checkpoint substitui os estados cronológicos antigos abaixo.**
