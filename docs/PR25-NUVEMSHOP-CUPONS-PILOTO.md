@@ -38,6 +38,9 @@ mesclados. Sem acesso administrativo ao Coolify/PG, não afirmar E2E real.
 - Voucher com cupom externo pendente NÃO pode ter suas reservas liberadas
   por simples cancelamento; desativação de tenant fica bloqueada se houver
   cupom externo pendente.
+- O motor também impede emitir outro voucher Nuvemshop para o mesmo
+  participante enquanto existir uma reserva de loja virtual ativa;
+  um reenvio HTTP não pode reservar novos lotes criando outro código.
 
 ## Webhook e conciliação financeira
 
