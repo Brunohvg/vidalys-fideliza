@@ -115,11 +115,11 @@ def revoke_and_release(*, intent_id, reason, opener=None):
                     store_id=intent.store_id, token=token, agent=cfg.user_agent,
                     remote_id=remote_id, opener=opener,
                 )
-        if found is not None and (
-            found.get("valid") is not False
-            and found.get("deleted_at") is None
-        ):
-            raise RevocationBlocked("API ainda considera o cupom utilizável")
+        # "valid=false" sozinho NÃO comprova DELETE: pode ser apenas
+        # validade expirada ou max_uses alcançado e ser reativado no painel.
+        # Só 404 ou deleted_at fornecem prova de revogação persistente.
+        if found is not None and found.get("deleted_at") is None:
+            raise RevocationBlocked("API não confirmou exclusão definitiva do cupom")
     except CouponRemoteError:
         raise RevocationBlocked("Revogação remota pendente de confirmação") from None
 
