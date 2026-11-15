@@ -382,6 +382,10 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
             issue_voucher(tenant_id=self.tenant.pk,
                           participant_id=self.participant.pk,
                           reward_id=self.voucher.reward_id)
+        from apps.loyalty.services import cancel_voucher
+        with self.assertRaises(LoyaltyBlocked):
+            cancel_voucher(tenant_id=self.tenant.pk,voucher_id=self.voucher.pk)
+        self.assertEqual(lot_balances(lot)["reserved"],10)
 
     def test_pr29_matching_email_but_different_cpf_is_blocked(self):
         from types import SimpleNamespace

@@ -181,6 +181,7 @@ class Command(BaseCommand):
                     NuvemshopCouponIntent.State.APPLIED,
                     NuvemshopCouponIntent.State.UNCERTAIN,
                     NuvemshopCouponIntent.State.REVOKING,
+                    NuvemshopCouponIntent.State.OWNERSHIP_VIOLATION,
                 ],
             ).exists():
                 raise CommandError("Há cupons externos pendentes: primeiro conciliar")

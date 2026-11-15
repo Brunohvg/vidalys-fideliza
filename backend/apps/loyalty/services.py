@@ -572,14 +572,21 @@ def issue_voucher(*, tenant_id, participant_id, reward_id):
 def _cancel_reserved_voucher(voucher):
     # Não liberar reservas se o cupom externo ainda aceitar compras.
     from apps.nuvemshop.models import NuvemshopCouponIntent
-    if NuvemshopCouponIntent.objects.filter(
-        voucher=voucher, state__in=(
-            NuvemshopCouponIntent.State.UNCERTAIN,
-            NuvemshopCouponIntent.State.ISSUED,
-            NuvemshopCouponIntent.State.APPLIED,
-            NuvemshopCouponIntent.State.REVOKING,
-        ),
-    ).exists():
+    # An order-bound coupon can have been used even after DELETE was
+    # confirmed. Without independent non-capture/refund evidence, never
+    # refund the reservation via a generic manual cancel endpoint.
+    if (NuvemshopCouponIntent.objects.filter(
+        voucher=voucher,
+    ).exclude(order_id="").exists() or
+        NuvemshopCouponIntent.objects.filter(
+            voucher=voucher, state__in=(
+                NuvemshopCouponIntent.State.UNCERTAIN,
+                NuvemshopCouponIntent.State.ISSUED,
+                NuvemshopCouponIntent.State.APPLIED,
+                NuvemshopCouponIntent.State.REVOKING,
+                NuvemshopCouponIntent.State.OWNERSHIP_VIOLATION,
+            ),
+        ).exists()):
         raise LoyaltyBlocked("Cupom Nuvemshop exige desativação/reconciliação antes de cancelar.")
     if voucher.state != LoyaltyVoucher.State.RESERVED:
         return False
