@@ -94,6 +94,13 @@ def _evidence(evidence, *, kind, sale, amount):
         or evidence.verified_at < evidence.occurred_at
     ):
         raise LoyaltyBlocked("Sem comprovação financeira independente válida.")
+    if getattr(settings, "FIDELIZA_PAYMENT_PROOF_STRICT_ORIGIN_ENABLED", False):
+        from .models import PaymentProofAudit
+        if not PaymentProofAudit.objects.filter(
+            evidence=evidence, tenant_id=sale.tenant_id, sale=sale,
+            provider=evidence.provider, proof_digest=evidence.verification_digest,
+        ).exists():
+            raise LoyaltyBlocked("A origem da prova PSP/caixa não possui auditoria imutável.")
 
 
 def _rule(tenant):

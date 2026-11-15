@@ -102,8 +102,8 @@ def validate_pagarme_capture(*, charge, sale, charge_id):
             or last.get("refunded_amount") != 0):
         raise PaymentProofBlocked("Captura total e irreversões não comprovadas.")
     paid_at = _valid_timestamp(charge.get("paid_at"))
-    if paid_at < sale.created_at - timedelta(minutes=5):
-        raise PaymentProofBlocked("Captura anterior ao pedido persistido.")
+    # Importação do pedido pode ocorrer depois da captura remota;
+    # comparação com consent_at é feita pelo motor de grants.
     return paid_at
 
 
