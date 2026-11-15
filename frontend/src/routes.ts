@@ -27,12 +27,12 @@ const pathToScreen = new Map<string, MerchantScreen>(
 
 export function merchantScreenForPath(pathname: string): MerchantScreen | null {
   const clean = pathname.replace(/\/+$/, "") || "/";
-  if (clean === "/" || clean === "/app") return "overview"; // legacy deep links
+  if (clean === "/app") return "overview";
   return pathToScreen.get(clean) ?? null;
 }
 
 export function isMerchantPath(pathname: string): boolean {
-  return pathname === "/" || pathname === "/app" || pathname.startsWith("/app/");
+  return pathname === "/app" || pathname.startsWith("/app/");
 }
 
 export const merchantAuthPaths = [
@@ -60,6 +60,8 @@ export type EntryRoute =
 
 export function entryRoute(pathname: string): EntryRoute {
   if (pathname === "/demo") return "demo";
+  if (pathname === "/") return "marketing";
+  if (pathname === "/entrar" || pathname === "/entrar/") return "merchant";
   if (/^\/conhecer(?:\/(?:recursos|segmentos|integracoes))?\/?$/.test(pathname)) return "marketing";
   if (clubSlugFromPath(pathname)) return "member";
   const path = pathname.replace(/\/+$/, "") || "/";

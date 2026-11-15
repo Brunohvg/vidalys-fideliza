@@ -5,8 +5,12 @@ import {
 } from "./routes";
 
 describe("rotas públicas e privadas", () => {
-  it("mantém / como alias e reconhece deep links de loja", () => {
-    expect(merchantScreenForPath("/")).toBe("overview");
+  it("reserva a raiz à apresentação e preserva deep links de loja", () => {
+    expect(merchantScreenForPath("/")).toBeNull();
+    expect(entryRoute("/")).toBe("marketing");
+    expect(entryRoute("/conhecer")).toBe("marketing");
+    expect(entryRoute("/entrar")).toBe("merchant");
+    expect(entryRoute("/app")).toBe("merchant");
     expect(merchantScreenForPath("/app/vendas/")).toBe("sales");
     for (const [screen, path] of Object.entries(merchantPaths)) {
       expect(merchantScreenForPath(path)).toBe(screen);

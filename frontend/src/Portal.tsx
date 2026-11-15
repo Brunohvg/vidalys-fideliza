@@ -142,7 +142,12 @@ export default function Portal() {
   useEffect(() => {
     let current = true;
     merchantApi.getSession().then(value => {
-      if (current) { setSession(value); setSessionError(""); }
+      if (current) {
+        if (value.authenticated && window.location.pathname === "/entrar") {
+          window.history.replaceState(null, "", "/app/visao-geral");
+        }
+        setSession(value);setSessionError("");
+      }
     }).catch(() => {
       if (current) setSessionError("Não conseguimos conectar ao servidor. Confira a API e tente novamente.");
     });
@@ -155,7 +160,12 @@ export default function Portal() {
       await merchantApi.login(email, password);
       const value = await merchantApi.getSession();
       setSession(value);
-      // Login em deep link mantém a rota originalmente solicitada.
+      // Um acesso iniciado em /entrar termina na área autenticada.
+      // Deep links /app/* continuam preservados.
+      if (window.location.pathname === "/entrar" || window.location.pathname === "/cadastrar") {
+        window.history.replaceState(null, "", "/app/visao-geral");
+      }
+      setAuthRoute(false);
       setPage(merchantScreenForPath(window.location.pathname) || "overview");
       setSelectedId("");
     } catch (error) {
@@ -169,7 +179,7 @@ export default function Portal() {
     if(!value.authenticated || value.tenants.length === 0)
       throw new Error("Cadastro confirmado, mas a empresa não apareceu na sessão. Contate o suporte.");
     // Somente depois do backend confirmar o token e autenticar a nova conta.
-    window.history.replaceState(null, "", "/");
+    window.history.replaceState(null, "", "/app/visao-geral");
     setAuthRoute(false);
     setSession(value);setAuthError("");setPage("overview");setSelectedId("");
   };
@@ -188,6 +198,7 @@ export default function Portal() {
     setAuthBusy(true); setAuthError("");
     try {
       await merchantApi.logout();
+      window.history.replaceState(null, "", "/entrar");
       setSession({ authenticated: false, user: null, tenants: [] });
       setSelectedId("");
       setPage("overview");

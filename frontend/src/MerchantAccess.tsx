@@ -12,7 +12,7 @@ const pathView=():View=>{
   return "login";
 };
 const viewPath:Record<View,string>={
-  login:"/",signup:"/cadastrar","await-email":"/cadastrar",confirm:"/confirmar-conta",
+  login:"/entrar",signup:"/cadastrar","await-email":"/cadastrar",confirm:"/confirmar-conta",
   forgot:"/esqueci-senha",reset:"/redefinir-senha","reset-sent":"/esqueci-senha",
   "reset-complete":"/redefinir-senha",
 };

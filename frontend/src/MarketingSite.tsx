@@ -9,7 +9,7 @@ import "./marketing.css";
 type Page="inicio"|"recursos"|"segmentos"|"integracoes";
 type CapabilityStatus="interface"|"homologacao"|"planejado";
 const nav:{page:Page;label:string;href:string}[]=[
-  {page:"inicio",label:"Início",href:"/conhecer"},
+  {page:"inicio",label:"Início",href:"/"},
   {page:"recursos",label:"Recursos",href:"/conhecer/recursos"},
   {page:"segmentos",label:"Segmentos",href:"/conhecer/segmentos"},
   {page:"integracoes",label:"Integrações",href:"/conhecer/integracoes"},
@@ -71,7 +71,7 @@ export default function MarketingSite(){
   return <div className="vf-market">
     <header className="mk-header">
       <div className="mk-header-inner">
-        <a className="mk-logo" href="/conhecer" aria-label="Vidalys Fideliza · início">
+        <a className="mk-logo" href="/" aria-label="Vidalys Fideliza · início">
           <span><HeartHandshake size={24}/></span>
           <strong>vidalys<em>fideliza</em></strong>
         </a>
@@ -80,7 +80,7 @@ export default function MarketingSite(){
             aria-current={page===item.page?"page":undefined}>{item.label}</a>)}
         </nav>
         <div className="mk-header-actions">
-          <a className="mk-signin" href="/">Entrar</a>
+          <a className="mk-signin" href="/entrar">Entrar</a>
           <a className="mk-head-cta" href="/cadastrar">Criar conta <ArrowRight size={16}/></a>
         </div>
       </div>
@@ -196,7 +196,7 @@ export default function MarketingSite(){
         <p>Relacionamento, recompensas e cuidado com cada compra.</p>
         <small>Esta apresentação é uma prévia de homologação, não uma oferta de recursos comerciais ativados.</small>
       </div>
-      <nav aria-label="Links do rodapé">{nav.map(item=><a key={item.page} href={item.href}>{item.label}</a>)}<a href="/">Entrar</a></nav>
+      <nav aria-label="Links do rodapé">{nav.map(item=><a key={item.page} href={item.href}>{item.label}</a>)}<a href="/entrar">Entrar</a></nav>
     </div></footer>
   </div>;
 }

@@ -30,15 +30,15 @@ export default function MerchantLinkLanding() {
     if (!session.authenticated || session.tenants.length === 0) {
       throw new Error("Conta confirmada, mas a empresa não está disponível. Contate o suporte.");
     }
-    // Recarrega a raiz com a nova sessão, evitando estado visual da loja anterior.
-    window.location.replace("/");
+    // Links de confirmação sempre retornam ao painel autenticado.
+    window.location.replace("/app/visao-geral");
   };
 
   const onLogin = async (email: string, password: string) => {
     setBusy(true); setAuthError("");
     try {
       await merchantApi.login(email, password);
-      window.location.replace("/");
+      window.location.replace("/app/visao-geral");
     } catch (error) {
       setAuthError(error instanceof ApiError
         ? error.message : "Não foi possível entrar. Verifique sua conexão.");
@@ -54,9 +54,9 @@ export default function MerchantLinkLanding() {
   };
 
   const onNavigate = (path: string) => {
-    if (path === "/" && activeAccount) {
+    if (path === "/entrar" && activeAccount) {
       // "Voltar à conta conectada" é diferente de "Ir ao login".
-      window.location.replace("/");
+      window.location.replace("/app/visao-geral");
     }
   };
 
