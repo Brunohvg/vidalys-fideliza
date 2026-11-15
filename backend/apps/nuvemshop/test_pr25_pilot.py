@@ -8,8 +8,9 @@ from unittest.mock import patch
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
 from django.core.management import call_command, CommandError
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
+from django.urls import reverse
 
 from apps.loyalty.models import LoyaltyRule, LoyaltyVoucher, VoucherPointAllocation
 from apps.loyalty.services import _code_digests, _cancel_reserved_voucher, issue_voucher, LoyaltyBlocked
@@ -249,6 +250,39 @@ class CouponIdempotencyTests(TestCase):
         self.assertEqual(LoyaltyVoucher.objects.filter(
             tenant=self.tenant, participant=self.participant,
         ).count(), 1)
+
+    def test_consumer_coupon_status_never_exposes_another_members_code(self):
+        with (
+            patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_service.create_coupon_once", return_value="876"),
+        ):
+            provision_coupon(voucher_id=self.voucher.pk, issued_code=self.code)
+        url = reverse("loyalty-member-coupon-status", kwargs={
+            "slug": self.tenant.slug, "voucher_id": self.voucher.pk,
+        })
+        client = Client()
+        self.assertEqual(client.get(url, secure=True).status_code, 401)
+        foreign = ProgramParticipant.objects.create(
+            tenant=self.tenant, display_name="Outro participante QA",
+            consent_at=timezone.now(), terms_version="v1",
+            consent_channel=ProgramParticipant.ConsentChannel.CUSTOMER_PORTAL,
+            status=ProgramParticipant.Status.ACTIVE,
+        )
+        with (
+            patch("apps.loyalty.views._authorized_submission", return_value=object()),
+            patch("apps.loyalty.views._participant", return_value=foreign),
+        ):
+            response = client.get(url, secure=True)
+            self.assertEqual(response.status_code, 404)
+            self.assertNotIn(self.code, response.content.decode("utf-8"))
+        with (
+            patch("apps.loyalty.views._authorized_submission", return_value=object()),
+            patch("apps.loyalty.views._participant", return_value=self.participant),
+            patch("apps.nuvemshop.security.config", return_value=self.cfg),
+        ):
+            owner = client.get(url, secure=True)
+            self.assertEqual(owner.status_code, 200)
+            self.assertEqual(owner.json()["code"], self.code)
 
     def test_timeout_creates_uncertain_intent_no_second_post(self):
         with (
