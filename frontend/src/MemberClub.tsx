@@ -229,10 +229,10 @@ export default function MemberClub(){
           <span className="member-club-hero-note"><CheckCircle2 size={15}/> {state}</span>
           <p className="member-club-hero-subtitle">Suas conquistas e benefícios em um só lugar.</p>
         </section>
-        <MemberVipCard me={me}/>
+        {(me.vip_level||me.vip_next_level)&&<MemberVipCard me={me}/>}
         <MemberWalletOverview me={me} pointsReady={pointsReady} ledgerOnly={ledgerOnly}/>
         <MemberRedeemAction slug={slug} me={me} reward={nextReward ?? null}/>
-        <MemberMissions me={me}/>
+        {(me.missions||[]).length>0&&<MemberMissions me={me}/>}
         <nav className="member-club-sections" aria-label="Seu clube">
           <button type="button" aria-pressed={section==="rewards"}
             aria-controls="member-rewards-panel"

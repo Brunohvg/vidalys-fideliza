@@ -53,11 +53,11 @@ export function MemberWalletOverview({me,pointsReady,ledgerOnly}:{
             {typeof points==="number"&&<small>pontos</small>}
           </strong>
         </div>
-        <div className="mc-balance-amount mc-balance-cashback">
-          <span className="member-club-wallet-label">Cashback (R$)</span>
-          <strong className="mc-cashback-number">{hasCashback?currency(cashback):"—"}</strong>
-          <small>{hasCashback?"Saldo interno, sem uso liberado":"Ainda indisponível"}</small>
-        </div>
+        {hasCashback&&<div className="mc-balance-amount mc-balance-cashback">
+          <span className="member-club-wallet-label">Cashback (R$) · registro legado</span>
+          <strong className="mc-cashback-number">{currency(cashback)}</strong>
+          <small>Histórico interno, sem uso liberado</small>
+        </div>}
       </div>
       <p>{pointsReady?"Acompanhe suas compras e os benefícios realmente liberados pela loja."
         :ledgerOnly?"Os lançamentos internos estão registrados, mas não podem ser trocados por descontos até a conciliação de pagamentos e a ativação do resgate."

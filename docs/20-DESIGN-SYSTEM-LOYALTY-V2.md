@@ -75,3 +75,14 @@ em outros contextos, corrigir nos componentes relevantes; não adicionar
 uma terceira paleta nem sobrescrever o estilo da loja conectada.
 Capturas Playwright são testes automatizados e requerem revisão visual
 humana e validação no domínio de homologação com o SHA exato.
+
+## Portal do participante — refinamento visual 15/11/2026
+
+Com a v2 como fonte de verdade, aprimorar `member-club.css` na vitrine
+de recompensas e acesso por e-mail, sem prometer saldo/cupom real.
+O painel de pontos permanece central; VIP e Missões sem dados não devem
+ocupam espaço no primeiro acesso, e o bloco de cashback não aparece
+como "R$ —" em programas exclusivamente por pontos.
+Recompensas em dourado têm valor semântico e textos explícitos de
+indisponibilidade. Cores de marca de cada tenant seguem no hero do
+consumidor; não inserir a identidade Vidalys no tema da loja.
