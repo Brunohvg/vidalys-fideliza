@@ -14,18 +14,30 @@ export function App(nube: NubeSDK): void {
     config: { has_cart_validation: true },
   }));
   let revision = 0;
+  let hasOurFailure = false;
   const fail = () => {
-    nube.send("coupon:remove");
+    hasOurFailure = true;
     nube.send("cart:validate", () => ({
       cart: { validation: {
         status: "fail",
         reason: "Não foi possível confirmar o titular deste cupom. Aplique um cupom da sua própria conta.",
       }},
     }));
+    nube.send("coupon:remove");
   };
   async function inspect(state: Readonly<NubeSDKState>): Promise<void> {
     const code = state.cart.coupon?.code;
-    if (!code || !CODE_PATTERN.test(code)) return;
+    if (!code || !CODE_PATTERN.test(code)) {
+      revision++;
+      // Clear only our own failed validation after the coupon was removed.
+      if (hasOurFailure) {
+        hasOurFailure = false;
+        nube.send("cart:validate", () => ({
+          cart: { validation: { status: "success" } },
+        }));
+      }
+      return;
+    }
     const current = ++revision;
     nube.send("cart:validate", () => ({
       cart: { validation: { status: "pending" } },
@@ -49,6 +61,7 @@ export function App(nube: NubeSDK): void {
         && "eligible" in result && (result as { eligible: unknown }).eligible === true;
       if (current !== revision) return;
       if (!matched) { fail(); return; }
+      hasOurFailure = false;
       nube.send("cart:validate", () => ({
         cart: { validation: { status: "success" } },
       }));

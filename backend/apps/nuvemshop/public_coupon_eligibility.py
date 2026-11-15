@@ -144,7 +144,8 @@ class PublicCouponEligibilityView(APIView):
                 or not isinstance(email,str) or len(email) > 254
                 or not isinstance(bearer,str) or len(bearer) > 1200):
             return _private({"eligible": False})
-        if not _limit(request, str(store_id)):
+        # IP-wide cap prevents rotating arbitrary store_id to bypass throttle.
+        if not _limit(request, "global") or not _limit(request, str(store_id)):
             return _private({"eligible": False}, status=429)
         try:
             claims = signing.loads(
