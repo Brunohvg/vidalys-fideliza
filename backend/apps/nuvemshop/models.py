@@ -52,6 +52,9 @@ class NuvemshopCouponIntent(models.Model):
         ISSUED = "issued", "Criado no provedor"
         APPLIED = "applied_pending_proof", "Aplicado, captura não comprovada"
         SETTLED = "settled", "Baixa financeira validada"
+        REVOKING = "revoking", "Revogação em processamento"
+        REVOKE_UNKNOWN = "revoke_unknown", "Exclusão remota pendente de confirmação"
+        REVOKED = "revoked", "Cupom confirmado como revogado"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
@@ -64,6 +67,10 @@ class NuvemshopCouponIntent(models.Model):
     order_id = models.CharField(max_length=32, blank=True, default="")
     state = models.CharField(max_length=24, choices=State.choices,
                              default=State.PREPARED)
+    revoke_reason = models.CharField(max_length=24, blank=True, default="")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    # Persistir prova anterior da API de que o cupom nunca foi usado.
+    verified_unused_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
