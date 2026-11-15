@@ -96,6 +96,8 @@ def main():
         "FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED",
         "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED",
         "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED",
+        "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED",
+        "FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED",
         "FIDELIZA_PARTICIPANT_APPROVAL_ENABLED",
         "FIDELIZA_AUTO_CUSTOMER_LINK_ENABLED",
         "FIDELIZA_EMAIL_DELIVERY_ENABLED",
@@ -224,7 +226,9 @@ def main():
                 "apps.wallets.test_postgres_immutable",
                 "apps.sales.test_pr23_counter_adapter",
                 "apps.loyalty.tests",
-                "apps.nuvemshop.test_pr25_pilot", "--verbosity=1",
+                "apps.nuvemshop.test_pr25_pilot",
+                "apps.loyalty.test_pr26_proof",
+                "apps.nuvemshop.test_pr26_revocation", "--verbosity=1",
             ], env, label="smoke PR25 cupom único, OAuth e triggers PostgreSQL descartável",
                synthetic_test_output=True)
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
