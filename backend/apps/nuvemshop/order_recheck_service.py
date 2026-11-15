@@ -42,30 +42,41 @@ def _cents(value):
 
 
 def _buyer_identity(order, tenant):
-    """O pedido não recebe consentimento novo por ter um contato no checkout."""
-    identities = []
-    for name, normalize, kw in (
+    """Todas as identificações declaradas no checkout devem bater no MESMO perfil.
+
+    Um e-mail correto com telefone ou CPF de terceiro NÃO autoriza o cupom.
+    Ausência de prova prévia de CPF bloqueia resgate quando o checkout informa CPF;
+    dados do pedido não são usados para criar provas de identidade.
+    """
+    from apps.customers.services import normalize_cpf
+    checks = (
         ("contact_email", normalize_email, "email"),
         ("contact_phone", normalize_phone, "phone_e164"),
-    ):
-        raw = order.get(name)
-        if isinstance(raw, str) and raw.strip():
-            try:
-                identity = normalize(raw)
-                profile = find_verified_customer(tenant_id=tenant.pk, **{kw: identity})
-                identities.append((identity, profile))
-            except ValueError:
-                continue
-    verified = {p.pk for _, p in identities if p is not None}
-    if len(verified) > 1:
-        raise RecheckBlocked("Pedido contém contatos comprovados de pessoas diferentes")
-    # Se existem dois contatos diferentes e apenas um verificado, utilizar
-    # o verificado; nenhum outro contato é associado à carteira.
-    for identity, profile in identities:
-        if profile is not None:
-            return identity, profile
-    return (identities[0][0], None) if identities else (None, None)
-
+        ("contact_identification", normalize_cpf, "cpf"),
+    )
+    candidates = []
+    for field, normalize, argument in checks:
+        raw = order.get(field)
+        if raw is None or raw == "":
+            continue
+        if not isinstance(raw, str):
+            raise RecheckBlocked("Documento de comprador inválido")
+        try:
+            value = normalize(raw)
+        except ValueError:
+            raise RecheckBlocked("Identidade de checkout não pôde ser verificada") from None
+        profile = find_verified_customer(tenant_id=tenant.pk, **{argument: value})
+        candidates.append((value, profile))
+    if not candidates:
+        return None, None
+    known = {profile.pk for _, profile in candidates if profile is not None}
+    if len(known) > 1:
+        raise RecheckBlocked("Checkout apresenta pessoas diferentes")
+    # Identidade desconhecida não pode aproveitar um contato coincidente:
+    # se um único telefone/CPF diverge, negar tudo.
+    if any(profile is None for _, profile in candidates):
+        return candidates[0][0], None
+    return candidates[0][0], candidates[0][1]
 
 def _paid_coupon_from_order(*, event, order, sale, profile):
     if event.topic != OrderWebhookEvent.Topic.PAID:
