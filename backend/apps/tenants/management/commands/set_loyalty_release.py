@@ -6,6 +6,7 @@ Business approval alone never overrides PSP, OAuth or PostgreSQL checks.
 import os
 import re
 import uuid
+import json
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -96,13 +97,64 @@ class Command(BaseCommand):
         parser.add_argument("--actor-id",required=True)
         parser.add_argument("--ticket",required=True)
         parser.add_argument("--approved-sha",required=True)
-        group=parser.add_mutually_exclusive_group(required=True)
+        parser.add_argument("--dry-run",action="store_true",help="Prontidão sem alterar flag ou emitir cupom")
+        group=parser.add_mutually_exclusive_group(required=False)
         group.add_argument("--enable",action="store_true")
         group.add_argument("--disable",action="store_true")
         parser.add_argument("--confirm",required=True)
 
     def handle(self,*args,**opts):
         mode=opts["mode"]
+        if opts["dry_run"]:
+            if opts["enable"] or opts["disable"]:
+                raise CommandError("Dry-run não pode acompanhar --enable/--disable")
+            try:
+                tenant_id=uuid.UUID(opts["tenant_id"])
+            except (ValueError,TypeError):
+                raise CommandError("Identificador da loja inválido") from None
+            tenant=Tenant.objects.filter(pk=tenant_id).first()
+            if tenant is None:
+                raise CommandError("Loja não localizada")
+            # No write, no HTTP GET, no deployment and no live activation.
+            rule_ok=LoyaltyRule.objects.filter(
+                tenant=tenant,enabled=True,
+            ).exists()
+            installation_ok=NuvemshopInstallation.objects.filter(
+                tenant=tenant,store_id=tenant.external_store_id,
+            ).exists()
+            program_ready=bool(
+                tenant.status==Tenant.Status.ACTIVE
+                and tenant.platform=="nuvemshop"
+                and tenant.external_store_id and rule_ok and installation_ok
+                and not tenant.loyalty_live_enabled
+            )
+            gates={
+                "tenant_active":tenant.status==Tenant.Status.ACTIVE,
+                "tenant_live_disabled":not tenant.loyalty_live_enabled,
+                "rule_configured":rule_ok,
+                "oauth_installed":installation_ok,
+                "checkout_preventive_verified":
+                    settings.FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED,
+                "sku_line_binding_verified":
+                    settings.FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED,
+                "psp_fee_reconciliation_verified":
+                    settings.FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED,
+                "psp_recording_enabled":
+                    settings.FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED,
+            }
+            report={
+                "status":("READY_FOR_HOMOLOG_ACTIVATION" if program_ready else
+                          "NOT_READY_FOR_HOMOLOG_ACTIVATION"),
+                "commercial_status":"NO_GO_COMMERCIAL",
+                "dry_run":True,"tenant_id":str(tenant.pk),
+                "loyalty_live_enabled":tenant.loyalty_live_enabled,
+                "checks":gates,
+                "note":"Sem escrita ou GET de loja; verifique PSP, catálogo, triggers e checkout na homologação real.",
+            }
+            self.stdout.write(json.dumps(report,sort_keys=True,ensure_ascii=False))
+            return
+        if not opts["enable"] and not opts["disable"]:
+            raise CommandError("Exige --enable, --disable ou --dry-run")
         if mode=="qa":
             call_command(
                 "set_loyalty_pilot",
