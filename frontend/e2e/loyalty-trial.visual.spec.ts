@@ -52,7 +52,7 @@ for(const width of [320,390,1440]){
       if(request.url().includes("/api/v1/")&&
         !["GET","HEAD","OPTIONS"].includes(request.method()))writes.push(request.url());
     });
-    await page.goto("/");
+    await page.goto("/app/visao-geral");
     if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
       await page.getByRole("navigation",{name:"Áreas do programa"}).getByRole("button",{name:"Testes"}).click();

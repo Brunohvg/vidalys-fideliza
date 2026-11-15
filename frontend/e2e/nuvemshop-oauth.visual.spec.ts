@@ -24,7 +24,7 @@ async function session(page: Page, role: "owner" | "analyst" = "owner") {
 }
 
 async function go(page: Page, width: number) {
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
   if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
@@ -116,7 +116,7 @@ test("visão geral encaminha Nuvemshop sem conexão para Configurações", async
         custom_domain_available:false},
     }),
   }));
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Conectar"}).click();
   await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
@@ -133,7 +133,7 @@ test("autorização OAuth não é rotulada como acesso verificado no início",as
         catalog_scope_granted:true,live_access_checked:false},
     }),
   }));
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await expect(page.getByText("Autorização registrada",{exact:false})).toBeVisible();
   await expect(page.locator(".vf-home-integrations").getByRole("button",{name:"Ver pedidos"})).toBeVisible();
   await expect(page.getByText("leitura de pedidos ainda depende",{exact:false})).toBeVisible();

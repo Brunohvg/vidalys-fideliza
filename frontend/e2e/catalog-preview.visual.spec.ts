@@ -27,7 +27,7 @@ async function init(page: Page) {
 }
 
 async function navigate(page: Page, width: number) {
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
   if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))

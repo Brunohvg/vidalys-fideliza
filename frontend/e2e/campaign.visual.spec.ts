@@ -18,7 +18,7 @@ for(const width of [320,390,768,1440]){
     mode:"draft_only",activation_available:false,items:[],
    }),
   }));
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
     await page.locator(".portal-advanced-menu > summary").click();
@@ -77,7 +77,7 @@ test("Campanha planejada permite editar e excluir sem publicar",async({page})=>{
    deleted:true,id,messages_sent:false,
   })});
  });
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
   if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
     await page.locator(".portal-advanced-menu > summary").click();

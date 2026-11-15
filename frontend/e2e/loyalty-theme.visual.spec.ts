@@ -30,7 +30,7 @@ for (const width of [390,768,1440]){
     async ({page},info)=>{
       await page.setViewportSize({width,height:width===390?844:900});
       await mockShop(page);
-      await page.goto("/");
+      await page.goto("/app/visao-geral");
       await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
       const palette=await page.evaluate(()=>{
         const root=getComputedStyle(document.documentElement);
@@ -84,7 +84,7 @@ test("Login usa identidade nova sem afirmar programa ativo",async ({page})=>{
     contentType:"application/json",
     body:JSON.stringify({authenticated:false,user:null,tenants:[]})
   }));
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await expect(page.getByText("Clientes voltam.")).toBeVisible();
   await expect(page.getByText("Sua loja cresce.")).toBeVisible();
   const hero=page.locator(".portal-auth-brand");

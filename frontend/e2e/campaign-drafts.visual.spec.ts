@@ -48,7 +48,7 @@ for(const width of [390,768,1440]){
    }
    return route.fulfill({status:405});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
     await page.locator(".portal-advanced-menu > summary").click();
@@ -80,7 +80,7 @@ test("Início usa rascunho de pontos e não apresenta cashback antigo",async({pa
     published:false,sending_enabled:false}],
   }),
  }));
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
   if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
     await page.locator(".portal-advanced-menu > summary").click();

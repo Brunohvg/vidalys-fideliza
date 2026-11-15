@@ -39,7 +39,7 @@ for(const width of [390,768,1440]) {
     async ({page},info)=>{
       await page.setViewportSize({width,height:width===390?844:900});
       await mockMerchant(page);
-      await page.goto("/");
+      await page.goto("/app/visao-geral");
       await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
       await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
       await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes ativos");
@@ -86,7 +86,7 @@ for(const width of [390,768,1440]) {
 }
 test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",async ({page})=>{
   await mockMerchant(page);
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
   await page.getByRole("button",{name:"Ver benefícios"}).click();
   await expect(page.getByRole("heading",{name:"Seu clube em três passos."})).toBeVisible();
@@ -96,7 +96,7 @@ test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",
 test("Custo dos benefícios diferencia custo nominal de contribuição estimada",async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await mockMerchant(page);
- await page.goto("/");
+ await page.goto("/app/visao-geral");
  await nav(page,"Custo dos benefícios",390);
  await expect(page.getByRole("heading",{name:"Quanto pode custar uma recompensa?"})).toBeVisible();
  await page.getByRole("textbox",{name:"Valor da próxima compra"}).fill("100,00");
@@ -132,7 +132,7 @@ for(const width of [390,1440]){
       last_program_activity_at:null,balance_status:"unavailable",cashback_balance_cents:null}],
    }),
   }));
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await nav(page,"Clientes",width);
   await expect(page.getByRole("heading",{name:"Pessoas no clube"})).toBeVisible();
   const cards=page.locator(".vf-clients-mobile-list");
@@ -158,7 +158,7 @@ for(const width of [390,1440]){
   await page.route("**/api/v1/tenants/**/sales/manual/",route=>route.fulfill({
    contentType:"application/json",body:JSON.stringify({items:[],count:0,total:0}),
   }));
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await nav(page,"Resultados",width);
   await expect(page.getByRole("heading",{name:"Seu clube em números que fazem sentido."})).toBeVisible();
   await expect(page.locator(".vf-results-stats article")).toHaveCount(3);

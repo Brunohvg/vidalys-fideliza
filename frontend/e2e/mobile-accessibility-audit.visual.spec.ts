@@ -90,7 +90,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
   test("Painel e configurações sem corte nem zoom em "+width+"px",async({page},testInfo)=>{
     await page.setViewportSize({width,height:width<=390?700:900});
     await setup(page);
-    await page.goto("/");
+    await page.goto("/app/visao-geral");
     await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
     await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
     await expect(page.getByText("Recompensas exibidas")).toBeVisible();
@@ -141,7 +141,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
 test("Cores personalizadas mantêm contraste em fundo claro e escuro",async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await setup(page);
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Configurações",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Aparência do programa"})).toBeVisible();
@@ -198,7 +198,7 @@ for(const width of [320,390,768,1440]){
         items:[],total:0,limit:20,offset:0,
       }),
     }));
-    await page.goto("/");
+    await page.goto("/app/visao-geral");
     const screens=[
       ["Programa","Seu programa de fidelidade."],
       ["Clientes","Participantes do clube."],

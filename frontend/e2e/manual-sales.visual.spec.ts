@@ -92,7 +92,7 @@ for(const width of [390,1440]){
         },
       })});
     });
-    await page.goto("/");
+    await page.goto("/app/visao-geral");
     if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
     await expect(page.getByRole("heading",{name:"Informações da compra"})).toBeVisible();
@@ -126,7 +126,7 @@ test("Regra configurável é apenas rascunho e pertence ao Programa",async ({pag
       example_for_100_reais:100,points_credited:false,
     })});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
   await page.getByRole("group",{name:"Editar benefícios"}).getByRole("button",{name:"Regra de pontos"}).click();
   await expect(page.getByRole("heading",{name:"Como o participante vai ganhar pontos?"})).toBeVisible();
@@ -164,7 +164,7 @@ test("Segundo administrador confere venda sem gerar pontos",async ({page})=>{
       points_credited:false,
     })});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByRole("button",{name:/Conferir vendas/}).click();
   await expect(page.locator(".vf-sale-record").first().locator(".vf-sale-state")).toContainText("Aguardando conferência");
@@ -188,7 +188,7 @@ test("Não participante exige escolha explícita e data antiga fica oculta",asyn
       already_recorded:false,sale:{state:"awaiting_member"},
     })});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByLabel("Qual foi o valor?").fill("59,90");
   await page.getByLabel("Número do cupom ou recibo").fill("0071");
@@ -250,7 +250,7 @@ for(const width of [320,390]){
     independent_payment_proof:false,points_credited:false,
    })});
   });
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.locator("#vf-sale-client").selectOption(member.id);
