@@ -20,6 +20,7 @@ from apps.tenants.models import Tenant
     FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED=True,
     FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED=True,
     FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED=True,
+    FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED=True,
 )
 class CompleteCatalogGateTests(TestCase):
     def setUp(self):
@@ -72,6 +73,13 @@ class CompleteCatalogGateTests(TestCase):
             patch("apps.costs.catalog_gate.read_products_page", side_effect=[self.products]),
         ):
             return call_command("set_loyalty_release", **self.options)
+
+    def test_commercial_fails_without_authenticated_order_line_cost_binding(self):
+        self._cost(201, "ABC-01")
+        self._cost(202, "ABC-02")
+        with override_settings(FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED=False):
+            with self.assertRaisesRegex(CommandError, "NO-GO"):
+                self._command()
 
     def test_command_rejects_partially_verified_active_catalog(self):
         self._cost(201, "ABC-01")

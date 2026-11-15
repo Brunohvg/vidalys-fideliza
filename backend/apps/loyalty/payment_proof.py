@@ -178,6 +178,8 @@ def apply_verified_capture(*, evidence_id, costs, coupon_intent_id=None):
             and settings.FIDELIZA_LEDGER_WRITES_ENABLED
             and settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED):
         raise PaymentProofBlocked("Ledger financeiro desligado")
+    if not getattr(settings, "FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED", False):
+        raise PaymentProofBlocked("Linhas, quantidades, frete e descontos ainda não conciliados")
     proof = VerifiedPaymentProof.objects.select_related("evidence__sale").get(
         evidence_id=evidence_id,
     )

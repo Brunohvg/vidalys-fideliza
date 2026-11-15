@@ -144,7 +144,9 @@ class Command(BaseCommand):
                     and settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS
                     and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
                     and settings.FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED
-                    and settings.FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED):
+                    and settings.FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED
+                    and settings.FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED
+                    and "pagarme_v5" in settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS):
                 raise CommandError("Flags financeiras/PSP não homologadas: NO-GO")
             verify_postgres_immutability()
         # Run remote network preflight BEFORE taking an exclusive tenant lock.

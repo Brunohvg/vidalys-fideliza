@@ -158,6 +158,9 @@ FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED = False
 # No documented binding of Admin API coupon codes to a checkout identity.
 # Mandatory commercial gates: no environment override can claim verification.
 FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED = False
+# Until order-item IDs, quantities, discounts and freight are reconciled
+# against the signed Nuvemshop order snapshot, costs cannot authorize money.
+FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED = False
 FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED = False
 FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
 

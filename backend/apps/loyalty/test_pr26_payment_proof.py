@@ -216,6 +216,18 @@ class ProofRecordingTests(TestCase):
 
 
 class CommercialReleaseFailClosedTests(TestCase):
+    def test_apply_capture_rejects_unreconciled_order_lines(self):
+        from apps.loyalty.payment_proof import apply_verified_capture
+        with override_settings(
+            FIDELIZA_POINTS_WRITES_ENABLED=True,
+            FIDELIZA_LEDGER_WRITES_ENABLED=True,
+            FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED=True,
+            FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED=False,
+        ):
+            with self.assertRaisesRegex(PaymentProofBlocked, "Linhas, quantidades"):
+                apply_verified_capture(evidence_id="not-needed", costs=None)
+
+
     def test_commercial_cannot_enable_without_real_postgres_and_financial_gates(self):
         user=get_user_model().objects.create_superuser(
             username="pr26-super",email="qa@example.invalid",password="synthetic",
