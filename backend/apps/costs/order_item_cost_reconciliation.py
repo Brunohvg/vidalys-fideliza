@@ -39,6 +39,7 @@ class ReconciledOrderCosts:
     order_id: str = ""
     tenant_id: str = ""
     cost_versions: tuple = ()
+    line_breakdown: tuple = ()
     verified_signature: str = ""
 
 
@@ -62,6 +63,22 @@ def _id(value, field):
     if identity is None:
         raise OrderItemCostBlocked(field + ": identificador ausente ou inválido")
     return identity
+
+
+def _allocate_discount(total_discount, gross_values, subtotal, line_ids):
+    """Largest-remainder allocation: integer truncation + deterministic cents.
+
+    The sum of the allocated parts MUST equal the exact invoice discount.
+    Ties are broken by line ID rather than database iteration order.
+    """
+    base = [(total_discount * gross) // subtotal for gross in gross_values]
+    residual = total_discount - sum(base)
+    ranked = sorted(range(len(base)), key=lambda i: (
+        -((total_discount * gross_values[i]) % subtotal), line_ids[i],
+    ))
+    for i in ranked[:residual]:
+        base[i] += 1
+    return base
 
 
 def reconcile_order_item_costs(*, order, tenant, expected_order_id,
@@ -89,6 +106,7 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
         raise OrderItemCostBlocked("Pedido sem 100% das linhas conferíveis")
 
     variants = []
+    rows = []
     versions = []
     unique_lines = set()
     subtotal = cogs = 0
@@ -122,6 +140,8 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
             )
         item = items[0]
         variants.append((item.pk, qty))
+        rows.append((line_id, product_id, variant_id, sku, qty,
+                     price * qty, item.unit_cost_cents * qty))
         versions.append((str(item.pk), item.version))
         subtotal += price * qty
         cogs += item.unit_cost_cents * qty
@@ -147,6 +167,19 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
         raise OrderItemCostBlocked(
             "Subtotal, desconto, frete ou total divergem da venda PSP"
         )
+    # The two discount buckets are allocated separately so the nominal
+    # coupon cannot be counted twice or hidden by another promotion.
+    gross_lines = [line[5] for line in rows]
+    identifiers = [line[0] for line in rows]
+    coupon_parts = _allocate_discount(coupon_discount, gross_lines, subtotal, identifiers)
+    extra_parts = _allocate_discount(discount-coupon_discount, gross_lines, subtotal, identifiers)
+    breakdown = tuple((
+        *line, coupon_parts[i], extra_parts[i],
+        line[5] - coupon_parts[i] - extra_parts[i],
+    ) for i, line in enumerate(rows))
+    if (sum(line[-1] for line in breakdown) != subtotal - discount
+            or any(line[-1] < 0 for line in breakdown)):
+        raise OrderItemCostBlocked("Rateio em centavos não fechou")
     eligible = subtotal - discount
     if eligible <= 0:
         raise OrderItemCostBlocked("Subtotal elegível líquido inexistente")
@@ -156,6 +189,7 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
         "tenant":str(tenant.pk), "store":str(tenant.external_store_id),
         "order":str(expected_order_id), "lines":[[str(i),q] for i,q in combined.items()],
         "cost_versions": versions,
+        "line_breakdown": breakdown,
         "subtotal":subtotal, "discount":discount, "owner_shipping":owner_shipping,
         "customer_shipping":customer_shipping,"cogs":cogs,"psp_fees":payment_fee_cents,
         "total":total,
@@ -171,7 +205,7 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
         contribution_before_rewards_cents=contribution,
         sale_total_cents=total, snapshot_digest=fingerprint,
         order_id=str(expected_order_id), tenant_id=str(tenant.pk),
-        cost_versions=tuple(versions),
+        cost_versions=tuple(versions), line_breakdown=breakdown,
     )
 
 
@@ -188,7 +222,7 @@ def _signature(sale, quote):
         [[str(pk), qty] for pk, qty in quote.costs.lines],
         quote.costs.payment_fee_cents, quote.costs.shipping_subsidy_cents,
         quote.costs.other_variable_costs_cents,
-        list(quote.cost_versions),
+        list(quote.cost_versions), list(quote.line_breakdown),
     ], separators=(",", ":"), ensure_ascii=True)
     return salted_hmac(
         "vidalys.oauth-order-cost-quote.v2", payload,
@@ -215,6 +249,14 @@ def verify_verified_quote(*, sale, quote):
             or not hmac.compare_digest(quote.verified_signature,
                                        _signature(sale,quote))):
         raise OrderItemCostBlocked("Cotação de custos sem prova OAuth")
+    # Validate that the signed breakdown itself balances every cent.
+    if (sum(line[5] for line in quote.line_breakdown) != quote.gross_subtotal_cents
+            or sum(line[7] for line in quote.line_breakdown) +
+               sum(line[8] for line in quote.line_breakdown) != quote.discounts_cents
+            or sum(line[9] for line in quote.line_breakdown) != quote.eligible_net_cents
+            or sum(line[6] for line in quote.line_breakdown) != quote.cogs_cents
+            or any(len(line) != 10 or line[9] < 0 for line in quote.line_breakdown)):
+        raise OrderItemCostBlocked("Rateio financeiro por linha inconsistente")
     identifiers = [pk for pk, _ in quote.cost_versions]
     actual = list(CostItem.objects.select_for_update().filter(
         tenant_id=sale.tenant_id,pk__in=identifiers))

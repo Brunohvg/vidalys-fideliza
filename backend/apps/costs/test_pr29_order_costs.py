@@ -66,6 +66,11 @@ class ReconcileOrderItemTests(TestCase):
         self.assertEqual(quote.sale_total_cents,2700)
         self.assertEqual(quote.costs.lines,((first.pk,2),(second.pk,1)))
         self.assertEqual(quote.costs.shipping_subsidy_cents,500)
+        # Coupon 200 cents is allocated 148/52, other discount 100 as 74/26.
+        # Final net lines are 1778 and 622 cents: exact 2400, no float.
+        self.assertEqual(tuple(line[7] for line in quote.line_breakdown),(148,52))
+        self.assertEqual(tuple(line[8] for line in quote.line_breakdown),(74,26))
+        self.assertEqual(tuple(line[9] for line in quote.line_breakdown),(1778,622))
         self.assertEqual(len(quote.snapshot_digest),64)
         again=self.quote()
         self.assertEqual(again.snapshot_digest,quote.snapshot_digest)
