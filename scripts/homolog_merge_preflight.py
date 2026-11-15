@@ -91,11 +91,16 @@ def main():
         branch = get("branches/homolog")
         actual = branch["commit"]["sha"]
         prs = {n: get(f"pulls/{n}") for n, *_ in STACK}
-        runs = get("actions/runs?per_page=100")["workflow_runs"]
-        success = {
-            run.get("head_sha") for run in runs
-            if run.get("status") == "completed" and run.get("conclusion") == "success"
-        }
+        # Cada PR tem sua própria janela de CI; não limitar aos últimos
+        # 100 jobs globais, pois PRs antigos podem ter saído da primeira página.
+        success = set()
+        for _, head, _, sha in STACK:
+            branch_name = urllib.parse.quote(head, safe="")
+            runs = get(f"actions/runs?branch={branch_name}&per_page=30")["workflow_runs"]
+            if any(run.get("head_sha") == sha
+                   and run.get("status") == "completed"
+                   and run.get("conclusion") == "success" for run in runs):
+                success.add(sha)
         ancestry = {}
         for _, head, base, _ in STACK:
             b = urllib.parse.quote(base, safe="")
