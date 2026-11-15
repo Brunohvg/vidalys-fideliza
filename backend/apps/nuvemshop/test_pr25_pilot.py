@@ -12,7 +12,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from apps.loyalty.models import LoyaltyRule, LoyaltyVoucher, VoucherPointAllocation
-from apps.loyalty.services import _code_digests
+from apps.loyalty.services import _code_digests, _cancel_reserved_voucher, LoyaltyBlocked
 from apps.participants.models import ProgramParticipant
 from apps.customers.services import attach_verified_contact
 from apps.sales.models import SaleRecord
@@ -218,6 +218,17 @@ class CouponIdempotencyTests(TestCase):
             posted.assert_called_once()
             found.assert_not_called()
         self.assertEqual(NuvemshopCouponIntent.objects.count(), 1)
+
+    def test_external_coupon_cannot_release_points_while_still_valid(self):
+        with (
+            patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_service.create_coupon_once", return_value="876"),
+        ):
+            provision_coupon(voucher_id=self.voucher.pk, issued_code=self.code)
+        with self.assertRaises(LoyaltyBlocked):
+            _cancel_reserved_voucher(self.voucher)
+        self.voucher.refresh_from_db()
+        self.assertEqual(self.voucher.state, LoyaltyVoucher.State.RESERVED)
 
     def test_timeout_creates_uncertain_intent_no_second_post(self):
         with (
