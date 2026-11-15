@@ -144,6 +144,32 @@ class VerifiedOrderGrantTests(TestCase):
         self.assertEqual(again.pk,grant.pk)
         self.assertEqual(LoyaltyGrant.objects.count(),1)
 
+    def test_forged_signed_quote_cannot_claim_more_spending_or_less_cogs(self):
+        from dataclasses import replace
+        from apps.costs.order_item_cost_reconciliation import (
+            read_verified_nuvemshop_order_costs, verify_verified_quote, OrderItemCostBlocked,
+        )
+        with (
+            patch("apps.costs.order_item_cost_reconciliation.config",
+                  return_value=self.cfg),
+            patch("apps.costs.order_item_cost_reconciliation.decrypt_token",
+                  return_value="synthetic-token-from-oauth"),
+            patch("apps.costs.order_item_cost_reconciliation.read_order",
+                  return_value=self.order),
+        ):
+            quote=read_verified_nuvemshop_order_costs(
+                sale=self.sale,payment_fee_cents=50)
+        with self.assertRaises(OrderItemCostBlocked):
+            verify_verified_quote(
+                sale=self.sale,quote=replace(quote,eligible_net_cents=3000))
+        with self.assertRaises(OrderItemCostBlocked):
+            verify_verified_quote(
+                sale=self.sale,quote=replace(quote,cogs_cents=50))
+        self.two.unit_cost_cents=100
+        self.two.save(update_fields=["unit_cost_cents"])
+        with self.assertRaises(OrderItemCostBlocked):
+            verify_verified_quote(sale=self.sale,quote=quote)
+
     def test_one_missing_variant_never_grants_any_money(self):
         self.two.delete()
         with (
