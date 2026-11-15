@@ -8,9 +8,9 @@ import {
 
 const nav = [
   { key: "overview", text: "Visão geral", icon: LayoutDashboard },
-  { key: "programs", text: "Programas", icon: Gift },
-  { key: "wallets", text: "Carteiras", icon: Wallet },
-  { key: "margin", text: "Rentabilidade", icon: Calculator },
+  { key: "programs", text: "Programa", icon: Gift },
+  { key: "wallets", text: "Meu Clube", icon: Wallet },
+  { key: "margin", text: "Custo dos benefícios", icon: Calculator },
   { key: "insights", text: "Resultados", icon: BarChart3 }
 ] as const;
 
@@ -44,9 +44,9 @@ const months = [
 ];
 
 const rows = [
-  { initials: "MC", name: "Mariana Costa", kind: "Crédito liberado", time: "Hoje, 10h42", amount: "+ R$ 8,40", tone: "green" },
-  { initials: "RA", name: "Rafael Alves", kind: "Recompensa resgatada", time: "Ontem, 16h20", amount: "− R$ 5,00", tone: "blue" },
-  { initials: "CL", name: "Carla Lima", kind: "Crédito pendente", time: "Ontem, 14h06", amount: "+ R$ 4,60", tone: "amber" }
+  { initials: "MC", name: "Mariana Costa", kind: "Pontos registrados", time: "Hoje, 10h42", amount: "+ 80 pontos", tone: "green" },
+  { initials: "RA", name: "Rafael Alves", kind: "Benefício utilizado", time: "Ontem, 16h20", amount: "− 200 pontos", tone: "blue" },
+  { initials: "CL", name: "Carla Lima", kind: "Pontos em análise", time: "Ontem, 14h06", amount: "+ 40 pontos", tone: "amber" }
 ];
 
 export default function App() {
@@ -72,28 +72,28 @@ export default function App() {
       </nav>
       <span className="nav-heading settings-heading">FERRAMENTAS</span>
       <button className="nav-link" onClick={() => navigate("margin")}><Settings2 size={19}/>Simular rentabilidade</button>
-      <button className="nav-link" onClick={() => setInfo(true)}><CircleHelp size={19}/>Sobre o protótipo</button>
+      <button className="nav-link" onClick={() => setInfo(true)}><CircleHelp size={19}/>Sobre a demonstração</button>
       <div className="sidebar-bottom">
         <div className="sidebar-tip"><span className="tip-symbol"><ShieldCheck size={20}/></span><b>Incentivos com inteligência.</b><p>Recompensa boa é aquela que cabe na margem da loja.</p><button onClick={() => navigate("margin")}>Fazer simulação <ArrowRight size={16}/></button></div>
-        <small className="sidebar-version">FIDELIZA <span>•</span> VISUAL P0</small>
+        <small className="sidebar-version">FIDELIZA <span>•</span> DEMO VISUAL V2</small>
       </div>
     </aside>
     {drawer && <button aria-label="Fechar navegação" className="overlay" onClick={() => setDrawer(false)} />}
     <main className="main">
       <header className="topbar">
-        <div className="topbar-left"><button className="open-mobile" aria-label="Abrir menu" onClick={() => setDrawer(true)}><Menu size={22}/></button><span>Plataforma</span><span className="slash">/</span><b>{title}</b></div>
-        <div className="topbar-right"><span className="sample-pill"><span/> DADOS FICTÍCIOS</span><button className="profile" title="Informações do protótipo" onClick={() => setInfo(true)}>VF</button></div>
+        <div className="topbar-left"><button className="open-mobile" aria-label="Abrir menu" onClick={() => setDrawer(true)}><Menu size={22}/></button><span>Vidalys Fideliza</span><span className="slash">/</span><b>{title}</b></div>
+        <div className="topbar-right"><a className="demo-return" href="/">Ver site oficial <ArrowRight size={15}/></a><span className="sample-pill"><span/> DADOS FICTÍCIOS</span><button className="profile" title="Informações do protótipo" onClick={() => setInfo(true)}>VF</button></div>
       </header>
       <div className="content">
         <div className="intro">
-          <div className="intro-copy"><div className="eyebrow">VIDALYS FIDELIZA <span>•</span> CONCEITO VISUAL</div><h1>{page === "overview" ? "Sua fidelidade, em movimento." : title}</h1>
+          <div className="intro-copy"><div className="eyebrow">VIDALYS FIDELIZA <span>•</span> DEMONSTRAÇÃO ILUSTRATIVA</div><h1>{page === "overview" ? "Uma experiência de fidelidade que dá vontade de voltar." : title}</h1>
             <p>{page === "overview" ? "Transforme cada compra em um motivo para voltar. Com controle, clareza e uma experiência que seu cliente merece." : "Uma operação de recompensas transparente, preparada para crescer com a sua loja."}</p></div>
           {page !== "margin" && <button className="button-primary" onClick={() => page === "overview" ? navigate("programs") : navigate("margin")}><Plus size={18}/>{page === "overview" ? "Explorar programas" : "Simular rentabilidade"}</button>}
         </div>
 
         {page === "overview" && <>
           <div className="stats" aria-label="Números de demonstração">
-            <StatCard title="Créditos emitidos" amount="R$ 3.284,90" foot="Exemplo ilustrativo" icon={Wallet} variant="blue"/>
+            <StatCard title="Pontos demonstrativos" amount="3.284" foot="Exemplo ilustrativo" icon={Wallet} variant="blue"/>
             <StatCard title="Clientes participantes" amount="284" foot="Exemplo ilustrativo" icon={Users} variant="cyan"/>
             <StatCard title="Recompensas usadas" amount="97" foot="Exemplo ilustrativo" icon={Gift} variant="violet"/>
             <StatCard title="Taxa de recompra" amount="28,6%" foot="Exemplo ilustrativo" icon={TrendingUp} variant="green"/>
@@ -104,7 +104,7 @@ export default function App() {
                 {months.map(m => <div className="bar-wrap" key={m.month}><div className="bar-track"><div className="bar" style={{ height: String(m.count) + "%" }}/></div><span>{m.month}</span></div>)}
               </div>
             </section>
-            <section className="panel card-feature"><span className="feature-icon"><Gift size={25}/></span><span className="feature-eyebrow">SEU PROGRAMA</span><h2>Fidelize com mais controle</h2><p>Crie programas de pontos ou cashback com regras claras, limites e histórico auditável.</p><div className="feature-divider"/><div className="feature-row"><Check size={16}/> Créditos com validade definida</div><div className="feature-row"><Check size={16}/> Resgates controlados</div><div className="feature-row"><Check size={16}/> Foco em margem e recompra</div><button className="feature-button" onClick={() => navigate("programs")}>Explorar estrutura <ArrowUpRight size={16}/></button></section>
+            <section className="panel card-feature"><span className="feature-icon"><Gift size={25}/></span><span className="feature-eyebrow">SEU PROGRAMA</span><h2>Fidelize com mais controle</h2><p>Conheça o conceito de pontos e recompensas, com regras claras e histórico de cada benefício.</p><div className="feature-divider"/><div className="feature-row"><Check size={16}/> Pontos com regras definidas</div><div className="feature-row"><Check size={16}/> Resgates controlados</div><div className="feature-row"><Check size={16}/> Foco em margem e recompra</div><button className="feature-button" onClick={() => navigate("programs")}>Explorar estrutura <ArrowUpRight size={16}/></button></section>
           </div>
           <section className="panel activity"><div className="panel-header"><div><span className="panel-kicker">ATIVIDADE</span><h2>Movimentações recentes</h2></div><span className="soft-label">Exemplo</span></div>
             <div className="activity-list">{rows.map(r => <div className="activity-row" key={r.name}><span className="person-avatar">{r.initials}</span><div className="person-info"><b>{r.name}</b><span>{r.kind} · {r.time}</span></div><strong className={r.tone}>{r.amount}</strong></div>)}</div>
@@ -112,21 +112,21 @@ export default function App() {
         </>}
 
         {page === "programs" && <div className="secondary-grid">
-          <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 01</span><div className="program-icon blue"><Wallet size={25}/></div><h2>Cashback promocional</h2><p>Uma porcentagem da compra vira crédito para a próxima compra. Sem transferência ou saque.</p><div className="program-bottom"><span className="soft-label">Planejado para o MVP</span><button onClick={() => navigate("margin")}>Simular <ArrowRight size={17}/></button></div></section>
-          <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 02</span><div className="program-icon cyan"><Gift size={25}/></div><h2>Pontos de fidelidade</h2><p>Pontos acumulados por compras elegíveis, convertidos em descontos futuros.</p><div className="program-bottom"><span className="soft-label">Planejado para o MVP</span><button onClick={() => setInfo(true)}>Entenda <ArrowRight size={17}/></button></div></section>
+          <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 01</span><div className="program-icon blue"><Wallet size={25}/></div><h2>Desconto na próxima compra</h2><p>Uma recompensa que o participante pode conhecer e, após a homologação, trocar por pontos de compras elegíveis.</p><div className="program-bottom"><span className="soft-label">Exemplo ilustrativo</span><button onClick={() => navigate("margin")}>Simular <ArrowRight size={17}/></button></div></section>
+          <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 02</span><div className="program-icon cyan"><Gift size={25}/></div><h2>Pontos de fidelidade</h2><p>Pontos acumulados por compras elegíveis, convertidos em descontos futuros.</p><div className="program-bottom"><span className="soft-label">Em homologação</span><button onClick={() => setInfo(true)}>Entenda <ArrowRight size={17}/></button></div></section>
         </div>}
 
         {page === "wallets" && <div className="wallets-layout">
-          <section className="wallet-demo"><span className="wallet-brand">EXEMPLO DA CARTEIRA DO COMPRADOR</span><span className="wallet-caption">Crédito disponível</span><strong>R$ 27,50</strong><span className="wallet-status"><Check size={15}/> Saldo demonstrativo</span><div className="wallet-divider"/><div className="wallet-split"><span>Crédito pendente<b>R$ 8,40</b></span><span>Vencimento mais próximo<b>20/12/2026</b></span></div></section>
-          <section className="panel guide"><span className="panel-kicker">EXPERIÊNCIA DO CLIENTE</span><h2>O benefício é simples. A regra é transparente.</h2><p>O comprador poderá consultar seus créditos, entender quando serão liberados e resgatar conforme as regras da loja.</p><div className="guide-note"><ShieldCheck size={18}/> Os dados exibidos aqui são fictícios; nenhuma carteira real foi criada.</div></section>
+          <section className="wallet-demo"><span className="wallet-brand">EXEMPLO DA CARTEIRA DO COMPRADOR</span><span className="wallet-caption">Pontos do exemplo</span><strong>270 <small>pontos</small></strong><span className="wallet-status"><Check size={15}/> Saldo demonstrativo</span><div className="wallet-divider"/><div className="wallet-split"><span>Pontos em análise<b>80</b></span><span>Próximo benefício<b>200 pontos</b></span></div></section>
+          <section className="panel guide"><span className="panel-kicker">EXPERIÊNCIA DO CLIENTE</span><h2>O benefício é simples. A regra é transparente.</h2><p>O participante consulta pontos e recompensas, acompanha as regras e aguarda a ativação segura dos resgates.</p><div className="guide-note"><ShieldCheck size={18}/> Os dados exibidos aqui são fictícios; nenhuma carteira real foi criada.</div></section>
         </div>}
 
         {page === "margin" && <MarginSimulator />}
 
-        {page === "insights" && <section className="panel insights"><span className="panel-kicker">INTELIGÊNCIA COMERCIAL</span><h2>Mais do que distribuir descontos.</h2><p>O Vidalys Fideliza acompanhará recorrência, custo dos benefícios e impacto comercial. Nesta versão, os indicadores ainda são demonstrativos.</p><div className="insight-tags"><span>Segunda compra</span><span>Margem após incentivo</span><span>Créditos pendentes</span><span>Retenção por período</span></div><button className="button-primary" onClick={() => navigate("margin")}>Testar simulação <ArrowRight size={17}/></button></section>}
+        {page === "insights" && <section className="panel insights"><span className="panel-kicker">INTELIGÊNCIA COMERCIAL</span><h2>Mais do que distribuir descontos.</h2><p>O Vidalys Fideliza acompanhará recorrência, custo dos benefícios e impacto comercial. Nesta versão, os indicadores ainda são demonstrativos.</p><div className="insight-tags"><span>Segunda compra</span><span>Margem após incentivo</span><span>Pontos pendentes</span><span>Retenção por período</span></div><button className="button-primary" onClick={() => navigate("margin")}>Testar simulação <ArrowRight size={17}/></button></section>}
         <div className="prototype-footer"><ShieldCheck size={15}/> Ambiente demonstrativo. Nenhum dado ou operação de loja conectado.</div>
       </div>
     </main>
-    {info && <div className="dialog-scrim" role="presentation" onClick={() => setInfo(false)}><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="info-title" onClick={e => e.stopPropagation()}><div className="dialog-head"><span className="panel-kicker">SOBRE</span><button aria-label="Fechar informações" onClick={() => setInfo(false)}><X size={20}/></button></div><h2 id="info-title">Um conceito visual, não um programa ativo.</h2><p>Esta interface demonstra a identidade Vidalys. Não existe integração OAuth, geração de cashback nem carteira conectada. A estrutura Django está sendo desenvolvida separadamente.</p><button className="button-primary close-info" onClick={() => setInfo(false)}>Entendi <Check size={16}/></button></div></div>}
+    {info && <div className="dialog-scrim" role="presentation" onClick={() => setInfo(false)}><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="info-title" onClick={e => e.stopPropagation()}><div className="dialog-head"><span className="panel-kicker">SOBRE</span><button aria-label="Fechar informações" onClick={() => setInfo(false)}><X size={20}/></button></div><h2 id="info-title">Uma demonstração visual, não um programa ativo.</h2><p>Todos os números e clientes desta página são fictícios. Cadastro, pontos e recompensas reais são administrados no painel do lojista. Pagamento e resgates comerciais ainda dependem de homologação.</p><button className="button-primary close-info" onClick={() => setInfo(false)}>Entendi <Check size={16}/></button></div></div>}
   </div>;
 }
