@@ -217,8 +217,9 @@ def main():
                 "apps.core.test_pr22_legacy_upgrade",
                 "apps.wallets.test_postgres_immutable",
                 "apps.sales.test_pr23_counter_adapter",
-                "apps.loyalty.tests", "--verbosity=1",
-            ], env, label="smoke PR23 origem, PDV, rewards, triggers e upgrade legado no PostgreSQL isolado",
+                "apps.loyalty.tests",
+                "apps.nuvemshop.test_pr25_pilot", "--verbosity=1",
+            ], env, label="smoke PR25 cupom único, OAuth e triggers PostgreSQL descartável",
                synthetic_test_output=True)
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
     finally:
