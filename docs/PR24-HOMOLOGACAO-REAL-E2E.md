@@ -96,7 +96,7 @@ iguais ao resultado acumulado de #23:
 
 \`\`\`bash
 git fetch origin
-git diff --exit-code origin/homolog feature/pr24-homolog-release-e2e-protocol -- \
+git diff --exit-code origin/homolog HEAD -- \
   backend/apps backend/config frontend/src compose.yaml
 \`\`\`
 
