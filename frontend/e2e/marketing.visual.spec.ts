@@ -20,7 +20,7 @@ test("Catálogo de integrações permite buscar e não anuncia conexão fictíci
   await page.setViewportSize({width:390,height:860});
   await page.goto("/conhecer/integracoes");
   await expect(page.getByRole("heading",{name:"Nuvemshop"})).toBeVisible();
-  await expect(page.getByText("Em homologação")).toBeVisible();
+  await expect(page.getByText("Em homologação",{exact:true})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Vidalys Flow"})).toBeVisible();
   await page.getByRole("searchbox",{name:"Buscar integração"}).fill("Nuvemshop");
   await expect(page.getByRole("heading",{name:"Nuvemshop"})).toBeVisible();
