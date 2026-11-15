@@ -30,6 +30,9 @@ class Command(BaseCommand):
             raise CommandError("Aprovação do piloto QA ausente")
         if not re.fullmatch(r"[0-9a-f]{40}", opts["approved_sha"]):
             raise CommandError("Informe SHA completo aprovado")
+        deployed = os.getenv("FIDELIZA_DEPLOYED_SHA", "").strip().lower()
+        if not re.fullmatch(r"[0-9a-f]{40}", deployed) or deployed != opts["approved_sha"]:
+            raise CommandError("SHA aprovado difere do commit efetivamente publicado")
         if not re.fullmatch(r"[A-Za-z0-9._-]{6,100}", opts["ticket"]):
             raise CommandError("Ticket de aprovação inválido")
         if opts["confirm"] != ("ENABLE_QA_ONLY" if opts["enable"] else "DISABLE_QA_ONLY"):
