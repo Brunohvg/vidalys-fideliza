@@ -25,6 +25,8 @@ RESTORE_HOST="$(python3 -c 'import os,urllib.parse; print(urllib.parse.urlsplit(
 [[ "$RESTORE_HOST" == "$FIDELIZA_EXPECTED_RESTORE_PG_HOST" ]] || die "Host de restore não autorizado"
 ACTUAL_SHA="$(git rev-parse HEAD)" || die "Checkout Git indisponível"
 [[ "$ACTUAL_SHA" == "$FIDELIZA_APPROVED_SHA" ]] || die "SHA divergente do autorizado"
+[[ -z "$(git status --porcelain)" ]] ||
+  die "Checkout Git com arquivos alterados/desconhecidos; não migrar código não revisado"
 [[ "$FIDELIZA_BACKUP_DIR" == /* && -d "$FIDELIZA_BACKUP_DIR" ]] || die "Diretório de backup absoluto precisa existir"
 [[ ! -L "$FIDELIZA_BACKUP_DIR" ]] || die "Backup não pode usar symlink"
 DIR="$(cd "$FIDELIZA_BACKUP_DIR" && pwd -P)"
