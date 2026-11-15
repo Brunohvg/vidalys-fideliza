@@ -198,6 +198,11 @@ FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED = env_bool(
 FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED = env_bool(
     "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", False
 )
+# PR25: a autorização de escopo e o envio HTTP de cupons são dois gates
+# separados; jamais inferir habilitação pela mera instalação de um app.
+FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED = env_bool(
+    "FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED", False
+)
 
 # Manual approval of verified participants; NO cashback/ledger activation.
 FIDELIZA_PARTICIPANT_APPROVAL_ENABLED = env_bool(

@@ -36,7 +36,7 @@ SAFE_RECEIPT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,99}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 MAX_CENTS = 100_000_000
 MAX_POINTS = 100_000_000
-REDEMPTION_CHANNELS = {"counter", "vidalys_flow"}
+REDEMPTION_CHANNELS = {"counter", "vidalys_flow", "nuvemshop"}
 
 
 class LoyaltyBlocked(ValueError):
