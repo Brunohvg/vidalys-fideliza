@@ -42,7 +42,7 @@ def _owner_admin(member):
 def _safe_result(status, tenant_id=None):
     # Não transportar code/state/token para HTML, redirect ou histórico do navegador.
     response = HttpResponse(status=303)
-    response["Location"] = "/?nuvemshop=" + status + (
+    response["Location"] = "/app/configuracoes?nuvemshop=" + status + (
         "&nuvemshop_tenant=" + str(tenant_id) if tenant_id else ""
     )
     response["Referrer-Policy"] = "no-referrer"

@@ -220,7 +220,7 @@ class NuvemshopOAuthFlowTests(TestCase):
         with patch("apps.nuvemshop.views.exchange_code", return_value=self.fake_token()) as mocked:
             result = self.callback(nonce)
         self.assertEqual(result.status_code, 303)
-        self.assertEqual(result["Location"], "/?nuvemshop=connected&nuvemshop_tenant=" + str(self.tenant.pk))
+        self.assertEqual(result["Location"], "/app/configuracoes?nuvemshop=connected&nuvemshop_tenant=" + str(self.tenant.pk))
         self.assertEqual(result["Referrer-Policy"], "no-referrer")
         self.assertNotIn(nonce, result["Location"])
         self.assertNotIn("synthetic-auth-code", result["Location"])
@@ -316,7 +316,7 @@ class NuvemshopOAuthFlowTests(TestCase):
         nonce = self.state(started)
         with patch("apps.nuvemshop.views.exchange_code", return_value=self.fake_token()) as exchange:
             self.assertEqual(self.callback(nonce).status_code, 303)
-            self.assertEqual(self.callback(nonce)["Location"], "/?nuvemshop=failed")
+            self.assertEqual(self.callback(nonce)["Location"], "/app/configuracoes?nuvemshop=failed")
         exchange.assert_called_once()
         self.assertEqual(NuvemshopInstallation.objects.count(), 1)
 
@@ -326,7 +326,7 @@ class NuvemshopOAuthFlowTests(TestCase):
         self.client.logout()
         self.client.force_login(self.owner)
         with patch("apps.nuvemshop.views.exchange_code") as exchange:
-            self.assertEqual(self.callback(nonce)["Location"], "/?nuvemshop=failed")
+            self.assertEqual(self.callback(nonce)["Location"], "/app/configuracoes?nuvemshop=failed")
         exchange.assert_not_called()
         self.assertFalse(NuvemshopInstallation.objects.exists())
 
@@ -335,7 +335,7 @@ class NuvemshopOAuthFlowTests(TestCase):
         OAuthAttempt.objects.filter(state_digest=digest(nonce2)).update(
             expires_at=timezone.now() - timedelta(seconds=1))
         with patch("apps.nuvemshop.views.exchange_code") as exchange:
-            self.assertEqual(self.callback(nonce2)["Location"], "/?nuvemshop=failed")
+            self.assertEqual(self.callback(nonce2)["Location"], "/app/configuracoes?nuvemshop=failed")
         exchange.assert_not_called()
 
     def test_store_claimed_by_other_tenant_is_rejected(self):
@@ -348,7 +348,7 @@ class NuvemshopOAuthFlowTests(TestCase):
         self.foreign.save(update_fields=["external_store_id"])
         nonce = self.state(self.start())
         with patch("apps.nuvemshop.views.exchange_code", return_value=self.fake_token()):
-            self.assertEqual(self.callback(nonce)["Location"], "/?nuvemshop=failed")
+            self.assertEqual(self.callback(nonce)["Location"], "/app/configuracoes?nuvemshop=failed")
         self.assertFalse(NuvemshopInstallation.objects.filter(tenant=self.tenant).exists())
 
     def test_configuration_missing_disables_connect(self):

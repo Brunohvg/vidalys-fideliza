@@ -200,9 +200,9 @@ test("Retorno do OAuth não exibe code ou token", async ({page})=>{
         custom_domain_available:false},
     }),
   }));
-  await page.goto("/?nuvemshop=connected&nuvemshop_tenant="+tenant.id);
+  await page.goto("/app/configuracoes?nuvemshop=connected&nuvemshop_tenant="+tenant.id);
   await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
   await expect(page.getByText("Autorização registrada.",{exact:false})).toBeVisible();
-  await expect(page).toHaveURL("http://127.0.0.1:4173/");
+  await expect(page).toHaveURL("http://127.0.0.1:4173/app/configuracoes");
   await expect(page.locator("body")).not.toContainText("access_token");
 });
