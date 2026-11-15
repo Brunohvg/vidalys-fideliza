@@ -167,6 +167,10 @@ FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
 # Requer processo Celery Beat em ambiente homologado (não ativado por aqui).
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
+    "nuvemshop-revoke-expired-coupons-every-15min": {
+        "task": "nuvemshop.scan_expired_coupons",
+        "schedule": crontab(minute="*/15"),
+    },
     "loyalty-birthdays-daily": {
         "task": "loyalty.scan_verified_birthdays",
         "schedule": crontab(hour=9, minute=0),

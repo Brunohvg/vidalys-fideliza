@@ -135,6 +135,52 @@ def _paid_coupon_from_order(*, event, order, sale, profile):
     return "applied_pending_independent_capture"
 
 
+def _revoke_cancelled_order_coupon(*, event, order, status):
+    """Um pedido cancelado vincula o cupom para revogação, NUNCA para crédito.
+
+    A identidade do comprador não autoriza devolução: sem captura PSP
+    comprovadamente ausente, reserva permanece congelada.
+    """
+    if status not in (
+        SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED,
+    ):
+        return "not_cancelled"
+    coupon_id = safe_id(order.get("coupon_id"))
+    if not coupon_id:
+        return "no_coupon"
+    intent = NuvemshopCouponIntent.objects.filter(
+        tenant=event.tenant, store_id=event.store_id,
+        remote_coupon_id=coupon_id,
+        state__in=[
+            NuvemshopCouponIntent.State.ISSUED,
+            NuvemshopCouponIntent.State.APPLIED,
+        ],
+    ).first()
+    if not intent:
+        return "not_our_active_coupon"
+    cfg = config()
+    codes = order.get("coupon")
+    expected = decrypt_token(intent.encrypted_code, cfg.token_keys)
+    if not isinstance(codes, list) or sum(
+        isinstance(x, dict) and safe_id(x.get("id")) == coupon_id
+        and x.get("code") == expected for x in codes
+    ) != 1:
+        raise RecheckBlocked("Cupom de pedido cancelado não tem correspondência exata.")
+    with transaction.atomic():
+        locked = NuvemshopCouponIntent.objects.select_for_update().get(pk=intent.pk)
+        if locked.order_id and locked.order_id != event.order_id:
+            raise RecheckBlocked("Cancelamento não corresponde à compra do voucher.")
+        locked.order_id = event.order_id
+        locked.save(update_fields=["order_id", "updated_at"])
+        from .tasks import revoke_nuvemshop_coupon
+        reason = ("order_refunded" if status == SaleRecord.OrderStatus.REFUNDED
+                  else "order_cancelled")
+        if getattr(settings, "FIDELIZA_NUVEMSHOP_COUPON_REVOCATION_ENABLED", False):
+            transaction.on_commit(
+                lambda: revoke_nuvemshop_coupon.delay(str(locked.pk), reason)
+            )
+    return "revocation_enqueued"
+
 def recheck_order_event(*, event_id, opener=None, pause=None):
     """Consulta exclusiva do serviço servidor; reexecutável por inbox idempotente."""
     if not (settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
@@ -204,6 +250,11 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     coupon_result = _paid_coupon_from_order(
         event=event, order=order, sale=result.sale, profile=profile,
     )
+    cancellation = _revoke_cancelled_order_coupon(
+        event=event, order=order, status=status,
+    )
+    if cancellation == "revocation_enqueued":
+        coupon_result = cancellation
     digest = hashlib.sha256(json.dumps({
         "tenant": str(tenant.pk), "order": event.order_id, "status": status,
         "amount": cents, "identity_verified": bool(profile),
