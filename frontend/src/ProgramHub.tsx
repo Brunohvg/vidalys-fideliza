@@ -8,8 +8,8 @@ import {merchantApi,type NuvemshopConnectionStatus,type Store} from "./api";
 import "./program-hub.css";
 
 type Area="benefits"|"participants"|"testing";
-export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewClients,onViewSales,onOpenSettings}:{
- tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"];
+export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platform,onViewClients,onViewSales,onOpenSettings}:{
+ tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"];platform:Store["platform"];
  onViewClients:()=>void;onViewSales:()=>void;onOpenSettings:()=>void;
 }){
  const [ruleRefresh,setRuleRefresh]=useState(0);
@@ -26,11 +26,16 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
   return()=>{active=false};
  },[tenantId]);
 
- const connectionTitle=connection?.connected
+ const independentChannel=platform!=="nuvemshop"&&!connection?.connected;
+ const connectionTitle=independentChannel
+  ?"Clube independente · sem integração obrigatória"
+  :connection?.connected
   ?"Autorização Nuvemshop registrada"
   :connectionError?"Integração não verificada"
   :connection?"Nuvemshop ainda não autorizada":"Consultando a integração…";
- const ordersTitle=connection?.order_verification?.read_only_preview_available
+ const ordersTitle=independentChannel
+  ?"Vendas registradas em Vendas → Balcão"
+  :connection?.order_verification?.read_only_preview_available
   ?"Leitura de pedidos disponível"
   :connection?.order_verification?.order_scope_granted
   ?"Leitura de pedidos aguardando habilitação"
@@ -53,7 +58,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,onViewC
   <div className="vf-program-connection vf-program-connection-slim" role="status">
     <PlugZap size={17}/>
     <span>{connectionTitle} · {ordersTitle}.</span>
-    <button type="button" onClick={onOpenSettings}>Ver integração <ArrowRight size={15}/></button>
+    <button type="button" onClick={onOpenSettings}>{independentChannel?"Conectar loja online (opcional)":"Ver integração"} <ArrowRight size={15}/></button>
   </div>
   <nav className="vf-program-sections" aria-label="Áreas do programa">
     <button type="button" className={area==="benefits"?"selected":""}

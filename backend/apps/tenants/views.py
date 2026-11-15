@@ -14,6 +14,8 @@ class MyTenantsView(APIView):
         return Response({"results": [{
             "id": str(member.tenant_id),
             "name": member.tenant.name,
+            "slug": member.tenant.slug,
+            "platform": member.tenant.platform,
             "status": member.tenant.status,
             "role": member.role,
         } for member in memberships]})

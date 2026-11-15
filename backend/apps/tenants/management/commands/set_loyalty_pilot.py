@@ -10,7 +10,7 @@ from apps.tenants.models import Tenant, TenantLoyaltyActivationAudit
 
 
 class Command(BaseCommand):
-    help = "Ativa/desativa apenas loja QA isolada, com auditoria e duas confirmações."
+    help = "Ativa/desativa tenant QA isolado de qualquer marca/canal, sem operações financeiras."
 
     def add_arguments(self, parser):
         parser.add_argument("--tenant-id", required=True)
@@ -46,10 +46,11 @@ class Command(BaseCommand):
         if actor is None:
             raise CommandError("Operador precisa ser superusuário Django autorizado")
         tenant = Tenant.objects.select_for_update().filter(pk=tid).first()
+        # O escopo é identificado pelo namespace QA, nunca pelo nome da marca.
+        # Isso permite demonstrar lojas de qualquer setor/canal sem vincular
+        # uma instalação de produção nem liberar dinheiro no checkout.
         if tenant is None or not re.fullmatch(r"(qa|homolog)-[a-z0-9-]{3,52}", tenant.slug):
             raise CommandError("Apenas tenant explicitamente criado para QA")
-        if "bibel" in tenant.name.casefold():
-            raise CommandError("Loja Bibelô fora do escopo")
         if opts["enable"] and tenant.status != Tenant.Status.ACTIVE:
             raise CommandError("Tenant QA deve estar ativo")
         if opts["enable"] and (

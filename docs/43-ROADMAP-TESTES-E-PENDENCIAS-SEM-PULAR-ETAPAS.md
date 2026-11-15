@@ -1,5 +1,34 @@
 # 43 — Vidalys Fideliza: roteiro de execução com gates e pendências
 
+
+## Checkpoint complementar — 15/11/2026: piloto multiloja sem dependência Nuvemshop
+
+A marca do lojista **não** define elegibilidade técnica. O código mantém
+`Tenant.platform=independent` como padrão e aceita Nuvemshop como conector
+opcional. A loja Bibelô não é uma constante funcional; testes controlados
+podem usar qualquer nome de loja desde que o **tenant seja um QA isolado**.
+
+**Preparação liberada para QA somente:** `set_loyalty_pilot` aceita nomes
+genéricos em `qa-*` ou `homolog-*` e registra autor, ticket, SHA e alteração.
+`set_loyalty_release --mode qa --dry-run` não exige OAuth Nuvemshop para
+lojas independentes e agora explicita o status das regras rascunho, namespace
+QA, ambiente, aprovação e flags financeiras. A área do lojista reconhece o
+tipo de loja e não exige conexão Nuvemshop para sua primeira ação.
+
+**Proibições preservadas:** nenhum desbloqueio de ledger/pontos, pagamento
+PSP, cupom externo ou validação de checkout por variável de ambiente. O
+registro de venda de balcão é **conferência operacional** e não prova
+financeira independente. Uma loja QA real precisa de banco isolado, e
+`FIDELIZA_ENVIRONMENT=homolog`, autorização de piloto e SHA implantado
+verificado antes de ativar `loyalty_live_enabled` (nome histórico da flag).
+
+**Etapas sem dependência de canal:** criar loja QA, entrar com um lojista,
+salvar regulamento, regra de pontos e recompensa, publicar para consulta,
+cadastrar participante por consentimento e confirmar o e-mail, conferir
+venda de balcão sem conceder pontos. A jornada financeira somente avança
+com PSP/cupom/identidade comprovados pelo provedor correto e ainda está
+bloqueada comercialmente.
+
 ## CHECKPOINT ATUAL — 15/11/2026: integração de código PRs #18–#30
 
 > **Este checkpoint substitui os estados cronológicos antigos abaixo.**

@@ -122,17 +122,51 @@ class Command(BaseCommand):
             installation_ok=NuvemshopInstallation.objects.filter(
                 tenant=tenant,store_id=tenant.external_store_id,
             ).exists()
-            program_ready=bool(
-                tenant.status==Tenant.Status.ACTIVE
-                and tenant.platform=="nuvemshop"
+            # O programa é multicanal: um lojista pode validar adesão,
+            # regulamento e recompensas sem instalar a Nuvemshop.
+            # O gate comercial continua separado, exigindo PSP e checkout.
+            from apps.sales.models import PointRuleDraft
+            rule_draft_ok = PointRuleDraft.objects.filter(tenant=tenant).exists()
+            qa_namespace_ok = bool(re.fullmatch(
+                r"(qa|homolog)-[a-z0-9-]{3,52}", tenant.slug,
+            ))
+            financial_gates_off = not any((
+                settings.FIDELIZA_POINTS_WRITES_ENABLED,
+                settings.FIDELIZA_LEDGER_WRITES_ENABLED,
+                settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED,
+                getattr(settings, "FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED", False),
+            ))
+            qa_environment_ok = os.getenv("FIDELIZA_ENVIRONMENT") == "homolog"
+            qa_approval_ok = (
+                os.getenv("FIDELIZA_PILOT_ACTIVATION_APPROVAL")
+                == "YES_VERIFIED_QA_ONLY"
+            )
+            qa_ready = bool(
+                tenant.status == Tenant.Status.ACTIVE
+                and qa_namespace_ok and qa_environment_ok and qa_approval_ok
+                and financial_gates_off and not tenant.loyalty_live_enabled
+            )
+            commercial_preview_ready = bool(
+                tenant.status == Tenant.Status.ACTIVE
+                and tenant.platform == "nuvemshop"
                 and tenant.external_store_id and rule_ok and installation_ok
                 and not tenant.loyalty_live_enabled
+            )
+            program_ready = (
+                qa_ready if mode == "qa" else commercial_preview_ready
             )
             gates={
                 "tenant_active":tenant.status==Tenant.Status.ACTIVE,
                 "tenant_live_disabled":not tenant.loyalty_live_enabled,
+                "platform":tenant.platform,
+                "qa_namespace_valid":qa_namespace_ok,
+                "qa_environment":qa_environment_ok,
+                "qa_approval_configured":qa_approval_ok,
+                "financial_gates_off":financial_gates_off,
+                "point_rule_draft_configured":rule_draft_ok,
                 "rule_configured":rule_ok,
                 "oauth_installed":installation_ok,
+                "oauth_optional_for_independent_qa":tenant.platform=="independent",
                 "checkout_preventive_verified":
                     settings.FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED,
                 "sku_line_binding_verified":
@@ -146,10 +180,11 @@ class Command(BaseCommand):
                 "status":("READY_FOR_HOMOLOG_ACTIVATION" if program_ready else
                           "NOT_READY_FOR_HOMOLOG_ACTIVATION"),
                 "commercial_status":"NO_GO_COMMERCIAL",
+                "mode":mode,
                 "dry_run":True,"tenant_id":str(tenant.pk),
                 "loyalty_live_enabled":tenant.loyalty_live_enabled,
                 "checks":gates,
-                "note":"Sem escrita ou GET de loja; verifique PSP, catálogo, triggers e checkout na homologação real.",
+                "note":"Pré-voo sem escrita/HTTP. Modo QA libera apenas preparação local; não concede pontos nem cupons. PSP, custos e checkout exigem prova para uso comercial.",
             }
             self.stdout.write(json.dumps(report,sort_keys=True,ensure_ascii=False))
             return

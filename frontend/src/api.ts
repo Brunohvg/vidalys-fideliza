@@ -47,6 +47,7 @@ export type Store = {
   id: string;
   name: string;
   slug: string;
+  platform: string;
   status: "draft" | "active" | "suspended";
   role: "owner" | "admin" | "analyst";
 };

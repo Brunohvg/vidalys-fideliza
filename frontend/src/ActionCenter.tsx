@@ -12,8 +12,8 @@ type Data={
  rewards:DiscountRewardDraft[]|null;
  incomplete:boolean;
 };
-export default function ActionCenter({tenantId,role,onNavigate}:{
- tenantId:string;role:Store["role"];onNavigate:(target:Destination)=>void;
+export default function ActionCenter({tenantId,role,platform,onNavigate}:{
+ tenantId:string;role:Store["role"];platform:Store["platform"];onNavigate:(target:Destination)=>void;
 }){
  const canManage=role==="owner"||role==="admin";
  const [data,setData]=useState<Data|null>(null);
@@ -32,13 +32,13 @@ export default function ActionCenter({tenantId,role,onNavigate}:{
     integration:connection.status==="fulfilled"?connection.value:null,
     sales:sales.status==="fulfilled"?sales.value:null,
     rewards:rewards.status==="fulfilled"&&rewards.value?rewards.value.items:null,
-    incomplete:people.status==="rejected"||connection.status==="rejected"||
+    incomplete:people.status==="rejected"||(platform==="nuvemshop"&&connection.status==="rejected")||
       (canManage&&(sales.status==="rejected"||rewards.status==="rejected")),
    });
   };
   void load();
   return()=>{active=false};
- },[tenantId,canManage]);
+ },[tenantId,canManage,platform]);
  const count=data?.participants?.summary.active;
  const pending=data?.sales?.items.filter(v=>v.state==="awaiting_review").length;
  const published=data?.rewards?.filter(v=>v.published).length;
@@ -55,7 +55,7 @@ export default function ActionCenter({tenantId,role,onNavigate}:{
    next={heading:"Confira as vendas do balcão",detail:
     pending+" lançamento(s) aguardando conferência. Isso não concede pontos automaticamente.",
     button:"Conferir vendas",destination:"sales"};
-  }else if(data.integration&&!connected){
+  }else if(data.integration&&!connected&&platform==="nuvemshop"){
    next={heading:"Conecte sua Nuvemshop",detail:
     "Autorize a loja uma vez. Assim o Fideliza poderá ler pedidos sem recadastrá-los manualmente.",
     button:"Configurar integração",destination:"settings"};

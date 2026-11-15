@@ -90,3 +90,18 @@ escritas financeiras novas nesta etapa; sem alteração de env para autoconferê
 Não tocar `main` nem a loja real durante UI/CI.
 Implantar apenas SHA de `homolog` com CI verde, backup e teste do usuário na
 instância Coolify; distinguir deploy de commit no GitHub.
+
+## Revisão multicanal — 15/11/2026
+
+O fluxo do MVP não exige plataforma Nuvemshop. O merchant é um `Tenant`
+independente; a integração externa é opcional e só necessária ao canal que
+o lojista escolher. O dashboard e o programa não devem usar a ausência
+Nuvemshop como impedimento para adesão ou configuração. Piloto de qualquer
+marca exige tenant `qa-*`/`homolog-*`, banco isolado, autorização do
+responsável e nenhum dinheiro/cupom real. A loja Bibelô não é exceção de
+código nem dependência; uso de dados/loja reais precisa consentimento separado.
+
+Ainda não há comprovação ponta a ponta de crédito e resgate financeiro,
+apesar dos módulos offline sintéticos. Não remover `FIDELIZA_*WRITES_ENABLED`
+ou os gates de checkout/PSP para conseguir uma demonstração; produzir
+prova de integração sandbox e isolar ambientes antes de autorizá-los.

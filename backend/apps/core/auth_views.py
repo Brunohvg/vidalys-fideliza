@@ -30,7 +30,7 @@ def _memberships(user):
     return list(
         TenantMembership.objects.filter(user=user)
         .select_related("tenant").order_by("tenant__name")
-        .values("tenant__id", "tenant__name", "tenant__slug", "tenant__status", "role")
+        .values("tenant__id", "tenant__name", "tenant__slug", "tenant__status", "tenant__platform", "role")
     )
 
 
@@ -40,6 +40,7 @@ def _public_tenants(user):
             "id": str(record["tenant__id"]),
             "name": record["tenant__name"],
             "slug": record["tenant__slug"],
+            "platform": record["tenant__platform"],
             "status": record["tenant__status"],
             "role": record["role"],
         }
