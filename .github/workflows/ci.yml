@@ -29,7 +29,7 @@ jobs:
             echo "ERRO: script aceitou ambiente nao homolog"
             exit 1
           fi
-      - name: PR24 protocolos offline: sintaxe, parser e fail-closed
+      - name: "PR24 protocolos offline: sintaxe, parser e fail-closed"
         run: |
           uv run --locked python -m py_compile \
             ../scripts/homolog_merge_preflight.py \
@@ -55,7 +55,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run build
-      - name: PR24 browser remoto: apenas descoberta dos testes (sem rede)
+      - name: "PR24 browser remoto: apenas descoberta dos testes (sem rede)"
         env:
           FIDELIZA_HOMOLOG_BASE_URL: https://fideliza-homolog.optarys.com.br
           FIDELIZA_SMOKE_CLUB_SLUG: qa-pr24-ci
