@@ -17,10 +17,10 @@ def _integer(name, value, low, high):
 
 
 def estimate_cashback_cents(amount_cents: int, rate_bps: int) -> int:
-    """Arredondamento determinístico para centavos, sem float."""
+    """Crédito projetado: floor, igual ao cálculo do grant real, sem float."""
     _integer("amount_cents", amount_cents, 0, 1_000_000_000)
     _integer("rate_bps", rate_bps, 1, 1000)
-    return (amount_cents * rate_bps + 5000) // 10000
+    return amount_cents * rate_bps // 10000
 
 
 def exposure_summary(ticket_cents, rate_bps, projected_paid_orders, budget_cents):

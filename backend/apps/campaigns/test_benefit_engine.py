@@ -66,7 +66,9 @@ class PureBenefitEngineTests(SimpleTestCase):
 
     def test_rounding_budgets_and_zero_amount_no_float(self):
         self.assertEqual(estimate_cashback_cents(99, 100), 1)
-        self.assertEqual(estimate_cashback_cents(150, 100), 2)
+        self.assertEqual(estimate_cashback_cents(150, 100), 1)
+        self.assertEqual(estimate_cashback_cents(5, 1000), 0)
+        self.assertEqual(estimate_cashback_cents(15, 1000), 1)
         self.assertEqual(
             simulate_benefit(self.rule(), self.scenario(committed_budget_cents=1800))["state"],
             "budget_insufficient",

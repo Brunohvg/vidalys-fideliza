@@ -52,8 +52,17 @@ describe("contrato do simulador financeiro", () => {
       other_variable_costs_cents: 0, proposed_cashback_bps: 100,
       minimum_margin_bps: 0
     }));
+    expect(r.estimated_cashback_exposure_cents).toBe(0);
+    expect(r.contribution_after_cents).toBe(1);
+  });
+  it("arredonda cashback por truncamento igual ao grant, inclusive meio centavo", () => {
+    const r = simulateMargin(input({
+      eligible_subtotal_cents: 15, cost_of_goods_cents: 0,
+      payment_fee_cents: 0, shipping_subsidy_cents: 0,
+      other_variable_costs_cents: 0, proposed_cashback_bps: 1000,
+      minimum_margin_bps: 0,
+    }));
     expect(r.estimated_cashback_exposure_cents).toBe(1);
-    expect(r.contribution_after_cents).toBe(0);
   });
   it("não aceita desconto consumindo todo subtotal", () => {
     expect(() => simulateMargin(input({ existing_discounts_cents: 20000 }))).toThrow();
