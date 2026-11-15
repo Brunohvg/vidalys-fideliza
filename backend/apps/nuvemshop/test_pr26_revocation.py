@@ -112,6 +112,17 @@ class RevocationTests(TestCase):
         self.assertEqual(self.voucher.state,LoyaltyVoucher.State.RESERVED)
         intent.refresh_from_db()
         self.assertEqual(intent.state,intent.State.REVOKE_UNKNOWN)
+        # Resultado remoto ainda presente: apenas GET de reconciliação,
+        # jamais um segundo DELETE depois do primeiro timeout.
+        with (
+            patch("apps.nuvemshop.coupon_revocation.config",return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_revocation.get_coupon_by_id",
+                  return_value=self.remote()),
+            patch("apps.nuvemshop.coupon_revocation.delete_coupon_once") as second_delete,
+        ):
+            with self.assertRaises(CouponRevokeBlocked):
+                revoke_coupon(intent_id=intent.pk,reason="expired")
+            second_delete.assert_not_called()
 
     def test_cancelled_order_with_no_psp_capture_cannot_invent_refund(self):
         intent=self.prepared()
