@@ -1604,3 +1604,15 @@ O contrato é fail-closed: padrões `unconfigured`/vazio. Uma variável
 cadastrada no Coolify **não chegava à API** antes deste ajuste, mesmo
 quando o operador a configurava. Não substituir o modo **Raw** por
 Managed nem replicar esses campos nos demais serviços.
+
+
+## Registro operacional — homologação publicada em 15/11/2026
+
+- **Aplicação:** `fideliza-homologacao-dbexterno`; Compose Raw em `/compose.yaml`; branch `homolog`.
+- **Publicado:** commit `4ff2243e9b8176825afc303c628d5cdeb00169b0`. O workflow `quality` do GitHub Actions (run 1001) concluiu com sucesso.
+- **Deploy Coolify:** concluído com sucesso. Foi necessário aplicar 17 migrações pendentes depois de confirmar backup local e restauração prévia em PostgreSQL temporário isolado. O banco PostgreSQL independente, redes e volumes existentes foram preservados.
+- **Smoke hospedado:** domínio HTTPS respondeu; `/api/ready/` retornou `{"status":"ready"}`; página inicial/login e assets do frontend carregaram. API e Redis reportaram saúde; worker Celery e worker OAuth conectaram ao Redis e ficaram prontos.
+- **Escopo seguro:** integrações externas Nuvemshop e operações financeiras permaneceram desativadas; nenhuma loja real foi conectada. Nenhum e-mail real foi disparado.
+- **Limites da validação:** não foi criada conta nem percorrido login autenticado, confirmação de e-mail ou jornada de cadastro, pois falta uma caixa de e-mail QA controlada para validar a entrega. A interface de status do Coolify ainda mostra `Running (no healthcheck)` no nível da aplicação, embora readiness HTTP e checks de serviço do Compose tenham respondido. Há aviso do Redis sobre `vm.overcommit_memory` no host; não impediu a prontidão.
+- **Próximo passo:** Bruno deve autenticar com uma conta QA e fornecer uma caixa de e-mail controlada para executar os fluxos autenticados sem atingir terceiros. Não iniciar OAuth real nem operações financeiras sem autorização.
+
