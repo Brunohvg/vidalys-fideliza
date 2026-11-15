@@ -116,3 +116,61 @@ def create_coupon_once(*, store_id, token, agent, expected, opener=None):
     remote = _transport(store_id=store_id, token=token, agent=agent,
                         method="POST", path="coupons", payload=expected, opener=opener)
     return verify_coupon(remote, expected)
+
+
+def get_coupon_by_id(*, store_id, token, agent, coupon_id, opener=None):
+    """GET oficial /coupons/{id}; 404 só é ausência, NÃO prova de uso zero."""
+    sid, cid = safe_id(store_id), safe_id(coupon_id)
+    if not sid or not cid or not isinstance(token, str) or not 16 <= len(token) <= 4096:
+        raise CouponRemoteError("Credenciais/ID de cupom inválidos")
+    if not isinstance(agent, str) or not 4 <= len(agent) <= 150:
+        raise CouponRemoteError("User-Agent inválido")
+    req = Request(
+        f"{API_ROOT}/{sid}/coupons/{cid}", method="GET",
+        headers={"Authorization": "Bearer " + token, "User-Agent": agent,
+                 "Accept": "application/json"},
+    )
+    try:
+        with (opener or build_opener(NoRedirect())).open(req, timeout=8) as response:
+            if response.status != 200:
+                raise CouponRemoteError("Status inesperado no GET de cupom")
+            content = response.read(131073)
+            if len(content) > 131072:
+                raise CouponRemoteError("Cupom remoto acima do limite")
+            data = json.loads(content)
+            if not isinstance(data, dict) or safe_id(data.get("id")) != cid:
+                raise CouponRemoteError("Identidade remota do cupom divergente")
+            return data
+    except HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise CouponRemoteError("Consulta remota de cupom indisponível") from None
+    except (URLError, TimeoutError, OSError, UnicodeError, ValueError):
+        raise CouponRemoteError("Consulta remota de cupom inválida") from None
+
+
+def delete_coupon_once(*, store_id, token, agent, coupon_id, opener=None):
+    """DELETE oficial: UMA tentativa, sem retentar em timeout ou 5xx."""
+    sid, cid = safe_id(store_id), safe_id(coupon_id)
+    if not sid or not cid or not isinstance(token, str) or not 16 <= len(token) <= 4096:
+        raise CouponRemoteError("Credenciais/ID de cupom inválidos")
+    if not isinstance(agent, str) or not 4 <= len(agent) <= 150:
+        raise CouponRemoteError("User-Agent inválido")
+    req = Request(
+        f"{API_ROOT}/{sid}/coupons/{cid}", method="DELETE",
+        headers={"Authorization": "Bearer " + token, "User-Agent": agent,
+                 "Accept": "application/json"},
+    )
+    try:
+        with (opener or build_opener(NoRedirect())).open(req, timeout=8) as response:
+            if response.status not in (200, 204):
+                raise CouponRemoteError("Resultado inesperado de DELETE")
+            content = response.read(4097)
+            if len(content) > 4096:
+                raise CouponRemoteError("Resposta de exclusão acima do limite")
+            if content and json.loads(content) != {}:
+                raise CouponRemoteError("DELETE retornou dados inesperados")
+            return True
+    except (HTTPError, URLError, TimeoutError, OSError, UnicodeError, ValueError):
+        # Mesmo 404 não confirma se o cupom foi usado antes da exclusão.
+        raise CouponRemoteError("Exclusão de cupom incerta; reconsultar, não repetir automaticamente") from None
