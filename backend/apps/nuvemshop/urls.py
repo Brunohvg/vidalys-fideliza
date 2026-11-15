@@ -1,5 +1,6 @@
 from django.urls import path
 from .order_preview_views import OrderPreviewView
+from .coupon_owner_views import CouponValidateOwnerView
 from .recent_order_views import RecentOrdersPreviewView
 from .order_event_inspection import OrderEventInspectionView
 from .order_webhooks import OrderEventsView, order_webhook
@@ -11,6 +12,8 @@ from .views import (
 )
 
 urlpatterns = [
+    path("nuvemshop/coupons/validate-owner/", CouponValidateOwnerView.as_view(),
+         name="nuvemshop-coupon-owner-advisory"),
     path("tenants/<uuid:tenant_id>/nuvemshop/status/",
          NuvemshopStatusView.as_view(), name="nuvemshop-status"),
     path("tenants/<uuid:tenant_id>/nuvemshop/connect/",
