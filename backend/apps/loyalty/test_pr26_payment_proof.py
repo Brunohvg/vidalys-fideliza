@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command, CommandError
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, connection, transaction
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.utils import timezone
 
@@ -161,6 +161,38 @@ class ProofRecordingTests(TestCase):
         self.assertEqual(VerifiedPaymentProof.objects.get().operator,self.operator)
         with self.assertRaises(ValueError):
             CashClosing.objects.get().delete()
+
+    def test_postgres_immutable_psp_proof_blocks_direct_update_delete(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("PostgreSQL-only trigger test")
+        with patch.dict(os.environ,{
+            "FIDELIZA_PAGARME_BOUND_TENANT_ID":str(self.tenant.pk),
+            "FIDELIZA_PAGARME_SECRET_KEY":self.secret,
+        }):
+            evidence,_=confirm_pagarme_charge(
+                sale_id=self.sale.pk,charge_id=self.charge["id"],
+                opener=FakeOpener(self.charge))
+        proof=VerifiedPaymentProof.objects.get(evidence=evidence)
+        sale=SaleRecord.objects.create(
+            tenant=self.tenant,channel=SaleRecord.Channel.COUNTER,
+            external_reference="COUNTER-PG-26",reported_total_cents=2990,
+            eligible_amount_cents=2990,order_status=SaleRecord.OrderStatus.PAID,
+        )
+        attest_cash_close(
+            sale_id=sale.pk,operator=self.operator,
+            external_receipt="CLOSE-PG-26",closed_at=self.paid_at)
+        closing=CashClosing.objects.get()
+        for table,ident in (
+            ("loyalty_financialevidence",evidence.pk),
+            ("loyalty_verifiedpaymentproof",proof.pk),
+            ("loyalty_cashclosing",closing.pk),
+        ):
+            for statement in ("UPDATE "+table+" SET id=id WHERE id=%s",
+                              "DELETE FROM "+table+" WHERE id=%s"):
+                with self.subTest(table=table,sql=statement), self.assertRaises(DatabaseError):
+                    with transaction.atomic():
+                        with connection.cursor() as cur:
+                            cur.execute(statement,[ident])
 
     def test_payment_proof_disabled_by_default_in_runtime(self):
         with override_settings(FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED=False):
