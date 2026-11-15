@@ -5,6 +5,7 @@ Nenhuma destas tabelas cria benefícios ou confirma um PSP automaticamente.
 """
 import uuid
 
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
@@ -140,6 +141,60 @@ class FinancialEvidence(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Comprovação financeira não pode ser removida.")
+
+
+class VerifiedPaymentProof(models.Model):
+    """Audit source of independent PSP GET or signed-in cash closing.
+
+    Never take the proof_method from a public order/webhook payload.
+    A receipt binds one immutable FinancialEvidence to its verification.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    evidence = models.OneToOneField(FinancialEvidence, on_delete=models.PROTECT,
+                                    related_name="verified_payment_proof")
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    proof_method = models.CharField(max_length=24, choices=[
+        ("pagarme_v5_get", "Pagar.me v5 reconsulta"),
+        ("cash_close", "Fechamento de caixa autenticado"),
+    ])
+    reference_digest = models.CharField(max_length=64)
+    operator = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                 null=True, blank=True, on_delete=models.PROTECT)
+    captured_at = models.DateTimeField()
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Prova validada é append-only.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Prova validada não pode ser removida.")
+
+
+class CashClosing(models.Model):
+    """Caixa fechado por operador autenticado, sem confiança em usuário externo."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    operator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    external_receipt = models.CharField(max_length=100)
+    amount_cents = models.PositiveBigIntegerField()
+    closed_at = models.DateTimeField()
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["tenant", "external_receipt"],
+                                    name="loyalty_cash_close_receipt_unique"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Fechamento de caixa é append-only.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Fechamento de caixa não pode ser removido.")
 
 
 class LoyaltyGrant(models.Model):

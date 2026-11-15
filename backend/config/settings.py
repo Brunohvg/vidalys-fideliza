@@ -152,6 +152,9 @@ FIDELIZA_LEDGER_WRITES_ENABLED = False
 # override_settings em testes de domínio (não há env que ligue isso).
 FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED = False
 FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
+# PR26: recording a PSP/cash attestation also remains OFF in real runtime.
+# Only isolated tests may override this explicit hardcoded gate.
+FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED = False
 FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
 
 # Agendamentos somente para elegibilidade, sem mensagens ou créditos por padrão.
@@ -173,6 +176,13 @@ CELERY_BEAT_SCHEDULE = {
     "loyalty-reconcile-refunds-half-hourly": {
         "task": "loyalty.reconcile_verified_refunds",
         "schedule": crontab(minute="*/30"),
+    },
+    # PR26: must run on dedicated Nuvemshop OAuth worker, never generic SMTP.
+    # Without Celery Beat deployment this schedule is inert.
+    "nuvemshop-revoke-expired-hourly": {
+        "task": "nuvemshop.revoke_expired_coupons",
+        "schedule": crontab(minute=10),
+        "options": {"queue": "nuvemshop"},
     },
 }
 

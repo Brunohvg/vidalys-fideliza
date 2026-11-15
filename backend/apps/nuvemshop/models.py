@@ -52,6 +52,8 @@ class NuvemshopCouponIntent(models.Model):
         ISSUED = "issued", "Criado no provedor"
         APPLIED = "applied_pending_proof", "Aplicado, captura não comprovada"
         SETTLED = "settled", "Baixa financeira validada"
+        REVOKING = "revoking", "Revogação externa em progresso"
+        REVOKED = "revoked", "Revogação externa confirmada"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
@@ -85,3 +87,25 @@ class NuvemshopOrderRecheck(models.Model):
     status = models.CharField(max_length=24, default="pending")
     summary_digest = models.CharField(max_length=64, blank=True, default="")
     checked_at = models.DateTimeField(null=True, blank=True)
+
+
+class NuvemshopCouponRevocationAudit(models.Model):
+    """Append-only proof: delete plus GET provider confirming unusable."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    intent = models.OneToOneField(NuvemshopCouponIntent,
+                                  on_delete=models.PROTECT, related_name="revocation_proof")
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    reason = models.CharField(max_length=24, choices=[
+        ("expired", "Voucher expirou"),
+        ("cancelled_unpaid", "Pedido cancelado sem prova de captura"),
+    ])
+    remote_id = models.CharField(max_length=64)
+    confirmed_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Prova de revogação é imutável")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Prova de revogação não pode ser excluída")

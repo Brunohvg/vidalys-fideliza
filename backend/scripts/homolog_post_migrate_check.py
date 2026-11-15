@@ -63,6 +63,10 @@ def main():
         ("points", "0002_immutable_postgres_ledger"),
         ("wallets", "0002_cashback_origin_entries"),
         ("wallets", "0003_immutable_postgres_ledger"),
+        ("loyalty", "0004_financial_proofs"),
+        ("loyalty", "0005_immutable_payment_proofs"),
+        ("nuvemshop", "0008_coupon_revocation_proof"),
+        ("nuvemshop", "0009_immutable_revocation_audit"),
     }
     missing = sorted(required - migrations)
     if missing:
@@ -72,6 +76,8 @@ def main():
     tables = (
         "points_pointlot", "points_pointevent", "points_pointentry",
         "wallets_cashbackevent", "wallets_cashbackentry", "wallets_cashbackoriginentry",
+        "loyalty_financialevidence", "loyalty_verifiedpaymentproof",
+        "loyalty_cashclosing", "nuvemshop_nuvemshopcouponrevocationaudit",
     )
     with connection.cursor() as cursor:
         for table in tables:

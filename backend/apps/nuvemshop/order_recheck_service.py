@@ -91,6 +91,34 @@ def _paid_coupon_from_order(*, event, order, sale, profile):
     ).first()
     if intent is None:
         return "coupon_not_ours"
+    # Coupon ownership is stricter than ordinary order ingestion:
+    # every supplied checkout contact MUST independently identify the
+    # same previously verified customer. A phone match cannot override
+    # a different/unverified checkout email or vice versa.
+    buyer = order.get("customer")
+    buyer = buyer if isinstance(buyer, dict) else {}
+    checks = (
+        (order.get("contact_email"), normalize_email, "email"),
+        (buyer.get("email"), normalize_email, "email"),
+        (order.get("contact_phone"), normalize_phone, "phone_e164"),
+        (buyer.get("phone"), normalize_phone, "phone_e164"),
+    )
+    confirmed = 0
+    for raw, normalize, field in checks:
+        if raw is None or raw == "":
+            continue
+        if not isinstance(raw, str):
+            raise RecheckBlocked("Identificação do comprador inválida")
+        try:
+            identity = normalize(raw)
+            exact = find_verified_customer(tenant_id=event.tenant_id, **{field: identity})
+        except ValueError:
+            raise RecheckBlocked("Contato do checkout não confirmado") from None
+        if exact is None or exact.pk != profile.pk:
+            raise RecheckBlocked("Cupom pertence a outro comprador")
+        confirmed += 1
+    if not confirmed:
+        raise RecheckBlocked("Não foi possível validar titularidade no checkout")
     if (intent.state not in (
         NuvemshopCouponIntent.State.ISSUED,
         NuvemshopCouponIntent.State.APPLIED,
@@ -193,6 +221,24 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     coupon_result = _paid_coupon_from_order(
         event=event, order=order, sale=result.sale, profile=profile,
     )
+    if (status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED)
+            and tenant.loyalty_live_enabled
+            and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
+            and settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED):
+        # Only a previously matched coupon for THIS order can be revoked.
+        # A cancelled checkout never substitutes PSP refund evidence.
+        from .coupon_revocation import revoke_and_release
+        candidate = NuvemshopCouponIntent.objects.filter(
+            tenant=tenant, store_id=event.store_id,
+            order_id=event.order_id, state__in=(
+                NuvemshopCouponIntent.State.APPLIED,
+                NuvemshopCouponIntent.State.REVOKING,
+            ),
+        ).first()
+        if candidate is not None:
+            revoke_and_release(intent_id=candidate.pk,
+                               reason="cancelled_unpaid")
+            coupon_result = "coupon_revoked_and_reservation_released"
     digest = hashlib.sha256(json.dumps({
         "tenant": str(tenant.pk), "order": event.order_id, "status": status,
         "amount": cents, "identity_verified": bool(profile),

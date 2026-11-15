@@ -224,7 +224,9 @@ def main():
                 "apps.wallets.test_postgres_immutable",
                 "apps.sales.test_pr23_counter_adapter",
                 "apps.loyalty.tests",
-                "apps.nuvemshop.test_pr25_pilot", "--verbosity=1",
+                "apps.nuvemshop.test_pr25_pilot",
+                "apps.nuvemshop.test_pr26_revocation",
+                "apps.loyalty.test_pr26_payment_proof", "--verbosity=1",
             ], env, label="smoke PR25 cupom único, OAuth e triggers PostgreSQL descartável",
                synthetic_test_output=True)
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
