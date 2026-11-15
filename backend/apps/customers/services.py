@@ -52,7 +52,7 @@ def normalize_checkout_phone(value):
     if not isinstance(value, str):
         raise ValueError("Telefone de checkout inválido.")
     compact = re.sub(r"[\s().-]", "", value.strip())
-    if compact.startswith("55") and not compact.startswith("+"):
+    if compact.startswith("55") and len(compact) in (12, 13) and not compact.startswith("+"):
         compact = "+" + compact
     return normalize_phone(compact)
 

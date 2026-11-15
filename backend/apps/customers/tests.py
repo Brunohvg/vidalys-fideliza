@@ -12,7 +12,7 @@ from apps.wallets.models import CashbackWallet
 from .models import ChannelCustomerReference, CustomerProfile, VerifiedCustomerContact
 from .services import (
     IdentityConflict, attach_channel_reference, attach_verified_contact,
-    find_verified_customer, normalize_email, normalize_phone,
+    find_verified_customer, normalize_email, normalize_phone, normalize_checkout_phone,
 )
 
 
@@ -37,6 +37,16 @@ class OmnichannelIdentityTests(TestCase):
             consent_channel=ProgramParticipant.ConsentChannel.CUSTOMER_PORTAL,
             terms_version="v1", status=ProgramParticipant.Status.ACTIVE,
         )
+
+    def test_checkout_phone_only_accepts_explicit_country_code(self):
+        self.assertEqual(normalize_checkout_phone("+55 (31) 99999-9999"),
+                         "+5531999999999")
+        self.assertEqual(normalize_checkout_phone("5531999999999"),
+                         "+5531999999999")
+        with self.assertRaises(ValueError):
+            normalize_checkout_phone("31999999999")
+        with self.assertRaises(ValueError):
+            normalize_checkout_phone("55999999999")
 
     def test_standalone_email_identity_is_idempotent_without_wallets(self):
         profile, created = attach_verified_contact(
