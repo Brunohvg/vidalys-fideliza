@@ -3,7 +3,10 @@
 No HTTP payload, merchant-provided SKU list, catalog price or checkout form
 may bypass the read_order source boundary. Simulations are not settlement.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+import hmac
+from django.conf import settings
+from django.utils.crypto import salted_hmac
 from decimal import Decimal, InvalidOperation
 import hashlib
 import json
@@ -33,6 +36,10 @@ class ReconciledOrderCosts:
     contribution_before_rewards_cents: int
     sale_total_cents: int
     snapshot_digest: str
+    order_id: str = ""
+    tenant_id: str = ""
+    cost_versions: tuple = ()
+    verified_signature: str = ""
 
 
 def _money(value, label):
@@ -82,6 +89,7 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
         raise OrderItemCostBlocked("Pedido sem 100% das linhas conferíveis")
 
     variants = []
+    versions = []
     unique_lines = set()
     subtotal = cogs = 0
     for line in products:
@@ -114,6 +122,7 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
             )
         item = items[0]
         variants.append((item.pk, qty))
+        versions.append((str(item.pk), item.version))
         subtotal += price * qty
         cogs += item.unit_cost_cents * qty
         if max(cogs, subtotal) > 1_000_000_000:
@@ -140,6 +149,7 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
     fingerprint = hashlib.sha256(json.dumps({
         "tenant":str(tenant.pk), "store":str(tenant.external_store_id),
         "order":str(expected_order_id), "lines":[[str(i),q] for i,q in variants],
+        "cost_versions": versions,
         "subtotal":subtotal, "discount":discount, "owner_shipping":owner_shipping,
         "customer_shipping":customer_shipping,"cogs":cogs,"psp_fees":payment_fee_cents,
         "total":total,
@@ -154,7 +164,42 @@ def reconcile_order_item_costs(*, order, tenant, expected_order_id,
         shipping_subsidy_cents=subsidy, cogs_cents=cogs,
         contribution_before_rewards_cents=contribution,
         sale_total_cents=total, snapshot_digest=fingerprint,
+        order_id=str(expected_order_id), tenant_id=str(tenant.pk),
+        cost_versions=tuple(versions),
     )
+
+
+def _signature(sale, quote):
+    return salted_hmac(
+        "vidalys.oauth-order-cost-quote.v1",
+        str(sale.tenant_id) + ":" + str(sale.pk) + ":" + quote.snapshot_digest,
+        secret=settings.SECRET_KEY,algorithm="sha256",
+    ).hexdigest()
+
+
+def verify_verified_quote(*, sale, quote):
+    """Fail closed even if an internal caller supplies arbitrary OrderCosts."""
+    if (not isinstance(quote, ReconciledOrderCosts)
+            or quote.order_id != sale.external_reference
+            or quote.tenant_id != str(sale.tenant_id)
+            or quote.sale_total_cents != sale.reported_total_cents
+            or not quote.verified_signature
+            or not hmac.compare_digest(quote.verified_signature,
+                                       _signature(sale,quote))):
+        raise OrderItemCostBlocked("Cotação de custos sem prova OAuth")
+    identifiers = [pk for pk, _ in quote.cost_versions]
+    actual = list(CostItem.objects.select_for_update().filter(
+        tenant_id=sale.tenant_id,pk__in=identifiers))
+    current = {str(item.pk):item for item in actual}
+    if (len(actual) != len(identifiers)
+            or len(set(identifiers)) != len(identifiers)):
+        raise OrderItemCostBlocked("Linhas de custo alteradas")
+    for pk, version in quote.cost_versions:
+        item = current.get(pk)
+        if (item is None or item.version != version or not item.verified_at
+                or item.verified_by_id is None or not item.unit_cost_cents):
+            raise OrderItemCostBlocked("Custo por variante perdeu verificação")
+    return quote
 
 
 def read_verified_nuvemshop_order_costs(*, sale, payment_fee_cents, opener=None):
@@ -177,8 +222,9 @@ def read_verified_nuvemshop_order_costs(*, sale, payment_fee_cents, opener=None)
         )
     except (OrderReadError, ValueError):
         raise OrderItemCostBlocked("GET OAuth de linhas do pedido indisponível") from None
-    return reconcile_order_item_costs(
+    quote = reconcile_order_item_costs(
         order=order, tenant=tenant, expected_order_id=sale.external_reference,
         expected_total_cents=sale.reported_total_cents,
         payment_fee_cents=payment_fee_cents,
     )
+    return replace(quote, verified_signature=_signature(sale, quote))
