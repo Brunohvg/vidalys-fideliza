@@ -3,6 +3,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.test import override_settings
+from django.db import connection, DatabaseError, transaction
 from django.utils import timezone
 
 from apps.points.models import PointEntry, PointEvent
@@ -126,6 +127,36 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self.voucher.refresh_from_db()
         self.assertEqual(self.voucher.state,LoyaltyVoucher.State.RESERVED)
         self.assertEqual(lot_balances(lot)["reserved"],10)
+
+    def test_postgres_revocation_proof_blocks_sql_updates_and_deletes(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("PostgreSQL-only immutable audit")
+        self._credit_reservation()
+        intent=self._issued_coupon()
+        LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
+            expires_at=timezone.now()-timedelta(minutes=1))
+        remote={"id":876,"code":self.code,"valid":True,
+                "deleted_at":None,"used":0}
+        disabled={"id":876,"code":self.code,"valid":False,
+                  "deleted_at":"2026-11-15","used":0}
+        with (
+            patch("apps.nuvemshop.coupon_revocation.config",return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_revocation.inspect_coupon_by_id",
+                  side_effect=[remote,disabled]),
+            patch("apps.nuvemshop.coupon_revocation.delete_coupon_once",
+                  return_value=True),
+        ):
+            revoke_and_release(intent_id=intent.pk,reason="expired")
+        audit=NuvemshopCouponRevocationAudit.objects.get(intent=intent)
+        table="nuvemshop_nuvemshopcouponrevocationaudit"
+        for statement in (
+            f"UPDATE {table} SET id=id WHERE id=%s",
+            f"DELETE FROM {table} WHERE id=%s",
+        ):
+            with self.subTest(sql=statement), self.assertRaises(DatabaseError):
+                with transaction.atomic():
+                    with connection.cursor() as cur:
+                        cur.execute(statement,[audit.pk])
 
     def test_foreign_checkout_email_cannot_use_other_member_coupon(self):
         self.participant.contact_email="verified-pr26@example.invalid"
