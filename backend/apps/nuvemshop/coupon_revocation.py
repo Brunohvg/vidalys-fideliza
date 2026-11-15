@@ -99,6 +99,9 @@ def revoke_coupon(*, intent_id, reason, opener=None, now=None):
             if sale is None:
                 raise CouponRevokeBlocked("Pedido ainda não consta cancelado/estornado.")
         cfg, token = _credentials(intent=intent)
+        was_pending_remote_check = intent.state in (
+            intent.State.REVOKING, intent.State.REVOKE_UNKNOWN,
+        )
         intent.revoke_reason = reason
         if intent.state in (intent.State.ISSUED, intent.State.APPLIED):
             intent.state = intent.State.REVOKING
@@ -112,9 +115,15 @@ def revoke_coupon(*, intent_id, reason, opener=None, now=None):
             store_id=store_id, token=token, agent=agent,
             coupon_id=remote_id, opener=opener,
         )
-        needs_delete = _unused_snapshot(
+        unused = _unused_snapshot(
             intent=intent, remote=before, keys=keys,
-        ) and not bool(before.get("deleted_at"))
+        )
+        if (was_pending_remote_check and before is not None
+                and not before.get("deleted_at")):
+            # Uma tentativa anterior pode ter atingido o provedor, mas sua
+            # resposta se perdeu. NÃO repetir DELETE com resultado incerto.
+            raise CouponRevokeBlocked("DELETE anterior inconclusivo; revisão manual.")
+        needs_delete = unused and before is not None and not before.get("deleted_at")
         if needs_delete:
             NuvemshopCouponIntent.objects.filter(pk=intent_id).update(
                 verified_unused_at=now,
