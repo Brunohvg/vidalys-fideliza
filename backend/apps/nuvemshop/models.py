@@ -42,3 +42,45 @@ from .privacy_models import PrivacyWebhookRequest  # noqa: E402,F401
 
 # Recebimento mínimo dos avisos de pedido, sem efeito financeiro.
 from .order_webhook_models import OrderWebhookEvent  # noqa: E402,F401
+
+
+class NuvemshopCouponIntent(models.Model):
+    """Um único cupom externo por voucher; sem código bearer em texto puro."""
+    class State(models.TextChoices):
+        PREPARED = "prepared", "Preparado"
+        UNCERTAIN = "uncertain", "Resultado HTTP desconhecido"
+        ISSUED = "issued", "Criado no provedor"
+        APPLIED = "applied_pending_proof", "Aplicado, captura não comprovada"
+        SETTLED = "settled", "Baixa financeira validada"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    voucher = models.OneToOneField("loyalty.LoyaltyVoucher",
+        on_delete=models.PROTECT, related_name="nuvemshop_coupon")
+    store_id = models.CharField(max_length=64)
+    encrypted_code = models.TextField()
+    code_sha256 = models.CharField(max_length=64, unique=True)
+    remote_coupon_id = models.CharField(max_length=64, blank=True, default="")
+    order_id = models.CharField(max_length=32, blank=True, default="")
+    state = models.CharField(max_length=24, choices=State.choices,
+                             default=State.PREPARED)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "order_id"],
+                condition=~models.Q(order_id=""),
+                name="nuv_pilot_one_coupon_per_order",
+            ),
+        ]
+
+
+class NuvemshopOrderRecheck(models.Model):
+    """Resultado mínimo da reconsulta OAuth, sem PII ou prova PSP inventada."""
+    event = models.OneToOneField("nuvemshop.OrderWebhookEvent",
+        on_delete=models.PROTECT, related_name="order_recheck")
+    status = models.CharField(max_length=24, default="pending")
+    summary_digest = models.CharField(max_length=64, blank=True, default="")
+    checked_at = models.DateTimeField(null=True, blank=True)
