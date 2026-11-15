@@ -254,28 +254,41 @@ def grant_for_captured_sale(*, sale_id, evidence_id, costs):
         grant__tenant=tenant, grant__participant=participant, resolved_at__isnull=True,
     ).exists():
         raise LoyaltyBlocked("Participante possui pendência de recuperação.")
+    # Discounts and freight are not eligible spending. The PSP proves the
+    # captured total; the OAuth quote proves the net merchandise base.
+    eligible_for_reward = sale.reported_total_cents
+    applied_costs = costs
+    if sale.channel == SaleRecord.Channel.NUVEMSHOP and evidence.provider == "pagarme_v5":
+        if not getattr(settings, "FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED", False):
+            raise LoyaltyBlocked("Conciliação de SKU do pedido não homologada.")
+        from apps.costs.order_item_cost_reconciliation import (
+            verify_verified_quote, OrderItemCostBlocked,
+        )
+        try:
+            verified = verify_verified_quote(sale=sale, quote=costs)
+        except OrderItemCostBlocked:
+            raise LoyaltyBlocked("Prova OAuth de custo por SKU inválida.") from None
+        applied_costs = verified.costs
+        eligible_for_reward = verified.eligible_net_cents
     rule = _rule(tenant)
     prior = _prior_grants(tenant=tenant, participant=participant, captured_at=evidence.occurred_at)
     spent = sum(item.eligible_amount_cents for item in prior)
     tier = choose_tier(rule=rule, rolling_spend_cents=spent)
     days = (evidence.occurred_at - prior[0].captured_at).days if len(prior) == 1 else None
     quote = calculate_reward(
-        rule=rule, eligible_cents=sale.reported_total_cents,
+        rule=rule, eligible_cents=eligible_for_reward,
         tier=tier, prior_count=len(prior), days_since_first=days,
     )
     if quote.exposure_cents <= 0:
         raise LoyaltyBlocked("Regra não gera benefício positivo para esta compra.")
-    # O módulo costs armazena custos conferidos por variante. O PR #19
-    # ainda não traz as linhas do pedido para comparar; portanto a execução
-    # só fica disponível em testes sintéticos até G7+G8.
-    cogs = _verified_cogs(tenant=tenant, costs=costs)
+    cogs = _verified_cogs(tenant=tenant, costs=applied_costs)
     margin = simulate_margin({
-        "eligible_subtotal_cents": sale.reported_total_cents,
+        "eligible_subtotal_cents": eligible_for_reward,
         "existing_discounts_cents": 0,
         "cost_of_goods_cents": cogs,
-        "payment_fee_cents": costs.payment_fee_cents,
-        "shipping_subsidy_cents": costs.shipping_subsidy_cents,
-        "other_variable_costs_cents": costs.other_variable_costs_cents,
+        "payment_fee_cents": applied_costs.payment_fee_cents,
+        "shipping_subsidy_cents": applied_costs.shipping_subsidy_cents,
+        "other_variable_costs_cents": applied_costs.other_variable_costs_cents,
         "proposed_cashback_bps": 0,
         "minimum_margin_bps": rule.minimum_margin_bps,
     })
@@ -298,7 +311,7 @@ def grant_for_captured_sale(*, sale_id, evidence_id, costs):
         lot, _ = create_pending_lot(
             participant=participant, channel=sale.channel,
             source_reference=sale.external_reference,
-            eligible_amount_cents=sale.reported_total_cents, points=quote.points,
+            eligible_amount_cents=eligible_for_reward, points=quote.points,
             rule_version=version, paid_at=evidence.occurred_at,
             unlock_at=unlock_at, expires_at=expires_at,
             verification_digest=evidence.verification_digest,
@@ -314,7 +327,7 @@ def grant_for_captured_sale(*, sale_id, evidence_id, costs):
         tenant=tenant, sale=sale, participant=participant, rule=rule,
         evidence=evidence, point_lot=lot, cashback_event=event,
         points_issued=quote.points, cashback_cents=quote.cashback_cents,
-        exposure_cents=quote.exposure_cents, eligible_amount_cents=sale.reported_total_cents,
+        exposure_cents=quote.exposure_cents, eligible_amount_cents=eligible_for_reward,
         captured_at=evidence.occurred_at, unlock_at=unlock_at, expires_at=expires_at,
     )
     _update_tier(tenant=tenant, participant=participant, rule=rule, now=now)
