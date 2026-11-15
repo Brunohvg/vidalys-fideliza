@@ -73,38 +73,56 @@ def _record(*, sale, provider, reference, paid_at, proof_method, operator=None):
     return evidence, True
 
 
-@transaction.atomic
 def confirm_pagarme_charge(*, sale_id, charge_id, opener=None):
     """Verify an actual charge via Pagar.me Basic-auth GET, fixed HTTPS host.
 
     The PSP secret is bound to ONE tenant via secret-manager environment.
     This excludes cross-merchant charge lookups and wrong-tenant replay.
     """
-    sale_ref = SaleRecord.objects.get(pk=sale_id)
-    tenant = Tenant.objects.select_for_update().get(pk=sale_ref.tenant_id)
-    _gate(tenant)
-    if sale_ref.channel not in (SaleRecord.Channel.NUVEMSHOP, SaleRecord.Channel.VIDALYS_FLOW):
+    # PSP GET must happen OUTSIDE database locks: network latency would
+    # otherwise hold the tenant lock and block checkout/ledger transactions.
+    sale_ref = SaleRecord.objects.select_related("tenant").get(pk=sale_id)
+    _gate(sale_ref.tenant)
+    if sale_ref.channel not in (SaleRecord.Channel.NUVEMSHOP,
+                                SaleRecord.Channel.VIDALYS_FLOW):
         raise PaymentProofBlocked("Provedor não corresponde ao canal")
-    if str(tenant.pk) != os.getenv("FIDELIZA_PAGARME_BOUND_TENANT_ID", ""):
+    if str(sale_ref.tenant_id) != os.getenv("FIDELIZA_PAGARME_BOUND_TENANT_ID", ""):
         raise PaymentProofBlocked("Chave PSP não vinculada a esta loja")
     key = os.getenv("FIDELIZA_PAGARME_SECRET_KEY", "")
     if not key:
         raise PaymentProofBlocked("Chave PSP não instalada")
-    sale = SaleRecord.objects.get(pk=sale_id, tenant=tenant)
     try:
         charge = fetch_charge(charge_id=charge_id, secret_key=key, opener=opener)
         captured = validate_paid_charge(
             charge=charge, charge_id=charge_id,
-            order_reference=sale.external_reference,
-            total_cents=sale.reported_total_cents,
+            order_reference=sale_ref.external_reference,
+            total_cents=sale_ref.reported_total_cents,
         )
     except PaymentProviderError as exc:
         raise PaymentProofBlocked(str(exc)) from None
     if captured > timezone.now() + timedelta(minutes=5):
         raise PaymentProofBlocked("PSP com captura futura")
-    return _record(sale=sale, provider="pagarme_v5",
-                   reference=charge_id, paid_at=captured,
-                   proof_method="pagarme_v5_get")
+    with transaction.atomic():
+        tenant = Tenant.objects.select_for_update().get(pk=sale_ref.tenant_id)
+        _gate(tenant)
+        # Re-read the sale under the same tenant lock to reject changes while
+        # the remote PSP request was in flight.
+        sale = SaleRecord.objects.select_for_update().get(pk=sale_id, tenant=tenant)
+        if sale.channel not in (SaleRecord.Channel.NUVEMSHOP,
+                                 SaleRecord.Channel.VIDALYS_FLOW):
+            raise PaymentProofBlocked("Canal alterado após consulta PSP")
+        try:
+            validate_paid_charge(
+                charge=charge, charge_id=charge_id,
+                order_reference=sale.external_reference,
+                total_cents=sale.reported_total_cents,
+            )
+        except PaymentProviderError as exc:
+            raise PaymentProofBlocked(str(exc)) from None
+        return _record(sale=sale, provider="pagarme_v5",
+                       reference=charge_id, paid_at=captured,
+                       proof_method="pagarme_v5_get")
+
 
 
 @transaction.atomic

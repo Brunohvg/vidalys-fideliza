@@ -48,7 +48,11 @@ class PagarmeContractTests(SimpleTestCase):
         when = timezone.now().isoformat()
         data = {"id":"ch_test123456789","status":"paid",
                 "order":{"code":"ORDER-25"},"amount":2990,
-                "paid_amount":2990,"paid_at":when}
+                "paid_amount":2990,"paid_at":when,
+                "currency":"BRL","payment_method":"credit_card",
+                "refunded_amount":0,"last_transaction":{
+                    "status":"captured","success":True,"amount":2990,
+                    "refunded_amount":0}}
         self.assertIsNotNone(validate_paid_charge(
             charge=data,charge_id="ch_test123456789",
             order_reference="ORDER-25",total_cents=2990))
@@ -57,6 +61,11 @@ class PagarmeContractTests(SimpleTestCase):
             {"order":{"code":"NOT-OUR-ORDER"}},
             {"paid_amount":2900},
             {"paid_at":None},
+            {"refunded_amount":1},
+            {"status":"chargedback"},
+            {"last_transaction":{"status":"authorized_pending_capture",
+                                  "success":True,"amount":2990,"refunded_amount":0}},
+            {"currency":"USD"},
         ):
             with self.subTest(changed=changed), self.assertRaises(PaymentProviderError):
                 validate_paid_charge(
@@ -87,7 +96,11 @@ class ProofRecordingTests(TestCase):
         self.secret="sk_test_"+"x"*32
         self.charge={"id":"ch_test123456789","status":"paid",
                      "order":{"code":"ORDER-25"},"amount":2990,
-                     "paid_amount":2990,"paid_at":self.paid_at.isoformat()}
+                     "paid_amount":2990,"paid_at":self.paid_at.isoformat(),
+                     "currency":"BRL","payment_method":"credit_card",
+                     "refunded_amount":0,"last_transaction":{
+                         "status":"captured","success":True,"amount":2990,
+                         "refunded_amount":0}}
 
     def test_signed_in_independent_get_creates_immutable_evidence_once(self):
         opener=FakeOpener(self.charge)

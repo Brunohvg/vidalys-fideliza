@@ -38,6 +38,8 @@ def fetch_charge(*, charge_id, secret_key, opener=None):
     )
     try:
         with (opener or build_opener(_NoRedirect())).open(req, timeout=8) as response:
+            if response.status != 200:
+                raise PaymentProviderError("Status HTTP PSP não confirmado")
             raw = response.read(131073)
             if len(raw) > 131072:
                 raise PaymentProviderError("Resposta PSP excede limite")
@@ -67,6 +69,21 @@ def validate_paid_charge(*, charge, charge_id, order_reference, total_cents):
             or amount != total_cents or paid != total_cents
             or total_cents <= 0):
         raise PaymentProviderError("Valor liquidado divergente")
+    # Status da cobrança não comprova ausência de estorno/chargeback
+    # nem captura efetiva do cartão. Campos ausentes são inconclusivos.
+    last = charge.get("last_transaction")
+    if (charge.get("currency") != "BRL"
+            or charge.get("payment_method") not in ("credit_card", "pix", "boleto")
+            or type(charge.get("refunded_amount")) is not int
+            or charge["refunded_amount"] != 0
+            or not isinstance(last, dict)
+            or last.get("status") not in ("captured", "paid")
+            or last.get("success") is not True
+            or type(last.get("amount")) is not int
+            or last["amount"] != total_cents
+            or type(last.get("refunded_amount")) is not int
+            or last["refunded_amount"] != 0):
+        raise PaymentProviderError("Captura integral sem estorno não comprovada")
     paid_at = charge.get("paid_at")
     when = parse_datetime(paid_at) if isinstance(paid_at, str) else None
     if not isinstance(when, datetime) or when.tzinfo is None:
