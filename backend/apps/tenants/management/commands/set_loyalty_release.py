@@ -13,7 +13,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 from django.utils import timezone
 
-from apps.costs.models import CostItem
+from apps.costs.catalog_gate import verify_active_catalog_costs, CatalogCostCoverageBlocked
 from apps.loyalty.models import LoyaltyRule, LoyaltyTier
 from apps.nuvemshop.models import NuvemshopInstallation, NuvemshopCouponIntent
 from apps.nuvemshop.order_readonly import read_orders_page, OrderReadError
@@ -59,12 +59,8 @@ def check_rule_and_costs(tenant):
     rule=LoyaltyRule.objects.filter(tenant=tenant,enabled=True).first()
     if (rule is None or rule.budget_cents <= 0
             or not 0 <= rule.minimum_margin_bps <= 10000
-            or not LoyaltyTier.objects.filter(rule=rule,minimum_spend_cents=0).exists()
-            or not CostItem.objects.filter(
-                tenant=tenant,verified_at__isnull=False,
-                unit_cost_cents__isnull=False,selling_price_cents__isnull=False,
-            ).exists()):
-        raise CommandError("Sem regra, nível inicial e custos SKU verificados")
+            or not LoyaltyTier.objects.filter(rule=rule,minimum_spend_cents=0).exists()):
+        raise CommandError("Sem regra, nível inicial ou orçamento do programa")
 
 
 def check_oauth(tenant):
@@ -76,9 +72,9 @@ def check_oauth(tenant):
         client_id=cfg.client_id,
     ).first()
     if installed is None or not {
-        "read_orders", "write_coupons",
+        "read_orders", "write_coupons", "read_products",
     } <= parse_scopes(installed.scope):
-        raise CommandError("OAuth precisa de read_orders e write_coupons")
+        raise CommandError("OAuth precisa de read_orders, read_products e write_coupons")
     token=decrypt_token(installed.token_ciphertext,cfg.token_keys)
     try:
         read_orders_page(
@@ -87,6 +83,7 @@ def check_oauth(tenant):
         )
     except OrderReadError:
         raise CommandError("GET OAuth atual não foi validado") from None
+    return installed.store_id, token, cfg.user_agent
 
 
 class Command(BaseCommand):
@@ -150,13 +147,31 @@ class Command(BaseCommand):
                     and settings.FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED):
                 raise CommandError("Flags financeiras/PSP não homologadas: NO-GO")
             verify_postgres_immutability()
+        # Run remote network preflight BEFORE taking an exclusive tenant lock.
+        # Recheck the local rule and tenant identity under the final lock.
+        inspected_store_id = None
+        if opts["enable"]:
+            inspected = Tenant.objects.filter(pk=tid, status=Tenant.Status.ACTIVE).first()
+            if inspected is None:
+                raise CommandError("Loja comercial não ativa")
+            check_rule_and_costs(inspected)
+            store_id, token, user_agent = check_oauth(inspected)
+            try:
+                verify_active_catalog_costs(
+                    tenant=inspected, store_id=store_id,
+                    token=token, user_agent=user_agent,
+                )
+            except CatalogCostCoverageBlocked as exc:
+                raise CommandError(str(exc)) from None
+            inspected_store_id = store_id
         with transaction.atomic():
             tenant=Tenant.objects.select_for_update().filter(pk=tid).first()
             if tenant is None or tenant.status!=Tenant.Status.ACTIVE:
                 raise CommandError("Loja comercial não ativa")
             if opts["enable"]:
+                if tenant.external_store_id != inspected_store_id:
+                    raise CommandError("Loja mudou durante a auditoria do catálogo")
                 check_rule_and_costs(tenant)
-                check_oauth(tenant)
             elif NuvemshopCouponIntent.objects.filter(
                 tenant=tenant,
                 state__in=[
