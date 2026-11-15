@@ -22,6 +22,7 @@ from apps.tenants.models import Tenant
     FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED=True,
     FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED=True,
     FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED=True,
+    FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED=True,
 )
 class CompleteCatalogGateTests(TestCase):
     def setUp(self):
@@ -74,6 +75,15 @@ class CompleteCatalogGateTests(TestCase):
             patch("apps.costs.catalog_gate.read_products_page", side_effect=[self.products]),
         ):
             return call_command("set_loyalty_release", **self.options)
+
+    def test_commercial_fails_without_real_psp_fee_reconciliation(self):
+        self._cost(201, "ABC-01")
+        self._cost(202, "ABC-02")
+        with override_settings(FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED=False):
+            with self.assertRaisesRegex(CommandError, "NO-GO"):
+                self._command()
+        self.tenant.refresh_from_db()
+        self.assertFalse(self.tenant.loyalty_live_enabled)
 
     def test_commercial_fails_without_preventive_checkout_enforcement(self):
         self._cost(201, "ABC-01")

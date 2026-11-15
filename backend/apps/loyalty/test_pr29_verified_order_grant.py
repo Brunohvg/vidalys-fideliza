@@ -11,7 +11,8 @@ from apps.costs.models import CostItem
 from apps.customers.services import attach_verified_contact
 from apps.participants.models import ProgramParticipant
 from apps.loyalty.models import (
-    FinancialEvidence, VerifiedPaymentProof, LoyaltyRule, LoyaltyTier, LoyaltyGrant,
+    FinancialEvidence, VerifiedPaymentProof, VerifiedPspFeeReceipt,
+    LoyaltyRule, LoyaltyTier, LoyaltyGrant,
 )
 from apps.loyalty.payment_proof import apply_verified_capture, PaymentProofBlocked
 from apps.loyalty.services import release_grant
@@ -29,6 +30,7 @@ from apps.wallets.models import CashbackEvent
     FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED=True,
     FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED=True,
     FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED=True,
+    FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED=True,
     FIDELIZA_TRUSTED_PAYMENT_ADAPTERS=frozenset({"pagarme_v5"}),
 )
 class VerifiedOrderGrantTests(TestCase):
@@ -67,10 +69,17 @@ class VerifiedOrderGrantTests(TestCase):
             amount_cents=2700, verification_digest="f"*64,
             occurred_at=now-timedelta(minutes=1), verified_at=now,
         )
-        VerifiedPaymentProof.objects.create(
+        proof = VerifiedPaymentProof.objects.create(
             tenant=self.tenant,evidence=self.evidence,
             proof_method="pagarme_v5_get",reference_digest="a"*64,
             captured_at=self.evidence.occurred_at,
+        )
+        # Synthetic immutable receipt for unit testing only; production
+        # must obtain this through authenticated Pagar.me payables GET.
+        VerifiedPspFeeReceipt.objects.create(
+            tenant=self.tenant, proof=proof,
+            charge_digest="1"*64,payables_digest="2"*64,
+            gross_cents=2700,fee_cents=50,net_cents=2650,payable_count=1,
         )
         rule=LoyaltyRule.objects.create(
             tenant=self.tenant,version=1,enabled=True,
