@@ -49,10 +49,28 @@ for(const width of [320,390,768]){
       // Conta QA nova, sem concessões; não permitir que UI invente saldo/VIP.
       expect(member.points_balance).toBeNull();
       expect(member.cashback_balance_cents).toBeNull();
-      for(const reward of member.available_rewards||[]){
+      const rewards=member.available_rewards||[];
+      expect(rewards.length,"Prepare uma recompensa publicada somente no tenant QA").toBeGreaterThan(0);
+      for(const reward of rewards){
         expect(reward.redemption_enabled).toBe(false);
         expect(reward.id).toMatch(/^[a-f0-9-]{36}$/i);
       }
+      // POST real usando reward_id: deve falhar fechado sem criar voucher.
+      // Conta QA e CSRF reais; não simular APIs nem forjar saldo.
+      await context.request.get("/api/v1/auth/session/");
+      const csrf=(await context.cookies()).find(c=>c.name==="csrftoken");
+      expect(csrf,"CSRF da sessão QA ausente").toBeDefined();
+      const rejected=await context.request.post(
+        "/api/v1/public/clubs/"+slug+"/vouchers/issue/",
+        {
+          data:{reward_id:rewards[0].id},
+          headers:{
+            "X-CSRFToken":csrf!.value,
+            "Origin":process.env.FIDELIZA_HOMOLOG_BASE_URL!,
+          },
+        },
+      );
+      expect(rejected.status(),"Resgate deve permanecer desligado").toBe(409);
       await page.goto(publicPath,{waitUntil:"domcontentloaded"});
       await expect(page.getByRole("heading",{name:/Olá,/})).toBeVisible();
       const vip=page.getByRole("region",{name:"Meu nível VIP"});
