@@ -347,6 +347,64 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self.assertEqual(intent.state, NuvemshopCouponIntent.State.REVOKING)
         self.assertEqual(intent.order_id, "")
 
+    def test_pr29_paid_coupon_foreign_email_records_incident_and_freezes_issuer(self):
+        from types import SimpleNamespace
+        from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
+        from apps.nuvemshop.models import NuvemshopCouponOwnershipIncident
+        from apps.loyalty.services import issue_voucher, LoyaltyBlocked
+        self.participant.contact_email = "original-pr29@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            email=self.participant.contact_email, proof_method="email_otp",
+        )
+        lot=self._credit_reservation()
+        intent=self._issued_coupon()
+        event=SimpleNamespace(
+            tenant=self.tenant, tenant_id=self.tenant.pk,
+            store_id="54321", order_id="9876",
+        )
+        order={"payment_status":"paid","status":"open",
+               "coupon_id":876,"coupon":[{"id":876,"code":self.code}],
+               "contact_email":"third-person-pr29@example.invalid"}
+        with patch("apps.nuvemshop.coupon_ownership.config",return_value=self.cfg):
+            self.assertEqual(check_paid_coupon_ownership(event=event,order=order),
+                             "ownership_violation")
+            self.assertEqual(check_paid_coupon_ownership(event=event,order=order),
+                             "ownership_violation")
+        intent.refresh_from_db()
+        self.assertEqual(intent.state,NuvemshopCouponIntent.State.OWNERSHIP_VIOLATION)
+        self.assertEqual(intent.order_id,"9876")
+        self.assertEqual(NuvemshopCouponOwnershipIncident.objects.count(),1)
+        self.assertEqual(lot_balances(lot)["reserved"],10)
+        self.assertEqual(lot_balances(lot)["available"],0)
+        with self.assertRaisesRegex(LoyaltyBlocked,"titularidade"):
+            issue_voucher(tenant_id=self.tenant.pk,
+                          participant_id=self.participant.pk,
+                          reward_id=self.voucher.reward_id)
+
+    def test_pr29_matching_verified_checkout_email_does_not_create_incident(self):
+        from types import SimpleNamespace
+        from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
+        from apps.nuvemshop.models import NuvemshopCouponOwnershipIncident
+        self.participant.contact_email = "normal-pr29@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        attach_verified_contact(
+            tenant_id=self.tenant.pk,participant_id=self.participant.pk,
+            email=self.participant.contact_email,proof_method="email_otp",
+        )
+        intent=self._issued_coupon()
+        event=SimpleNamespace(tenant=self.tenant,tenant_id=self.tenant.pk,
+                              store_id="54321",order_id="9876")
+        order={"payment_status":"paid","status":"open",
+               "coupon_id":876,"coupon":[{"id":876,"code":self.code}],
+               "contact_email":"NORMAL-PR29@EXAMPLE.INVALID"}
+        with patch("apps.nuvemshop.coupon_ownership.config",return_value=self.cfg):
+            self.assertIsNone(check_paid_coupon_ownership(event=event,order=order))
+        intent.refresh_from_db()
+        self.assertEqual(intent.state,NuvemshopCouponIntent.State.ISSUED)
+        self.assertFalse(NuvemshopCouponOwnershipIncident.objects.exists())
+
     def test_foreign_checkout_email_cannot_use_other_member_coupon(self):
         self.participant.contact_email="verified-pr26@example.invalid"
         self.participant.save(update_fields=["contact_email"])
