@@ -36,7 +36,7 @@ class Command(BaseCommand):
             raise CommandError("Confirmação de operação incorreta")
         try:
             tid = uuid.UUID(opts["tenant_id"])
-            actor_id = uuid.UUID(opts["actor_id"])
+            actor_id = get_user_model()._meta.pk.to_python(opts["actor_id"])
         except (TypeError, ValueError, AttributeError):
             raise CommandError("UUID inválido") from None
         actor = get_user_model().objects.filter(pk=actor_id, is_active=True, is_superuser=True).first()
