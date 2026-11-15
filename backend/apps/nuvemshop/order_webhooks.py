@@ -129,12 +129,9 @@ def order_webhook(request, kind):
                     "event_launch_ts": launched,
                 },
             )
-            if getattr(settings, "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED", False):
-                from .tasks import recheck_nuvemshop_order_event
-                # Mesmo um replay pode corrigir falha prévia no broker/worker.
-                transaction.on_commit(
-                    lambda: recheck_nuvemshop_order_event.delay(str(receipt.pk))
-                )
+            # A inbox é uma outbox durável. O comando controlado do API
+            # container fará reconsulta OAuth. O worker genérico não tem
+            # credenciais da Nuvemshop (isolamento de segredos intencional).
         return _response()
     except Exception:
         # Não gravar payload, exceção ou identificadores no log.
