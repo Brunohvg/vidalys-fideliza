@@ -5,6 +5,7 @@ GET por código apenas para reconciliação de resultado desconhecido.
 """
 import json
 import re
+from datetime import timezone
 from decimal import Decimal, InvalidOperation
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -60,12 +61,16 @@ def coupon_payload(*, code, discount_cents, min_order_cents, expires_at):
         raise CouponRemoteError("Valores da recompensa inválidos")
     if not expires_at or expires_at.tzinfo is None:
         raise CouponRemoteError("Expiração do voucher obrigatória")
+    # API 2025-03 recebe end_date YYYY-MM-DD + end_time HH:MM,
+    # nunca ISO-8601 completo. Sem `tz=store` o provedor usa UTC.
+    until = expires_at.astimezone(timezone.utc)
     return {
         "code": code, "type": "absolute",
         "value": f"{Decimal(discount_cents)/100:.2f}",
         "max_uses": 1, "min_price": f"{Decimal(min_order_cents)/100:.2f}",
         "includes_shipping": False, "combines_with_other_discounts": False,
-        "end_date": expires_at.isoformat(),
+        "end_date": until.strftime("%Y-%m-%d"),
+        "end_time": until.strftime("%H:%M"),
     }
 
 
@@ -84,6 +89,11 @@ def verify_coupon(remote, expected):
         raise CouponRemoteError("Valores remotos inconsistentes") from None
     if actual != Decimal(expected["value"]) or minimum != Decimal(expected["min_price"]):
         raise CouponRemoteError("Cupom externo divergente do voucher")
+    if (remote.get("includes_shipping") is not False
+            or remote.get("combines_with_other_discounts") is not False
+            or remote.get("end_date") != expected["end_date"]
+            or remote.get("end_time") != expected["end_time"]):
+        raise CouponRemoteError("Cupom remoto não preservou regras comerciais")
     return str(remote["id"])
 
 
