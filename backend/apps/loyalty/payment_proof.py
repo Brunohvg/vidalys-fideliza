@@ -204,17 +204,22 @@ def verify_and_record_pagarme_capture(*, sale_id, charge_id, opener=None):
 @transaction.atomic
 def record_cash_dual_control(*, sale_id, receipt_reference, operator_id,
                              reviewer_id, received_at, counted_cents):
-    """Fechamento presencial com duas pessoas autenticadas da MESMA loja.
+    """Recebimento físico confirmado por dois agentes da mesma loja.
 
-    Um relatório de PDV sem dupla conferência não é evidência de caixa.
-    Não é PSP nem prova de depósito bancário; aplica-se somente ao balcão.
+    Também aceita VENDA ORIGINADA no Vidalys Flow, mas somente após recibo
+    de ingestão autenticada do canal + fechamento humano em caixa, nunca
+    por status pago enviado pelo WhatsApp.
     """
     if not (getattr(settings, "FIDELIZA_CASH_DUAL_CONTROL_ENABLED", False)
             and "cash_dual_control" in settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS):
         raise PaymentProofBlocked("Fechamento de caixa ainda desativado.")
     sale = SaleRecord.objects.select_related("tenant").select_for_update().get(pk=sale_id)
     Tenant.objects.select_for_update().get(pk=sale.tenant_id)
-    if (sale.channel != SaleRecord.Channel.COUNTER
+    if (sale.channel not in (
+                SaleRecord.Channel.COUNTER, SaleRecord.Channel.VIDALYS_FLOW,
+            )
+            or (sale.channel == SaleRecord.Channel.VIDALYS_FLOW
+                and (not sale.source_order_key or not sale.inbound_events.exists()))
             or not sale.tenant.loyalty_live_enabled
             or type(counted_cents) is not int
             or counted_cents != sale.reported_total_cents
