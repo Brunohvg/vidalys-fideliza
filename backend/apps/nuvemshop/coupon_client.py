@@ -116,3 +116,59 @@ def create_coupon_once(*, store_id, token, agent, expected, opener=None):
     remote = _transport(store_id=store_id, token=token, agent=agent,
                         method="POST", path="coupons", payload=expected, opener=opener)
     return verify_coupon(remote, expected)
+
+
+def inspect_coupon_by_id(*, store_id, token, agent, remote_id, opener=None):
+    """Reconsulta ID EXATO; 404 significa ausente. Nunca toma q parcial."""
+    if safe_id(remote_id) != str(remote_id):
+        raise CouponRemoteError("ID remoto inválido")
+    sid = safe_id(store_id)
+    if not sid or not isinstance(token, str) or len(token) < 16:
+        raise CouponRemoteError("Instalação inválida")
+    if not isinstance(agent, str) or not 4 <= len(agent) <= 150:
+        raise CouponRemoteError("User-Agent inválido")
+    req = Request(f"{API_ROOT}/{sid}/coupons/{remote_id}",
+                  headers={"Authorization": "Bearer " + token,
+                           "User-Agent": agent, "Accept": "application/json"},
+                  method="GET")
+    try:
+        with (opener or build_opener(NoRedirect())).open(req, timeout=8) as response:
+            if response.status != 200:
+                raise CouponRemoteError("Status de reconsulta inesperado")
+            data = response.read(131073)
+            if len(data) > 131072:
+                raise CouponRemoteError("Resposta grande demais")
+            item = json.loads(data, parse_float=str)
+    except HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise CouponRemoteError("Falha na reconsulta do cupom") from None
+    except (URLError, TimeoutError, OSError, ValueError, UnicodeError):
+        raise CouponRemoteError("Falha ao conferir cupom") from None
+    if not isinstance(item, dict) or safe_id(item.get("id")) != str(remote_id):
+        raise CouponRemoteError("ID de cupom divergente")
+    return item
+
+
+def delete_coupon_once(*, store_id, token, agent, remote_id, opener=None):
+    """DELETE one known coupon ID; no automatic retry on network uncertainty."""
+    if safe_id(remote_id) != str(remote_id):
+        raise CouponRemoteError("ID remoto inválido")
+    sid = safe_id(store_id)
+    if not sid or not isinstance(token, str) or len(token) < 16:
+        raise CouponRemoteError("Instalação inválida")
+    if not isinstance(agent, str) or not 4 <= len(agent) <= 150:
+        raise CouponRemoteError("User-Agent inválido")
+    request = Request(f"{API_ROOT}/{sid}/coupons/{remote_id}",
+                      headers={"Authorization": "Bearer " + token,
+                               "User-Agent": agent, "Accept": "application/json"},
+                      method="DELETE")
+    try:
+        with (opener or build_opener(NoRedirect())).open(request, timeout=8) as response:
+            if response.status not in (200, 204):
+                raise CouponRemoteError("Exclusão não confirmada")
+            if len(response.read(8193)) > 8192:
+                raise CouponRemoteError("Resposta de exclusão inválida")
+    except (HTTPError, URLError, TimeoutError, OSError):
+        raise CouponRemoteError("Exclusão externa incerta; necessário GET") from None
+    return True
