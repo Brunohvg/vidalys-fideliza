@@ -47,6 +47,22 @@ def normalize_phone(value):
     return value
 
 
+def normalize_cpf(value):
+    """Valida CPF brasileiro; nenhuma cópia do CPF é persistida."""
+    if not isinstance(value, str):
+        raise ValueError("CPF inválido.")
+    digits = re.sub(r"[.\s-]", "", value)
+    if not re.fullmatch(r"[0-9]{11}", digits) or len(set(digits)) == 1:
+        raise ValueError("CPF inválido.")
+    def digit(n):
+        total = sum(int(digits[i]) * (n - i) for i in range(n - 1))
+        result = 11 - (total % 11)
+        return 0 if result >= 10 else result
+    if digit(10) != int(digits[9]) or digit(11) != int(digits[10]):
+        raise ValueError("CPF inválido.")
+    return digits
+
+
 def _digests(*, tenant_id, kind, value):
     """Permite rotação de SECRET_KEY enquanto chaves antigas forem mantidas."""
     message = f"{tenant_id}:{kind}:{value}"
@@ -59,12 +75,16 @@ def _digests(*, tenant_id, kind, value):
     ))
 
 
-def find_verified_customer(*, tenant_id, email=None, phone_e164=None):
+def find_verified_customer(*, tenant_id, email=None, phone_e164=None, cpf=None):
     """Consulta interna; só contatos previamente comprovados resolvem perfis."""
-    if (email is None) == (phone_e164 is None):
-        raise ValueError("Informe apenas um contato.")
-    kind = VerifiedCustomerContact.Kind.EMAIL if email is not None else VerifiedCustomerContact.Kind.PHONE
-    value = normalize_email(email) if email is not None else normalize_phone(phone_e164)
+    if sum(x is not None for x in (email, phone_e164, cpf)) != 1:
+        raise ValueError("Informe exatamente um identificador.")
+    if email is not None:
+        kind, value = VerifiedCustomerContact.Kind.EMAIL, normalize_email(email)
+    elif phone_e164 is not None:
+        kind, value = VerifiedCustomerContact.Kind.PHONE, normalize_phone(phone_e164)
+    else:
+        kind, value = VerifiedCustomerContact.Kind.CPF, normalize_cpf(cpf)
     matches = list(VerifiedCustomerContact.objects.select_related("profile").filter(
         tenant_id=tenant_id,
         kind=kind,
@@ -77,23 +97,29 @@ def find_verified_customer(*, tenant_id, email=None, phone_e164=None):
 
 @transaction.atomic
 def attach_verified_contact(
-    *, tenant_id, participant_id, email=None, phone_e164=None, proof_method
+    *, tenant_id, participant_id, email=None, phone_e164=None, cpf=None, proof_method
 ):
     """Associa UM contato comprovado à carteira lógica do participante.
 
     A prova deve ser validada antes pelo chamador (OTP consumido ou
     identidade do provedor autenticada). Não aceitar proof_method de HTTP.
     """
-    if (email is None) == (phone_e164 is None):
-        raise ValueError("Informe apenas um contato verificado.")
+    if sum(x is not None for x in (email, phone_e164, cpf)) != 1:
+        raise ValueError("Informe apenas um identificador verificado.")
     if proof_method not in PROOF_METHODS:
         raise ValueError("Origem da comprovação inválida.")
+    if cpf is not None and proof_method != "provider_confirmed":
+        raise ValueError("CPF exige comprovação de identidade por provedor.")
     if phone_e164 is not None and proof_method == "email_otp":
         raise ValueError("E-mail confirmado não comprova telefone.")
     if email is not None and proof_method == "whatsapp_otp":
         raise ValueError("WhatsApp confirmado não comprova e-mail.")
-    kind = VerifiedCustomerContact.Kind.EMAIL if email is not None else VerifiedCustomerContact.Kind.PHONE
-    value = normalize_email(email) if email is not None else normalize_phone(phone_e164)
+    if cpf is not None:
+        kind, value = VerifiedCustomerContact.Kind.CPF, normalize_cpf(cpf)
+    elif email is not None:
+        kind, value = VerifiedCustomerContact.Kind.EMAIL, normalize_email(email)
+    else:
+        kind, value = VerifiedCustomerContact.Kind.PHONE, normalize_phone(phone_e164)
     tenant = Tenant.objects.select_for_update().get(pk=tenant_id)
     if tenant.status != Tenant.Status.ACTIVE:
         raise IdentityConflict("Loja inativa.")

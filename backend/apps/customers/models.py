@@ -45,6 +45,7 @@ class VerifiedCustomerContact(models.Model):
     class Kind(models.TextChoices):
         EMAIL = "email", "E-mail"
         PHONE = "phone", "Telefone E.164"
+        CPF = "cpf", "CPF verificado (somente HMAC)"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)

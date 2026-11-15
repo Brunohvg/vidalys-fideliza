@@ -20,7 +20,7 @@ class NoRedirect(HTTPRedirectHandler):
 FIELDS = "id,number,status,payment_status,paid_at,cancelled_at,total,total_paid_by_customer,currency,gateway,customer"
 # Uso EXCLUSIVO do adaptador servidor (inclui contato/cupom, nunca API pública).
 INTEGRATION_FIELDS = (
-    FIELDS + ",store_id,contact_email,contact_phone,coupon,coupon_id,discount_coupon"
+    FIELDS + ",store_id,contact_email,contact_phone,contact_identification,coupon,coupon_id,discount_coupon"
 )
 
 def safe_id(value):
