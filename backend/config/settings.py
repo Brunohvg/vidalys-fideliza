@@ -161,6 +161,13 @@ FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED = False
 # Until order-item IDs, quantities, discounts and freight are reconciled
 # against the signed Nuvemshop order snapshot, costs cannot authorize money.
 FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED = False
+# Real Pagar.me recipient fee reconciliation is NOT approved by QA-only tests.
+FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED = False
+FIDELIZA_CHECKOUT_ALLOWED_ORIGINS = tuple(
+    part.strip() for part in
+    os.getenv("FIDELIZA_CHECKOUT_ALLOWED_ORIGINS", "").split(",")
+    if part.strip().startswith("https://") and "*" not in part
+)
 FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED = False
 FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
 

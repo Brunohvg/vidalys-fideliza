@@ -1,6 +1,7 @@
 from django.urls import path
 from .order_preview_views import OrderPreviewView
 from .coupon_owner_views import CouponValidateOwnerView
+from .public_coupon_eligibility import PublicCouponEligibilityView, IssueCheckoutEligibilityTokenView
 from .recent_order_views import RecentOrdersPreviewView
 from .order_event_inspection import OrderEventInspectionView
 from .order_webhooks import OrderEventsView, order_webhook
@@ -12,6 +13,12 @@ from .views import (
 )
 
 urlpatterns = [
+    path("public/coupons/check-eligibility/",
+         PublicCouponEligibilityView.as_view(),
+         name="public-coupon-check-eligibility"),
+    path("public/clubs/<slug:slug>/checkout-token/",
+         IssueCheckoutEligibilityTokenView.as_view(),
+         name="public-coupon-checkout-token"),
     path("nuvemshop/coupons/validate-owner/", CouponValidateOwnerView.as_view(),
          name="nuvemshop-coupon-owner-advisory"),
     path("tenants/<uuid:tenant_id>/nuvemshop/status/",

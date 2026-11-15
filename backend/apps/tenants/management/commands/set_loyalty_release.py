@@ -26,7 +26,8 @@ REQUIRED_TRIGGERS = (
     "points_pointlot", "points_pointevent", "points_pointentry",
     "wallets_cashbackevent", "wallets_cashbackentry", "wallets_cashbackoriginentry",
     "loyalty_financialevidence", "loyalty_verifiedpaymentproof",
-    "loyalty_cashclosing", "nuvemshop_nuvemshopcouponrevocationaudit",
+    "loyalty_cashclosing", "loyalty_verifiedpspfeereceipt",
+    "nuvemshop_nuvemshopcouponrevocationaudit",
 )
 
 
@@ -146,6 +147,7 @@ class Command(BaseCommand):
                     and settings.FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED
                     and settings.FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED
                     and settings.FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED
+                    and settings.FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED
                     and "pagarme_v5" in settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS):
                 raise CommandError("Flags financeiras/PSP não homologadas: NO-GO")
             verify_postgres_immutability()

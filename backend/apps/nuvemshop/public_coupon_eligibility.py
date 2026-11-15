@@ -79,9 +79,11 @@ class IssueCheckoutEligibilityTokenView(APIView):
         tenant = _tenant(slug)
         submission = _authorized_submission(request, tenant)
         participant = _participant(submission) if submission is not None else None
+        profile = getattr(participant, "customer_profile", None) if participant else None
         if (participant is None
                 or participant.status != ProgramParticipant.Status.ACTIVE
-                or not participant.customer_profile.verified_contacts.filter(
+                or profile is None
+                or not profile.verified_contacts.filter(
                     kind="email", proof_method="email_otp",
                 ).exists()):
             return _private({"issued": False}, status=403)
