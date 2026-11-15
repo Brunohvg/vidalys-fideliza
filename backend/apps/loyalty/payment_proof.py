@@ -168,11 +168,12 @@ def attest_cash_close(*, sale_id, operator, external_receipt, closed_at):
                    proof_method="cash_close", operator=operator)
 
 
-@transaction.atomic
-def apply_verified_capture(*, evidence_id, costs, coupon_intent_id=None):
-    """Only source-backed proof may enter monetary loyalty domain.
+def apply_verified_capture(*, evidence_id, costs=None, coupon_intent_id=None,
+                           payment_fee_cents=None, opener=None):
+    """Credit only after trusted PSP proof + authenticated per-line order costs.
 
-    Uses existing SKU-cost, margin and budget gate, never bypasses it.
+    Merchant-supplied OrderCosts never authorize Nuvemshop credit. The remote
+    OAuth read is performed before acquiring database row locks.
     """
     if not (settings.FIDELIZA_POINTS_WRITES_ENABLED
             and settings.FIDELIZA_LEDGER_WRITES_ENABLED
@@ -180,23 +181,50 @@ def apply_verified_capture(*, evidence_id, costs, coupon_intent_id=None):
         raise PaymentProofBlocked("Ledger financeiro desligado")
     if not getattr(settings, "FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED", False):
         raise PaymentProofBlocked("Linhas, quantidades, frete e descontos ainda não conciliados")
-    proof = VerifiedPaymentProof.objects.select_related("evidence__sale").get(
+    source = VerifiedPaymentProof.objects.select_related("evidence__sale__tenant").get(
         evidence_id=evidence_id,
     )
-    evidence = proof.evidence
+    evidence = source.evidence
     if evidence.provider not in settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS:
         raise PaymentProofBlocked("Provedor não aprovado para execução")
-    tenant = Tenant.objects.select_for_update().get(pk=proof.tenant_id)
-    _gate(tenant)
-    if evidence.tenant_id != tenant.pk or evidence.sale.tenant_id != tenant.pk:
-        raise PaymentProofBlocked("Prova não pertence ao tenant")
-    from apps.loyalty.services import grant_for_captured_sale
-    grant, created = grant_for_captured_sale(
-        sale_id=evidence.sale_id, evidence_id=evidence.pk, costs=costs,
-    )
-    if coupon_intent_id:
-        from apps.nuvemshop.coupon_settlement import settle_coupon_after_psp_capture
-        settled, _ = settle_coupon_after_psp_capture(
-            intent_id=coupon_intent_id, capture_evidence_id=evidence.pk,
+    verified_costs = costs
+    if evidence.sale.channel == SaleRecord.Channel.NUVEMSHOP:
+        if (source.proof_method != "pagarme_v5_get"
+                or evidence.provider != "pagarme_v5"
+                or type(payment_fee_cents) is not int
+                or not 0 <= payment_fee_cents <= 1_000_000_000):
+            raise PaymentProofBlocked("Comprovação PSP ou tarifa sem origem confiável")
+        from apps.costs.order_item_cost_reconciliation import (
+            read_verified_nuvemshop_order_costs, OrderItemCostBlocked,
         )
-    return grant, created
+        try:
+            verified_costs = read_verified_nuvemshop_order_costs(
+                sale=evidence.sale,payment_fee_cents=payment_fee_cents,opener=opener,
+            )
+        except OrderItemCostBlocked:
+            raise PaymentProofBlocked("Custo ou descontos por SKU não conciliados") from None
+
+    with transaction.atomic():
+        tenant = Tenant.objects.select_for_update().get(pk=source.tenant_id)
+        _gate(tenant)
+        proof = VerifiedPaymentProof.objects.select_related(
+            "evidence__sale",
+        ).get(evidence_id=evidence_id,tenant=tenant)
+        proof_evidence = proof.evidence
+        if (proof_evidence.tenant_id != tenant.pk
+                or proof_evidence.sale.tenant_id != tenant.pk
+                or proof_evidence.provider not in settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS
+                or proof_evidence.kind != FinancialEvidence.Kind.CAPTURE
+                or proof_evidence.sale.order_status != SaleRecord.OrderStatus.PAID):
+            raise PaymentProofBlocked("Prova foi alterada ou pedido não elegível")
+        from apps.loyalty.services import grant_for_captured_sale
+        grant, created = grant_for_captured_sale(
+            sale_id=proof_evidence.sale_id,
+            evidence_id=proof_evidence.pk, costs=verified_costs,
+        )
+        if coupon_intent_id:
+            from apps.nuvemshop.coupon_settlement import settle_coupon_after_psp_capture
+            settle_coupon_after_psp_capture(
+                intent_id=coupon_intent_id, capture_evidence_id=proof_evidence.pk,
+            )
+        return grant, created
