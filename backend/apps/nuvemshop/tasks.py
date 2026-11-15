@@ -29,12 +29,13 @@ def sanitize_store_after_redact(self, receipt_id: str):
 def recheck_nuvemshop_order_event(self, event_id: str):
     """Reconsulta HMAC inbox sob OAuth, somente no worker isolado."""
     from apps.channels.services import IngestionConflict
+    from .coupon_revocation import RevocationBlocked
     from .order_recheck_service import RecheckBlocked, recheck_order_event
     from .order_readonly import OrderReadError
     from .security import OAuthConfigurationError
     try:
         return recheck_order_event(event_id=event_id)
-    except (RecheckBlocked, IngestionConflict):
+    except (RecheckBlocked, IngestionConflict, RevocationBlocked):
         # Conflito permanente: registrar para conciliação manual; não
         # produzir loop de retries nem divulgar PII/token em logs.
         logger.warning("Pedido Nuvemshop exige conciliacao manual")
