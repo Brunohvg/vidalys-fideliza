@@ -414,6 +414,17 @@ def issue_voucher(*, tenant_id, participant_id, reward_id):
         resolved_at__isnull=True,
     ).exists():
         raise LoyaltyBlocked("Resgate suspenso por recuperação de saldo.")
+    if tenant.platform == "nuvemshop" and tenant.loyalty_live_enabled and (
+        LoyaltyVoucher.objects.filter(
+            tenant=tenant, participant=participant,
+            state=LoyaltyVoucher.State.RESERVED,
+            allowed_channels__contains="nuvemshop",
+        ).exists()
+    ):
+        # Emissão do voucher e POST ao provedor são transações distintas.
+        # Enquanto o primeiro cupom não for conciliado, evitar que reenvios
+        # HTTP consumam novos lotes e criem outros códigos externos.
+        raise LoyaltyBlocked("Já existe resgate de loja virtual pendente.")
     if LoyaltyGrant.objects.filter(
         tenant=tenant, participant=participant,
         sale__order_status__in=[
