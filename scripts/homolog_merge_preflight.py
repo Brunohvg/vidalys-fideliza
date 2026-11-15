@@ -97,9 +97,12 @@ def main():
         for _, head, _, sha in STACK:
             branch_name = urllib.parse.quote(head, safe="")
             runs = get(f"actions/runs?branch={branch_name}&per_page=30")["workflow_runs"]
-            if any(run.get("head_sha") == sha
-                   and run.get("status") == "completed"
-                   and run.get("conclusion") == "success" for run in runs):
+            relevant = [run for run in runs if run.get("head_sha") == sha]
+            # A execução MAIS RECENTE do SHA precisa estar concluída e verde.
+            # Uma falha/execução pendente mais recente invalida sucesso anterior.
+            relevant.sort(key=lambda run: run.get("created_at", ""), reverse=True)
+            if relevant and relevant[0].get("status") == "completed" \
+                    and relevant[0].get("conclusion") == "success":
                 success.add(sha)
         ancestry = {}
         for _, head, base, _ in STACK:
