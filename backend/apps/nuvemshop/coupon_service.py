@@ -32,12 +32,22 @@ def _context(voucher):
             or not settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
             or not settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED
             or not settings.FIDELIZA_LEDGER_WRITES_ENABLED
-            or not settings.FIDELIZA_POINTS_WRITES_ENABLED):
+            or not settings.FIDELIZA_POINTS_WRITES_ENABLED
+            or not settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS):
         raise PilotCouponBlocked("Piloto/cupom externo ainda bloqueado.")
     if voucher.state != LoyaltyVoucher.State.RESERVED or voucher.expires_at <= timezone.now():
         raise PilotCouponBlocked("Voucher não está reservado e válido.")
-    if (not voucher.reward_id or "nuvemshop" not in voucher.allowed_channels.split(",")):
+    if (not voucher.reward_id or "nuvemshop" not in voucher.allowed_channels.split(",")
+            or voucher.reward.publication_status != "published"):
         raise PilotCouponBlocked("Recompensa não publicada para uso na Nuvemshop.")
+    # Uma linha de LoyaltyVoucher por si só não comprova que houve débito.
+    # Cada cupom precisa de alocação da reserva real de pontos/cashback.
+    if voucher.unit == LoyaltyVoucher.Unit.POINTS:
+        allocated = sum(voucher.point_allocations.values_list("amount", flat=True))
+    else:
+        allocated = sum(voucher.cashback_allocations.values_list("amount_cents", flat=True))
+    if allocated != voucher.amount:
+        raise PilotCouponBlocked("Voucher sem reserva financeira íntegra.")
     cfg = config()
     install = NuvemshopInstallation.objects.filter(
         tenant=tenant, store_id=tenant.external_store_id, client_id=cfg.client_id,
