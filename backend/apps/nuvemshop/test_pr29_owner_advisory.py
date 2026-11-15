@@ -33,12 +33,12 @@ class CouponOwnerAdvisoryTests(TestCase):
         self.assertNotIn("customer_id",payload)
 
     def test_anonymous_storefront_cannot_query_owner(self):
-        result=self.client.post(self.url,self.payload,content_type="application/json")
+        result=self.client.post(self.url,self.payload,content_type="application/json",secure=True)
         self.assertIn(result.status_code,(401,403))
 
     def test_merchant_lookups_are_advisory_only_and_non_authoritative(self):
         self.client.force_login(self.user)
-        result=self.client.post(self.url,self.payload,content_type="application/json")
+        result=self.client.post(self.url,self.payload,content_type="application/json",secure=True)
         self.assertEqual(result.status_code,200,result.content)
         self.assertFalse(result.json()["matched"])
         self.assertFalse(result.json()["may_apply_discount"])
@@ -54,5 +54,5 @@ class CouponOwnerAdvisoryTests(TestCase):
             ({**self.payload,"extra":True},400),
         ):
             with self.subTest(payload=payload):
-                result=self.client.post(self.url,payload,content_type="application/json")
+                result=self.client.post(self.url,payload,content_type="application/json",secure=True)
                 self.assertEqual(result.status_code,status)
