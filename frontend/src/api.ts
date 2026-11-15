@@ -33,6 +33,8 @@ export type TenantPreferences = {
     email_delivery_enabled: boolean;
     customer_preview_enabled: boolean;
     cashback_activation_enabled: false;
+    loyalty_live_enabled: boolean;
+    loyalty_live_editable_from_panel: false;
     custom_domain_available: false;
   };
   note: string;
