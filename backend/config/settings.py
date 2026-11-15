@@ -177,6 +177,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "loyalty.reconcile_verified_refunds",
         "schedule": crontab(minute="*/30"),
     },
+    # PR26: must run on dedicated Nuvemshop OAuth worker, never generic SMTP.
+    # Without Celery Beat deployment this schedule is inert.
+    "nuvemshop-revoke-expired-hourly": {
+        "task": "nuvemshop.revoke_expired_coupons",
+        "schedule": crontab(minute=10),
+        "options": {"queue": "nuvemshop"},
+    },
 }
 
 # Registro público desativado até a homologação do fluxo de dados pessoais.
