@@ -23,7 +23,7 @@ async function mockAuthenticated(page: Page) {
 }
 
 async function enterMargin(page: Page, width: number) {
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
   if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
   await page.locator(".portal-advanced-menu > summary").click();
@@ -66,7 +66,7 @@ test("a tela de login não expõe números demonstrativos", async ({ page }) => 
     status: 200, contentType: "application/json",
     body: JSON.stringify({ authenticated: false, user: null, tenants: [] })
   }));
-  await page.goto("/");
+  await page.goto("/entrar");
   await expect(page.getByRole("heading", { name: "Bem-vindo de volta." })).toBeVisible();
   await expect(page.getByLabel("E-mail")).toBeVisible();
   await expect(page.getByLabel("Senha",{exact:true})).toHaveAttribute("type", "password");
@@ -83,7 +83,7 @@ test("conta técnica sem empresa exibe diagnóstico sem associar loja alheia", a
       tenants: [],
     }),
   }));
-  await page.goto("/");
+  await page.goto("/app/visao-geral");
   await expect(page.getByRole("heading", {
     name: "Sua conta está ativa, mas sem empresa associada",
   })).toBeVisible();
@@ -125,7 +125,7 @@ test("login e logout respeitam sessão e CSRF de frontend", async ({ page }) => 
     });
   });
 
-  await page.goto("/");
+  await page.goto("/entrar");
   await page.getByLabel("E-mail").fill("pilot@example.invalid");
   await page.getByLabel("Senha",{exact:true}).fill("example-only");
   await page.getByRole("button", { name: "Entrar" }).click();
@@ -156,7 +156,7 @@ test("registro do lojista sem Nuvemshop exige confirmação e senha forte",async
       body:JSON.stringify({detail:"Verifique o e-mail."})});
   });
   await page.setViewportSize({width:390,height:844});
-  await page.goto("/");
+  await page.goto("/entrar");
   await page.getByRole("button",{name:"Criar conta grátis"}).click();
   await expect(page).toHaveURL(/\/cadastrar$/);
   await expect(page.getByRole("heading",{name:"Crie sua conta."})).toBeVisible();
@@ -191,7 +191,7 @@ test("recuperação envia instrução genérica sem revelar se e-mail existe",as
     return route.fulfill({status:202,contentType:"application/json",
       body:JSON.stringify({detail:"Se existir, enviaremos instruções."})});
   });
-  await page.goto("/");
+  await page.goto("/entrar");
   await page.getByRole("button",{name:"Esqueci minha senha"}).click();
   await page.getByLabel("E-mail").fill("nobody@example.invalid");
   await page.getByRole("button",{name:"Enviar link de recuperação"}).click();
@@ -259,7 +259,7 @@ test("link de nova conta vence o painel antigo sem mesclar sessões", async ({pa
   await page.getByRole("button",{name:"Confirmar e acessar"}).click();
   await expect(page.getByText("Nova empresa confirmada").first()).toBeVisible();
   await expect(page.getByText("Bibelô — ambiente piloto")).toHaveCount(0);
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/app/visao-geral");
   expect(confirmCalls).toBe(1);
 });
 
@@ -268,7 +268,7 @@ test("trocar de formulário remove dados da conta anterior",async ({page})=>{
     contentType:"application/json",
     body:JSON.stringify({authenticated:false,user:null,tenants:[]}),
   }));
-  await page.goto("/");
+  await page.goto("/entrar");
   await page.getByRole("button",{name:"Criar conta grátis"}).click();
   await page.getByLabel("Seu nome").fill("Nome antigo");
   await page.getByLabel("Nome da loja").fill("Empresa antiga");
@@ -303,5 +303,5 @@ test("rota de redefinição não vaza token na URL nem ao confirmar",async ({pag
   await expect(page.getByText("Senha redefinida.")).toBeVisible();
   await expect(page).toHaveURL("/redefinir-senha");
   await page.getByRole("button",{name:"Voltar ao login"}).click();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/entrar");
 });
