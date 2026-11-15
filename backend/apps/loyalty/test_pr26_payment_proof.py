@@ -12,9 +12,9 @@ from django.db import DatabaseError, connection, transaction
 from django.test import TestCase, SimpleTestCase, override_settings
 from django.utils import timezone
 
-from apps.loyalty.models import FinancialEvidence, VerifiedPaymentProof, CashClosing
+from apps.loyalty.models import FinancialEvidence, VerifiedPaymentProof, VerifiedPspFeeReceipt, CashClosing
 from apps.loyalty.payment_proof import (
-    confirm_pagarme_charge, attest_cash_close, PaymentProofBlocked,
+    confirm_pagarme_charge, confirm_pagarme_financial_fees, attest_cash_close, PaymentProofBlocked,
 )
 from apps.nuvemshop.pagarme_payment import PaymentProviderError, validate_paid_charge
 from apps.sales.models import SaleRecord
@@ -126,6 +126,51 @@ class ProofRecordingTests(TestCase):
         with self.assertRaises(ValueError):
             evidence.save()
         self.assertEqual(self.sale.eligible_amount_cents,0)
+
+    def test_authenticated_payables_persist_one_immutable_fee_receipt(self):
+        opener=FakeOpener(self.charge)
+        payable={
+            "id":100,"charge_id":self.charge["id"],"recipient_id":"re_ABC123456789",
+            "status":"paid","type":"credit","amount":2990,"fee":80,
+            "anticipation_fee":5,"fraud_coverage_fee":15,
+            "split_id":None,"originator_model":None,
+        }
+        fees_opener=FakeOpener({
+            "data":[payable],"paging":{"forward_cursor":None},
+        })
+        with patch.dict(os.environ,{
+            "FIDELIZA_PAGARME_BOUND_TENANT_ID":str(self.tenant.pk),
+            "FIDELIZA_PAGARME_SECRET_KEY":self.secret,
+            "FIDELIZA_PAGARME_RECIPIENT_ID":"re_ABC123456789",
+        }):
+            evidence,_=confirm_pagarme_charge(
+                sale_id=self.sale.pk,charge_id=self.charge["id"],opener=opener,
+            )
+            receipt,created=confirm_pagarme_financial_fees(
+                evidence_id=evidence.pk,charge_id=self.charge["id"],
+                charge_opener=opener,payables_opener=fees_opener,
+            )
+            again,repeated=confirm_pagarme_financial_fees(
+                evidence_id=evidence.pk,charge_id=self.charge["id"],
+                charge_opener=opener,payables_opener=FakeOpener({
+                    "data":[payable],"paging":{"forward_cursor":None},
+                }),
+            )
+        self.assertTrue(created)
+        self.assertFalse(repeated)
+        self.assertEqual(receipt.pk,again.pk)
+        self.assertEqual(receipt.gross_cents,2990)
+        self.assertEqual(receipt.fee_cents,100)
+        self.assertEqual(receipt.net_cents,2890)
+        self.assertEqual(VerifiedPspFeeReceipt.objects.count(),1)
+        with self.assertRaises(ValueError):
+            receipt.save()
+        if connection.vendor == "postgresql":
+            with self.assertRaises(DatabaseError):
+                with transaction.atomic():
+                    VerifiedPspFeeReceipt.objects.filter(pk=receipt.pk).update(
+                        fee_cents=0,
+                    )
 
     def test_different_store_or_wrong_order_never_creates_proof(self):
         other=Tenant.objects.create(
