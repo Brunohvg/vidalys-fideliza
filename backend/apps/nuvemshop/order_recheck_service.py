@@ -12,7 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.channels.adapters.nuvemshop import ingest_nuvemshop_snapshot
-from apps.customers.services import find_verified_customer, normalize_email, normalize_phone
+from apps.customers.services import find_verified_customer, normalize_email, normalize_phone, normalize_cpf
 from apps.loyalty.models import LoyaltyVoucher
 from apps.sales.models import SaleRecord
 from apps.tenants.models import Tenant
@@ -102,6 +102,7 @@ def _paid_coupon_from_order(*, event, order, sale, profile):
         (buyer.get("email"), normalize_email, "email"),
         (order.get("contact_phone"), normalize_phone, "phone_e164"),
         (buyer.get("phone"), normalize_phone, "phone_e164"),
+        (order.get("contact_identification"), normalize_cpf, "cpf"),
     )
     confirmed = 0
     for raw, normalize, field in checks:

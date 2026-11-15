@@ -204,6 +204,40 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
                     with connection.cursor() as cur:
                         cur.execute(statement,[audit.pk])
 
+    def test_preissue_ownership_blocks_anonymous_coupon_until_otp(self):
+        from apps.nuvemshop.coupon_service import PilotCouponBlocked
+        with override_settings(FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED=True):
+            with self.assertRaises(PilotCouponBlocked):
+                self._issued_coupon()
+            self.assertFalse(NuvemshopCouponIntent.objects.exists())
+            self.participant.contact_email = "pr28-owner@example.invalid"
+            self.participant.save(update_fields=["contact_email"])
+            attach_verified_contact(
+                tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+                email=self.participant.contact_email, proof_method="email_otp",
+            )
+            intent = self._issued_coupon()
+            self.assertEqual(intent.state, NuvemshopCouponIntent.State.ISSUED)
+
+    def test_cpf_is_only_stored_as_tenant_hmac_after_provider_proof(self):
+        from apps.customers.services import attach_verified_contact, find_verified_customer
+        from apps.customers.models import VerifiedCustomerContact
+        cpf = "52998224725"  # CPF algorithm fixture, not a real customer record.
+        with self.assertRaises(ValueError):
+            attach_verified_contact(
+                tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+                cpf=cpf, proof_method="email_otp",
+            )
+        profile, created = attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            cpf=cpf, proof_method="provider_confirmed",
+        )
+        self.assertTrue(created)
+        self.assertEqual(find_verified_customer(tenant_id=self.tenant.pk, cpf=cpf).pk, profile.pk)
+        item = VerifiedCustomerContact.objects.get(kind="cpf")
+        self.assertNotIn(cpf, item.lookup_digest)
+        self.assertEqual(len(item.lookup_digest), 64)
+
     def test_foreign_checkout_email_cannot_use_other_member_coupon(self):
         self.participant.contact_email="verified-pr26@example.invalid"
         self.participant.save(update_fields=["contact_email"])

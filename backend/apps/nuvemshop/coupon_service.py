@@ -10,6 +10,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.loyalty.models import LoyaltyVoucher
+from apps.participants.models import ProgramParticipant
+from apps.customers.models import CustomerProfile, VerifiedCustomerContact
+from apps.customers.services import find_verified_customer
 from apps.loyalty.services import _code_digests
 from apps.tenants.models import Tenant
 from .coupon_client import (
@@ -22,6 +25,38 @@ from .security import config, decrypt_token, encrypt_token
 
 class PilotCouponBlocked(ValueError):
     pass
+
+
+def _assert_verified_preissue_owner(voucher):
+    """Server-side ownership proof BEFORE emitting the code to the provider.
+
+    Existing OTP/provider-verified identifiers bind the voucher to one member.
+    This does not prove that the same person will use the code at checkout.
+    """
+    if voucher.participant.status != ProgramParticipant.Status.ACTIVE:
+        raise PilotCouponBlocked("Participante sem adesão vigente.")
+    profile = CustomerProfile.objects.filter(
+        tenant_id=voucher.tenant_id, participant_id=voucher.participant_id,
+    ).first()
+    if profile is None or not profile.verified_contacts.filter(
+        kind__in=(VerifiedCustomerContact.Kind.EMAIL,
+                  VerifiedCustomerContact.Kind.PHONE),
+    ).exists():
+        raise PilotCouponBlocked("Emissão exige contato comprovado do titular.")
+    email = voucher.participant.contact_email
+    if email:
+        try:
+            resolved = find_verified_customer(
+                tenant_id=voucher.tenant_id, email=email,
+            )
+        except ValueError:
+            raise PilotCouponBlocked("E-mail do participante inválido.") from None
+        if resolved is None or resolved.pk != profile.pk:
+            raise PilotCouponBlocked("E-mail do participante não corresponde ao titular.")
+    if profile.verified_contacts.filter(
+        kind=VerifiedCustomerContact.Kind.CPF,
+    ).exclude(proof_method="provider_confirmed").exists():
+        raise PilotCouponBlocked("CPF não possui prova do provedor.")
 
 
 def _context(voucher):
@@ -43,6 +78,8 @@ def _context(voucher):
     if (not voucher.reward_id or "nuvemshop" not in voucher.allowed_channels.split(",")
             or voucher.reward.publication_status != "published"):
         raise PilotCouponBlocked("Recompensa não publicada para uso na Nuvemshop.")
+    if getattr(settings, "FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED", False):
+        _assert_verified_preissue_owner(voucher)
     # Uma linha de LoyaltyVoucher por si só não comprova que houve débito.
     # Cada cupom precisa de alocação da reserva real de pontos/cashback.
     if voucher.unit == LoyaltyVoucher.Unit.POINTS:

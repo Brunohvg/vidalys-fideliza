@@ -145,7 +145,9 @@ class Command(BaseCommand):
                     and settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED
                     and settings.FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED
                     and settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS
-                    and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED):
+                    and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
+                    and settings.FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED
+                    and settings.FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED):
                 raise CommandError("Flags financeiras/PSP não homologadas: NO-GO")
             verify_postgres_immutability()
         with transaction.atomic():

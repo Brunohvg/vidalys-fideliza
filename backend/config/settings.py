@@ -155,6 +155,10 @@ FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
 # PR26: recording a PSP/cash attestation also remains OFF in real runtime.
 # Only isolated tests may override this explicit hardcoded gate.
 FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED = False
+# No documented binding of Admin API coupon codes to a checkout identity.
+# Mandatory commercial gates: no environment override can claim verification.
+FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED = False
+FIDELIZA_PREISSUE_OWNERSHIP_CHECK_ENABLED = False
 FIDELIZA_LOYALTY_ENGAGEMENT_SCAN_ENABLED = False
 
 # Agendamentos somente para elegibilidade, sem mensagens ou créditos por padrão.
