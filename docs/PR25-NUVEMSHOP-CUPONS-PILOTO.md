@@ -43,9 +43,15 @@ mesclados. Sem acesso administrativo ao Coolify/PG, não afirmar E2E real.
 
 - Webhook HMAC order/paid ou order/updated registra apenas identificadores
   em inbox idempotente, sem PII e sem crédito.
-- O operador QA executa recheck_nuvemshop_inbox NO container API, onde
-  estão as credenciais OAuth isoladas. O worker SMTP compartilhado não
-  recebe essas credenciais; não há reconsulta automática de Celery.
+- Após a inbox HMAC confirmar e gravar o evento, o serviço agenda
+  uma tarefa Celery na fila exclusiva nuvemshop (se o gate estiver ON).
+  O worker nuvemshop-sync, distinto do worker SMTP, tem somente os segredos
+  OAuth e as permissões de leitura necessárias; nunca recebe credenciais
+  SMTP nem flags financeiras. Reentregas são idempotentes e falhas
+  transitórias têm backoff/retry limitados; estados contraditórios exigem
+  revisão humana.
+- O comando manual recheck_nuvemshop_inbox no container API permanece
+  como recuperação da fila de eventos e operação QA autorizada.
 - Reconsulta GET /orders/{id} da loja exata, com fields fixos,
   normalização BRL, checagem de status e Unified ID do contato
   previamente validado via OTP; ingestion via channels.services.
@@ -95,7 +101,8 @@ Antes de qualquer liberação, executar os scripts do PR #24:
 - backend/scripts/homolog_post_migrate_check.py para os triggers PG;
 - frontend/homolog/live-portal.spec.ts sem mocks, com sessão QA privada.
 
-**GO para aceitar código:** CI 6/6 verde no SHA exato e revisão técnica.
+**GO para aceitar código:** CI 6/6 verde no SHA exato e revisão técnica,
+  inclusive isolamento do quinto serviço OAuth nuvemshop-sync.
 **GO financeiro:** ainda BLOQUEADO por ausência de PSP independente
 e E2E autorizado do checkout. Nenhum procedimento deste PR concede
 saldo à Bibelô.
