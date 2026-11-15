@@ -51,7 +51,7 @@ def normalize_checkout_phone(value):
     """Only strip formatting; never infer a missing country code."""
     if not isinstance(value, str):
         raise ValueError("Telefone de checkout inválido.")
-    compact = re.sub(r"[\\s().-]", "", value.strip())
+    compact = re.sub(r"[\s().-]", "", value.strip())
     if compact.startswith("55") and not compact.startswith("+"):
         compact = "+" + compact
     return normalize_phone(compact)
