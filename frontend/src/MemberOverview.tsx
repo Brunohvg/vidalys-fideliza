@@ -74,7 +74,7 @@ export function MemberWalletOverview({me,pointsReady,ledgerOnly}:{
   </section>;
 }
 
-type VoucherResponse={code:string;voucher_id:string;discount_cents:number;expires_at:string;external_coupon_created:false};
+type VoucherResponse={code:string;voucher_id:string;discount_cents:number;expires_at:string;external_coupon_created:boolean};
 
 export function MemberRedeemAction({slug,me,reward}:{
   slug:string;me:MemberClubPrivate;
@@ -113,7 +113,9 @@ export function MemberRedeemAction({slug,me,reward}:{
     </div>
     {issued&&<div className="mc-issued-voucher" role="status">
       <strong>Voucher interno gerado: <code>{issued.code}</code></strong>
-      <p>Guarde o código: ele é mostrado uma única vez. O uso depende da integração do canal; nenhum cupom Nuvemshop foi criado.</p>
+      <p>{issued.external_coupon_created
+          ?"Este cupom foi criado para a Nuvemshop. Guarde-o e aplique no checkout da loja."
+          :"Guarde o código: o uso depende da integração do canal; nenhum cupom Nuvemshop foi criado."}</p>
     </div>}
     {message&&<p className="mc-redeem-error" role="alert">{message}</p>}
   </section>;

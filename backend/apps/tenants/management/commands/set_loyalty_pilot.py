@@ -57,6 +57,16 @@ class Command(BaseCommand):
         ):
             raise CommandError("Piloto QA preparatório deve manter dinheiro e cupons externos desligados")
         enabled = bool(opts["enable"])
+        if not enabled:
+            from apps.nuvemshop.models import NuvemshopCouponIntent
+            if NuvemshopCouponIntent.objects.filter(
+                tenant=tenant, state__in=(
+                    NuvemshopCouponIntent.State.UNCERTAIN,
+                    NuvemshopCouponIntent.State.ISSUED,
+                    NuvemshopCouponIntent.State.APPLIED,
+                ),
+            ).exists():
+                raise CommandError("Cupom externo pendente: revogue/confira antes de desativar.")
         if tenant.loyalty_live_enabled == enabled:
             self.stdout.write("SEM_ALTERACAO tenant já possui estado solicitado")
             return

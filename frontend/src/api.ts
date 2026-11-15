@@ -715,7 +715,7 @@ export type MemberClubPublic = {
   store_name:string; store_slug:string;
   branding:{program_name:string;primary_color:string;accent_color:string;support_email:string};
   terms:ProgramTerms|null;
-  signup_available:boolean;points_enabled:false;rewards_enabled:false;redemption_enabled:false;
+  signup_available:boolean;points_enabled:boolean;rewards_enabled:boolean;redemption_enabled:boolean;
   published_rewards?:MemberClubReward[];
 };
 export type MemberClubReward = {
