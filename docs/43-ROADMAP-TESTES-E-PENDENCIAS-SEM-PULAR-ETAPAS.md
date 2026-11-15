@@ -1,7 +1,63 @@
 # 43 — Vidalys Fideliza: roteiro de execução com gates e pendências
 
-Atualizado em 13/11/2026. Fonte da verdade para a ordem de trabalho na
-branch homolog. Não confundir código, CI, implantação e aprovação real.
+## CHECKPOINT ATUAL — 15/11/2026: integração de código PRs #18–#30
+
+> **Este checkpoint substitui os estados cronológicos antigos abaixo.**
+> O histórico anterior permanece para auditoria; não executar seus passos
+> como se fossem instruções vigentes. Manter o foco no próximo gate real.
+
+**Fonte integrada:** cadeia linear #18 → #19 → #20 → #21 → #22 → #23 →
+#24 → #25 → #28 → #29 → #30. Os PRs #26 e #27 são alternativas
+paralelas para PSP/revogação: #27 está representado na árvore final;
+#26 possui migrações e serviços alternativos que não devem ser misturados
+com as migrações consolidadas de #28–#30. Fechar ambos como substituídos,
+sem reexecutar ou apagar commits. Preservar `main`.
+
+**Estado real:** a versão do PR #30
+[`01962c05d0da8891afa5053159d86ca02dbaa569`](https://github.com/Brunohvg/vidalys-fideliza/commit/01962c05d0da8891afa5053159d86ca02dbaa569)
+passou em [GitHub Actions #989](https://github.com/Brunohvg/vidalys-fideliza/actions/runs/43734850370):
+6/6 jobs; 477 testes backend aprovados, 4 ignorados, 224 subtestes,
+6 arquivos Vitest, 139 Playwright, PostgreSQL descartável, Docker e
+Compose Raw. **Isso valida o código, não o deploy.** Após a integração,
+usar o **SHA efetivo de `homolog`** e o CI de push desse SHA como prova
+definitiva, sem copiar o SHA antigo para o Coolify.
+
+| Gate | Estado comprovado | Próxima prova indispensável |
+| --- | --- | --- |
+| G0 — UI lojista/participante | CÓDIGO VALIDADO | Revisão visual real em 390/768/1440 e fluxo simples por usuário |
+| **G1 — Coolify Raw/PostgreSQL** | **CÓDIGO VALIDADO; DEPLOY DO SHA INTEGRADO NÃO COMPROVADO** | Identificar SHA publicado; backup + restauração isolada; migrações e isolamento de env/health sem segredos |
+| G2 — OAuth Nuvemshop | CÓDIGO VALIDADO | Autorização oficial em loja **QA** e GET legítimo |
+| G3 — cadastro e e-mail | CÓDIGO VALIDADO; relatos de SMTP anteriores | Cadastro novo, entrega real da mensagem, confirmação, sessão, vínculo e remoção |
+| G4/G5 — webhook e reconsulta | CÓDIGO VALIDADO | Evento assinado real, duplicação, reordenação e cancelamento na QA |
+| G6 — regras/recompensas simuladas | CÓDIGO VALIDADO | Jornada visível de pontos e resgate simulado para consumidor |
+| G7 — PSP + CMV SKU + frete/taxa | CÓDIGO VALIDADO COM DADOS SINTÉTICOS | Captura e payables reais **sandbox/autorizados**, total, custo e estorno conferidos |
+| G8 — concessão/resgate financeiro | **BLOQUEADO COM SEGURANÇA** | Prova de titularidade no checkout não contornável e revogação real; nenhuma concessão comercial |
+| G9/G10 — gamificação avançada, IA e canais adicionais | FORA DO ESCOPO DO PILOTO | Somente depois do teste ponta a ponta |
+
+**Próxima ação ÚNICA (G1):** no Coolify Raw de homologação,
+conferir o SHA em execução e a configuração do PostgreSQL externo;
+validar backup com restauração isolada, isolamento de segredos, migrações
+e serviços. Se estiver em versão antiga, só atualizar após essas provas.
+A aprovação do CI isolado **não autoriza** um deploy automático nem
+alteração de loja/PSP real.
+
+**Depois de G1:** G3 cadastro+SMTP, G2 OAuth de loja QA, G4/G5 pedidos,
+G7 captura/taxas, G8 resgate **somente controlado e sem valor comercial**.
+Critérios de teste e campos de evidência:
+[PR30-RELEASE-AND-PILOT-QA.md](PR30-RELEASE-AND-PILOT-QA.md).
+
+**GO-LIVE permanece NO-GO.**
+`Tenant.loyalty_live_enabled=False` é o padrão;
+`FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED=False` e
+`FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED=False` permanecem desligadas.
+Script NubeSDK é fonte de QA, **não foi instalado** nem demonstrou
+restrição de checkout não contornável. A conexão da loja Bibelô
+não foi utilizada para alterações neste merge.
+
+---
+
+Atualizado originalmente em 13/11/2026. Histórico abaixo; o checkpoint acima
+é a referência vigente. Não confundir CI, implantação e aprovação real.
 A conexão Nuvemshop já disponível no ChatGPT não substitui a instalação
 OAuth do aplicativo Fideliza no servidor de testes. Não usar TinyFish.
 

@@ -59,8 +59,10 @@ e nenhuma flag de dinheiro foi ligada neste corte.
 
 ## O que fazer AGORA, sem adicionar funcionalidades
 
-1. Integrar PRs #25 → #28 → #29 → #30 em uma branch exclusiva
-   de homologação, resolver migrações e executar backup no ambiente QA.
+1. **Integração em `homolog`:** cadeia #18–#25 + #28–#30, sem reaplicar
+   branches alternativas #26/#27. Conferir CI do SHA resultante; o merge Git
+   **não é** um deploy. Antes de migrar qualquer banco QA, exigir backup
+   com restauração testada e identificação do PostgreSQL externo.
 2. Rodar migration/checks e testes smoke em PostgreSQL descartável;
    publicar preview no Coolify, nunca diretamente no ambiente comercial.
 3. Cadastrar **um** participante teste no portal, validar e-mail e registrar
@@ -95,3 +97,59 @@ Fontes:
 - https://nuvemshop.dev/apps/nube-sdk/events/coupon
 - https://nuvemshop.dev/apps/nube-sdk/events/cart
 - https://docs.pagar.me/reference/retornando-receb%C3%ADveis
+
+## Entrega para execução operacional pós-consolidação (15/11)
+
+Trabalhar **um gate por vez**, seguindo o checkpoint no topo de
+`docs/43-ROADMAP-TESTES-E-PENDENCIAS-SEM-PULAR-ETAPAS.md`.
+
+### Pré-voo e travas
+- Inspecionar `git rev-parse HEAD` no GitHub `homolog`, comparar com CI
+  `quality` **6/6 desse mesmo commit** e com o SHA apresentado pelo Coolify.
+- Usar somente `compose.yaml` **Raw**. Banco externo PostgreSQL 16
+  isolado, sem porta pública; Redis/frontend não recebem DATABASE_URL,
+  DJANGO_SECRET_KEY, NUVEMSHOP_*, SMTP_* ou chaves PSP.
+- Backup privado e restauração isolada comprovada antes de qualquer
+  `migrate` ou atualização da Application; não usar o script de CI
+  descartável no Coolify.
+- Validar `python manage.py check`, `python manage.py showmigrations`
+  (incluindo `nuvemshop 0011` e `loyalty 0006`), API/HTTPS, health e
+  Celery/Redis com dados de homologação e sem exibir segredos.
+- O comando `set_loyalty_release --mode commercial --tenant-id
+  <UUID-QA> --actor-id <ID-ADMIN> --ticket QA-RELEASE-REVIEW
+  --approved-sha <SHA-HOMOLOG> --confirm ENABLE_COMMERCIAL --dry-run`
+  é somente leitura e exibe `READY_FOR_HOMOLOG_ACTIVATION` quando
+  loja, regra e instalação existem. O campo `commercial_status` deve
+  continuar `NO_GO_COMMERCIAL`. Não trocar por `--enable`.
+
+### Jornada E2E em ambiente controlado
+1. [ ] Login lojista, adesão com consentimento e confirmação SMTP entregue.
+2. [ ] Associar **um** cliente ao tenant QA; confirmar sessão e carteira
+       somente dele, sem PII em logs.
+3. [ ] Conectar app OAuth da Nuvemshop a loja de teste autorizada; GET
+       de produtos/variantes e pedidos, guardando IDs interno e exibido.
+4. [ ] Simular ou efetuar transação PSP **sandbox** aprovada; reconciliar
+       charge, payables, frete, desconto, custo verificado de cada SKU.
+       Confirmar nenhuma pontuação com custo/identidade/taxa ausente.
+5. [ ] Observar pontos provisórios, regra/orçamento e aviso ao participante;
+       nenhuma concessão comercial real enquanto flag estiver OFF.
+6. [ ] Em loja QA com NubeSDK configurado, testar cupom próprio e tentativa
+       de outro comprador; testar rede offline, JS desativado, sessão
+       expirada e acesso direto ao checkout (tentativas de bypass).
+7. [ ] Validar estorno, devolução, cancelamento, revogação, idempotência e
+       zero dupla liberação. Se a plataforma não oferece prevenção real
+       server-side, registrar **BLOQUEADO** e não ligar cupom financeiro.
+8. [ ] Revisar navegação Visão Geral, Programa, Clientes, Campanhas,
+       Recompensas e portal público em mobile e desktop.
+
+### Registro obrigatório de evidência por gate
+
+`Gate | data/hora BRT | ambiente | SHA homolog | SHA Coolify |
+conta QA anonimizada | ID interno/número de pedido fictício |
+resultado esperado | resultado observado | capturas sem PII |
+falhas | responsável | próximo passo`.
+
+**Aprovado para piloto controlado** somente quando o fluxo G1–G6 tiver
+evidência em runtime. **GO-LIVE** exige G7/G8 comprovados com plataforma
+externa, revisão antifraude e autorização explícita em ticket, não
+`override_settings` nem passagem de testes sintéticos.

@@ -1,3 +1,34 @@
+## Atualização 15/11/2026 — variáveis dos módulos PRs #25–#30
+
+Esta seção prevalece sobre declarações históricas desta página que
+dizem que módulos financeiros ainda não existem no código. **Existem
+sob flags hardcoded OFF**, e não devem ser ligados no painel para
+contornar gates.
+
+- `FIDELIZA_CHECKOUT_OWNER_ENFORCEMENT_VERIFIED=False`: o NubeSDK
+  do diretório `integrations/` não é enforcement server-side comprovado.
+- `FIDELIZA_PSP_FEE_RECONCILIATION_VERIFIED=False`: o leitor de Pagar.me
+  payables e o recibo financeiro imutável existem, mas a taxa real
+  ainda exige transação de teste autenticada e auditada.
+- `FIDELIZA_ORDER_LINE_COST_BINDING_VERIFIED=False`: validar cada SKU,
+  frete, desconto e custo por pedido em loja QA antes de homologar.
+- `FIDELIZA_CHECKOUT_ALLOWED_ORIGINS`: lista de origens HTTPS de loja
+  **QA**, sem wildcard; só é pertinente ao endpoint de consulta de
+  elegibilidade. Não contém chaves/PII.
+- `FIDELIZA_PAGARME_SECRET_KEY`,
+  `FIDELIZA_PAGARME_BOUND_TENANT_ID`,
+  `FIDELIZA_PAGARME_RECIPIENT_ID`: somente API e cofre de segredos do
+  Coolify de homologação. Não usar token do checkout nem compartilhar
+  valores no frontend, worker ou Git.
+- `Tenant.loyalty_live_enabled=False` continua padrão; não declarar
+  commercial GO sem checkout não-contornável, PSP real, revisão antifraude
+  e ticket com SHA.
+- O arquivo `.env.example` é um **modelo sem segredos**, não prova
+  configuração no Coolify. Revisar nomes/escopo no ambiente real.
+
+Operação e evidências na documentação única `docs/43`; não criar
+novos painéis ou scripts redundantes.
+
 # 45 — Auditoria de variáveis após a consolidação do Compose
 
 O único arquivo Docker Compose da aplicação é compose.yaml.

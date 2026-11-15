@@ -4,15 +4,24 @@ Plataforma multitenant independente do Vidalys Flow, com integração inicial
 à Nuvemshop. A loja Bibelô só poderá entrar num piloto após validação e
 autorização. Não existe cashback financeiro, pontos, cupons nem resgate real.
 
-## Implementado na branch homolog
-- Portal do lojista versão v2 (navy, jade, mint e dourado).
-- Login seguro, preferências, rascunhos de campanhas e participantes.
-- OAuth Nuvemshop e prévias GET de catálogo, clientes e pedidos, sob flags.
-- Inbox HMAC idempotente de pedidos e conferência atual somente leitura.
-- Carteira/ledger interno sem concessão real; motor de benefícios só simula
-  objetivos e orçamento sobre dados hipotéticos.
-- Não estão ativos: missões, níveis VIP, indicação, conciliação financeira,
-  cashback, resgate ou integrações com PDV e WhatsApp.
+## Código consolidado para homologação (15/11/2026)
+
+- Portal do lojista v2, participantes e clube público; UX ainda exige
+  avaliação humana no ambiente publicado.
+- OAuth Nuvemshop, catálogo e pedidos GET, webhooks HMAC, vínculo de
+  participante e notificações Celery/SMTP — testes sintéticos aprovados.
+- Regras, pontos, cashback, vouchers, reserva/revogação de cupons e
+  gate financeiro **implementados, desligados por padrão**.
+- Conciliação de itens por SKU/custos verificados e taxas Pagar.me v5
+  autenticadas de `payables`, com recibos imutáveis PostgreSQL.
+- NubeSDK de checkout em `integrations/nuvemshop/` é **somente fonte de QA**;
+  não instalado em nenhuma loja por este projeto.
+- **Ainda não homologado:** SHA implantado no Coolify Raw, backup/restauração
+  do DB externo, OAuth/SMTP/pedido PSP sandbox real, bloqueio anti-bypass
+  no checkout. **GO-LIVE comercial NO-GO**.
+
+Próxima ação única em `docs/43-ROADMAP-TESTES-E-PENDENCIAS-SEM-PULAR-ETAPAS.md`.
+Procedimento de teste do clube: `docs/PR30-RELEASE-AND-PILOT-QA.md`.
 
 ## Único Docker Compose
 O repositório usa somente compose.yaml (API Django, Celery worker, Redis e
