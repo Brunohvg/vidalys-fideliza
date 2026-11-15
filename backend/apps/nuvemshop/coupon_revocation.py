@@ -99,13 +99,14 @@ def revoke_and_release(*, intent_id, reason, opener=None):
         if found is not None:
             if found.get("code") != code:
                 raise RevocationBlocked("Cupom remoto pertence a outro código")
+            # A resposta pode informar valid=false porque o cupom JÁ FOI
+            # consumido. Isso nunca autoriza devolver pontos por expiração.
+            used = found.get("used")
+            if type(used) is not int or used < 0 or used > 1:
+                raise RevocationBlocked("Contagem de usos do cupom inconclusiva")
+            if used and reason != "cancelled_unpaid":
+                raise RevocationBlocked("Cupom já utilizado: revisão necessária")
             if found.get("valid") is True and found.get("deleted_at") is None:
-                # Never delete a coupon already consumed in a different order.
-                used = found.get("used")
-                if type(used) is not int or used < 0 or used > 1:
-                    raise RevocationBlocked("Contagem de usos do cupom inconclusiva")
-                if used and reason != "cancelled_unpaid":
-                    raise RevocationBlocked("Cupom já utilizado: revisão necessária")
                 delete_coupon_once(
                     store_id=intent.store_id, token=token, agent=cfg.user_agent,
                     remote_id=remote_id, opener=opener,
