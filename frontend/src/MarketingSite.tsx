@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState} from "react";
 import {
-  ArrowRight, BadgeCheck, BookOpen, CheckCircle2, ChevronRight, Coffee,
+  ArrowRight, BookOpen, CheckCircle2, ChevronRight, Coffee,
   Gift, HeartHandshake, Mail, Paintbrush, PawPrint, Scissors, Search,
   ShieldCheck, ShoppingBag, Sparkles, Store, TicketPercent, Workflow
 } from "lucide-react";
