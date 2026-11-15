@@ -14,6 +14,11 @@ from django.utils import timezone
 from apps.loyalty.models import LoyaltyRule, LoyaltyVoucher, VoucherPointAllocation
 from apps.loyalty.services import _code_digests
 from apps.participants.models import ProgramParticipant
+from apps.customers.services import attach_verified_contact
+from apps.sales.models import SaleRecord
+from apps.loyalty.models import FinancialEvidence
+from apps.points.models import PointEntry
+from apps.wallets.models import CashbackEntry
 from apps.points.models import PointLot, PointWallet
 from apps.sales.models import DiscountRewardDraft
 from apps.tenants.models import Tenant, TenantLoyaltyActivationAudit
@@ -229,3 +234,58 @@ class CouponIdempotencyTests(TestCase):
                 provision_coupon(voucher_id=self.voucher.pk, issued_code=self.code)
             posted.assert_called_once()
             found.assert_called_once()
+
+    @override_settings(
+        FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True,
+        FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED=True,
+        FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED=True,
+    )
+    def test_oauth_order_recheck_matches_coupon_but_never_redeems_without_psp(self):
+        self.participant.contact_email = "pr25-buyer@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        profile, _ = attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            email=self.participant.contact_email, proof_method="email_otp",
+        )
+        with patch("apps.nuvemshop.coupon_service.config", return_value=self.cfg), (
+            patch("apps.nuvemshop.coupon_service.create_coupon_once", return_value="876")
+        ):
+            provision_coupon(voucher_id=self.voucher.pk, issued_code=self.code)
+        event = OrderWebhookEvent.objects.create(
+            tenant=self.tenant, store_id="54321", order_id="9876",
+            topic=OrderWebhookEvent.Topic.PAID, dedupe_key="c" * 64,
+        )
+        order = {
+            "id": 9876, "store_id": 54321, "number": 111,
+            "status": "open", "payment_status": "paid",
+            "paid_at": timezone.now().isoformat(),
+            "total": "19.90", "total_paid_by_customer": "19.90",
+            "currency": "BRL", "gateway": "psp_test",
+            "contact_email": self.participant.contact_email,
+            "coupon_id": 876, "coupon": [{"id": 876, "code": self.code}],
+            "discount_coupon": "1.00",
+        }
+        with patch("apps.nuvemshop.order_recheck_service.config", return_value=self.cfg), (
+            patch("apps.nuvemshop.order_recheck_service.read_order", return_value=order)
+        ) as read:
+            state = recheck_order_event(event_id=event.pk)
+            self.assertEqual(state, "applied_pending_independent_capture")
+            self.assertEqual(recheck_order_event(event_id=event.pk), "already_checked")
+            read.assert_called_once()
+        intent = NuvemshopCouponIntent.objects.get(voucher=self.voucher)
+        self.assertEqual(intent.state, intent.State.APPLIED)
+        self.assertEqual(intent.order_id, "9876")
+        self.voucher.refresh_from_db()
+        self.assertEqual(self.voucher.state, LoyaltyVoucher.State.RESERVED)
+        sale = SaleRecord.objects.get(
+            tenant=self.tenant, channel=SaleRecord.Channel.NUVEMSHOP,
+            external_reference="9876",
+        )
+        self.assertEqual(sale.order_status, SaleRecord.OrderStatus.PAID)
+        self.assertEqual(sale.customer_profile_id, profile.pk)
+        self.assertEqual(sale.eligible_amount_cents, 0)
+        self.assertEqual(NuvemshopOrderRecheck.objects.count(), 1)
+        self.assertEqual(sale.inbound_events.count(), 1)
+        self.assertFalse(FinancialEvidence.objects.exists())
+        self.assertFalse(PointEntry.objects.exists())
+        self.assertFalse(CashbackEntry.objects.exists())
