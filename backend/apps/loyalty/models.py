@@ -142,6 +142,41 @@ class FinancialEvidence(models.Model):
         raise ValueError("Comprovação financeira não pode ser removida.")
 
 
+
+class PaymentProofAudit(models.Model):
+    """Prova do PSP verificada por GET ou fechamento físico com duplo controle.
+
+    Histórico append-only no PostgreSQL. Não armazena CPF, chaves nem payload PSP.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    sale = models.ForeignKey("sales.SaleRecord", on_delete=models.PROTECT)
+    evidence = models.OneToOneField(
+        FinancialEvidence, on_delete=models.PROTECT, related_name="origin_proof",
+    )
+    provider = models.CharField(max_length=48)
+    provider_reference = models.CharField(max_length=120, unique=True)
+    proof_digest = models.CharField(max_length=64)
+    operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="cash_proof_operations",
+    )
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="cash_proof_reviews",
+    )
+    verified_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Comprovação financeira é append-only.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Comprovação financeira não pode ser removida.")
+
+
 class LoyaltyGrant(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Crédito pendente"
