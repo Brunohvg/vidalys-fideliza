@@ -438,6 +438,59 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self.assertEqual(NuvemshopCouponOwnershipIncident.objects.get(
             intent=intent).reason,"coupon_details_mismatch")
 
+    def test_pr30_public_eligibility_uses_verified_token_not_claimed_email(self):
+        from django.core import signing
+        from django.core.cache import cache
+        from django.urls import reverse
+        from apps.nuvemshop.public_coupon_eligibility import SALT, _nonce_key
+        cache.clear()
+        self.participant.contact_email = "holder-pr30@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            email=self.participant.contact_email, proof_method="email_otp",
+        )
+        self._issued_coupon()
+        nonce = "opaque-nonce-for-test-pr30"
+        cache.set(_nonce_key(nonce),str(self.participant.pk),timeout=180)
+        token=signing.dumps({
+            "tenant_id":str(self.tenant.pk),
+            "participant_id":str(self.participant.pk),
+            "store_id":"54321","nonce":nonce,
+        },salt=SALT)
+        self.assertNotIn("holder-pr30",token)
+        url=reverse("public-coupon-check-eligibility")
+        payload={"store_id":"54321","code":self.code,
+                 "email":"HOLDER-PR30@EXAMPLE.INVALID","identity_token":token}
+        valid=self.client.post(url,payload,content_type="application/json",secure=True)
+        self.assertEqual(valid.status_code,200,valid.content)
+        self.assertEqual(valid.json(),{"eligible":True})
+        wrong=self.client.post(url,{**payload,"email":"other@example.invalid"},
+                               content_type="application/json",secure=True)
+        self.assertEqual(wrong.status_code,200)
+        self.assertEqual(wrong.json(),{"eligible":False})
+        self.assertNotIn("holder-pr30",wrong.content.decode())
+        no_token=self.client.post(url,{**payload,"identity_token":"invalid"},
+                                  content_type="application/json",secure=True)
+        self.assertEqual(no_token.json(),{"eligible":False})
+        self.assertIn("no-store",wrong["Cache-Control"])
+        for _ in range(9):
+            self.client.post(url,payload,content_type="application/json",secure=True)
+        limited=self.client.post(url,payload,content_type="application/json",secure=True)
+        self.assertEqual(limited.status_code,429)
+        self.assertEqual(limited.json(),{"eligible":False})
+        cache.clear()
+
+    def test_pr30_token_issuer_denies_unverified_member_session(self):
+        from django.urls import reverse
+        response=self.client.post(
+            reverse("public-coupon-checkout-token",
+                    kwargs={"slug":self.tenant.slug}),
+            {},content_type="application/json",secure=True,
+        )
+        self.assertEqual(response.status_code,403)
+        self.assertEqual(response.json(),{"issued":False})
+
     def test_pr29_matching_verified_checkout_email_does_not_create_incident(self):
         from types import SimpleNamespace
         from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
