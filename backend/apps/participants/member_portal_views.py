@@ -229,7 +229,10 @@ def _pilot_redemption_ready(tenant):
             and settings.FIDELIZA_LEDGER_WRITES_ENABLED
             and settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED
             and settings.FIDELIZA_TRUSTED_PAYMENT_ADAPTERS
-            and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED):
+            and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
+            and settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
+            and settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED
+            and settings.FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED):
         return False
     from apps.nuvemshop.models import NuvemshopInstallation
     from apps.nuvemshop.scopes import parse_scopes
