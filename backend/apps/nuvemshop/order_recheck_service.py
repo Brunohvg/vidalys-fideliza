@@ -12,7 +12,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.channels.adapters.nuvemshop import ingest_nuvemshop_snapshot
-from apps.customers.services import find_verified_customer, normalize_email, normalize_phone, normalize_cpf
+from apps.customers.services import find_verified_customer, normalize_email, normalize_checkout_phone, normalize_cpf
 from apps.loyalty.models import LoyaltyVoucher
 from apps.sales.models import SaleRecord
 from apps.tenants.models import Tenant
@@ -42,29 +42,41 @@ def _cents(value):
 
 
 def _buyer_identity(order, tenant):
-    """O pedido não recebe consentimento novo por ter um contato no checkout."""
+    """Never link a sale using one verified contact over a contradictory one.
+
+    Unverified sales may still enter as provisional (no loyalty credit).
+    Mixed verified+unknown or two different profiles require manual review.
+    """
+    customer = order.get("customer")
+    customer = customer if isinstance(customer, dict) else {}
+    checks = (
+        (order.get("contact_email"), normalize_email, "email"),
+        (customer.get("email"), normalize_email, "email"),
+        (order.get("contact_phone"), normalize_checkout_phone, "phone_e164"),
+        (customer.get("phone"), normalize_checkout_phone, "phone_e164"),
+        (order.get("contact_identification"), normalize_cpf, "cpf"),
+    )
     identities = []
-    for name, normalize, kw in (
-        ("contact_email", normalize_email, "email"),
-        ("contact_phone", normalize_phone, "phone_e164"),
-    ):
-        raw = order.get(name)
-        if isinstance(raw, str) and raw.strip():
-            try:
-                identity = normalize(raw)
-                profile = find_verified_customer(tenant_id=tenant.pk, **{kw: identity})
-                identities.append((identity, profile))
-            except ValueError:
-                continue
-    verified = {p.pk for _, p in identities if p is not None}
-    if len(verified) > 1:
-        raise RecheckBlocked("Pedido contém contatos comprovados de pessoas diferentes")
-    # Se existem dois contatos diferentes e apenas um verificado, utilizar
-    # o verificado; nenhum outro contato é associado à carteira.
-    for identity, profile in identities:
-        if profile is not None:
-            return identity, profile
-    return (identities[0][0], None) if identities else (None, None)
+    for raw, normalize, kind in checks:
+        if raw is None or raw == "":
+            continue
+        if not isinstance(raw, str):
+            raise RecheckBlocked("Identidade do comprador malformada")
+        try:
+            value = normalize(raw)
+            profile = find_verified_customer(tenant_id=tenant.pk, **{kind: value})
+        except ValueError:
+            raise RecheckBlocked("Contato informado exige conferência manual") from None
+        identities.append((value, profile, kind))
+    profiles = {profile.pk for _, profile, _ in identities if profile is not None}
+    if len(profiles) > 1 or (profiles and any(p is None for _, p, _ in identities)):
+        raise RecheckBlocked("Contatos do checkout não pertencem ao mesmo perfil verificado")
+    # CPF alone is not a safe key for legacy order ingestion, whose channels
+    # accept only normalized email/phone as customer_identifier.
+    contact = next((row for row in identities if row[2] in ("email", "phone_e164")), None)
+    if contact is None:
+        return None, None
+    return contact[0], contact[1]
 
 
 def _paid_coupon_from_order(*, event, order, sale, profile):
@@ -100,8 +112,8 @@ def _paid_coupon_from_order(*, event, order, sale, profile):
     checks = (
         (order.get("contact_email"), normalize_email, "email"),
         (buyer.get("email"), normalize_email, "email"),
-        (order.get("contact_phone"), normalize_phone, "phone_e164"),
-        (buyer.get("phone"), normalize_phone, "phone_e164"),
+        (order.get("contact_phone"), normalize_checkout_phone, "phone_e164"),
+        (buyer.get("phone"), normalize_checkout_phone, "phone_e164"),
         (order.get("contact_identification"), normalize_cpf, "cpf"),
     )
     confirmed = 0
@@ -144,7 +156,19 @@ def _paid_coupon_from_order(*, event, order, sale, profile):
     # Esta escrita NÃO é uma baixa do ledger. Apenas marca aplicação reportada
     # pela plataforma; a conciliação independente precisa chamar settle_coupon.
     with transaction.atomic():
-        locked = NuvemshopCouponIntent.objects.select_for_update().get(pk=intent.pk)
+        Tenant.objects.select_for_update().get(
+            pk=event.tenant_id, status=Tenant.Status.ACTIVE)
+        locked = NuvemshopCouponIntent.objects.select_for_update().select_related(
+            "voucher",
+        ).get(pk=intent.pk)
+        # The external read can race with remote revocation/settlement:
+        # validate the locked CURRENT state, never trust the earlier snapshot.
+        if locked.state == locked.State.SETTLED:
+            return "already_settled"
+        if (locked.state not in (locked.State.ISSUED, locked.State.APPLIED)
+                or locked.voucher.state != LoyaltyVoucher.State.RESERVED
+                or locked.voucher.participant_id != profile.participant_id):
+            raise RecheckBlocked("Cupom alterado durante reconsulta")
         if locked.order_id and locked.order_id != event.order_id:
             raise RecheckBlocked("Cupom de outro pedido")
         locked.order_id = event.order_id

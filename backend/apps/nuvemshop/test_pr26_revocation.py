@@ -294,6 +294,59 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self.assertNotIn(cpf, item.lookup_digest)
         self.assertEqual(len(item.lookup_digest), 64)
 
+    def test_buyer_contacts_cannot_bind_another_person_to_verified_sale(self):
+        from apps.nuvemshop.order_recheck_service import _buyer_identity
+        self.participant.contact_email = "pr28-member@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        profile,_ = attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            email=self.participant.contact_email, proof_method="email_otp")
+        with self.assertRaises(RecheckBlocked):
+            _buyer_identity({
+                "contact_email": "PR28-MEMBER@example.invalid",
+                "contact_phone": "+55 (31) 99999-9999",
+            }, self.tenant)
+        email, owner = _buyer_identity({
+            "contact_email": "PR28-MEMBER@example.invalid",
+        }, self.tenant)
+        self.assertEqual(owner.pk, profile.pk)
+        self.assertEqual(email, self.participant.contact_email)
+
+    def test_coupon_paid_event_cannot_resurrect_revoking_coupon(self):
+        self.participant.contact_email = "pr28-racing@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        profile,_ = attach_verified_contact(
+            tenant_id=self.tenant.pk, participant_id=self.participant.pk,
+            email=self.participant.contact_email, proof_method="email_otp")
+        intent = self._issued_coupon()
+        event = OrderWebhookEvent.objects.create(
+            tenant=self.tenant, store_id="54321", order_id="9876",
+            topic=OrderWebhookEvent.Topic.PAID, dedupe_key="e"*64)
+        sale = SaleRecord.objects.create(
+            tenant=self.tenant, channel=SaleRecord.Channel.NUVEMSHOP,
+            external_reference="9876", order_status=SaleRecord.OrderStatus.PAID,
+            reported_total_cents=1990, eligible_amount_cents=0,
+            customer_profile=profile)
+        order = {
+            "contact_email": self.participant.contact_email, "payment_status":"paid",
+            "status":"open", "coupon_id":876,
+            "coupon":[{"id":876,"code":self.code}],
+            "discount_coupon":"1.00", "total":"19.90",
+        }
+        def remote_race():
+            NuvemshopCouponIntent.objects.filter(pk=intent.pk).update(
+                state=NuvemshopCouponIntent.State.REVOKING)
+            return self.cfg
+        with (
+            patch("apps.nuvemshop.order_recheck_service.config",
+                  side_effect=remote_race),
+            self.assertRaises(RecheckBlocked),
+        ):
+            _paid_coupon_from_order(event=event, order=order, sale=sale, profile=profile)
+        intent.refresh_from_db()
+        self.assertEqual(intent.state, NuvemshopCouponIntent.State.REVOKING)
+        self.assertEqual(intent.order_id, "")
+
     def test_foreign_checkout_email_cannot_use_other_member_coupon(self):
         self.participant.contact_email="verified-pr26@example.invalid"
         self.participant.save(update_fields=["contact_email"])

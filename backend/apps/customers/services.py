@@ -47,6 +47,16 @@ def normalize_phone(value):
     return value
 
 
+def normalize_checkout_phone(value):
+    """Only strip formatting; never infer a missing country code."""
+    if not isinstance(value, str):
+        raise ValueError("Telefone de checkout inválido.")
+    compact = re.sub(r"[\\s().-]", "", value.strip())
+    if compact.startswith("55") and not compact.startswith("+"):
+        compact = "+" + compact
+    return normalize_phone(compact)
+
+
 def normalize_cpf(value):
     """Valida CPF brasileiro; nenhuma cópia do CPF é persistida."""
     if not isinstance(value, str):
