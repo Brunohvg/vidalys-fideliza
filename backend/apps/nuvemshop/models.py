@@ -54,6 +54,7 @@ class NuvemshopCouponIntent(models.Model):
         SETTLED = "settled", "Baixa financeira validada"
         REVOKING = "revoking", "Revogação externa em progresso"
         REVOKED = "revoked", "Revogação externa confirmada"
+        OWNERSHIP_VIOLATION = "ownership_violation", "Possível uso por terceiro"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
@@ -77,6 +78,29 @@ class NuvemshopCouponIntent(models.Model):
                 condition=~models.Q(order_id=""),
                 name="nuv_pilot_one_coupon_per_order",
             ),
+        ]
+
+
+class NuvemshopCouponOwnershipIncident(models.Model):
+    """Security event for a paid order with unverifiable coupon ownership.
+
+    Never persist CPF, phone, email, cookie, OAuth token or bearer coupon code.
+    An issuer is blocked until an authorized manual review marks reviewed_at.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    intent = models.OneToOneField(
+        NuvemshopCouponIntent, on_delete=models.PROTECT,
+        related_name="ownership_incident",
+    )
+    order_digest = models.CharField(max_length=64)
+    reason = models.CharField(max_length=32, default="identity_mismatch")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["tenant", "reviewed_at"], name="coupon_incident_review_idx"),
         ]
 
 
