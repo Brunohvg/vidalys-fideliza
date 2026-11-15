@@ -170,6 +170,22 @@ class VerifiedOrderGrantTests(TestCase):
         with self.assertRaises(OrderItemCostBlocked):
             verify_verified_quote(sale=self.sale,quote=quote)
 
+    def test_psp_before_paid_webhook_still_denies_coupon_owner_violation(self):
+        with (
+            patch("apps.costs.order_item_cost_reconciliation.config",
+                  return_value=self.cfg),
+            patch("apps.costs.order_item_cost_reconciliation.decrypt_token",
+                  return_value="synthetic-token-from-oauth"),
+            patch("apps.costs.order_item_cost_reconciliation.read_order",
+                  return_value=self.order),
+            patch("apps.nuvemshop.coupon_ownership.check_paid_coupon_ownership",
+                  return_value="ownership_violation"),
+            self.assertRaises(PaymentProofBlocked),
+        ):
+            apply_verified_capture(evidence_id=self.evidence.pk,payment_fee_cents=50)
+        self.assertFalse(LoyaltyGrant.objects.exists())
+        self.assertFalse(CashbackEvent.objects.exists())
+
     def test_one_missing_variant_never_grants_any_money(self):
         self.two.delete()
         with (

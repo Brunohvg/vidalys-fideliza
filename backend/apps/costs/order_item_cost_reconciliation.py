@@ -4,6 +4,7 @@ No HTTP payload, merchant-provided SKU list, catalog price or checkout form
 may bypass the read_order source boundary. Simulations are not settlement.
 """
 from dataclasses import dataclass, replace
+from types import SimpleNamespace
 import hmac
 from django.conf import settings
 from django.utils.crypto import salted_hmac
@@ -297,6 +298,19 @@ def read_verified_nuvemshop_order_costs(*, sale, payment_fee_cents, opener=None)
         )
     except (OrderReadError, ValueError):
         raise OrderItemCostBlocked("GET OAuth de linhas do pedido indisponível") from None
+    # PSP can deliver proof BEFORE the asynchronous paid-order webhook.
+    # Validate coupon ownership in this same OAuth snapshot before ANY grant,
+    # and persist an incident for the real external discount if mismatched.
+    from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
+    status = check_paid_coupon_ownership(
+        event=SimpleNamespace(
+            tenant=tenant,tenant_id=tenant.pk,
+            store_id=installation.store_id,order_id=sale.external_reference,
+        ),
+        order=order,cfg=cfg,
+    )
+    if status in ("ownership_violation","requires_review"):
+        raise OrderItemCostBlocked("Cupom em uso por terceiro ou sem identidade comprovada")
     quote = reconcile_order_item_costs(
         order=order, tenant=tenant, expected_order_id=sale.external_reference,
         expected_total_cents=sale.reported_total_cents,

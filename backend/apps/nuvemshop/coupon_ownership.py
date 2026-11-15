@@ -18,22 +18,29 @@ from .order_readonly import safe_id
 from .security import config, decrypt_token
 
 
-def _coupon_intent(*, tenant, store_id, order, cfg):
+def _coupon_intent(*, tenant, store_id, order):
+    """An exact provider coupon ID suffices to treat a checkout as suspect.
+
+    Missing/mismatched coupon details must not cause an early return that
+    lets a grant bypass ownership checks.
+    """
     remote = safe_id(order.get("coupon_id"))
-    if remote is None or not isinstance(order.get("coupon"), list):
+    if remote is None:
         return None
-    found = NuvemshopCouponIntent.objects.select_related("voucher").filter(
+    return NuvemshopCouponIntent.objects.select_related("voucher").filter(
         tenant=tenant, store_id=store_id, remote_coupon_id=remote,
     ).first()
-    if found is None:
-        return None
-    matches = [entry.get("code") for entry in order["coupon"]
-               if isinstance(entry,dict) and safe_id(entry.get("id")) == remote]
-    if len(matches) != 1 or not isinstance(matches[0],str):
-        return None
-    if matches[0] != decrypt_token(found.encrypted_code,cfg.token_keys):
-        return None
-    return found
+
+
+def _code_matches(order, intent, cfg):
+    items = order.get("coupon")
+    if not isinstance(items, list):
+        return False
+    codes = [item.get("code") for item in items
+             if isinstance(item, dict)
+             and safe_id(item.get("id")) == intent.remote_coupon_id]
+    return (len(codes) == 1 and isinstance(codes[0], str) and
+            codes[0] == decrypt_token(intent.encrypted_code, cfg.token_keys))
 
 
 def _ownership_matches(*, order, intent):
@@ -92,7 +99,6 @@ def check_paid_coupon_ownership(*, event, order, cfg=None):
         return None
     intent = _coupon_intent(
         tenant=event.tenant, store_id=event.store_id, order=order,
-        cfg=cfg or config(),
     )
     if intent is None:
         return None
@@ -102,7 +108,8 @@ def check_paid_coupon_ownership(*, event, order, cfg=None):
         return "already_settled"
     if intent.state not in (intent.State.ISSUED,intent.State.APPLIED):
         return None
-    if _ownership_matches(order=order,intent=intent):
+    integrity = _code_matches(order, intent, cfg or config())
+    if integrity and _ownership_matches(order=order,intent=intent):
         return None
 
     # This is a SECURITY event, not a refund nor proof of PSP capture.
@@ -127,6 +134,7 @@ def check_paid_coupon_ownership(*, event, order, cfg=None):
         NuvemshopCouponOwnershipIncident.objects.get_or_create(
             intent=locked,
             defaults={"tenant_id":event.tenant_id,"order_digest":digest,
-                      "reason":"identity_mismatch"},
+                      "reason":("identity_mismatch" if integrity
+                                else "coupon_details_mismatch")},
         )
     return "ownership_violation"
