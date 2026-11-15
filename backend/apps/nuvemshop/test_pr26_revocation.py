@@ -417,6 +417,27 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self.assertEqual(intent.state,NuvemshopCouponIntent.State.OWNERSHIP_VIOLATION)
         self.assertEqual(NuvemshopCouponOwnershipIncident.objects.count(),1)
 
+    def test_pr29_missing_coupon_code_from_provider_cannot_bypass_owner_guard(self):
+        from types import SimpleNamespace
+        from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
+        from apps.nuvemshop.models import NuvemshopCouponOwnershipIncident
+        self.participant.contact_email = "pr29-missing-code@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        attach_verified_contact(
+            tenant_id=self.tenant.pk,participant_id=self.participant.pk,
+            email=self.participant.contact_email,proof_method="email_otp",
+        )
+        intent=self._issued_coupon()
+        event=SimpleNamespace(tenant=self.tenant,tenant_id=self.tenant.pk,
+                              store_id="54321",order_id="9876")
+        order={"payment_status":"paid","status":"open","coupon_id":876,
+               "coupon":[], "contact_email":self.participant.contact_email}
+        with patch("apps.nuvemshop.coupon_ownership.config",return_value=self.cfg):
+            self.assertEqual(check_paid_coupon_ownership(event=event,order=order),
+                             "ownership_violation")
+        self.assertEqual(NuvemshopCouponOwnershipIncident.objects.get(
+            intent=intent).reason,"coupon_details_mismatch")
+
     def test_pr29_matching_verified_checkout_email_does_not_create_incident(self):
         from types import SimpleNamespace
         from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
