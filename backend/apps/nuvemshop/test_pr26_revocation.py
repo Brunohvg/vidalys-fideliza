@@ -106,6 +106,27 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
         self.assertEqual(lot_balances(lot)["reserved"],10)
         self.assertEqual(NuvemshopCouponRevocationAudit.objects.count(),0)
 
+    def test_used_coupon_cannot_be_refunded_even_if_provider_marks_invalid(self):
+        lot=self._credit_reservation()
+        intent=self._issued_coupon()
+        LoyaltyVoucher.objects.filter(pk=self.voucher.pk).update(
+            expires_at=timezone.now()-timedelta(minutes=2))
+        self.voucher.refresh_from_db()
+        used={"id":876,"code":self.code,"valid":False,
+              "deleted_at":None,"used":1}
+        with (
+            patch("apps.nuvemshop.coupon_revocation.config", return_value=self.cfg),
+            patch("apps.nuvemshop.coupon_revocation.inspect_coupon_by_id",
+                  return_value=used),
+            patch("apps.nuvemshop.coupon_revocation.delete_coupon_once") as deletion,
+            self.assertRaises(RevocationBlocked),
+        ):
+            revoke_and_release(intent_id=intent.pk,reason="expired")
+        deletion.assert_not_called()
+        self.voucher.refresh_from_db()
+        self.assertEqual(self.voucher.state,LoyaltyVoucher.State.RESERVED)
+        self.assertEqual(lot_balances(lot)["reserved"],10)
+
     def test_foreign_checkout_email_cannot_use_other_member_coupon(self):
         self.participant.contact_email="verified-pr26@example.invalid"
         self.participant.save(update_fields=["contact_email"])
