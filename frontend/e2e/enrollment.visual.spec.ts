@@ -95,6 +95,8 @@ for(const width of [390,768,1440]){
       }));
       await page.goto("/participar/loja-jardim");
       await expect(page.getByText("Programa da Loja Jardim")).toBeVisible();
+      await expect(page.getByRole("region",{name:"Conheça seu clube de vantagens"})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Uma boa compra merece um próximo encontro."})).toBeVisible();
       await expect(page.getByText("Ler aviso de privacidade")).toBeVisible();
       await expect(page.getByRole("checkbox",{name:/comunicações promocionais/})).not.toBeChecked();
       await page.getByRole("textbox",{name:"Seu nome"}).fill("Cliente Interessado");

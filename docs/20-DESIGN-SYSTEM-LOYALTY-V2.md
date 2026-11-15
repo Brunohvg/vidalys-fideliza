@@ -60,3 +60,18 @@ Arquétipo: **confiável, humano, claro, criterioso**. Priorizar legibilidade, b
 - Após revisão visual, levar para ambiente de homologação isolado via branch autorizada; **sem merge automático nem publicação na loja real**.
 
 **Fonte CSS de execução:** \`frontend/src/fideliza-theme.css\` carregado após estilos antigos. \`brand/tokens.css\` é referência sincronizada no repositório. Ideal futuramente consolidar em pacote de design tokens versionado, para evitar deriva.
+
+## Auditoria visual da página de adesão — 15/11/2026
+
+A identidade v2 estava carregada como tokens, mas partes do portal mantêm CSS
+legado azul elétrico/grafite e a página `PublicEnrollment` era um formulário
+vertical sem apresentação visual da proposta. A adesão pública ganhou
+`public-enroll-story` com narrativa, passos reais (adesão, confirmação,
+benefícios publicados) e form de maior hierarquia, responsivo e white-label
+pela paleta `TenantBranding` sem alterar o backend ou habilitar recompensas.
+
+Se o CSS de `portal.css` ou `styles.css` prevalecer sobre os tokens v2
+em outros contextos, corrigir nos componentes relevantes; não adicionar
+uma terceira paleta nem sobrescrever o estilo da loja conectada.
+Capturas Playwright são testes automatizados e requerem revisão visual
+humana e validação no domínio de homologação com o SHA exato.

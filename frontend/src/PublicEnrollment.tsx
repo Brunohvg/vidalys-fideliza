@@ -1,5 +1,5 @@
-import {useEffect, useState, type FormEvent} from "react";
-import {ArrowRight,CheckCircle2, HeartHandshake, LockKeyhole, ShieldCheck,Gift,Mail} from "lucide-react";
+import {useEffect, useState, type FormEvent, type CSSProperties} from "react";
+import {ArrowRight,CheckCircle2, HeartHandshake, LockKeyhole, ShieldCheck,Gift,Mail,Sparkles} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type PublicInvitationPreview,
   type PublicConsentResult, type PublicStoreProgram,
   type PublicStoreJoinResult} from "./api";
@@ -73,8 +73,36 @@ export default function PublicEnrollment(){
   const accent=branding?.accent_color||"#37D5BB";
   const publicTitle=branding?.program_name||preview?.store_name||"FIDELIZA";
 
-  return <div className="public-enroll-shell">
-    <main className="public-enroll-card">
+  const brandStyle={
+    "--join-primary":primary,
+    "--join-foreground":readableForeground(primary),
+    "--join-accent":accent,
+    "--join-accent-foreground":readableForeground(accent),
+  } as CSSProperties;
+
+  return <div className="public-enroll-shell" style={brandStyle}>
+    <div className="public-enroll-layout">
+      <section className="public-enroll-story" aria-label="Conheça seu clube de vantagens">
+        <div className="public-enroll-story-brand">
+          <span aria-hidden="true"><HeartHandshake size={25}/></span>
+          <div><strong>{publicTitle}</strong><small>Uma experiência de {preview?.store_name||"sua loja"}</small></div>
+        </div>
+        <div className="public-enroll-story-intro">
+          <span className="public-enroll-story-kicker"><Sparkles size={16}/> UM CONVITE PARA VOLTAR</span>
+          <h2>Uma boa compra merece <em>um próximo encontro.</em></h2>
+          <p>Faça parte do clube e acompanhe os benefícios divulgados por {preview?.store_name||"sua loja"}. Um espaço feito para valorizar cada visita.</p>
+        </div>
+        <div className="public-enroll-story-steps">
+          <strong>Você participa em três passos</strong>
+          <ol>
+            <li><span>01</span><div><b>Faça sua adesão</b><small>Informe seus dados e aceite o regulamento.</small></div></li>
+            <li><span>02</span><div><b>Confirme seu e-mail</b><small>Proteja seu acesso e sua participação.</small></div></li>
+            <li><span>03</span><div><b>Descubra as recompensas</b><small>Veja os benefícios quando a loja os disponibilizar.</small></div></li>
+          </ol>
+        </div>
+        <p className="public-enroll-story-note"><ShieldCheck size={18}/> A solicitação é gratuita. Pontos e descontos dependem da ativação do programa.</p>
+      </section>
+      <main className="public-enroll-card">
       <div className="public-enroll-brand"><span style={{background:accent,color:readableForeground(accent)}}><HeartHandshake size={25}/></span>
         <div><strong>{publicTitle}</strong><small>Seu clube de vantagens</small></div></div>
       {loading && <div role="status" className="public-enroll-state">Validando convite seguro…</div>}
@@ -90,7 +118,7 @@ export default function PublicEnrollment(){
       {!loading && !result && <>
         <div className="public-enroll-top"><span className="public-enroll-eyebrow">
           <ShieldCheck size={16}/> ADESÃO VOLUNTÁRIA</span>
-          <h1>Entre para o clube de vantagens.</h1>
+          <h1>Faça parte. É simples começar.</h1>
           <p>{preview
             ? ("store_slug" in preview
                 ? "Participe do clube da "+preview.store_name+". É gratuito solicitar a adesão e acompanhar os benefícios divulgados."
@@ -99,8 +127,9 @@ export default function PublicEnrollment(){
         {error && <div role="alert" className="public-enroll-error">{error}</div>}
         {preview && <form onSubmit={submit}>
           <div className="public-enroll-value">
-            <Gift size={19}/><span>Confira os benefícios publicados no Meu Clube.
-              O acúmulo de pontos e o resgate ainda estão em preparação.</span>
+            <span className="public-enroll-value-icon"><Gift size={22}/></span>
+            <div><strong>O seu próximo benefício começa aqui</strong>
+              <span>Veja as recompensas divulgadas no Meu Clube. Pontos e resgates ainda dependem da ativação do programa.</span></div>
           </div>
           <div className="public-enroll-fields">
             <label>Seu nome
@@ -151,7 +180,8 @@ export default function PublicEnrollment(){
         Quer retirar sua solicitação de adesão?
         <a href={"/retirar/"+encodeURIComponent(storeSlug)}>Solicitar retirada por e-mail</a>.
       </p>}
-    </main>
+      </main>
+    </div>
     <footer>Vidalys Fideliza · Sem inscrição automática · Seus dados são usados para registrar esta solicitação.</footer>
   </div>;
 }
