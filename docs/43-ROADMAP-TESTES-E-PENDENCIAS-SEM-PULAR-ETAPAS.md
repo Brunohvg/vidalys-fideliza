@@ -1,6 +1,20 @@
 # 43 — Vidalys Fideliza: roteiro de execução com gates e pendências
 
 
+## Evidência operacional Coolify — 15/11/2026 | G1 BLOQUEADO
+
+Verificação da aplicação `fideliza-homologacao-dbexterno` em homologação:
+
+- `homolog` HEAD validado: `8063bc9058047cd09390d0e600fefea6dc836727`, CI 6/6 aprovado. Último deploy bem-sucedido visível no Coolify: `c25d668ec1b668c3a254b816cc96b6236a0dadb2`; a versão em execução não é o HEAD.
+- Coolify aponta para `/compose.yaml` e Advanced confirma `Raw (deploy file as-is)`. O Compose atual declara cinco serviços (`api`, `frontend`, `redis`, `worker`, `nuvemshop-sync)); o runtime exibe quatro, sem o worker dedicado Nuvemshop.
+- PostgreSQL independente está Running, privado e acessível pela API. Backup local tem quatro arquivos com status Success; o mais recente tem 233.532 bytes e cabeçalho de dump custom PostgreSQL (`PGDMP`). Servidor Mexico: 174 GB livres. **Não houve restauração isolada**: `pg_restore` não está instalado no terminal do host e o usuário desse terminal não tem permissão Docker. O painel de backup não oferece restore para destino temporário. Nenhum recurso temporário foi criado.
+- HTTPS e redirecionamento HTTP→HTTPS passaram; `/api/ready/` retornou `ready`; `migrate --check` não encontrou pendências e as migrações Nuvemshop exibidas estão aplicadas; round-trip Redis passou; o log do Celery registra worker pronto. Auditoria runtime: zero falhas obrigatórias e oito alertas. Auditoria SMTP do worker: zero falhas, sem envio real.
+- Isolamento observado: SMTP ausente na API e presente no worker; worker sem credenciais Nuvemshop; `SERVICE_PASSWORD_64_DJANGO` ausente. As variáveis essenciais passaram na auditoria. No ambiente efetivo atual faltam `FIDELIZA_ENVIRONMENT`, `FIDELIZA_DEPLOYED_SHA`, `FIDELIZA_PILOT_ACTIVATION_APPROVAL` e `FIDELIZA_QA_ALLOWED_TENANT_IDS`.
+- As flags de cadastro público, adesão independente, e-mail, associação automática, aprovação e fluxos Nuvemshop estão habilitadas na configuração e geram alertas no auditor. Há uma instalação Nuvemshop no banco; sua identidade não foi lida nem utilizada, aguardando autorização de uma loja QA.
+- Navegador: login/cadastro e demonstração com dados fictícios carregam. Nenhuma conta, participante, venda ou e-mail foi criado; não foi informada uma caixa controlada para confirmação.
+- Nenhum deploy, restart, migração de escrita ou alteração no PostgreSQL original foi executado. **G1 permanece bloqueado** até prova de restauração isolada. Próximo passo: disponibilizar via técnica de `pg_restore` e criação de PostgreSQL temporário privado no Coolify; então repetir pré-voo antes de deploy.
+
+
 ## Checkpoint complementar — 15/11/2026: piloto multiloja sem dependência Nuvemshop
 
 A marca do lojista **não** define elegibilidade técnica. O código mantém
