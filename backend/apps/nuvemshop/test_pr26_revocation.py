@@ -383,6 +383,36 @@ class RevocationAndOwnershipTests(CouponIdempotencyTests):
                           participant_id=self.participant.pk,
                           reward_id=self.voucher.reward_id)
 
+    def test_pr29_matching_email_but_different_cpf_is_blocked(self):
+        from types import SimpleNamespace
+        from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
+        from apps.nuvemshop.models import NuvemshopCouponOwnershipIncident
+        self.participant.contact_email="cpf-owner-pr29@example.invalid"
+        self.participant.save(update_fields=["contact_email"])
+        attach_verified_contact(
+            tenant_id=self.tenant.pk,participant_id=self.participant.pk,
+            email=self.participant.contact_email,proof_method="email_otp",
+        )
+        attach_verified_contact(
+            tenant_id=self.tenant.pk,participant_id=self.participant.pk,
+            cpf="52998224725",proof_method="provider_confirmed",
+        )
+        intent=self._issued_coupon()
+        event=SimpleNamespace(tenant=self.tenant,tenant_id=self.tenant.pk,
+                              store_id="54321",order_id="9876")
+        order={
+            "payment_status":"paid","status":"open","coupon_id":876,
+            "coupon":[{"id":876,"code":self.code}],
+            "contact_email":"CPF-OWNER-PR29@EXAMPLE.INVALID",
+            "contact_identification":"123.456.789-09",
+        }
+        with patch("apps.nuvemshop.coupon_ownership.config",return_value=self.cfg):
+            self.assertEqual(check_paid_coupon_ownership(event=event,order=order),
+                             "ownership_violation")
+        intent.refresh_from_db()
+        self.assertEqual(intent.state,NuvemshopCouponIntent.State.OWNERSHIP_VIOLATION)
+        self.assertEqual(NuvemshopCouponOwnershipIncident.objects.count(),1)
+
     def test_pr29_matching_verified_checkout_email_does_not_create_incident(self):
         from types import SimpleNamespace
         from apps.nuvemshop.coupon_ownership import check_paid_coupon_ownership
