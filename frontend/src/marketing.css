@@ -1,5 +1,5 @@
-/* Marketing de produto — v2 navy / jade / mint / reward.
-   Escopo exclusivo .vf-market. Nunca compartilhar com tenant/checkout. */
+/* Marketing pages (resources, segments, integrations), using the Vidalys brand.
+   The homepage uses MarketingHome and marketing-home.css. */
 .vf-market{
   --mk-ink:#3B1E82;--mk-jade:#6A3DF0;--mk-jade-hover:#542CCB;
   --mk-mint:#FF8A3D;--mk-gold:#FFC857;--mk-reward-ink:#8F5200;
@@ -77,10 +77,10 @@
 .mk-footer-brand{display:flex;align-items:center;gap:8px;font:800 20px Manrope,Inter,sans-serif}
 .mk-footer-brand svg{color:var(--mk-mint)}
 .mk-footer-brand strong{color:var(--mk-mint)}
-.mk-footer-inner p{font-size:14px;color:#BBD5D2;margin:12px 0 8px}
-.mk-footer-inner small{font-size:12px;line-height:1.5;color:#AFC8C6;display:block;max-width:470px}
+.mk-footer-inner p{font-size:14px;color:#EDE7FF;margin:12px 0 8px}
+.mk-footer-inner small{font-size:12px;line-height:1.5;color:#CDBDE8;display:block;max-width:470px}
 .mk-footer nav{display:flex;flex-wrap:wrap;gap:12px 23px;align-content:flex-start}
-.mk-footer nav a{font-size:13px;color:#DCE9E7;padding:6px}
+.mk-footer nav a{font-size:13px;color:#F1E9FF;padding:6px}
 .mk-footer nav a:hover{text-decoration:underline}
 @media(max-width:1050px){
   .mk-header-inner{gap:14px}
