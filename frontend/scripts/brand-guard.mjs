@@ -25,6 +25,16 @@ for(const rel of protectedFiles){
  if(rel.endsWith(".css")&&/!important/.test(source))
   issues.push(`${rel} uses !important; new UI must not rely on cascade patches`);
 }
+const sourceOfTruth=fs.readFileSync(path.join(root,"src/brand-tokens.css"),"utf8");
+for(const token of ["--vf-primary","--vf-reward","--vf-purple-900","--vf-orange","--vf-danger"]){
+ if(!sourceOfTruth.includes(token+":")&&!sourceOfTruth.includes(token+": "))
+  issues.push("brand-tokens.css missing "+token);
+}
+for(const stylesheet of ["src/fideliza-theme.css","src/brand-experience.css"]){
+ const stylesheetText=fs.readFileSync(path.join(root,stylesheet),"utf8");
+ if(/:root\\s*\\{/.test(stylesheetText))
+  issues.push(stylesheet+" redeclares global :root design tokens");
+}
 if(issues.length){
  console.error("Brand guard failed:\n"+issues.map(x=>"- "+x).join("\n"));
  process.exit(1);
