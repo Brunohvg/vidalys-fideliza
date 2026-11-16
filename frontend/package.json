@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check:brand": "node scripts/brand-guard.mjs"
+    "check:brand": "node scripts/brand-guard.mjs",
+    "audit:brand": "node scripts/brand-legacy-audit.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
