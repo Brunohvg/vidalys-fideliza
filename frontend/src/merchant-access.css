@@ -1,0 +1,30 @@
+/* Merchant access experience: editorial loyalty story + secure functional form */
+.loyalty-access{min-height:100vh;grid-template-columns:minmax(0,1.05fr) minmax(420px,.95fr);font-family:Manrope,Inter,sans-serif;background:#F8F9FF}
+.loyalty-access .portal-auth-brand{position:relative;isolation:isolate;overflow:hidden;padding:clamp(30px,4.5vw,75px);background:radial-gradient(circle at 77% 79%,#A66FF64D,transparent 35%),linear-gradient(155deg,#24113F,#3B1E82 62%,#6A3DF0);color:white}
+.loyalty-access .portal-auth-brand::after{border-color:#D5B8FF33;box-shadow:0 0 0 60px #EDE7FF12,0 0 0 130px #FFC8570C}
+.loyalty-access .merchant-brand{position:relative;z-index:2;display:flex;align-items:center;gap:12px}
+.loyalty-access .merchant-logo{width:52px;height:52px;object-fit:contain}
+.loyalty-access .merchant-wordmark{font-weight:850;letter-spacing:-.045em}
+.loyalty-access .merchant-wordmark span{color:#EDE7FF}
+.loyalty-access .portal-auth-text{position:relative;z-index:2;max-width:650px}
+.loyalty-access .portal-auth-text .portal-eyebrow{color:#FFC857}
+.loyalty-access .portal-auth-text h1{font-size:clamp(42px,5vw,72px);letter-spacing:-.065em;line-height:1.04;margin:22px 0}
+.loyalty-access .portal-auth-text h1 em{color:#FFC857;font-style:normal}
+.loyalty-access .portal-auth-text>p{color:#EDE7FF;max-width:52ch;font-size:15px;line-height:1.68}
+.loyalty-access .portal-auth-features svg{color:#FFC857}
+.loyalty-access .portal-auth-features span{color:#F4EFFF}
+.loyalty-access .portal-auth-foot{color:#D9C7FA;position:relative;z-index:2}
+.loyalty-access-art{position:absolute;z-index:1;right:-72px;bottom:38px;width:clamp(180px,25vw,390px);height:auto;opacity:.35;filter:drop-shadow(0 18px 20px #14062888);pointer-events:none;transform:rotate(9deg)}
+.loyalty-access .portal-login-panel{background:radial-gradient(circle at 15% 6%,#F0E7FF,#F8F9FF 67%);padding:clamp(22px,4.5vw,70px)}
+.loyalty-access .portal-login-card{width:min(100%,490px);background:#fff;border:1px solid #E4DFF2;border-radius:25px;padding:clamp(24px,3vw,42px);box-shadow:0 24px 60px #3B1E8213}
+.loyalty-access .portal-login-icon{background:#EDE7FF;color:#6A3DF0;border-radius:15px}
+.loyalty-access .portal-login-card h2{color:#3B1E82;letter-spacing:-.04em}
+.loyalty-access .portal-login-card>p{color:#665D7A;line-height:1.62}
+.loyalty-access .portal-login-card input{background:#FFF;border:1px solid #D8C9EE;color:#3B1E82;border-radius:12px;min-height:49px}
+.loyalty-access .portal-login-card input:focus{outline:3px solid #EDE7FF;border-color:#6A3DF0}
+.loyalty-access .portal-login-card .portal-primary{background:linear-gradient(110deg,#8B43F6,#5926C6);border-radius:12px;box-shadow:0 10px 24px #6A3DF032}
+.loyalty-access .portal-login-help{background:#F8F4FF;color:#665D7A;border-radius:13px}
+.loyalty-access :is(button,a,input):focus-visible{outline:3px solid #A987F9;outline-offset:3px}
+@media(max-width:1000px){.loyalty-access{grid-template-columns:1fr}.loyalty-access .portal-auth-brand{min-height:300px;gap:20px}.loyalty-access-art{width:240px;bottom:-60px;right:0;opacity:.2}.loyalty-access .portal-auth-foot{display:none}.loyalty-access .portal-login-panel{padding:35px 18px}}
+@media(max-width:580px){.loyalty-access .portal-auth-brand{min-height:260px;padding:27px 22px}.loyalty-access .portal-auth-text h1{font-size:clamp(35px,10vw,49px)}.loyalty-access .portal-auth-features{display:none}.loyalty-access .portal-login-panel{padding:20px 13px}.loyalty-access .portal-login-card{padding:24px 20px;border-radius:19px}}
+@media(prefers-reduced-motion:reduce){.loyalty-access-art{transform:none}}
