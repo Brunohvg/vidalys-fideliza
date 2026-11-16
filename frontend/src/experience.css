@@ -14,7 +14,7 @@
   font-family:var(--vf-font);
 }
 .portal-shell .portal-nav button{border-radius:10px;font-size:12px}
-.portal-shell .portal-nav button.is-active{background:rgba(8,127,121,.17);color:#EAFBF5}
+.portal-shell .portal-nav button.is-active{background:rgba(8,127,121,.17);color:#F8F6FF}
 .portal-shell .portal-nav-secondary button.is-active{background:rgba(8,127,121,.17)}
 .portal-shell .portal-content-head{max-width:100%;gap:14px}
 .portal-shell .portal-content-head h1{line-height:1.18}
@@ -32,7 +32,7 @@
 .member-club-shell .member-club-hero-account{min-height:0}
 .member-club-shell .member-club-sections{background:var(--vf-lavender);border-color:var(--vf-border)}
 .member-club-shell .member-club-sections button.selected{color:var(--vf-primary)}
-.member-club-shell .member-club-reward{background:#F9FCFB;border-color:var(--vf-border)}
+.member-club-shell .member-club-reward{background:#F8F6FF;border-color:var(--vf-border)}
 .member-club-shell .member-club-wallet-number{color:var(--vf-primary)}
 .member-club-shell .member-club-reward-state{background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
 .route-not-found{max-width:580px;margin:15vh auto;padding:25px;font:14px/1.65 var(--vf-font);color:var(--vf-ink)}
