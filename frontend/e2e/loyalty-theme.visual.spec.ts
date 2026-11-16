@@ -85,8 +85,8 @@ test("Login usa identidade nova sem afirmar programa ativo",async ({page})=>{
     body:JSON.stringify({authenticated:false,user:null,tenants:[]})
   }));
   await page.goto("/app/visao-geral");
-  await expect(page.getByText("Clientes voltam.")).toBeVisible();
-  await expect(page.getByText("Sua loja cresce.")).toBeVisible();
+  await expect(page.getByText("Cada compra aproxima.")).toBeVisible();
+  await expect(page.getByText("Cada retorno recompensa.")).toBeVisible();
   const hero=page.locator(".portal-auth-brand");
   await expect(hero).toBeVisible();
   const colors=await hero.evaluate(el=>({
