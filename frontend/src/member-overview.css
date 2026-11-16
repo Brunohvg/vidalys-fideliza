@@ -1,6 +1,6 @@
 /* Member-only surfaces inherit the approved Vidalys tokens; merchant brand stays scoped. */
 .member-club-shell .mc-overview-kicker{display:inline-flex;gap:7px;align-items:center;color:var(--vf-primary);font-size:10px;font-weight:800;letter-spacing:.08em}
-.member-club-shell .mc-vip{display:grid;gap:11px;min-width:0;border-radius:17px;background:linear-gradient(115deg,#10253E,#203C51);color:white;padding:19px 21px;box-shadow:0 8px 24px rgba(16,37,62,.09)}
+.member-club-shell .mc-vip{display:grid;gap:11px;min-width:0;border-radius:17px;background:linear-gradient(115deg,#3B1E82,#203C51);color:white;padding:19px 21px;box-shadow:0 8px 24px rgba(16,37,62,.09)}
 .member-club-shell .mc-vip-intro{display:flex;align-items:center;gap:12px;min-width:0}
 .member-club-shell .mc-vip-medal{width:42px;height:42px;flex:none;border-radius:13px;background:rgba(245,186,81,.13);color:var(--vf-reward);display:grid;place-items:center}
 .member-club-shell .mc-vip-intro>div{min-width:0;flex:1}
