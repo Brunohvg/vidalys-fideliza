@@ -39,55 +39,6 @@ html {scroll-behavior:smooth}
   border-bottom:1px solid var(--vf-line);
   backdrop-filter:blur(14px);
 }
-.vf-market .mk-hero {
-  isolation:isolate;
-  position:relative;
-  overflow:clip;
-  background:
-    radial-gradient(ellipse at 86% 18%,rgba(255,200,87,.22),transparent 34%),
-    radial-gradient(ellipse at 56% -18%,rgba(139,67,246,.20),transparent 45%),
-    linear-gradient(130deg,#F8F9FF 4%,#EDE7FF 67%,#FBF7FF 100%);
-}
-.vf-market .mk-hero::before {
-  content:"";position:absolute;z-index:-1;right:3%;top:9%;
-  width:min(34vw,440px);aspect-ratio:1;border-radius:50%;
-  background:radial-gradient(circle,rgba(139,67,246,.19),rgba(255,138,61,.09) 46%,transparent 70%);
-  filter:blur(16px);pointer-events:none;
-  animation:vf-breathe 9s ease-in-out infinite alternate;
-}
-.vf-market .mk-hero h1{color:#3B1E82}
-.vf-market .mk-hero h1 em{color:#E76525}
-.vf-market .mk-hero-copy>p{color:#594B71}
-.vf-market .mk-demo {
-  transform:rotate(1deg);
-  border:1px solid #E7DDF7;
-  box-shadow:0 28px 80px rgba(59,30,130,.12),0 9px 20px rgba(139,67,246,.05);
-  animation:vf-float-in .8s cubic-bezier(.2,.8,.2,1) both;
-}
-.vf-market .mk-demo-panel{background:linear-gradient(135deg,#FFF8EB,#FFFFFF);border-color:#F3E3BD}
-.vf-market .mk-benefit-grid article,
-.vf-market .mk-feature,
-.vf-market .mk-segment,
-.vf-market .mk-integration,
-.vf-market .mk-showcase-stack article {
-  border-color:var(--vf-line);
-  box-shadow:var(--vf-glow);
-  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
-}
-.vf-market :is(.mk-benefit-grid article,.mk-feature,.mk-segment,.mk-integration,.mk-showcase-stack article):hover {
-  transform:translateY(-4px);border-color:#CDBBF5;
-  box-shadow:0 22px 50px rgba(85,48,161,.13);
-}
-.vf-market .mk-cta-panel {
-  background:
-    radial-gradient(circle at 92% 5%,rgba(255,138,61,.20),transparent 36%),
-    linear-gradient(115deg,#3B1E82,#6A3DF0);
-  border:1px solid #7950D7;
-  box-shadow:0 20px 46px rgba(59,30,130,.18);
-}
-.vf-market .mk-cta-panel .mk-button-main {
-  background:#FFC857;color:#3B1E82!important;
-}
 .vf-market .mk-integration-intro>div:first-child{background:#F3EEFF;border-color:#DDD0FF}
 .vf-market .mk-disclosure{background:#F3EEFF;color:#513595}
 /* Dashboard: hierarquia e brilho contidos — leitura de dados em primeiro lugar. */
@@ -166,14 +117,9 @@ html {scroll-behavior:smooth}
   to{opacity:1;transform:scale(1.07)}
 }
 @media(max-width:760px){
-  .vf-market .mk-demo{transform:none;animation:none}
-  .vf-market .mk-hero::before{width:68vw;right:-12%;top:5%}
-  .vf-market :is(.mk-benefit-grid article,.mk-feature,.mk-segment,.mk-integration,.mk-showcase-stack article):hover,
-  .member-club-shell .member-club-reward:hover{transform:none}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .vf-market .mk-hero::before,.vf-market .mk-demo{animation:none!important}
   :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *,
   :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *::before,
   :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *::after {
@@ -186,9 +132,6 @@ html {scroll-behavior:smooth}
 
 /* Impede que a auréola ultrapasse a largura útil do telefone. */
 @media(max-width:580px){
-  .vf-market .mk-hero{overflow:clip;min-width:0}
-  .vf-market .mk-hero::before{right:0;width:min(64vw,250px)}
-  .vf-market .mk-hero>*{min-width:0}
 }
 
 /* Coerência visual validada contra capturas do ambiente de homologação:
@@ -264,23 +207,6 @@ html {scroll-behavior:smooth}
    tipografia grande, espaço em branco e cartão de recompensa flutuante. */
 .vf-market .mk-header-inner{max-width:1250px}
 .vf-market .mk-logo img{width:190px;height:auto;max-height:67px;object-fit:contain}
-.vf-market .mk-hero{
-  grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);
-  min-height:680px;
-  padding-top:clamp(66px,7vw,100px);
-  padding-bottom:clamp(64px,7vw,94px);
-  column-gap:clamp(16px,3.5vw,60px);
-  overflow:clip;
-}
-.vf-market .mk-hero-copy{z-index:2}
-.vf-market .mk-hero h1{font-size:clamp(43px,4.9vw,73px);max-width:12ch;line-height:1.09;letter-spacing:-.065em}
-.vf-market .mk-hero .mk-eyebrow{color:#6A3DF0;letter-spacing:.14em}
-.vf-market .mk-hero-copy>p{font-size:clamp(16px,1.35vw,19px);max-width:49ch}
-.vf-market .mk-hero .mk-button-main{background:linear-gradient(110deg,#8B43F6,#5926C6);color:#fff!important;box-shadow:0 12px 30px #6A3DF043}
-.vf-market .mk-hero .mk-button-main:hover{background:linear-gradient(110deg,#7135D9,#442096)}
-.vf-market .mk-hero .mk-button-quiet{color:#513595!important;background:#fff;border:1px solid #D8C9F2}
-.vf-market .mk-hero .mk-button-quiet:hover{background:#F8F4FF}
-.vf-market .mk-honesty{color:#6F6380}
 .vf-market .mk-reward-scene{
   width:100%;max-width:670px;min-width:0;
   position:relative;isolation:isolate;
@@ -302,31 +228,7 @@ html {scroll-behavior:smooth}
   filter:drop-shadow(0 20px 24px rgba(59,30,130,.12));
   animation:vf-gift-rise 900ms cubic-bezier(.2,.8,.2,1) both;
 }
-.vf-market .mk-reward-scene .mk-demo{
-  position:absolute;z-index:2;
-  width:min(285px,54%);max-width:none;
-  right:-1%;bottom:1%;
-  padding:15px;border-radius:18px;
-  transform:rotate(-3deg);
-  box-shadow:0 18px 48px rgba(59,30,130,.17);
-  animation:vf-card-rise 950ms 150ms both;
-}
-.vf-market .mk-reward-scene .mk-demo-ribbon{font-size:8px;padding:5px}
-.vf-market .mk-reward-scene .mk-demo-header{padding:9px 0;gap:8px}
-.vf-market .mk-reward-scene .mk-demo-avatar{width:31px;height:31px;border-radius:9px}
-.vf-market .mk-reward-scene .mk-demo-header strong{font-size:13px}
-.vf-market .mk-reward-scene .mk-demo-header small{font-size:9px}
-.vf-market .mk-reward-scene .mk-demo-topline{font-size:10px;margin:4px 0 6px}
-.vf-market .mk-reward-scene .mk-demo-panel{padding:12px;border-radius:11px}
-.vf-market .mk-reward-scene .mk-demo-panel>span:first-child{font-size:8px}
-.vf-market .mk-reward-scene .mk-demo-panel strong{font-size:16px;line-height:1.25;margin:5px 0}
-.vf-market .mk-reward-scene .mk-demo-panel p{font-size:10px;line-height:1.4;margin-bottom:8px}
-.vf-market .mk-reward-scene .mk-demo-pill{font-size:8px;padding:5px}
-.vf-market .mk-reward-scene .mk-demo-row{display:none}
 .vf-market .mk-benefits{background:#fff}
-.vf-market .mk-benefit-grid article{background:linear-gradient(160deg,#fff,#FBF8FF)}
-.vf-market .mk-benefit-grid article>span{background:#EDE7FF;color:#6A3DF0}
-.vf-market .mk-showcase{background:linear-gradient(135deg,#F8F9FF,#F2EBFF)}
 .vf-market .mk-footer{background:#24113F}
 .vf-market .mk-footer-brand img{filter:none;opacity:1;display:block;object-fit:contain}
 @keyframes vf-gift-rise{
@@ -338,33 +240,17 @@ html {scroll-behavior:smooth}
   to{opacity:1;transform:translateY(0) rotate(-3deg)}
 }
 @media(max-width:1040px){
-  .vf-market .mk-hero{column-gap:14px}
   .vf-market .mk-reward-scene{min-height:430px}
-  .vf-market .mk-hero h1{font-size:clamp(40px,5vw,62px)}
 }
 @media(max-width:800px){
-  .vf-market .mk-hero{grid-template-columns:minmax(0,1fr);padding-block:55px 48px}
-  .vf-market .mk-hero h1{max-width:15ch}
   .vf-market .mk-reward-scene{min-height:420px;max-width:580px}
   .vf-market .mk-gift-illustration{max-height:450px}
-  .vf-market .mk-reward-scene .mk-demo{right:2%;bottom:0}
 }
 @media(max-width:580px){
-  .vf-market .mk-hero{padding:42px 20px 24px;row-gap:7px}
-  .vf-market .mk-hero h1{font-size:clamp(36px,10vw,47px);max-width:14ch}
-  .vf-market .mk-hero-copy>p{font-size:15px}
   .vf-market .mk-reward-scene{min-height:300px;margin-top:6px;max-width:100%}
   .vf-market .mk-gift-illustration{width:min(95%,350px);max-height:310px}
-  .vf-market .mk-reward-scene .mk-demo{width:min(183px,52%);right:0;bottom:-1%;padding:8px}
-  .vf-market .mk-reward-scene .mk-demo-header{padding:5px 0}
-  .vf-market .mk-reward-scene .mk-demo-topline{display:none}
-  .vf-market .mk-reward-scene .mk-demo-panel p{display:none}
-  .vf-market .mk-reward-scene .mk-demo-panel strong{font-size:12px}
-  .vf-market .mk-reward-scene .mk-demo-panel{padding:8px}
   .vf-market .mk-header-inner{gap:8px}
   .vf-market .mk-logo img{width:128px;height:auto}
 }
 @media(prefers-reduced-motion:reduce){
-  .vf-market .mk-gift-illustration,
-  .vf-market .mk-reward-scene .mk-demo{animation:none!important}
 }
