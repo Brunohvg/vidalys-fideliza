@@ -31,7 +31,7 @@ for (const width of [390,768,1440]){
       await page.setViewportSize({width,height:width===390?844:900});
       await mockShop(page);
       await page.goto("/app/visao-geral");
-      await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
       const palette=await page.evaluate(()=>{
         const root=getComputedStyle(document.documentElement);
         const cta=document.querySelector(".portal-primary");
@@ -41,7 +41,7 @@ for (const width of [390,768,1440]){
           gold:root.getPropertyValue("--vf-reward").trim(),
           navy:root.getPropertyValue("--vf-ink").trim(),
           overflow:document.documentElement.scrollWidth-innerWidth,
-          displayFont:getComputedStyle(document.querySelector(".vf-home-welcome h2")!).fontFamily,
+          displayFont:getComputedStyle(document.querySelector(".loyalty-dashboard-intro h2")!).fontFamily,
           mainArea:document.querySelector(".portal-main")?.getBoundingClientRect().left
         };
       });
