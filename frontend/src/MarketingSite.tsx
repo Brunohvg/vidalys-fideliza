@@ -88,7 +88,7 @@ export default function MarketingSite(){
       <section className="mk-hero">
         <div className="mk-hero-copy">
           <span className="mk-eyebrow"><Sparkles size={16}/> LOJAS FÍSICAS, ONLINE E HÍBRIDAS</span>
-          <h1>Clientes que voltam. <em>Seu negócio cresce!</em></h1>
+          <h1>Seus clientes sempre <em>voltam!</em></h1>
           <p>Um clube de vantagens para sua loja reconhecer quem compra, apresentar recompensas e criar motivos para a próxima visita.</p>
           <div className="mk-hero-actions">
             <a className="mk-button mk-button-main" href="/cadastrar">Conhecer o piloto <ArrowRight size={18}/></a>
