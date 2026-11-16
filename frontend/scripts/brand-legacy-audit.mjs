@@ -14,7 +14,12 @@ const legacy={
  "#0a7d6b":"verde antigo",
  "#0b806c":"verde antigo",
  "#00bbd1":"ciano antigo",
- "#00d1e6":"ciano antigo"
+ "#00d1e6":"ciano antigo",
+ "#081b29":"fundo de login antigo",
+ "#123b45":"gradiente petróleo antigo",
+ "#0c5b57":"gradiente verde antigo",
+ "#66e7c7":"destaque menta antigo",
+ "#6de5c4":"ícone menta antigo"
 };
 const legacyRgb = [
  {name:"jade RGB",regex:/rgba?\\(\\s*8\\s*,\\s*127\\s*,\\s*121\\s*(?:,|\\))/gi},
