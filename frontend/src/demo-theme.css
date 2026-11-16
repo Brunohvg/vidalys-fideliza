@@ -4,7 +4,7 @@
 .layout{
   --demo-ink:var(--vf-ink,#3B1E82);
   --demo-jade:var(--vf-primary,#6A3DF0);
-  --demo-mint:var(--vf-mint,#FF8A3D);
+  --demo-mint:var(--vf-orange,#FF8A3D);
   --demo-gold:var(--vf-reward,#FFC857);
   --demo-muted:var(--vf-muted,#665D7A);
   --demo-border:var(--vf-border,#E4DFF2);
