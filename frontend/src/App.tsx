@@ -17,10 +17,7 @@ const nav = [
 type Page = (typeof nav)[number]["key"];
 function Brand() {
   return <div className="brand" aria-label="Vidalys Fideliza">
-    <div className="brand-mark" aria-hidden="true">
-      <img src="/brand-mark.svg" alt="" width="44" height="44" />
-    </div>
-    <span className="brand-copy">vidalys<span>fideliza</span></span>
+    <img src="/brand-logo-white.svg" width={185} height={52} alt="Vidalys Fideliza" />
   </div>;
 }
 
@@ -52,7 +49,7 @@ export default function App() {
   const title = nav.find(p => p.key === page)?.text || "Visão geral";
   const navigate = (next: Page) => { setPage(next); setDrawer(false); };
 
-  return <div className="layout">
+  return <div className="layout loyalty-demo">
     <aside className={"sidebar" + (drawer ? " open" : "")} aria-label="Menu do aplicativo">
       <div className="sidebar-head"><Brand/><button className="close-mobile" aria-label="Fechar menu" onClick={() => setDrawer(false)}><X size={21}/></button></div>
       <div className="shop-select"><span className="shop-avatar">V</span><span className="shop-copy"><b>Loja demonstração</b><small>Ambiente de protótipo</small></span><ChevronDown size={15}/></div>
