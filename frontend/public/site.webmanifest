@@ -1,0 +1,17 @@
+{
+  "name": "Vidalys Fideliza",
+  "short_name": "Fideliza",
+  "description": "Programa de fidelidade e recompensas para lojas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9FF",
+  "theme_color": "#3B1E82",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
