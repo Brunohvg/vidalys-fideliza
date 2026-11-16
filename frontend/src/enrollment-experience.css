@@ -15,7 +15,7 @@
 .loyalty-enroll .public-enroll-story-steps li>span{background:#FFC857;color:#3B1E82;border-radius:9px}
 .loyalty-enroll .public-enroll-story-note{position:relative;z-index:2;color:#EDE7FF}
 .loyalty-enroll .public-enroll-card{border:0;box-shadow:none;padding:clamp(29px,4vw,54px);color:#3B1E82}
-.loyalty-enroll .public-enroll-top h1{color:#3B1E82;font-size:clamp(30px,3.2vw,44px);font-weight:850}
+.loyalty-enroll .public-enroll-top h1{color:#3B1E82;font-size:clamp(30px,3.2vw,44px);font-weight:800}
 .loyalty-enroll .public-enroll-top>p{color:#6B607E;font-size:14px}
 .loyalty-enroll .public-enroll-eyebrow{color:#6A3DF0}
 .loyalty-enroll .public-enroll-value{background:#FFF8EA;border:1px solid #F0DBAF;color:#645078;border-radius:15px}
