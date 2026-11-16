@@ -1,7 +1,7 @@
 import MarketingHome from "./MarketingHome";
 import {useEffect,useMemo,useState} from "react";
 import {
-  ArrowRight, BookOpen, CheckCircle2, ChevronRight, Coffee,
+  ArrowRight, Coffee,
   Gift, HeartHandshake, Mail, Paintbrush, PawPrint, Scissors, Search,
   ShieldCheck, ShoppingBag, Sparkles, Store, TicketPercent, Workflow
 } from "lucide-react";
