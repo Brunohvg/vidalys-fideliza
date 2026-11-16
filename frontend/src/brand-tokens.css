@@ -1,0 +1,42 @@
+/* VIDALYS FIDELIZA — fonte única de tokens globais.
+   Variáveis legadas --vf-mint são aliases temporários para preservar componentes já existentes.
+   Sucesso, alerta e erro são cores semânticas; não são cores de marca.
+   Não aplicar estes tokens como sobrescrita obrigatória às cores dos lojistas white-label. */
+:root {
+  --vf-ink: #3B1E82;
+  --vf-ink-soft: #513595;
+  --vf-primary: #6A3DF0;
+  --vf-primary-hover: #542CCB;
+  --vf-primary-contrast: #FFFFFF;
+  --vf-mint: #FF8A3D;
+  --vf-mint-soft: #EDE7FF;
+  --vf-reward: #FFC857;
+  --vf-reward-ink: #8F5200;
+  --vf-reward-soft: #FFF5E5;
+  --vf-info: #6A3DF0;
+  --vf-info-soft: #F3EEFF;
+  --vf-canvas: #F8F9FF;
+  --vf-surface: #FFFFFF;
+  --vf-border: #E4DFF2;
+  --vf-muted: #665D7A;
+  --vf-success: #167A56;
+  --vf-warning: #8F5200;
+  --vf-danger: #AD334B;
+  --vf-radius-sm: 10px;
+  --vf-radius-md: 16px;
+  --vf-radius-lg: 22px;
+  --vf-shadow-card: 0 14px 40px rgba(59,30,130,.055);
+  --vf-font: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --vf-font-display: "Manrope", "Inter", system-ui, sans-serif;
+
+  --vf-purple-950:#24113F;
+  --vf-purple-900:#3B1E82;
+  --vf-purple-700:#6A3DF0;
+  --vf-purple-500:#8B43F6;
+  --vf-lavender:#EDE7FF;
+  --vf-orange:#FF8A3D;
+  --vf-gold:#FFC857;
+  --vf-paper:#F8F9FF;
+  --vf-line:#E4DFF2;
+  --vf-glow:0 16px 48px rgba(85,48,161,.10),0 3px 14px rgba(85,48,161,.045);
+}
