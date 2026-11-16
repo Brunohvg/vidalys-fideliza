@@ -72,8 +72,7 @@ export default function MarketingSite(){
     <header className="mk-header">
       <div className="mk-header-inner">
         <a className="mk-logo" href="/" aria-label="Vidalys Fideliza · início">
-          <span><HeartHandshake size={24}/></span>
-          <strong>vidalys<em>fideliza</em></strong>
+          <img src="/brand-logo.svg" alt="Vidalys Fideliza" width={175} height={51} />
         </a>
         <nav className="mk-nav" aria-label="Apresentação comercial">
           {nav.map(item=><a key={item.page} href={item.href}
@@ -192,7 +191,7 @@ export default function MarketingSite(){
       <p className="mk-disclaimer">Não anunciamos integração com ERPs, marketplaces ou CRMs sem contrato técnico e testes de ponta a ponta.</p>
     </main>}
     <footer className="mk-footer"><div className="mk-footer-inner">
-      <div><div className="mk-footer-brand"><HeartHandshake size={23}/> Vidalys <strong>Fideliza</strong></div>
+      <div><div className="mk-footer-brand"><img src="/brand-logo.svg" alt="Vidalys Fideliza" width={180} height={52}/></div>
         <p>Relacionamento, recompensas e cuidado com cada compra.</p>
         <small>Esta apresentação é uma prévia de homologação, não uma oferta de recursos comerciais ativados.</small>
       </div>
