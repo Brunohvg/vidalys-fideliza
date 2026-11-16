@@ -6,7 +6,7 @@ for (const width of [390, 768, 1440]) {
     await page.goto("/demo");
     const mobile = width <= 980;
     if (mobile) await page.getByRole("button", { name: "Abrir menu" }).click();
-    await page.getByRole("button", { name: "Rentabilidade", exact: true }).click();
+    await page.getByRole("button", { name: "Custo dos benefícios", exact: true }).click();
     if (mobile) {
       // Aguardar a transição do drawer antes de capturar screenshot.
       await expect(page.locator(".sidebar")).not.toHaveClass(/open/);
