@@ -69,8 +69,8 @@ export default function PublicEnrollment(){
   };
 
   const branding=preview&&"store_slug" in preview?preview.branding:null;
-  const primary=branding?.primary_color||"#087F79";
-  const accent=branding?.accent_color||"#37D5BB";
+  const primary=branding?.primary_color||"#6A3DF0";
+  const accent=branding?.accent_color||"#FF8A3D";
   const publicTitle=branding?.program_name||preview?.store_name||"FIDELIZA";
 
   const brandStyle={
