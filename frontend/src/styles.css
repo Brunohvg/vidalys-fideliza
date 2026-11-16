@@ -10,7 +10,7 @@
 body{margin:0;min-width:320px}
 button,input{font:inherit}
 button{cursor:pointer}
-button:focus-visible,input:focus-visible{outline:3px solid #00BBD1;outline-offset:3px}
+button:focus-visible,input:focus-visible{outline:3px solid #8B43F6;outline-offset:3px}
 button:disabled{cursor:not-allowed;opacity:.55}
 .layout{display:flex;min-height:100vh}
 .sidebar{position:fixed;inset:0 auto 0 0;width:267px;display:flex;flex-direction:column;padding:28px 16px 18px;background:#0B1120;color:#EAF0FA;z-index:20;overflow-y:auto}
@@ -39,7 +39,7 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .sidebar-tip p{font-size:12px;line-height:1.65;color:#BECBE0;margin:0}
 .sidebar-tip button{display:flex;align-items:center;gap:8px;width:max-content;background:transparent;color:#79B8FF;border:0;padding:4px 0;font-weight:700;font-size:12px}
 .sidebar-version{display:block;font-size:10px;color:#7284A2;margin:22px 8px 0;letter-spacing:.11em}
-.sidebar-version span{color:#00D1E6}
+.sidebar-version span{color:#FFC857}
 .main{margin-left:267px;width:calc(100% - 267px);min-width:0}
 .topbar{height:79px;padding:0 42px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fff}
 .topbar-left,.topbar-right{display:flex;align-items:center;gap:12px}
@@ -52,7 +52,7 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .content{max-width:1530px;padding:44px 42px 32px;margin:auto}
 .intro{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:30px}
 .eyebrow,.panel-kicker{font-size:10px;letter-spacing:.16em;color:#4581DB;font-weight:800}
-.eyebrow span{color:#00BBD1}
+.eyebrow span{color:#8B43F6}
 h1,h2,p{margin-top:0}
 h1{font-size:clamp(26px,3vw,37px);line-height:1.2;letter-spacing:-.055em;margin:13px 0 10px;font-weight:800}
 .intro p{max-width:680px;font-size:13.5px;color:#738096;line-height:1.75;margin:0}
@@ -87,7 +87,7 @@ h1{font-size:clamp(26px,3vw,37px);line-height:1.2;letter-spacing:-.055em;margin:
 .card-feature p{color:#B1C1D9;font-size:12px;line-height:1.8;margin-bottom:0}
 .feature-divider{height:1px;background:#334B6B;margin:20px 0 14px}
 .feature-row{font-size:11px;color:#D7E2F4;display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.feature-row svg{color:#00D1E6}
+.feature-row svg{color:#FFC857}
 .feature-button{border:0;background:#fff;color:#12366A;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;margin-top:auto;font-weight:800;font-size:11.5px;min-height:44px}
 .activity{padding-bottom:12px}
 .activity-list{margin-top:8px}
@@ -183,7 +183,7 @@ h1{font-size:clamp(26px,3vw,37px);line-height:1.2;letter-spacing:-.055em;margin:
 .margin-hero::after{content:"";position:absolute;right:-95px;top:-125px;width:335px;height:335px;border:1px solid #77b3ff45;border-radius:50%;box-shadow:0 0 0 45px #3b77c615,0 0 0 92px #6eaeef0d;pointer-events:none}
 .margin-hero-copy{position:relative;z-index:1;max-width:700px}
 .margin-kicker{color:#85beff;font-size:10px;font-weight:800;letter-spacing:.16em;display:flex;align-items:center;gap:8px}
-.margin-kicker span{color:#00D1E6}
+.margin-kicker span{color:#FFC857}
 .margin-hero h2{font-size:clamp(23px,2.7vw,34px);letter-spacing:-.055em;line-height:1.23;margin:16px 0 12px}
 .margin-hero h2 span{color:#8EC9FF}
 .margin-hero p{font-size:12px;color:#CBD9EE;line-height:1.85;max-width:565px;margin-bottom:21px}
