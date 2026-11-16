@@ -1,5 +1,5 @@
 /* VIDALYS FIDELIZA — fonte única de tokens globais.
-   Variáveis legadas --vf-mint são aliases temporários para preservar componentes já existentes.
+   Cores globais documentadas: roxo, lilás, laranja e dourado.
    Sucesso, alerta e erro são cores semânticas; não são cores de marca.
    Não aplicar estes tokens como sobrescrita obrigatória às cores dos lojistas white-label. */
 :root {
@@ -8,8 +8,6 @@
   --vf-primary: #6A3DF0;
   --vf-primary-hover: #542CCB;
   --vf-primary-contrast: #FFFFFF;
-  --vf-mint: #FF8A3D;
-  --vf-mint-soft: #EDE7FF;
   --vf-reward: #FFC857;
   --vf-reward-ink: #8F5200;
   --vf-reward-soft: #FFF5E5;
@@ -33,8 +31,8 @@
   --vf-purple-900:#3B1E82;
   --vf-purple-700:#6A3DF0;
   --vf-purple-500:#8B43F6;
-  --vf-lavender:#EDE7FF;
-  --vf-orange:#FF8A3D;
+  --vf-lavender: #EDE7FF;
+  --vf-orange: #FF8A3D;
   --vf-gold:#FFC857;
   --vf-paper:#F8F9FF;
   --vf-line:#E4DFF2;
