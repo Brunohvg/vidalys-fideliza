@@ -669,9 +669,9 @@
 @media(prefers-reduced-motion:reduce){.xp-goal-card,.xp-action-link{transition:none}}
 
 /* Acesso do lojista: estados de autenticação, cadastro e recuperação. */
-.merchant-aside{background:linear-gradient(145deg,#081B29 10%,#123B45 75%,#0C5B57 100%)}
-.merchant-aside .portal-auth-text h1 em{color:#66E7C7}
-.merchant-aside .portal-auth-features svg{color:#6DE5C4}
+.merchant-aside{background:linear-gradient(145deg,#24113F 10%,#3B1E82 75%,#6A3DF0 100%)}
+.merchant-aside .portal-auth-text h1 em{color:#FFC857}
+.merchant-aside .portal-auth-features svg{color:#FFC857}
 .merchant-brand{display:flex;align-items:center;gap:10px;z-index:1}
 .merchant-logo{width:41px;height:41px;border-radius:12px;background:#099681;
   display:grid;place-items:center;color:#fff;font-size:26px;font-weight:850}
