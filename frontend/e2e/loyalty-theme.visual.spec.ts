@@ -93,6 +93,6 @@ test("Login usa identidade nova sem afirmar programa ativo",async ({page})=>{
     background:getComputedStyle(el).backgroundImage,
     title:getComputedStyle(el.querySelector("h1")!).fontFamily
   }));
-  expect(colors.background).toContain("rgb(8, 27, 41)");
+  expect(colors.background).toContain("rgb(59, 30, 130)");
   expect(colors.title).toContain("Manrope");
 });
