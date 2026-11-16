@@ -3,6 +3,7 @@
 .loyalty-access .portal-auth-brand{position:relative;isolation:isolate;overflow:hidden;padding:clamp(30px,4.5vw,75px);background:radial-gradient(circle at 77% 79%,#A66FF64D,transparent 35%),linear-gradient(155deg,#24113F,#3B1E82 62%,#6A3DF0);color:white}
 .loyalty-access .portal-auth-brand::after{border-color:#D5B8FF33;box-shadow:0 0 0 60px #EDE7FF12,0 0 0 130px #FFC8570C}
 .loyalty-access .merchant-brand{position:relative;z-index:2;display:flex;align-items:center;gap:12px}
+.loyalty-access .loyalty-access-logo{display:block;width:min(245px,80%);height:auto;object-fit:contain;object-position:left center}
 .loyalty-access .merchant-logo{width:52px;height:52px;object-fit:contain}
 .loyalty-access .merchant-wordmark{font-weight:800;letter-spacing:-.045em}
 .loyalty-access .merchant-wordmark span{color:#EDE7FF}
