@@ -635,3 +635,13 @@ button,select,textarea,input {font-family:inherit}
 .portal-nav button.is-active{background:#6A3DF0;box-shadow:none}
 .portal-nav button:hover{background:rgba(237,231,255,.12)}
 .portal-shell .portal-panel{border-radius:18px}
+
+/* Brand 2026: login e experiência de recompensas */
+.portal-auth-brand{background:radial-gradient(circle at 5% 5%,rgba(138,67,244,.38),transparent 48%),linear-gradient(145deg,#3B1E82,#24113F 95%)}
+.portal-auth-brand::after{border-color:rgba(237,231,255,.2);box-shadow:0 0 0 65px rgba(106,61,240,.09),0 0 0 150px rgba(255,138,61,.05)}
+.portal-auth-text h1 em{color:#FFB47B}
+.portal-auth-text>p,.portal-auth-foot{color:#EDE7FF}
+.portal-auth-features svg{color:#FFC857}
+.portal-login-panel{background:radial-gradient(circle at 90% 2%,#EDE7FF,#FFFFFF 62%)}
+.portal-login-card input:focus{outline:3px solid rgba(106,61,240,.16);border-color:#6A3DF0}
+.portal-login-help{background:#F8F4FF}
