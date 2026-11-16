@@ -1,5 +1,5 @@
 import {useEffect, useState, type CSSProperties, type FormEvent} from "react";
-import {ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock3, Gift, HeartHandshake, LockKeyhole, Mail, ShieldCheck, TicketPercent, ShoppingBag, LogOut} from "lucide-react";
+import {ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock3, Gift, LockKeyhole, Mail, ShieldCheck, TicketPercent, ShoppingBag, LogOut} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type MemberClubPublic, type MemberClubPrivate} from "./api";
 import {readableForeground} from "./brand-contrast";
 import {clubSectionForPath, clubSectionPath, clubSlugFromPath} from "./routes";
