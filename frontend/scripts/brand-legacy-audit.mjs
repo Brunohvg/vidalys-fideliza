@@ -16,6 +16,11 @@ const legacy={
  "#00bbd1":"ciano antigo",
  "#00d1e6":"ciano antigo"
 };
+const legacyRgb = [
+ {name:"jade RGB",regex:/rgba?\\(\\s*8\\s*,\\s*127\\s*,\\s*121\\s*(?:,|\\))/gi},
+ {name:"menta RGB",regex:/rgba?\\(\\s*55\\s*,\\s*213\\s*,\\s*187\\s*(?:,|\\))/gi},
+ {name:"marinho RGB",regex:/rgba?\\(\\s*16\\s*,\\s*37\\s*,\\s*62\\s*(?:,|\\))/gi}
+];
 const results=[];
 for(const filename of fs.readdirSync(directory).filter(file=>file.endsWith(".css"))){
  const content=fs.readFileSync(path.join(directory,filename),"utf8").toLowerCase();
@@ -23,6 +28,10 @@ for(const filename of fs.readdirSync(directory).filter(file=>file.endsWith(".css
   const count=content.split(color).length-1;
   return count>0?[{color,count,description}]:[];
  });
+ for(const {name,regex} of legacyRgb){
+  const count=(content.match(regex)||[]).length;
+  if(count)hits.push({color:name,count,description:"efeito com RGB da marca anterior"});
+ }
  if(hits.length)results.push({file:filename,total:hits.reduce((n,x)=>n+x.count,0),hits});
 }
 results.sort((a,b)=>b.total-a.total);
