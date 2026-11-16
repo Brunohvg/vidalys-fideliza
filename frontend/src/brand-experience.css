@@ -328,7 +328,7 @@ html {scroll-behavior:smooth}
 .vf-market .mk-benefit-grid article>span{background:#EDE7FF;color:#6A3DF0}
 .vf-market .mk-showcase{background:linear-gradient(135deg,#F8F9FF,#F2EBFF)}
 .vf-market .mk-footer{background:#24113F}
-.vf-market .mk-footer-brand img{filter:brightness(0) invert(1);opacity:.93}
+.vf-market .mk-footer-brand img{filter:none;opacity:1;display:block;object-fit:contain}
 @keyframes vf-gift-rise{
   from{opacity:0;transform:translateY(24px) scale(.96)}
   to{opacity:1;transform:translateY(0) scale(1)}
