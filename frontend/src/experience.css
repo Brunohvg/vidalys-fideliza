@@ -30,7 +30,7 @@
 .member-club-shell .member-club-main{max-width:1030px}
 .member-club-shell .member-club-account{gap:12px}
 .member-club-shell .member-club-hero-account{min-height:0}
-.member-club-shell .member-club-sections{background:var(--vf-mint-soft);border-color:var(--vf-border)}
+.member-club-shell .member-club-sections{background:var(--vf-lavender);border-color:var(--vf-border)}
 .member-club-shell .member-club-sections button.selected{color:var(--vf-primary)}
 .member-club-shell .member-club-reward{background:#F9FCFB;border-color:var(--vf-border)}
 .member-club-shell .member-club-wallet-number{color:var(--vf-primary)}
