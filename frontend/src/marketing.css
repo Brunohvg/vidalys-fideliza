@@ -1,8 +1,8 @@
 /* Marketing pages (resources, segments, integrations), using the Vidalys brand.
    The homepage uses MarketingHome and marketing-home.css. */
 .vf-market{
-  --mk-ink:#3B1E82;--mk-jade:#6A3DF0;--mk-jade-hover:#542CCB;
-  --mk-mint:#FF8A3D;--mk-gold:#FFC857;--mk-reward-ink:#8F5200;
+  --mk-ink:#3B1E82;--mk-primary:#6A3DF0;--mk-primary-hover:#542CCB;
+  --mk-orange:#FF8A3D;--mk-gold:#FFC857;--mk-reward-ink:#8F5200;
   --mk-muted:#665D7A;--mk-line:#E4DFF2;--mk-canvas:#F8F9FF;
   min-height:100vh;background:#fff;color:var(--mk-ink);
   font-family:Inter,system-ui,sans-serif;font-size:16px;line-height:1.55;
@@ -11,26 +11,26 @@
 .vf-market a{color:inherit;text-decoration:none}
 .vf-market a:focus-visible,.vf-market button:focus-visible,
 .vf-market input:focus-visible,.vf-market select:focus-visible{
-  outline:3px solid var(--mk-jade);outline-offset:3px;
+  outline:3px solid var(--mk-primary);outline-offset:3px;
 }
 .mk-header{background:#fff;border-bottom:1px solid #EDF1F4;position:sticky;top:0;z-index:8}
 .mk-header-inner{width:min(1250px,calc(100% - 40px));margin:auto;min-height:82px;display:flex;align-items:center;justify-content:space-between;gap:26px}
 .mk-logo{display:flex;align-items:center;gap:10px;flex:none}
-.mk-logo>span{width:41px;height:41px;border-radius:13px;display:grid;place-items:center;color:#fff;background:var(--mk-jade)}
+.mk-logo>span{width:41px;height:41px;border-radius:13px;display:grid;place-items:center;color:#fff;background:var(--mk-primary)}
 .mk-logo strong{font:800 23px/1.1 Manrope,Inter,sans-serif;letter-spacing:-.065em}
-.mk-logo em{font-style:normal;color:var(--mk-jade);margin-left:4px}
+.mk-logo em{font-style:normal;color:var(--mk-primary);margin-left:4px}
 .mk-nav{display:flex;align-items:center;gap:4px}
 .mk-nav a{padding:12px 14px;border-radius:11px;font-size:14px;font-weight:750;color:#40546A;min-height:44px;display:inline-flex;align-items:center}
 .mk-nav a:hover,.mk-nav a[aria-current="page"]{background:#EDE7FF;color:#542CCB}
 .mk-header-actions{display:flex;align-items:center;gap:14px;white-space:nowrap}
 .mk-signin{font-size:14px;font-weight:750;padding:10px 4px}
-.mk-head-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 17px;min-height:46px;border-radius:11px;background:var(--mk-jade);color:#fff!important;font-size:14px;font-weight:800;box-shadow:0 9px 20px rgba(8,127,121,.16)}
-.mk-head-cta:hover,.mk-button-main:hover{background:var(--mk-jade-hover)}
+.mk-head-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 17px;min-height:46px;border-radius:11px;background:var(--mk-primary);color:#fff!important;font-size:14px;font-weight:800;box-shadow:0 9px 20px rgba(8,127,121,.16)}
+.mk-head-cta:hover,.mk-button-main:hover{background:var(--mk-primary-hover)}
 .mk-eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:800;letter-spacing:.1em;line-height:1.5}
 .mk-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:49px;padding:13px 18px;border-radius:12px;font-size:14px;font-weight:800;line-height:1.3}
-.mk-button-main{background:var(--mk-jade);color:#fff!important}
+.mk-button-main{background:var(--mk-primary);color:#fff!important}
 .mk-section{padding:clamp(62px,7vw,104px) 26px}
-.mk-text-link{display:inline-flex;align-items:center;gap:8px;color:var(--mk-jade)!important;font-weight:800;font-size:14px;margin-top:20px}
+.mk-text-link{display:inline-flex;align-items:center;gap:8px;color:var(--mk-primary)!important;font-weight:800;font-size:14px;margin-top:20px}
 .mk-text-link:hover{text-decoration:underline;text-underline-offset:5px}
 .mk-inner{width:min(1194px,calc(100% - 44px));margin:auto;padding:clamp(46px,6vw,76px) 0 82px;min-height:65vh}
 .mk-section-top{text-align:center;max-width:830px;margin:0 auto 43px}
@@ -38,7 +38,7 @@
 .mk-section-top p{font-size:17px;line-height:1.7;color:var(--mk-muted)}
 .mk-feature-grid,.mk-segments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:19px}
 .mk-feature,.mk-segment{display:flex;flex-direction:column;align-items:flex-start;border:1px solid var(--mk-line);border-radius:20px;padding:25px;background:#fff;box-shadow:0 9px 28px rgba(16,37,62,.04)}
-.mk-feature-symbol,.mk-segment-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;color:var(--mk-jade);background:#EDE7FF}
+.mk-feature-symbol,.mk-segment-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;color:var(--mk-primary);background:#EDE7FF}
 .mk-feature:nth-child(2) .mk-feature-symbol,.mk-segment:nth-child(2n) .mk-segment-icon{color:var(--mk-reward-ink);background:#FFF5E5}
 .mk-feature h2,.mk-segment h2,.mk-integration h2{font:800 21px/1.3 Manrope,Inter,sans-serif;letter-spacing:-.025em;margin:15px 0 9px}
 .mk-feature p,.mk-segment p,.mk-integration p{color:var(--mk-muted);font-size:14px;line-height:1.7;margin:0 0 12px}
@@ -56,27 +56,27 @@
 .mk-integration-intro{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .mk-integration-intro>div{padding:28px;border-radius:19px;background:#F3EEFF;border:1px solid #D4EAE2}
 .mk-integration-intro>div:nth-child(2){background:#F3F6FD;border-color:#DBE4F4}
-.mk-integration-intro>div>span{display:grid;place-items:center;width:49px;height:49px;background:#fff;color:var(--mk-jade);border-radius:14px}
+.mk-integration-intro>div>span{display:grid;place-items:center;width:49px;height:49px;background:#fff;color:var(--mk-primary);border-radius:14px}
 .mk-integration-intro h2{font:800 22px Manrope,Inter,sans-serif;margin:15px 0 8px}
 .mk-integration-intro p{font-size:14px;color:var(--mk-muted);margin:0}
 .mk-filter{display:flex;flex-wrap:wrap;gap:15px;margin:32px 0 19px}
 .mk-filter>label:first-child{display:flex;align-items:center;gap:10px;flex:1;min-width:220px;border:1px solid #BCCBD7;border-radius:13px;padding:0 14px;color:#567085}
 .mk-filter input{width:100%;height:47px;border:0;outline:0;background:transparent;font-size:15px;color:var(--mk-ink)}
-.mk-filter>label:first-child:focus-within{outline:3px solid var(--mk-jade);outline-offset:2px}
+.mk-filter>label:first-child:focus-within{outline:3px solid var(--mk-primary);outline-offset:2px}
 .mk-filter input:focus-visible{outline:0}
 .mk-category{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800}
 .mk-filter select{height:49px;padding:0 12px;border-radius:12px;border:1px solid #BCCBD7;background:#fff;color:var(--mk-ink);font-size:14px}
 .mk-integration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .mk-integration{border:1px solid var(--mk-line);border-radius:18px;padding:25px}
 .mk-integration .mk-state{margin-top:8px}
-.mk-category-label{font-size:11px;text-transform:uppercase;font-weight:850;color:var(--mk-jade);letter-spacing:.08em}
+.mk-category-label{font-size:11px;text-transform:uppercase;font-weight:850;color:var(--mk-primary);letter-spacing:.08em}
 .mk-empty{padding:25px;background:#F8F9FF;border-radius:14px;color:var(--mk-muted)}
 .mk-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .mk-footer{background:#3B1E82;color:#fff;padding:48px 26px}
 .mk-footer-inner{max-width:1194px;margin:auto;display:flex;justify-content:space-between;gap:35px}
 .mk-footer-brand{display:flex;align-items:center;gap:8px;font:800 20px Manrope,Inter,sans-serif}
-.mk-footer-brand svg{color:var(--mk-mint)}
-.mk-footer-brand strong{color:var(--mk-mint)}
+.mk-footer-brand svg{color:var(--mk-orange)}
+.mk-footer-brand strong{color:var(--mk-orange)}
 .mk-footer-inner p{font-size:14px;color:#EDE7FF;margin:12px 0 8px}
 .mk-footer-inner small{font-size:12px;line-height:1.5;color:#CDBDE8;display:block;max-width:470px}
 .mk-footer nav{display:flex;flex-wrap:wrap;gap:12px 23px;align-content:flex-start}
@@ -117,7 +117,7 @@
 }
 
 /* Identidade Vidalys Fideliza aprovada — home comercial */
-.vf-market{--mk-ink:#3B1E82;--mk-jade:#6A3DF0;--mk-jade-hover:#542CCB;--mk-mint:#FF8A3D;--mk-gold:#FFC857;--mk-muted:#665D7A;--mk-line:#E4DFF2;--mk-canvas:#F8F9FF;font-family:Manrope,Inter,system-ui,sans-serif}
+.vf-market{--mk-ink:#3B1E82;--mk-primary:#6A3DF0;--mk-primary-hover:#542CCB;--mk-orange:#FF8A3D;--mk-gold:#FFC857;--mk-muted:#665D7A;--mk-line:#E4DFF2;--mk-canvas:#F8F9FF;font-family:Manrope,Inter,system-ui,sans-serif}
 .mk-button-main,.mk-head-cta{background:linear-gradient(115deg,#8B43F6,#5926C6);color:#fff!important;box-shadow:0 9px 21px rgba(106,61,240,.17)}
 .mk-nav a:hover,.mk-nav a[aria-current="page"]{background:#EDE7FF;color:#542CCB}
 .mk-logo>span{background:#3B1E82}
