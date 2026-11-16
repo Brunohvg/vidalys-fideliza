@@ -18,7 +18,7 @@
 .vf-home-next button{display:flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;padding:12px 14px;background:#fff;color:#0f654f;border:0;border-radius:11px;font-size:12px;font-weight:800;cursor:pointer}
 .vf-home-next button:disabled{opacity:.6;cursor:not-allowed}
 .vf-home-integrations{display:flex;align-items:center;gap:12px;padding:16px 19px;border:1px solid #dbe9e1;border-radius:14px;background:#fff}
-.vf-home-integration-icon{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:12px;background:#eff8f1;color:#087f79}
+.vf-home-integration-icon{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:12px;background:#eff8f1;color:#6A3DF0}
 .vf-home-integrations>div:nth-child(2){flex:1;min-width:0}
 .vf-home-integrations strong{color:#164d3c;font-size:13px}
 .vf-home-integrations p{font-size:11px;line-height:1.6;color:#607968;margin:4px 0 0}
@@ -26,6 +26,6 @@
 .vf-home-safe{display:flex;align-items:flex-start;gap:8px;margin:0;font-size:11px;line-height:1.65;color:#78897d}
 .vf-home-safe svg{flex:none}
 .vf-home-warning{margin:0;color:#8b612a;font-size:12px;padding:11px 14px;background:#fff8e9;border:1px solid #f0e0c2;border-radius:10px}
-.vf-home button:focus-visible{outline:3px solid #37d5bb;outline-offset:2px}
+.vf-home button:focus-visible{outline:3px solid #FF8A3D;outline-offset:2px}
 @media(max-width:800px){.vf-home-overview{gap:8px}.vf-home-overview article{padding:15px;gap:10px}.vf-home-next{display:grid;grid-template-columns:51px minmax(0,1fr);gap:12px}.vf-home-next button{grid-column:1/-1;justify-self:start}}
 @media(max-width:620px){.vf-home-overview{grid-template-columns:1fr}.vf-home-overview article{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px}.vf-home-overview article>div{grid-column:1}.vf-home-overview article>strong{grid-column:2;grid-row:1/3}.vf-home-overview article>small{grid-column:1;min-height:0}.vf-home-overview article button{grid-column:1/-1;min-height:36px}.vf-home-next{padding:18px}.vf-home-integrations{display:grid;grid-template-columns:42px minmax(0,1fr)}.vf-home-integrations>button{grid-column:2;justify-self:start}}
