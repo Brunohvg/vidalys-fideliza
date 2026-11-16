@@ -1,0 +1,42 @@
+/* Participant loyalty experience — independent from the merchant dashboard. */
+.loyalty-club{font-family:Manrope,Inter,sans-serif;--loyalty-page:#F8F9FF;--loyalty-line:#E4DFF2;--loyalty-text:#3B1E82;background:radial-gradient(circle at 12% 0%,#EDE7FF,transparent 40%),#F8F9FF;color:#3B1E82}
+.loyalty-club .member-club-top{min-height:77px;background:#FFFFFFED;border-bottom:1px solid #E4DFF2;backdrop-filter:blur(12px)}
+.loyalty-club .member-club-brand strong{color:#3B1E82;font-size:16px;letter-spacing:-.025em}
+.loyalty-club .member-club-brand small{color:#766A89}
+.loyalty-club .member-club-main{max-width:1180px;gap:22px;padding-top:35px}
+.loyalty-club .member-club-guest{grid-template-columns:minmax(0,1.14fr) minmax(330px,.86fr);gap:19px}
+.loyalty-club .member-club-hero-guest{min-height:490px;padding:clamp(29px,4vw,47px);border-radius:29px;background:radial-gradient(circle at 90% 90%,#FFC85733,transparent 40%),linear-gradient(128deg,#3B1E82,#6A3DF0);box-shadow:0 22px 55px #3B1E8223;position:relative;overflow:hidden}
+.loyalty-club .member-club-hero-guest::after{content:"";position:absolute;inset:auto -30px -100px auto;width:300px;height:260px;border-radius:50%;background:radial-gradient(circle,#FFC8573F,transparent 70%);pointer-events:none}
+.loyalty-club .member-club-hero-decoration{right:-13px;bottom:-28px;opacity:.21;transform:rotate(-8deg);width:200px;height:200px}
+.loyalty-club .member-club-hero-decoration img{display:block;width:100%;height:auto;object-fit:contain}
+.loyalty-club .member-club-hero-guest .member-club-eyebrow{color:#FFE5AA;font-size:10px;letter-spacing:.12em}
+.loyalty-club .member-club-hero-guest h1{font-weight:850;line-height:1.13;letter-spacing:-.05em;max-width:14ch}
+.loyalty-club .member-club-hero-guest h1 em{font-style:normal;color:#FFC857;text-decoration:none}
+.loyalty-club .member-club-hero-guest p{font-size:14px;color:#F0E7FF;line-height:1.68;max-width:48ch}
+.loyalty-club .member-club-highlights{gap:12px 19px}
+.loyalty-club .member-club-highlights span{font-size:11px;color:#F2E9FF}
+.loyalty-club .member-club-hero-join{display:inline-flex;background:#FFC857;color:#3B1E82;box-shadow:0 10px 25px #25114D38;padding:12px 22px;min-height:48px;border-radius:12px}
+.loyalty-club .member-club-hero-signin{color:#FFFFFF;font-size:12px}
+.loyalty-club .member-club-panel{border-radius:25px;border:1px solid #E4DFF2;box-shadow:0 14px 45px #3B1E8210}
+.loyalty-club .member-club-entry{display:flex;flex-direction:column;justify-content:center;padding:clamp(24px,3vw,35px)}
+.loyalty-club .member-club-entry h2{color:#3B1E82;font-size:clamp(24px,2.5vw,32px);letter-spacing:-.035em}
+.loyalty-club .member-club-entry>p{color:#6B607E;font-size:13px;line-height:1.7}
+.loyalty-club .member-club-login label{color:#3B1E82;font-size:12px;font-weight:800}
+.loyalty-club .member-club-login input{border-radius:12px;background:#fff;border:1px solid #D6C8EF;min-height:48px;font-size:15px}
+.loyalty-club .member-club-button{border-radius:12px;background:linear-gradient(115deg,#8B43F6,#5926C6);box-shadow:0 10px 22px #6A3DF033;min-height:49px;font-weight:800}
+.loyalty-club .member-club-join{color:#766A89}
+.loyalty-club .member-club-join a{color:#6A3DF0}
+.loyalty-club .member-club-guest-benefits{background:#fff;border:1px solid #E4DFF2;box-shadow:0 12px 40px #3B1E8210;border-radius:25px;padding:clamp(24px,3.1vw,35px)}
+.loyalty-club .member-club-guest-benefits-head h2{color:#3B1E82;font-size:clamp(24px,3vw,35px)}
+.loyalty-club .member-club-kicker{color:#6A3DF0}
+.loyalty-club .member-club-benefit-card{border-radius:18px;background:linear-gradient(135deg,#FBF8FF,#F6F0FF);border:1px solid #E4DFF2;padding:24px}
+.loyalty-club .member-club-benefit-amount{color:#935400}
+.loyalty-club .member-club-guest-perk-icon{background:#EDE7FF;color:#6A3DF0}
+.loyalty-club .member-club-steps>div{border:1px solid #E4DFF2;background:#FAF8FF;border-radius:14px}
+.loyalty-club .member-club-info{background:#fff}
+.loyalty-club .member-club-logout{border:1px solid #E4DFF2;color:#3B1E82;background:#fff}
+.loyalty-club .member-club-hero-account{background:linear-gradient(115deg,#3B1E82,#6A3DF0);border-radius:24px}
+.loyalty-club :is(button,a,input,summary):focus-visible{outline:3px solid #AF91F9;outline-offset:3px}
+@media(max-width:900px){.loyalty-club .member-club-guest{grid-template-columns:1fr}.loyalty-club .member-club-hero-guest{min-height:365px}.loyalty-club .member-club-main{padding:22px 17px 35px}}
+@media(max-width:580px){.loyalty-club .member-club-hero-guest{padding:27px 23px;min-height:350px;border-radius:21px}.loyalty-club .member-club-hero-guest h1{font-size:clamp(30px,8vw,40px)}.loyalty-club .member-club-hero-decoration{width:145px;height:145px;right:-5px;bottom:-8px}.loyalty-club .member-club-entry{padding:25px 21px}.loyalty-club .member-club-guest-benefits{padding:25px 18px;border-radius:20px}.loyalty-club .member-club-benefit-card{padding:19px}.loyalty-club .member-club-top{min-height:67px}}
+@media(prefers-reduced-motion:no-preference){.loyalty-club .member-club-benefit-card{transition:transform .22s,box-shadow .22s}.loyalty-club .member-club-benefit-card:hover{transform:translateY(-2px);box-shadow:0 18px 36px #3B1E8214}}
