@@ -35,6 +35,13 @@ for(const stylesheet of ["src/fideliza-theme.css","src/brand-experience.css"]){
  if(/:root\\s*\\{/.test(stylesheetText))
   issues.push(stylesheet+" redeclares global :root design tokens");
 }
+const forbiddenTokens=/--(?:vf-mint(?:-soft)?|mk-jade(?:-hover)?|mk-mint)\\b/g;
+const srcDirectory=path.join(root,"src");
+for(const file of fs.readdirSync(srcDirectory).filter(name=>/\\.(?:ts|tsx|css)$/.test(name))){
+ const content=fs.readFileSync(path.join(srcDirectory,file),"utf8");
+ const tokens=[...content.matchAll(forbiddenTokens)].map(match=>match[0]);
+ if(tokens.length)issues.push(file+" retains obsolete brand tokens: "+[...new Set(tokens)].join(", "));
+}
 if(issues.length){
  console.error("Brand guard failed:\n"+issues.map(x=>"- "+x).join("\n"));
  process.exit(1);
