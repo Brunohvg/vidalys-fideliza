@@ -2,9 +2,9 @@
 .loyalty-dashboard{display:grid;gap:22px;min-width:0;font-family:Manrope,Inter,sans-serif;color:#3B1E82}
 .loyalty-dashboard *{box-sizing:border-box}
 .loyalty-dashboard-intro{display:flex;align-items:center;justify-content:space-between;gap:30px;border-radius:25px;padding:35px clamp(23px,3vw,43px);background:radial-gradient(circle at 84% 13%,#AD7AFF60,transparent 36%),linear-gradient(120deg,#3B1E82,#6A3DF0);color:white;min-width:0;box-shadow:0 18px 45px #3B1E8223}
-.loyalty-dashboard-eyebrow{font-size:10px;letter-spacing:.115em;font-weight:850;line-height:1.5}
+.loyalty-dashboard-eyebrow{font-size:10px;letter-spacing:.115em;font-weight:800;line-height:1.5}
 .loyalty-dashboard-intro .loyalty-dashboard-eyebrow{color:#EEDCFF}
-.loyalty-dashboard-intro h2{font:850 clamp(25px,2.8vw,39px)/1.16 Manrope,Inter,sans-serif;letter-spacing:-.045em;margin:11px 0 10px;color:#fff}
+.loyalty-dashboard-intro h2{font:800 clamp(25px,2.8vw,39px)/1.16 Manrope,Inter,sans-serif;letter-spacing:-.045em;margin:11px 0 10px;color:#fff}
 .loyalty-dashboard-intro p{font-size:13px;line-height:1.7;color:#EDE7FF;max-width:64ch;margin:0}
 .loyalty-dashboard-intro-icon{display:grid;place-items:center;flex:none;width:105px;height:105px;border-radius:29px;transform:rotate(-8deg);color:#FFC857;border:1px solid #D8BFFB80;background:#FFFFFF1C}
 .loyalty-dashboard-warning{border:1px solid #EFD8A1;color:#755012;background:#FFF6E4;padding:14px 17px;border-radius:13px;font-size:12px;margin:0}
@@ -15,9 +15,9 @@
 .loyalty-dashboard-metric:nth-child(2) .loyalty-dashboard-metric-top>span{background:#FFF2E6;color:#C05C24}
 .loyalty-dashboard-metric:nth-child(3) .loyalty-dashboard-metric-top>span{background:#FFF7DC;color:#8F5200}
 .loyalty-dashboard-metric-top small{font-size:12px;font-weight:800;color:#665D7A}
-.loyalty-dashboard-metric>strong{font:850 clamp(32px,4vw,52px)/1.1 Manrope,Inter,sans-serif;color:#3B1E82;margin-top:22px;font-variant-numeric:tabular-nums}
+.loyalty-dashboard-metric>strong{font:800 clamp(32px,4vw,52px)/1.1 Manrope,Inter,sans-serif;color:#3B1E82;margin-top:22px;font-variant-numeric:tabular-nums}
 .loyalty-dashboard-metric>p{color:#665D7A;font-size:11px;line-height:1.6;margin:7px 0 17px;flex:1}
-.loyalty-dashboard-metric>button{border:0;background:transparent;padding:5px 0;color:#6A3DF0;font-size:12px;font-weight:850;display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:36px}
+.loyalty-dashboard-metric>button{border:0;background:transparent;padding:5px 0;color:#6A3DF0;font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:36px}
 .loyalty-dashboard-columns{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,.7fr);gap:18px}
 .loyalty-dashboard-next,.loyalty-dashboard-connection{display:flex;flex-direction:column;align-items:flex-start;min-width:0;min-height:240px;border-radius:23px;padding:29px;position:relative;overflow:hidden}
 .loyalty-dashboard-next{background:radial-gradient(circle at 95% 5%,#FFBD6650,transparent 38%),linear-gradient(130deg,#3B1E82,#6036C6);color:#fff}
@@ -25,14 +25,14 @@
 .loyalty-dashboard-next .loyalty-dashboard-eyebrow{color:#EDDEFF}
 .loyalty-dashboard-next h3{color:white;font-size:clamp(22px,2.4vw,29px);line-height:1.22;letter-spacing:-.035em;margin:7px 0}
 .loyalty-dashboard-next p{font-size:12px;line-height:1.7;max-width:54ch;color:#EDE7FF;margin:0 0 20px}
-.loyalty-dashboard-next button{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;background:#FFC857;color:#3B1E82;border-radius:12px;padding:12px 17px;min-height:44px;font-size:12px;font-weight:850;cursor:pointer;margin-top:auto}
+.loyalty-dashboard-next button{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;background:#FFC857;color:#3B1E82;border-radius:12px;padding:12px 17px;min-height:44px;font-size:12px;font-weight:800;cursor:pointer;margin-top:auto}
 .loyalty-dashboard-next button:disabled{opacity:.6;cursor:not-allowed}
 .loyalty-dashboard-connection{border:1px solid #E4DFF2;background:#fff;box-shadow:0 13px 36px #3B1E820D;color:#3B1E82}
 .loyalty-dashboard-connection-icon{display:grid;place-items:center;width:45px;height:45px;border-radius:14px;background:#EDE7FF;color:#6A3DF0;margin-bottom:13px}
 .loyalty-dashboard-connection .loyalty-dashboard-eyebrow{color:#6A3DF0}
 .loyalty-dashboard-connection h3{font-size:23px;margin:7px 0}
 .loyalty-dashboard-connection p{font-size:12px;line-height:1.65;color:#665D7A;margin:0 0 20px}
-.loyalty-dashboard-connection button{display:inline-flex;align-items:center;gap:9px;color:#6A3DF0;background:none;border:0;padding:0;min-height:37px;font-size:12px;font-weight:850;cursor:pointer;margin-top:auto}
+.loyalty-dashboard-connection button{display:inline-flex;align-items:center;gap:9px;color:#6A3DF0;background:none;border:0;padding:0;min-height:37px;font-size:12px;font-weight:800;cursor:pointer;margin-top:auto}
 .loyalty-dashboard-disclosure{display:flex;align-items:flex-start;gap:10px;font-size:11px;line-height:1.7;color:#766B86;margin:0;padding:8px 3px}
 .loyalty-dashboard-disclosure svg{flex:none}
 .loyalty-dashboard button:focus-visible{outline:3px solid #A98AF5;outline-offset:3px}
