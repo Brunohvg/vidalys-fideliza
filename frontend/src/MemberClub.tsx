@@ -107,8 +107,8 @@ export default function MemberClub(){
     finally{setBusy(false)}
   };
 
-  const color=club?.branding.primary_color || "#087F79";
-  const accent=club?.branding.accent_color || "#37D5BB";
+  const color=club?.branding.primary_color || "#6A3DF0";
+  const accent=club?.branding.accent_color || "#FF8A3D";
   const standardPalette=color.toLowerCase()==="#087f79" && accent.toLowerCase()==="#37d5bb";
   const heroStyle=standardPalette
     ?{background:"linear-gradient(122deg,#10253E 0%,#0B575A 62%,#087F79 100%)",color:"#FFFFFF"}
