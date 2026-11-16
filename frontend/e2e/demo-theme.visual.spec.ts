@@ -9,9 +9,9 @@ for(const width of [390,768,1440]){
     await expect(page.getByText("DADOS FICTÍCIOS")).toBeVisible();
     await expect(page.getByText("DEMO VISUAL · IDENTIDADE FIDELIZA")).toBeAttached();
     await expect(page.getByRole("link",{name:"Voltar ao Fideliza"})).toHaveAttribute("href","/");
-    await expect(page.locator(".layout .sidebar")).toHaveCSS("background-color","rgb(59, 30, 130)");
-    await expect(page.locator(".layout .button-primary").first())
-      .toHaveCSS("background-color","rgb(106, 61, 240)");
+    await expect(page.locator(".loyalty-demo .sidebar")).toHaveCSS("background-image",/linear-gradient/);
+    await expect(page.locator(".loyalty-demo .button-primary").first())
+      .toHaveCSS("background-image",/linear-gradient/);
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
     await page.screenshot({path:info.outputPath("demo-v2-"+width+".png"),fullPage:true});
