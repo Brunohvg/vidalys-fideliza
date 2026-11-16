@@ -17,6 +17,7 @@ import "./demo-theme.css";
 import "./brand-experience.css";
 import "./merchant-shell.css";
 import "./merchant-pages.css";
+import "./member-experience.css";
 
 const entry = entryRoute(window.location.pathname);
 const content = (() => {
