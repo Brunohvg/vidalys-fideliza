@@ -1,7 +1,7 @@
 /*
  * Vidalys Fideliza / Loyalty Experience v2
- * Uma linguagem única: segurança (navy), relacionamento (jade),
- * progresso (mint) e recompensa (gold). Não é o tema do lojista.
+ * Identidade: violeta (relacionamento), lilás (superfícies), laranja (destaques)
+ * e dourado (recompensas). Estados funcionais mantêm cores semânticas.
  * Escopo: painel Vidalys; widget da vitrine deve herdar a marca da loja.
  */
 :root {
@@ -27,7 +27,7 @@
   --vf-radius-sm: 10px;
   --vf-radius-md: 16px;
   --vf-radius-lg: 22px;
-  --vf-shadow-card: 0 14px 40px rgba(16,37,62,.055);
+  --vf-shadow-card: 0 14px 40px rgba(59,30,130,.055);
   --vf-font: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --vf-font-display: "Manrope", "Inter", system-ui, sans-serif;
 }
@@ -54,12 +54,12 @@ button,select,textarea,input {font-family:inherit}
   color:var(--vf-primary-contrast);
   min-height:46px;
   padding-inline:20px;
-  box-shadow:0 6px 14px rgba(8,127,121,.12);
+  box-shadow:0 6px 14px rgba(106,61,240,.12);
   transition:background-color .16s ease,transform .16s ease,box-shadow .16s ease;
 }
 .portal-primary:hover:not(:disabled) {
   background:var(--vf-primary-hover);
-  box-shadow:0 8px 18px rgba(8,127,121,.18);
+  box-shadow:0 8px 18px rgba(106,61,240,.18);
 }
 .portal-primary:disabled {box-shadow:none}
 .portal-eyebrow {color:var(--vf-primary);letter-spacing:.115em}
@@ -70,7 +70,7 @@ button,select,textarea,input {font-family:inherit}
   color:var(--vf-ink);
 }
 .portal-side {
-  background:radial-gradient(circle at 100% 0%,rgba(55,213,187,.095),transparent 48%),#3B1E82;
+  background:radial-gradient(circle at 100% 0%,rgba(175,131,255,.095),transparent 48%),#3B1E82;
   border-right:1px solid #274458;
   width:264px;
   padding-top:29px;
@@ -93,9 +93,9 @@ button,select,textarea,input {font-family:inherit}
   font-size:12.5px;
   font-weight:650;
 }
-.portal-nav button:hover {background:rgba(55,213,187,.12);color:#FFFFFF}
+.portal-nav button:hover {background:rgba(175,131,255,.12);color:#FFFFFF}
 .portal-nav button.is-active {
-  background:rgba(55,213,187,.15);
+  background:rgba(175,131,255,.15);
   box-shadow:inset 3px 0 var(--vf-mint);
   color:#FFFFFF;
 }
@@ -155,7 +155,7 @@ button,select,textarea,input {font-family:inherit}
 .xp-action-center,.xp-campaign,.experience-page {gap:19px}
 .xp-action-banner,.xp-hero,.reconcile-hero,.cost-hero,.campaign-hero {
   background:
-    radial-gradient(circle at 85% 14%,rgba(55,213,187,.17),transparent 35%),
+    radial-gradient(circle at 85% 14%,rgba(175,131,255,.17),transparent 35%),
     linear-gradient(120deg,#3B1E82 0%,#512AA4 58%,#6A3DF0 100%);
   border-color:#2B706B;
   border-radius:21px;
@@ -163,7 +163,7 @@ button,select,textarea,input {font-family:inherit}
 }
 .xp-action-banner::after,.xp-hero::after,.reconcile-hero::after {
   border-color:rgba(175,242,224,.27);
-  box-shadow:0 0 0 55px rgba(55,213,187,.08),0 0 0 120px rgba(245,186,81,.045);
+  box-shadow:0 0 0 55px rgba(175,131,255,.08),0 0 0 120px rgba(255,200,87,.045);
 }
 .xp-eyebrow,.reconcile-kicker,.campaign-eyebrow,.cost-eyebrow {color:#AEF3E5}
 .xp-action-banner h2,.xp-hero h2 {line-height:1.16;letter-spacing:-.05em}
@@ -188,11 +188,11 @@ button,select,textarea,input {font-family:inherit}
   background:#FFFFFF;
   border:1px solid #DFEAE9;
   border-radius:16px;
-  box-shadow:0 7px 19px rgba(16,37,62,.035);
+  box-shadow:0 7px 19px rgba(59,30,130,.035);
   padding:22px;
   transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
 }
-.xp-action-card:hover {transform:translateY(-3px);box-shadow:0 15px 27px rgba(16,37,62,.09);border-color:#B9DFD8}
+.xp-action-card:hover {transform:translateY(-3px);box-shadow:0 15px 27px rgba(59,30,130,.09);border-color:#CFC1F2}
 .xp-action-card h3 {color:var(--vf-ink);font-size:17px}
 .xp-action-card p {color:var(--vf-muted)}
 .xp-action-number {color:#687E8B}
@@ -243,7 +243,7 @@ button,select,textarea,input {font-family:inherit}
 .xp-wizard-step.is-complete {color:var(--vf-success)}
 .xp-wizard-step.is-complete>span {background:#D9F3E6;color:var(--vf-success)}
 .xp-goal-card {border-color:var(--vf-border);background:#FFFFFF;border-radius:15px}
-.xp-goal-card.selected {border-color:var(--vf-primary);background:#F2FBF8;box-shadow:0 0 0 2px rgba(8,127,121,.10)}
+.xp-goal-card.selected {border-color:var(--vf-primary);background:#F8F4FF;box-shadow:0 0 0 2px rgba(106,61,240,.10)}
 .xp-goal-icon {background:var(--vf-mint-soft);color:var(--vf-primary)}
 .xp-goal-card:nth-child(2) .xp-goal-icon {background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
 .xp-goal-card:nth-child(3) .xp-goal-icon {background:var(--vf-info-soft);color:var(--vf-info)}
@@ -280,10 +280,10 @@ button,select,textarea,input {font-family:inherit}
 .reconcile-bar i.ok {background:var(--vf-primary)}
 .portal-auth-layout {background:var(--vf-canvas)}
 .portal-auth-brand {
-  background:radial-gradient(circle at 18% 0%,rgba(55,213,187,.15),transparent 44%),
+  background:radial-gradient(circle at 18% 0%,rgba(175,131,255,.15),transparent 44%),
     linear-gradient(145deg,#3B1E82,#24113F 95%);
 }
-.portal-auth-brand::after {border-color:rgba(55,213,187,.36);box-shadow:0 0 0 65px rgba(55,213,187,.06),0 0 0 150px rgba(245,186,81,.05)}
+.portal-auth-brand::after {border-color:rgba(175,131,255,.36);box-shadow:0 0 0 65px rgba(175,131,255,.06),0 0 0 150px rgba(255,200,87,.05)}
 .portal-auth-text h1 em {color:#B1F2DF}
 .portal-auth-text>p {color:#D1E6E7}
 .portal-auth-features svg {color:var(--vf-mint)}
@@ -294,7 +294,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-login-icon {background:var(--vf-mint-soft);color:var(--vf-primary)}
 .portal-login-card label {color:var(--vf-ink-soft)}
 .portal-login-card input {border-color:var(--vf-border)}
-.portal-login-card input:focus {outline:3px solid rgba(8,127,121,.18);border-color:var(--vf-primary)}
+.portal-login-card input:focus {outline:3px solid rgba(106,61,240,.18);border-color:var(--vf-primary)}
 .portal-login-help {background:#F3F9F7;color:var(--vf-muted)}
 .portal-login-help svg {color:var(--vf-primary)}
 .portal-demo-link {color:var(--vf-primary)}
@@ -370,7 +370,7 @@ button,select,textarea,input {font-family:inherit}
   border-radius:29px;
   padding:15px;
   background:#FFFFFF;
-  box-shadow:0 18px 42px rgba(16,37,62,.16);
+  box-shadow:0 18px 42px rgba(59,30,130,.16);
 }
 .vf-phone-top {
   display:flex;align-items:center;justify-content:space-between;
@@ -380,7 +380,7 @@ button,select,textarea,input {font-family:inherit}
 .vf-phone-dot{width:9px;height:9px;background:var(--vf-mint);border-radius:50%}
 .vf-wallet-card{
   color:white;
-  background:radial-gradient(circle at 90% 0%,rgba(245,186,81,.19),transparent 45%),
+  background:radial-gradient(circle at 90% 0%,rgba(255,200,87,.19),transparent 45%),
     linear-gradient(135deg,#13394A,#0A746D);
   border-radius:18px;padding:18px 17px 17px;
   min-height:188px;
@@ -464,7 +464,7 @@ button,select,textarea,input {font-family:inherit}
   outline-offset:2px;
 }
 .portal-nav button:focus-visible {
-  background:rgba(55,213,187,.18);
+  background:rgba(175,131,255,.18);
   color:#FFFFFF;
 }
 .portal-footer {
