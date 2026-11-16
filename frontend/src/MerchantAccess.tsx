@@ -19,7 +19,7 @@ const viewPath:Record<View,string>={
 
 function Brand(){
   return <div className="merchant-brand">
-    <span className="merchant-logo" aria-hidden="true">V</span>
+    <img className="merchant-logo" src="/brand-mark.svg" alt="" width={52} height={52} />
     <span className="merchant-wordmark">vidalys<span>fideliza</span></span>
   </div>;
 }
