@@ -45,10 +45,10 @@ for (const width of [390,768,1440]){
           mainArea:document.querySelector(".portal-main")?.getBoundingClientRect().left
         };
       });
-      expect(palette.primary).toBe("#087F79");
-      expect(palette.mint).toBe("#37D5BB");
-      expect(palette.gold).toBe("#F5BA51");
-      expect(palette.navy).toBe("#10253E");
+      expect(palette.primary).toBe("#6A3DF0");
+      expect(palette.mint).toBe("#FF8A3D");
+      expect(palette.gold).toBe("#FFC857");
+      expect(palette.navy).toBe("#3B1E82");
       expect(palette.displayFont).toContain("Manrope");
       expect(palette.overflow).toBeLessThanOrEqual(1);
       if(width<=1020) expect(palette.mainArea).toBeLessThanOrEqual(1);
