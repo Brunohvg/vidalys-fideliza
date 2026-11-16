@@ -21,7 +21,7 @@
 .mk-logo em{font-style:normal;color:var(--mk-jade);margin-left:4px}
 .mk-nav{display:flex;align-items:center;gap:4px}
 .mk-nav a{padding:12px 14px;border-radius:11px;font-size:14px;font-weight:750;color:#40546A;min-height:44px;display:inline-flex;align-items:center}
-.mk-nav a:hover,.mk-nav a[aria-current="page"]{background:#EDE7FF;color:#0A6965}
+.mk-nav a:hover,.mk-nav a[aria-current="page"]{background:#EDE7FF;color:#542CCB}
 .mk-header-actions{display:flex;align-items:center;gap:14px;white-space:nowrap}
 .mk-signin{font-size:14px;font-weight:750;padding:10px 4px}
 .mk-head-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 17px;min-height:46px;border-radius:11px;background:var(--mk-jade);color:#fff!important;font-size:14px;font-weight:800;box-shadow:0 9px 20px rgba(8,127,121,.16)}
@@ -42,7 +42,7 @@
 .mk-button-quiet:hover{background:rgba(255,255,255,.10)}
 .mk-honesty{display:flex;align-items:flex-start;gap:10px;color:#C9E2E0;font-size:12px;max-width:530px;line-height:1.6}
 .mk-honesty svg{flex:none;margin-top:1px}
-.mk-demo{background:#fff;border:1px solid #D8E9E5;border-radius:24px;padding:27px;color:var(--mk-ink);box-shadow:0 28px 80px rgba(0,0,0,.2);transform:rotate(2deg);max-width:500px;width:100%;justify-self:center;min-width:0}
+.mk-demo{background:#fff;border:1px solid #E4DFF2;border-radius:24px;padding:27px;color:var(--mk-ink);box-shadow:0 28px 80px rgba(0,0,0,.2);transform:rotate(2deg);max-width:500px;width:100%;justify-self:center;min-width:0}
 .mk-demo-ribbon{font-size:10px;letter-spacing:.1em;color:#6B7789;font-weight:800;background:#F3F5F8;border-radius:8px;padding:8px;text-align:center}
 .mk-demo-header{display:flex;align-items:center;gap:12px;padding:22px 0 18px}
 .mk-demo-avatar{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:var(--mk-jade);color:#fff}
@@ -79,7 +79,7 @@
 .mk-showcase-stack strong,.mk-showcase-stack small{display:block}
 .mk-showcase-stack strong{font-weight:800}
 .mk-showcase-stack small{font-size:12px;color:var(--mk-muted);line-height:1.55;margin-top:3px}
-.mk-cta-panel{width:min(1194px,calc(100% - 44px));margin:65px auto;background:linear-gradient(115deg,#3B1E82,#114D50);padding:clamp(30px,5vw,58px);color:#fff;border-radius:23px;display:flex;align-items:center;justify-content:space-between;gap:30px}
+.mk-cta-panel{width:min(1194px,calc(100% - 44px));margin:65px auto;background:linear-gradient(115deg,#3B1E82,#6A3DF0);padding:clamp(30px,5vw,58px);color:#fff;border-radius:23px;display:flex;align-items:center;justify-content:space-between;gap:30px}
 .mk-cta-panel p{color:#D2E4E0}
 .mk-cta-panel .mk-button-main{background:var(--mk-mint);color:#3B1E82!important;white-space:nowrap}
 .mk-cta-panel .mk-eyebrow{color:var(--mk-mint)}
@@ -97,7 +97,7 @@
 .mk-state-interface{color:#176E53;background:#E5F7EE}
 .mk-state-homologacao{color:#8B5813;background:#FFF2D9}
 .mk-state-planejado{color:#526071;background:#EFF2F6}
-.mk-disclosure{margin-top:31px;display:flex;align-items:flex-start;gap:14px;padding:22px;background:#EDE7FF;color:#244F48;border-radius:16px}
+.mk-disclosure{margin-top:31px;display:flex;align-items:flex-start;gap:14px;padding:22px;background:#EDE7FF;color:#513595;border-radius:16px}
 .mk-disclosure svg{flex:none;margin-top:3px}
 .mk-disclosure p{margin:0;font-size:14px;line-height:1.7}
 .mk-segment-example{display:flex;gap:10px;align-items:flex-start;background:#FFF8EB;color:#6B5531;border:1px solid #EFDDB9;border-radius:12px;padding:13px;font-size:13px;line-height:1.6;margin-top:auto}
@@ -105,7 +105,7 @@
 .mk-segment .mk-text-link{margin-top:19px}
 .mk-disclaimer{color:var(--mk-muted);font-size:12px;line-height:1.7;margin:28px 0 0}
 .mk-integration-intro{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.mk-integration-intro>div{padding:28px;border-radius:19px;background:#F1FAF7;border:1px solid #D4EAE2}
+.mk-integration-intro>div{padding:28px;border-radius:19px;background:#F3EEFF;border:1px solid #D4EAE2}
 .mk-integration-intro>div:nth-child(2){background:#F3F6FD;border-color:#DBE4F4}
 .mk-integration-intro>div>span{display:grid;place-items:center;width:49px;height:49px;background:#fff;color:var(--mk-jade);border-radius:14px}
 .mk-integration-intro h2{font:800 22px Manrope,Inter,sans-serif;margin:15px 0 8px}
