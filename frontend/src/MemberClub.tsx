@@ -109,10 +109,8 @@ export default function MemberClub(){
 
   const color=club?.branding.primary_color || "#6A3DF0";
   const accent=club?.branding.accent_color || "#FF8A3D";
-  const standardPalette=color.toLowerCase()==="#087f79" && accent.toLowerCase()==="#37d5bb";
-  const heroStyle=standardPalette
-    ?{background:"linear-gradient(122deg,#10253E 0%,#0B575A 62%,#087F79 100%)",color:"#FFFFFF"}
-    :{background:color,color:readableForeground(color)};
+  // A marca Vidalys estrutura o clube. As cores da loja ficam em detalhes configuráveis.
+  const heroStyle={background:"linear-gradient(125deg,#3B1E82 0%,#542CCB 68%,#6A3DF0 100%)",color:"#FFFFFF"};
   const clubStyle={
     "--mc-primary":color,
     "--mc-primary-text":readableForeground(color),
@@ -136,8 +134,8 @@ export default function MemberClub(){
 
   return <div className="member-club-shell" style={clubStyle}>
     <header className="member-club-top">
-      <div className="member-club-mark" style={{background:accent,color:readableForeground(accent)}}>
-        <HeartHandshake size={23}/>
+      <div className="member-club-mark">
+        <img src="/brand-mark.svg" alt="" width={42} height={42}/>
       </div>
       <div className="member-club-brand">
         <strong>{program}</strong><small>O clube da sua loja</small>
@@ -241,7 +239,7 @@ export default function MemberClub(){
       </section>}
       {!loading&&me&&<div className="member-club-account">
         <section className="member-club-hero member-club-hero-account"
-          style={{background:color,color:readableForeground(color)}}>
+          style={heroStyle}>
           <span className="member-club-eyebrow"><BadgeCheck size={15}/> MEU CLUBE</span>
           <h1>Olá, {firstName}!</h1>
           <span className="member-club-hero-note"><CheckCircle2 size={15}/> {state}</span>
