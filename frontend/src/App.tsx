@@ -82,7 +82,7 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="topbar-left"><button className="open-mobile" aria-label="Abrir menu" onClick={() => setDrawer(true)}><Menu size={22}/></button><span>Vidalys Fideliza</span><span className="slash">/</span><b>{title}</b></div>
-        <div className="topbar-right"><a className="demo-return" href="/">Ver site oficial <ArrowRight size={15}/></a><span className="sample-pill"><span/> DADOS FICTÍCIOS</span><button className="profile" title="Informações do protótipo" onClick={() => setInfo(true)}>VF</button></div>
+        <div className="topbar-right"><a className="demo-return" href="/">Voltar ao Fideliza <ArrowRight size={15}/></a><span className="sample-pill"><span/> DADOS FICTÍCIOS</span><button className="profile" title="Informações do protótipo" onClick={() => setInfo(true)}>VF</button></div>
       </header>
       <div className="content">
         <div className="intro">
