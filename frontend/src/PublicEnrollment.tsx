@@ -84,7 +84,7 @@ export default function PublicEnrollment(){
     <div className="public-enroll-layout">
       <section className="public-enroll-story" aria-label="Conheça seu clube de vantagens">
         <div className="public-enroll-story-brand">
-          <span aria-hidden="true"><HeartHandshake size={25}/></span>
+          <span aria-hidden="true"><img src="/brand-mark.svg" width={46} height={46} alt=""/></span>
           <div><strong>{publicTitle}</strong><small>Uma experiência de {preview?.store_name||"sua loja"}</small></div>
         </div>
         <div className="public-enroll-story-intro">
@@ -103,7 +103,7 @@ export default function PublicEnrollment(){
         <p className="public-enroll-story-note"><ShieldCheck size={18}/> A solicitação é gratuita. Pontos e descontos dependem da ativação do programa.</p>
       </section>
       <main className="public-enroll-card">
-      <div className="public-enroll-brand"><span style={{background:accent,color:readableForeground(accent)}}><HeartHandshake size={25}/></span>
+      <div className="public-enroll-brand"><span><img src="/brand-mark.svg" width={42} height={42} alt=""/></span>
         <div><strong>{publicTitle}</strong><small>Seu clube de vantagens</small></div></div>
       {loading && <div role="status" className="public-enroll-state">Validando convite seguro…</div>}
       {!loading && result && <div className="public-enroll-done" role="status">
@@ -161,7 +161,7 @@ export default function PublicEnrollment(){
               onChange={e=>setMarketing(e.target.checked)}/>
             <span>Também aceito receber comunicações promocionais. Esta escolha é opcional e independente da adesão.</span>
           </label>
-          <button className="public-enroll-submit" type="submit" style={{background:primary,color:readableForeground(primary)}} disabled={!accepted||busy}>
+          <button className="public-enroll-submit" type="submit" disabled={!accepted||busy}>
             {busy?"Registrando…":"Quero participar"} <ArrowRight size={17}/>
           </button>
           <div className="public-enroll-warning"><LockKeyhole size={16}/>
