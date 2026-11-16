@@ -4,33 +4,7 @@
  * e dourado (recompensas). Estados funcionais mantêm cores semânticas.
  * Escopo: painel Vidalys; widget da vitrine deve herdar a marca da loja.
  */
-:root {
-  --vf-ink: #3B1E82;
-  --vf-ink-soft: #513595;
-  --vf-primary: #6A3DF0;
-  --vf-primary-hover: #542CCB;
-  --vf-primary-contrast: #FFFFFF;
-  --vf-mint: #FF8A3D;
-  --vf-mint-soft: #EDE7FF;
-  --vf-reward: #FFC857;
-  --vf-reward-ink: #8F5200;
-  --vf-reward-soft: #FFF5E5;
-  --vf-info: #6A3DF0;
-  --vf-info-soft: #F3EEFF;
-  --vf-canvas: #F8F9FF;
-  --vf-surface: #FFFFFF;
-  --vf-border: #E4DFF2;
-  --vf-muted: #665D7A;
-  --vf-success: #167A56;
-  --vf-warning: #8F5200;
-  --vf-danger: #AD334B;
-  --vf-radius-sm: 10px;
-  --vf-radius-md: 16px;
-  --vf-radius-lg: 22px;
-  --vf-shadow-card: 0 14px 40px rgba(59,30,130,.055);
-  --vf-font: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --vf-font-display: "Manrope", "Inter", system-ui, sans-serif;
-}
+
 html {color-scheme: light}
 body {background:var(--vf-canvas);color:var(--vf-ink)}
 button,select,textarea,input {font-family:inherit}
@@ -322,7 +296,6 @@ button,select,textarea,input {font-family:inherit}
   .portal-primary,.xp-action-card,.xp-goal-card,.xp-action-link {transition:none!important;transform:none!important}
 }
 
-
 /* Preview de recompensa: componente de visualização apenas, não carteira real. */
 .vf-reward-preview {
   display:grid;
@@ -398,7 +371,6 @@ button,select,textarea,input {font-family:inherit}
 @media(max-width:900px){.vf-reward-preview{grid-template-columns:1fr;gap:23px}.vf-phone-frame{justify-self:start}}
 @media(max-width:520px){.vf-reward-preview{padding:20px}.vf-phone-frame{justify-self:center;width:min(100%,286px)}}
 
-
 /* Legibilidade primeiro: o antigo protótipo usava textos auxiliares de 10–11px. */
 .portal-content-head p {font-size:13.5px}
 .portal-nav button {font-size:13px}
@@ -416,7 +388,6 @@ button,select,textarea,input {font-family:inherit}
   .xp-wizard-step strong {font-size:11px}
   .xp-action-card p,.xp-ai-note p,.xp-guidance p {font-size:12.5px}
 }
-
 
 /* Sidebar: menos rolagem visual sem bloquear navegação por teclado/toque. */
 .portal-side {
@@ -448,7 +419,6 @@ button,select,textarea,input {font-family:inherit}
   /* O atalho é redundante com Campanhas; preservar todos os menus e Sair. */
   .portal-side-guide { display: none; }
 }
-
 
 /* Revisão visual R3 — consistência, foco, contraste e dispositivos reais. */
 .portal-shell,.portal-main,.portal-content,
@@ -522,7 +492,6 @@ button,select,textarea,input {font-family:inherit}
   .xp-action-banner,.xp-hero,.campaign-hero,.cost-hero {padding:21px 16px;}
   .xp-action-banner h2,.xp-hero h2 {font-size:25px;}
 }
-
 
 /* Jornada de implantação: status real sem confundir prévia com cashback ativo. */
 .xp-journey {
