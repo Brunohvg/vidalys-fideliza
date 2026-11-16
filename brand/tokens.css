@@ -1,6 +1,6 @@
 /* Vidalys Fideliza — Loyalty Experience v2
    Referência documental. Fonte executável: frontend/src/brand-tokens.css.
-   O widget para clientes herda o visual da loja parceira, NÃO estes estilos.
+   O widget de cada lojista mantém suas próprias cores quando configuradas.
 */
 :root {
   --vf-ink: #3B1E82;            /* confiança / navegação */
@@ -8,8 +8,8 @@
   --vf-primary: #6A3DF0;        /* ações / conexão / relacionamento */
   --vf-primary-hover: #542CCB;
   --vf-primary-contrast: #FFFFFF;
-  --vf-mint: #FF8A3D;           /* progresso (decoração sobre fundo escuro) */
-  --vf-mint-soft: #EDE7FF;
+  --vf-orange: #FF8A3D;         /* destaques e ações secundárias */
+  --vf-lavender: #EDE7FF;
   --vf-reward: #FFC857;         /* recompensa, nunca texto sobre branco */
   --vf-reward-ink: #8F5200;
   --vf-reward-soft: #FFF5E5;
