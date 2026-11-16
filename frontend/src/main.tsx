@@ -9,6 +9,7 @@ import EmailAction from "./EmailAction";
 import WithdrawalRequest from "./WithdrawalRequest";
 import MarketingSite from "./MarketingSite";
 import {entryRoute} from "./routes";
+import "./brand-tokens.css";
 import "./styles.css";
 import "./portal.css";
 import "./fideliza-theme.css";
