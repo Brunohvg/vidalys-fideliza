@@ -80,9 +80,9 @@ export default function PublicEnrollment(){
     "--join-accent-foreground":readableForeground(accent),
   } as CSSProperties;
 
-  return <div className="public-enroll-shell" style={brandStyle}>
+  return <div className="public-enroll-shell loyalty-enroll" style={brandStyle}>
     <div className="public-enroll-layout">
-      <section className="public-enroll-story" aria-label="Conheça seu clube de vantagens">
+      <section className="public-enroll-story" aria-label="Conheça seu clube de vantagens"><img className="loyalty-enroll-decoration" src="/loyalty-gift.svg" width={210} height={210} alt="" aria-hidden="true"/>
         <div className="public-enroll-story-brand">
           <span aria-hidden="true"><img src="/brand-mark.svg" width={46} height={46} alt=""/></span>
           <div><strong>{publicTitle}</strong><small>Uma experiência de {preview?.store_name||"sua loja"}</small></div>
