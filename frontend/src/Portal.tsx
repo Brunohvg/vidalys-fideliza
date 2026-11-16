@@ -237,9 +237,9 @@ export default function Portal() {
       busy={authBusy} authError={authError}/>;
   }
 
-  return <div className="portal-shell">
+  return <div className="portal-shell loyalty-merchant">
     <aside id="portal-sidebar" ref={sideRef} className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista" aria-hidden={compactMenu && !drawer}>
-      <div className="portal-side-brand"><Symbol small/><Wordmark/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
+      <div className="portal-side-brand"><img className="loyalty-merchant-logo" src="/brand-logo-white.svg" alt="Vidalys Fideliza" width={178} height={48}/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
       <div className="portal-store">
         <div className="portal-store-mark"><ShoppingBag size={18}/></div>
         <div><strong>{tenant?.name || "Nenhuma loja"}</strong><span>{tenant ? roleLabel[tenant.role] : "Sem vínculo"}</span></div>
