@@ -281,7 +281,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-auth-layout {background:var(--vf-canvas)}
 .portal-auth-brand {
   background:radial-gradient(circle at 18% 0%,rgba(55,213,187,.15),transparent 44%),
-    linear-gradient(145deg,#3B1E82,#0D4F52 95%);
+    linear-gradient(145deg,#3B1E82,#24113F 95%);
 }
 .portal-auth-brand::after {border-color:rgba(55,213,187,.36);box-shadow:0 0 0 65px rgba(55,213,187,.06),0 0 0 150px rgba(245,186,81,.05)}
 .portal-auth-text h1 em {color:#B1F2DF}
