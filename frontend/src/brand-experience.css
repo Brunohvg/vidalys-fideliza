@@ -67,21 +67,6 @@ html {scroll-behavior:smooth}
 .portal-shell :is(.portal-panel,.xp-stat,.xp-action-card):hover{box-shadow:0 18px 43px rgba(85,48,161,.11)}
 .portal-shell .portal-primary{box-shadow:0 8px 19px rgba(106,61,240,.18)}
 .portal-shell .portal-primary:hover:not(:disabled){box-shadow:0 13px 25px rgba(106,61,240,.22)}
-/* Demo: mesmos fundos e sinais de benefício, sem mudar dados fictícios. */
-.layout .sidebar {
-  background-color:#3B1E82;
-  background-image:radial-gradient(circle at 92% 9%,rgba(139,67,246,.28),transparent 55%);
-}
-.layout .sidebar-tip{background:linear-gradient(135deg,#4B258D,#30145D);border-color:#8960DA}
-.layout .card-feature,.layout .wallet-demo{
-  background:radial-gradient(circle at 96% 12%,rgba(255,200,87,.15),transparent 38%),linear-gradient(130deg,#3B1E82,#6A3DF0);
-  border-color:#7251BD;
-}
-.layout .button-primary{box-shadow:0 10px 22px rgba(106,61,240,.20)}
-.layout .stat-card,.layout .panel{box-shadow:var(--vf-glow);border-color:var(--vf-line)}
-.layout .stat-icon.cyan{background:#FFF0E5;color:#BC541B}
-.layout .chart .bar{background:#B79CF5}
-.layout .chart .bar-wrap:last-child .bar{background:linear-gradient(0deg,#6A3DF0,#FF8A3D)}
 /* Clube mobile: roxo + laranja como estrutura Vidalys; marca do lojista
    prevalece nos elementos que recebem cores dinamicamente por tenant. */
 .member-club-shell {
@@ -116,8 +101,7 @@ html {scroll-behavior:smooth}
   from{opacity:.55;transform:scale(.95)}
   to{opacity:1;transform:scale(1.07)}
 }
-@media(max-width:760px){
-}
+
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *,
@@ -130,6 +114,4 @@ html {scroll-behavior:smooth}
   }
 }
 
-/* Impede que a auréola ultrapasse a largura útil do telefone. */
-@media(max-width:580px){
-}
+
