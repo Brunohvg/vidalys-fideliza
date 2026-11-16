@@ -52,7 +52,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-side-brand {padding-bottom:27px}
 .portal-store {
   background:rgba(255,255,255,.06);
-  border-color:rgba(182,226,222,.17);
+  border-color:rgba(221,203,255,.17);
   padding:13px 12px;
   border-radius:14px;
 }
@@ -85,7 +85,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-nav-secondary button.is-active {color:#FFFFFF!important}
 .portal-side-guide {
   background:linear-gradient(145deg,#48277A,#35205A 78%);
-  border-color:rgba(167,245,229,.30);
+  border-color:rgba(221,203,255,.30);
   border-radius:16px;
   padding:21px 17px;
 }
@@ -133,10 +133,10 @@ button,select,textarea,input {font-family:inherit}
     linear-gradient(120deg,#3B1E82 0%,#512AA4 58%,#6A3DF0 100%);
   border-color:#513595;
   border-radius:21px;
-  box-shadow:0 15px 38px rgba(13,76,75,.11);
+  box-shadow:0 15px 38px rgba(59,30,130,.11);
 }
 .xp-action-banner::after,.xp-hero::after,.reconcile-hero::after {
-  border-color:rgba(175,242,224,.27);
+  border-color:rgba(221,203,255,.27);
   box-shadow:0 0 0 55px rgba(175,131,255,.08),0 0 0 120px rgba(255,200,87,.045);
 }
 .xp-eyebrow,.reconcile-kicker,.campaign-eyebrow,.cost-eyebrow {color:#DCCFF4}
@@ -144,12 +144,12 @@ button,select,textarea,input {font-family:inherit}
 .xp-action-banner h2 em,.xp-hero h2 em,.reconcile-hero h2 em {color:#DCCFF4}
 .xp-action-banner p,.xp-hero p,.reconcile-hero p {color:#F4ECFF}
 .xp-action-safe,.xp-hero-note,.reconcile-safe {
-  border-color:rgba(174,243,229,.31);
+  border-color:rgba(221,203,255,.31);
   background:rgba(255,255,255,.10);
   color:#F0E9FF;
 }
 .xp-action-decoration,.xp-hero-graphic,.reconcile-art {
-  border-color:rgba(173,241,224,.38);
+  border-color:rgba(221,203,255,.38);
   color:#F0E9FF;
   background:rgba(255,255,255,.10);
   transform:rotate(-5deg);
@@ -357,7 +357,7 @@ button,select,textarea,input {font-family:inherit}
     linear-gradient(135deg,#3B1E82,#3B1E82);
   border-radius:18px;padding:18px 17px 17px;
   min-height:188px;
-  box-shadow:0 10px 24px rgba(9,99,94,.21);
+  box-shadow:0 10px 24px rgba(59,30,130,.21);
 }
 .vf-wallet-top{display:flex;justify-content:space-between;align-items:center;color:#F0E9FF}
 .vf-wallet-top span{display:inline-flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.12em;font-weight:800}
@@ -393,16 +393,16 @@ button,select,textarea,input {font-family:inherit}
 .portal-side {
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(173, 218, 215, .30) transparent;
+  scrollbar-color: rgba(221,203,255, .30) transparent;
 }
 .portal-side::-webkit-scrollbar { width: 4px; }
 .portal-side::-webkit-scrollbar-track { background: transparent; }
 .portal-side::-webkit-scrollbar-thumb {
-  background: rgba(173, 218, 215, .30);
+  background: rgba(221,203,255, .30);
   border-radius: 12px;
 }
 .portal-side:hover::-webkit-scrollbar-thumb {
-  background: rgba(173, 218, 215, .56);
+  background: rgba(221,203,255, .56);
 }
 /* Menus compactam primeiro; nunca cortar links de navegação. */
 @media (max-height: 900px) {
