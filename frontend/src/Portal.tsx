@@ -31,13 +31,7 @@ const roleLabel: Record<Store["role"], string> = {
 };
 
 function Symbol({ small = false }: { small?: boolean }) {
-  return <div className={"portal-symbol" + (small ? " small" : "")} aria-hidden="true">
-    <svg viewBox="0 0 48 48" width={small ? 28 : 42} height={small ? 28 : 42} fill="none">
-      <rect width="48" height="48" rx="14" fill="#087F79"/>
-      <path d="M12 14 24 35 36 14" stroke="#fff" strokeWidth="5.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M12 31c8 9 21 6 25-8" stroke="#37D5BB" strokeWidth="3" strokeLinecap="round"/>
-    </svg>
-  </div>;
+  return <img src="/brand-mark.svg" width={small ? 28 : 42} height={small ? 28 : 42} alt="" aria-hidden="true" />;
 }
 
 function Wordmark() {
