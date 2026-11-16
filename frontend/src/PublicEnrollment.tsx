@@ -1,5 +1,5 @@
 import {useEffect, useState, type FormEvent, type CSSProperties} from "react";
-import {ArrowRight,CheckCircle2, HeartHandshake, LockKeyhole, ShieldCheck,Gift,Mail,Sparkles} from "lucide-react";
+import {ArrowRight,CheckCircle2, LockKeyhole, ShieldCheck,Gift,Mail,Sparkles} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type PublicInvitationPreview,
   type PublicConsentResult, type PublicStoreProgram,
   type PublicStoreJoinResult} from "./api";
