@@ -58,7 +58,7 @@
   .vf-clients-mobile-card{
     list-style:none;display:grid;gap:12px;min-width:0;
     padding:16px;background:#fff;border:1px solid #F0E9FF;
-    border-radius:14px;box-shadow:0 3px 12px rgba(15,50,48,.04)
+    border-radius:14px;box-shadow:0 3px 12px rgba(59,30,130,.04)
   }
   .vf-clients-mobile-person{display:flex;align-items:flex-start;gap:10px;min-width:0}
   .vf-clients-mobile-person .xp-person-avatar{flex:none}
