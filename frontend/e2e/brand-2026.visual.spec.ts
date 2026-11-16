@@ -9,7 +9,7 @@ test("home e demo usam a marca de fidelização e favicon",async({page})=>{
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.goto("/demo");
-  await expect(page.locator(".brand-mark img")).toHaveAttribute("src","/brand-mark.svg");
+  await expect(page.locator(".sidebar .brand img")).toHaveAttribute("src","/brand-logo-white.svg");
 });
 
 test("animações decorativas respeitam movimento reduzido",async({page})=>{
