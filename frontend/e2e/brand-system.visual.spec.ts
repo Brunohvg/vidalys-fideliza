@@ -31,3 +31,24 @@ test("manifesto, favicon e identidade acessíveis",async({request,page})=>{
  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href","/site.webmanifest");
  await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href","/favicon.svg");
 });
+
+test("tokens de marca permanecem iguais entre home, demo e acesso",async({page})=>{
+ const readTokens=async()=>{
+  return await page.evaluate(()=>{
+   const style=getComputedStyle(document.documentElement);
+   return {
+    primary:style.getPropertyValue("--vf-primary").trim(),
+    reward:style.getPropertyValue("--vf-reward").trim(),
+    canvas:style.getPropertyValue("--vf-canvas").trim(),
+    purple:style.getPropertyValue("--vf-purple-900").trim()
+   };
+  });
+ };
+ await page.goto("/");
+ const home=await readTokens();
+ expect(home).toEqual({primary:"#6A3DF0",reward:"#FFC857",canvas:"#F8F9FF",purple:"#3B1E82"});
+ await page.goto("/demo");
+ expect(await readTokens()).toEqual(home);
+ await page.goto("/entrar");
+ expect(await readTokens()).toEqual(home);
+});
