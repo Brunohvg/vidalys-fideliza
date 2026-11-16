@@ -132,13 +132,13 @@ export default function MemberClub(){
   const nextProgress=pointsReady&&availablePoints!==null&&nextReward
     ?Math.min(100,Math.round(availablePoints/nextReward.points_cost*100)):null;
 
-  return <div className="member-club-shell" style={clubStyle}>
+  return <div className="member-club-shell loyalty-club" style={clubStyle}>
     <header className="member-club-top">
       <div className="member-club-mark">
         <img src="/brand-mark.svg" alt="" width={42} height={42}/>
       </div>
       <div className="member-club-brand">
-        <strong>{program}</strong><small>O clube da sua loja</small>
+        <strong>{program}</strong><small>Benefícios para voltar sempre</small>
       </div>
       {me&&<button className="member-club-logout" type="button" disabled={busy} onClick={()=>void logout()}>
         <LogOut size={16} aria-hidden="true"/><span className="member-club-logout-desktop">Sair do clube</span>
@@ -151,7 +151,7 @@ export default function MemberClub(){
       {!loading&&club&&!me&&<div className="member-club-guest">
         <section className="member-club-hero member-club-hero-guest"
           style={heroStyle}>
-          <div className="member-club-hero-decoration" aria-hidden="true"><Gift size={130} strokeWidth={1.1}/></div>
+          <div className="member-club-hero-decoration" aria-hidden="true"><img src="/loyalty-gift.svg" alt="" width={240} height={240}/></div>
           <span className="member-club-eyebrow"><Gift size={16}/> UM CLUBE FEITO PARA VOCÊ</span>
           <h1>Mais motivos para voltar. <em>Mais vantagens para descobrir.</em></h1>
           <p>Entre para o clube de {club.store_name}, acompanhe as novidades e conheça as recompensas que a loja preparou para você.</p>
