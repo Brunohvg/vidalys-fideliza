@@ -154,12 +154,13 @@ export default function MerchantAccess({
     "reset-sent":["Confira seu e-mail.","Se houver uma conta correspondente, enviaremos instruções de recuperação."],
     "reset-complete":["Senha atualizada.","Sua nova senha foi salva com segurança."],
   };
-  return <div className="portal-auth-layout merchant-access">
+  return <div className="portal-auth-layout merchant-access loyalty-access">
     <aside className="portal-auth-brand merchant-aside">
       <Brand/>
+      <img className="loyalty-access-art" src="/loyalty-gift.svg" alt="" aria-hidden="true" width={320} height={320}/>
       <div className="portal-auth-text">
-        <span className="portal-eyebrow">FIDELIDADE INTELIGENTE</span>
-        <h1>Clientes voltam.<br/><em>Sua loja cresce.</em></h1>
+        <span className="portal-eyebrow">FIDELIDADE QUE CRIA CONEXÕES</span>
+        <h1>Cada compra aproxima.<br/><em>Cada retorno recompensa.</em></h1>
         <p>Transforme compras em relacionamento, com benefícios que respeitam a margem do negócio.</p>
         <div className="portal-auth-features">
           <span><ShieldCheck size={18}/> Seu programa, no seu ritmo</span>
