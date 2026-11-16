@@ -2,26 +2,26 @@
 .enroll-manager {background:#fff;border:1px solid #DEE8F0;border-radius:18px;
   padding:24px;margin:22px 0;box-shadow:0 8px 30px rgba(16,37,62,.035)}
 .enroll-head {display:flex;align-items:flex-start;gap:15px;margin-bottom:19px}
-.enroll-symbol {display:grid;place-items:center;background:#E4F9F2;color:#087F79;
+.enroll-symbol {display:grid;place-items:center;background:#E4F9F2;color:#6A3DF0;
   width:48px;height:48px;border-radius:13px;flex-shrink:0}
-.enroll-head h2 {color:#10253E;font-size:22px;margin:7px 0}
+.enroll-head h2 {color:#3B1E82;font-size:22px;margin:7px 0}
 .enroll-head p,.enroll-step p {color:#587084;line-height:1.6;font-size:13px;margin:0}
 .enroll-step {border-top:1px solid #E7EDF2;display:flex;align-items:center;gap:15px;
   padding:17px 0;min-height:77px}
 .enroll-step>div {flex:1;min-width:0}
-.enroll-step strong {color:#10253E;display:block;font-size:14px;margin-bottom:4px}
+.enroll-step strong {color:#3B1E82;display:block;font-size:14px;margin-bottom:4px}
 .enroll-step-number {display:grid;place-items:center;width:34px;height:34px;
-  background:#EDF9F6;color:#087F79;border-radius:10px;font-size:12px;font-weight:800;flex-shrink:0}
+  background:#EDF9F6;color:#6A3DF0;border-radius:10px;font-size:12px;font-weight:800;flex-shrink:0}
 .enroll-secondary {display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  background:#F4FAF8;border:1px solid #BEDDD6;color:#087F79;
+  background:#F4FAF8;border:1px solid #BEDDD6;color:#6A3DF0;
   border-radius:11px;font-weight:700;font-size:12px;padding:10px 13px;min-height:44px;
   cursor:pointer}
 .enroll-secondary:disabled {opacity:.45;cursor:not-allowed}
-.enroll-form {padding:18px;background:#F6F8FB;border:1px solid #E0EAF1;
+.enroll-form {padding:18px;background:#F8F9FF;border:1px solid #E0EAF1;
   border-radius:14px;display:grid;gap:12px}
 .enroll-form p {font-size:12.5px;color:#526A7C;line-height:1.6;margin:0}
-.enroll-form label,.enroll-share label {display:grid;gap:8px;font-size:12px;font-weight:750;color:#10253E;min-width:0}
-.enroll-form input,.enroll-form textarea,.enroll-share input {background:white;color:#10253E;
+.enroll-form label,.enroll-share label {display:grid;gap:8px;font-size:12px;font-weight:750;color:#3B1E82;min-width:0}
+.enroll-form input,.enroll-form textarea,.enroll-share input {background:white;color:#3B1E82;
   border:1px solid #CBD9E3;padding:12px;border-radius:10px;font:inherit;
   font-size:13px;width:100%;min-height:44px}
 .enroll-form textarea {resize:vertical;line-height:1.6}
@@ -39,9 +39,9 @@
 .enroll-pending-list {display:grid;gap:8px}
 .enroll-pending-list>div {display:grid;grid-template-columns:1fr 1.3fr 1.2fr;gap:10px;
   border:1px solid #E0E9EE;border-radius:10px;padding:11px 13px;font-size:12px}
-.enroll-pending-list strong {color:#10253E}
+.enroll-pending-list strong {color:#3B1E82}
 .enroll-pending-list span,.enroll-pending-list small {color:#587084;overflow-wrap:anywhere}
-.enroll-quiet {display:flex;gap:9px;color:#587084;background:#F6F8FB;
+.enroll-quiet {display:flex;gap:9px;color:#587084;background:#F8F9FF;
   border-radius:12px;margin:16px 0;padding:15px;font-size:13px}
 @media (max-width:650px) {
  .enroll-manager {padding:17px}
@@ -66,7 +66,7 @@
 .enroll-approval-panel .enroll-secondary{justify-self:start}
 .enroll-approval-confirm{display:flex;gap:9px;align-items:center;flex-wrap:wrap;
   padding:12px;background:#f4faf8;border:1px solid #d2ece4;border-radius:11px}
-.enroll-approval-confirm strong{font-size:12px;width:100%;color:#10253e}
-.enroll-approval-confirm .portal-primary{background:#087f79}
+.enroll-approval-confirm strong{font-size:12px;width:100%;color:#3B1E82}
+.enroll-approval-confirm .portal-primary{background:#6A3DF0}
 .enroll-approval-confirm .portal-primary:disabled{opacity:.55}
 @media(max-width:620px){.enroll-approval-confirm button,.enroll-approval-panel .enroll-secondary{width:100%}}
