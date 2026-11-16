@@ -5,22 +5,22 @@
 .vf-wallet-detail {margin-top:18px}
 .vf-wallet-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:15px}
 .vf-wallet-heading h3 {font-family:Manrope,Inter,sans-serif;color:#3B1E82;font-size:21px;margin:9px 0}
-.vf-wallet-heading p {color:#577085;font-size:13px;line-height:1.6}
-.vf-wallet-close {min-height:44px;min-width:66px;border:1px solid #DDE7EF;border-radius:10px;
-  background:white;color:#233E55;font-weight:700;cursor:pointer}
+.vf-wallet-heading p {color:#665D7A;font-size:13px;line-height:1.6}
+.vf-wallet-close {min-height:44px;min-width:66px;border:1px solid #F0E9FF;border-radius:10px;
+  background:white;color:#3B1E82;font-weight:700;cursor:pointer}
 .vf-wallet-balances {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
-.vf-wallet-balances>div {background:#F6F8FB;border:1px solid #DDE7EF;border-radius:13px;padding:18px;min-width:0}
-.vf-wallet-balances span {display:block;font-size:12px;color:#577085;margin-bottom:8px}
+.vf-wallet-balances>div {background:#F8F6FF;border:1px solid #F0E9FF;border-radius:13px;padding:18px;min-width:0}
+.vf-wallet-balances span {display:block;font-size:12px;color:#665D7A;margin-bottom:8px}
 .vf-wallet-balances strong {font-family:Manrope,Inter,sans-serif;font-size:21px;color:#3B1E82;overflow-wrap:anywhere}
 .vf-wallet-disclaimer {color:#98631A;background:#FFF6E6;border-radius:10px;padding:11px 14px;
   line-height:1.65;font-size:13px}
 .vf-wallet-detail h4 {color:#3B1E82;font-size:15px;margin:20px 0 12px}
 .vf-wallet-events {margin:0;padding:0;list-style:none;display:grid;gap:7px}
 .vf-wallet-events li {display:flex;justify-content:space-between;align-items:center;gap:15px;
-  border:1px solid #DDE7EF;border-radius:12px;padding:12px 14px}
+  border:1px solid #F0E9FF;border-radius:12px;padding:12px 14px}
 .vf-wallet-events li span {display:grid;gap:5px;min-width:0}
 .vf-wallet-events li strong {font-size:13px;color:#3B1E82}
-.vf-wallet-events li small {font-size:12px;color:#577085}
+.vf-wallet-events li small {font-size:12px;color:#665D7A}
 .vf-wallet-error {color:#AD334B}
 .vf-wallet-open:focus-visible,.vf-wallet-close:focus-visible {outline:3px solid #8B43F6;outline-offset:3px}
 @media (max-width:680px) {
@@ -30,7 +30,7 @@
   .vf-wallet-events li {align-items:flex-start}
 }
 
-.vf-wallet-technical{margin-top:8px;font-size:11px;color:#58756c}
-.vf-wallet-technical summary{cursor:pointer;font-weight:700;color:#577269}
-.vf-wallet-technical p{font-size:11px;line-height:1.6;color:#688178;max-width:230px}
+.vf-wallet-technical{margin-top:8px;font-size:11px;color:#513595}
+.vf-wallet-technical summary{cursor:pointer;font-weight:700;color:#513595}
+.vf-wallet-technical p{font-size:11px;line-height:1.6;color:#665D7A;max-width:230px}
 .vf-wallet-technical .vf-wallet-open{font-size:11px;margin-top:3px}
