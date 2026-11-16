@@ -3,7 +3,7 @@
 :root{
   font-family:Manrope,Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   color:var(--vf-ink);background:var(--vf-canvas);font-synthesis:none;
-  --blue:var(--vf-primary);--cyan:var(--vf-mint);--ink:var(--vf-ink);--muted:var(--vf-muted);
+  --blue:var(--vf-primary);--cyan:var(--vf-orange);--ink:var(--vf-ink);--muted:var(--vf-muted);
   --surface:var(--vf-surface);--border:var(--vf-border);--shadow:var(--vf-shadow-card)
 }
 *{box-sizing:border-box}
