@@ -20,6 +20,7 @@ import "./merchant-pages.css";
 import "./member-experience.css";
 import "./merchant-access.css";
 import "./enrollment-experience.css";
+import "./demo-experience.css";
 
 const entry = entryRoute(window.location.pathname);
 const content = (() => {
