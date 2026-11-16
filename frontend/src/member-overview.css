@@ -23,7 +23,7 @@
 .member-club-shell .mc-redeem-action button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:47px;background:var(--vf-primary);color:#fff;border:0;border-radius:11px;font-size:13px;font-weight:750;padding:10px 16px}
 .member-club-shell .mc-redeem-action button:disabled{background:#E3E9ED;color:#526B7B;cursor:not-allowed}
 .member-club-shell .mc-redeem-action small{font-size:10px;color:var(--vf-muted);max-width:190px}
-.member-club-shell .mc-issued-voucher,.member-club-shell .mc-redeem-error{width:100%;background:var(--vf-mint-soft);border-radius:11px;padding:12px;overflow-wrap:anywhere}
+.member-club-shell .mc-issued-voucher,.member-club-shell .mc-redeem-error{width:100%;background:var(--vf-lavender);border-radius:11px;padding:12px;overflow-wrap:anywhere}
 .member-club-shell .mc-issued-voucher strong{font-size:12px;color:var(--vf-ink)}
 .member-club-shell .mc-issued-voucher code{font:700 13px monospace}
 .member-club-shell .mc-missions{display:grid;gap:8px;background:#fff;border:1px solid var(--vf-border);border-radius:17px;padding:18px 21px}
