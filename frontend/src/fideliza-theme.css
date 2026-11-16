@@ -5,30 +5,30 @@
  * Escopo: painel Vidalys; widget da vitrine deve herdar a marca da loja.
  */
 :root {
-  --vf-ink: #10253E;
-  --vf-ink-soft: #233E55;
-  --vf-primary: #087F79;
-  --vf-primary-hover: #096B66;
+  --vf-ink: #3B1E82;
+  --vf-ink-soft: #513595;
+  --vf-primary: #6A3DF0;
+  --vf-primary-hover: #542CCB;
   --vf-primary-contrast: #FFFFFF;
-  --vf-mint: #37D5BB;
-  --vf-mint-soft: #E8F9F4;
-  --vf-reward: #F5BA51;
-  --vf-reward-ink: #98631A;
-  --vf-reward-soft: #FFF6E6;
-  --vf-info: #2463BD;
-  --vf-info-soft: #EFF5FF;
-  --vf-canvas: #F6F8FB;
+  --vf-mint: #FF8A3D;
+  --vf-mint-soft: #EDE7FF;
+  --vf-reward: #FFC857;
+  --vf-reward-ink: #8F5200;
+  --vf-reward-soft: #FFF5E5;
+  --vf-info: #6A3DF0;
+  --vf-info-soft: #F3EEFF;
+  --vf-canvas: #F8F9FF;
   --vf-surface: #FFFFFF;
-  --vf-border: #DDE7EF;
-  --vf-muted: #577085;
+  --vf-border: #E4DFF2;
+  --vf-muted: #665D7A;
   --vf-success: #167A56;
-  --vf-warning: #98631A;
+  --vf-warning: #8F5200;
   --vf-danger: #AD334B;
   --vf-radius-sm: 10px;
   --vf-radius-md: 16px;
   --vf-radius-lg: 22px;
   --vf-shadow-card: 0 14px 40px rgba(16,37,62,.055);
-  --vf-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --vf-font: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --vf-font-display: "Manrope", "Inter", system-ui, sans-serif;
 }
 html {color-scheme: light}
@@ -64,13 +64,13 @@ button,select,textarea,input {font-family:inherit}
 .portal-primary:disabled {box-shadow:none}
 .portal-eyebrow {color:var(--vf-primary);letter-spacing:.115em}
 .portal-wordmark {font-family:var(--vf-font-display);letter-spacing:-.045em}
-.portal-wordmark span {color:#A4F0E0}
+.portal-wordmark span {color:#E6D7FF}
 .portal-shell {
   background:var(--vf-canvas);
   color:var(--vf-ink);
 }
 .portal-side {
-  background:radial-gradient(circle at 100% 0%,rgba(55,213,187,.095),transparent 48%),#10253E;
+  background:radial-gradient(circle at 100% 0%,rgba(55,213,187,.095),transparent 48%),#3B1E82;
   border-right:1px solid #274458;
   width:264px;
   padding-top:29px;
@@ -82,12 +82,12 @@ button,select,textarea,input {font-family:inherit}
   padding:13px 12px;
   border-radius:14px;
 }
-.portal-store-mark {background:#1B605E;color:#A6F0DF}
-.portal-store span {color:#C0D3D7}
-.portal-nav-caption {color:#98B0B9;letter-spacing:.12em}
+.portal-store-mark {background:#5430A2;color:#A6F0DF}
+.portal-store span {color:#D5C5EF}
+.portal-nav-caption {color:#C6B7E3;letter-spacing:.12em}
 .portal-tools-caption {border-color:rgba(255,255,255,.13)}
 .portal-nav button {
-  color:#C8D8DD;
+  color:#E6DFF3;
   border-radius:12px;
   min-height:47px;
   font-size:12.5px;
@@ -102,7 +102,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-nav button.is-active svg {color:#80F0D7}
 .portal-nav button span {
   background:rgba(255,255,255,.075);
-  color:#B6CBD0;
+  color:#D9CDEB;
   padding:4px 7px;
   border-radius:6px;
   font-weight:700;
@@ -110,7 +110,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-nav-secondary button {color:#B3CBD1!important}
 .portal-nav-secondary button.is-active {color:#FFFFFF!important}
 .portal-side-guide {
-  background:linear-gradient(145deg,#1E5553,#173C46 78%);
+  background:linear-gradient(145deg,#48277A,#35205A 78%);
   border-color:rgba(167,245,229,.30);
   border-radius:16px;
   padding:21px 17px;
@@ -133,7 +133,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-top-title {color:#687D8C}
 .portal-top-title strong {color:var(--vf-ink)}
 .portal-test-label {
-  background:#FFF6E6;
+  background:#FFF5E5;
   border-color:#F0DEB7;
   color:#825615;
   letter-spacing:.045em;
@@ -144,7 +144,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-content-head {margin-bottom:22px}
 .portal-content-head h1 {color:var(--vf-ink);font-size:clamp(26px,2.7vw,35px);letter-spacing:-.045em}
 .portal-content-head p {color:var(--vf-muted)}
-.portal-status {color:#35655F;background:#E8F9F4;border-color:#C8EAE1}
+.portal-status {color:#35655F;background:#EDE7FF;border-color:#C8EAE1}
 .portal-tenant-bar {margin-bottom:23px}
 .portal-tenant-bar label {color:var(--vf-muted)}
 .portal-select-wrap select {border-color:var(--vf-border);color:var(--vf-ink);border-radius:12px}
@@ -156,7 +156,7 @@ button,select,textarea,input {font-family:inherit}
 .xp-action-banner,.xp-hero,.reconcile-hero,.cost-hero,.campaign-hero {
   background:
     radial-gradient(circle at 85% 14%,rgba(55,213,187,.17),transparent 35%),
-    linear-gradient(120deg,#10253E 0%,#114C52 58%,#0D6E68 100%);
+    linear-gradient(120deg,#3B1E82 0%,#512AA4 58%,#6A3DF0 100%);
   border-color:#2B706B;
   border-radius:21px;
   box-shadow:0 15px 38px rgba(13,76,75,.11);
@@ -168,7 +168,7 @@ button,select,textarea,input {font-family:inherit}
 .xp-eyebrow,.reconcile-kicker,.campaign-eyebrow,.cost-eyebrow {color:#AEF3E5}
 .xp-action-banner h2,.xp-hero h2 {line-height:1.16;letter-spacing:-.05em}
 .xp-action-banner h2 em,.xp-hero h2 em,.reconcile-hero h2 em {color:#B1F2DF}
-.xp-action-banner p,.xp-hero p,.reconcile-hero p {color:#DEEEEA}
+.xp-action-banner p,.xp-hero p,.reconcile-hero p {color:#F4ECFF}
 .xp-action-safe,.xp-hero-note,.reconcile-safe {
   border-color:rgba(174,243,229,.31);
   background:rgba(255,255,255,.10);
@@ -228,16 +228,16 @@ button,select,textarea,input {font-family:inherit}
 .xp-empty-steps span {border-color:#CEE6DB;color:#296D62}
 .xp-link-btn,.xp-action-link {border-radius:11px}
 .xp-link-btn {border-color:#D0E7E1;color:var(--vf-primary)}
-.xp-link-btn:hover {border-color:var(--vf-primary);background:#E8F9F4}
+.xp-link-btn:hover {border-color:var(--vf-primary);background:#EDE7FF}
 .xp-search {border-color:#CEDFD9}
-.xp-search button {background:#E8F9F4;color:var(--vf-primary);border-color:#CFEBDF}
+.xp-search button {background:#EDE7FF;color:var(--vf-primary);border-color:#CFEBDF}
 .xp-filter select {border-color:#D2E2DC}
 .xp-table th {background:#F7FAF9}
 .xp-table td {color:var(--vf-ink-soft)}
 .xp-person-avatar {background:#DFF4EB;color:var(--vf-primary)}
 .xp-tag.active {color:#176F4C}
 .xp-guidance {background:var(--vf-reward-soft);border-color:#F1DFB9}
-.xp-guidance>svg {color:#98631A}
+.xp-guidance>svg {color:#8F5200}
 .xp-wizard-step.is-active {background:var(--vf-mint-soft);border-color:#9BD8CA;color:#1B5D54}
 .xp-wizard-step.is-active>span {background:var(--vf-primary)}
 .xp-wizard-step.is-complete {color:var(--vf-success)}
@@ -264,7 +264,7 @@ button,select,textarea,input {font-family:inherit}
 .xp-advanced-section {background:#FAFCFB}
 .xp-action-warning {color:#76541B}
 .reconcile-icon,.nuv-connection-mark,.cost-stat-icon {background:var(--vf-mint-soft);color:var(--vf-primary)}
-.nuv-connection-mark {background:linear-gradient(130deg,#087F79,#1BAF9F);color:#fff}
+.nuv-connection-mark {background:linear-gradient(130deg,#6A3DF0,#1BAF9F);color:#fff}
 .nuv-connection {border-color:var(--vf-border);box-shadow:var(--vf-shadow-card)}
 .nuv-connection-pill.connected {background:var(--vf-mint-soft);border-color:#C6E7D9;color:var(--vf-success)}
 .nuv-security-title {color:var(--vf-primary)}
@@ -281,7 +281,7 @@ button,select,textarea,input {font-family:inherit}
 .portal-auth-layout {background:var(--vf-canvas)}
 .portal-auth-brand {
   background:radial-gradient(circle at 18% 0%,rgba(55,213,187,.15),transparent 44%),
-    linear-gradient(145deg,#10253E,#0D4F52 95%);
+    linear-gradient(145deg,#3B1E82,#0D4F52 95%);
 }
 .portal-auth-brand::after {border-color:rgba(55,213,187,.36);box-shadow:0 0 0 65px rgba(55,213,187,.06),0 0 0 150px rgba(245,186,81,.05)}
 .portal-auth-text h1 em {color:#B1F2DF}
@@ -460,7 +460,7 @@ button,select,textarea,input {font-family:inherit}
 }
 .portal-side button:focus-visible,.portal-top button:focus-visible,
 .portal-tenant-bar select:focus-visible {
-  outline:3px solid #37D5BB;
+  outline:3px solid #FF8A3D;
   outline-offset:2px;
 }
 .portal-nav button:focus-visible {
@@ -471,7 +471,7 @@ button,select,textarea,input {font-family:inherit}
   display:flex;
   flex-wrap:wrap;
   align-items:flex-start;
-  color:#577085;
+  color:#665D7A;
 }
 .portal-primary,.portal-secondary,.xp-link-btn,
 .cost-modal-header>button,.cost-pagination button {
@@ -628,3 +628,10 @@ button,select,textarea,input {font-family:inherit}
 /* Overrides de marca do onboarding apos os tokens globais. */
 .merchant-aside.portal-auth-brand{background:linear-gradient(145deg,#081B29 10%,#123B45 75%,#0C5B57 100%)}
 .merchant-aside .portal-auth-text h1 em{color:#66E7C7}
+
+/* Identidade loyalty: refinamentos visuais compartilhados */
+.portal-side{background:linear-gradient(160deg,#3B1E82 0%,#2B1550 100%);border-right-color:#543690}
+.portal-primary,.mk-head-cta{background:linear-gradient(110deg,#8A43F4,#5926C6);box-shadow:0 8px 22px rgba(106,61,240,.18)}
+.portal-nav button.is-active{background:#6A3DF0;box-shadow:none}
+.portal-nav button:hover{background:rgba(237,231,255,.12)}
+.portal-shell .portal-panel{border-radius:18px}
