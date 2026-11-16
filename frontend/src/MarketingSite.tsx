@@ -137,7 +137,7 @@ export default function MarketingSite(){
       <p className="mk-disclaimer">Não anunciamos integração com ERPs, marketplaces ou CRMs sem contrato técnico e testes de ponta a ponta.</p>
     </main>}
     <footer className="mk-footer"><div className="mk-footer-inner">
-      <div><div className="mk-footer-brand"><img src="/brand-logo.svg" alt="Vidalys Fideliza" width={180} height={52}/></div>
+      <div><div className="mk-footer-brand"><img src="/brand-logo-white.svg" alt="Vidalys Fideliza" width={180} height={52}/></div>
         <p>Relacionamento, recompensas e cuidado com cada compra.</p>
         <small>Esta apresentação é uma prévia de homologação, não uma oferta de recursos comerciais ativados.</small>
       </div>
