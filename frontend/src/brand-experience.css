@@ -1,0 +1,184 @@
+/* Vidalys Fideliza | Loyalty Motion System — aplicado após os módulos legados.
+   Produto Vidalys: marca roxa com recompensa dourada e movimento circular.
+   Não substitui cores white-label explícitas de lojistas. */
+:root {
+  --vf-purple-950:#24113F;
+  --vf-purple-900:#3B1E82;
+  --vf-purple-700:#6A3DF0;
+  --vf-purple-500:#8B43F6;
+  --vf-lavender:#EDE7FF;
+  --vf-orange:#FF8A3D;
+  --vf-gold:#FFC857;
+  --vf-paper:#F8F9FF;
+  --vf-line:#E4DFF2;
+  --vf-glow:0 16px 48px rgba(85,48,161,.10),0 3px 14px rgba(85,48,161,.045);
+}
+html {scroll-behavior:smooth}
+:where(.vf-market,.portal-shell,.portal-auth-layout,.layout,.member-club-shell,.public-enroll-shell){
+  font-family:var(--vf-font);
+  -webkit-font-smoothing:antialiased;
+}
+:where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) :is(h1,h2,h3){
+  font-family:var(--vf-font-display);
+  letter-spacing:-.035em;
+}
+:where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) :is(button,a,input,select,textarea):focus-visible {
+  outline:3px solid #8B43F6;
+  outline-offset:3px;
+}
+:where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) :is(button,a){
+  -webkit-tap-highlight-color:transparent;
+}
+/* Home: direção aprovada, superfícies lilás com brilhos delicados. */
+.vf-market {
+  background:var(--vf-paper);
+  color:var(--vf-purple-900);
+}
+.vf-market .mk-header {
+  background:rgba(255,255,255,.94);
+  border-bottom:1px solid var(--vf-line);
+  backdrop-filter:blur(14px);
+}
+.vf-market .mk-hero {
+  isolation:isolate;
+  position:relative;
+  background:
+    radial-gradient(ellipse at 86% 18%,rgba(255,200,87,.22),transparent 34%),
+    radial-gradient(ellipse at 56% -18%,rgba(139,67,246,.20),transparent 45%),
+    linear-gradient(130deg,#F8F9FF 4%,#EDE7FF 67%,#FBF7FF 100%);
+}
+.vf-market .mk-hero::before {
+  content:"";position:absolute;z-index:-1;right:3%;top:9%;
+  width:min(34vw,440px);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,rgba(139,67,246,.19),rgba(255,138,61,.09) 46%,transparent 70%);
+  filter:blur(16px);pointer-events:none;
+  animation:vf-breathe 9s ease-in-out infinite alternate;
+}
+.vf-market .mk-hero h1{color:#3B1E82}
+.vf-market .mk-hero h1 em{color:#E76525}
+.vf-market .mk-hero-copy>p{color:#594B71}
+.vf-market .mk-demo {
+  transform:rotate(1deg);
+  border:1px solid #E7DDF7;
+  box-shadow:0 28px 80px rgba(59,30,130,.12),0 9px 20px rgba(139,67,246,.05);
+  animation:vf-float-in .8s cubic-bezier(.2,.8,.2,1) both;
+}
+.vf-market .mk-demo-panel{background:linear-gradient(135deg,#FFF8EB,#FFFFFF);border-color:#F3E3BD}
+.vf-market .mk-benefit-grid article,
+.vf-market .mk-feature,
+.vf-market .mk-segment,
+.vf-market .mk-integration,
+.vf-market .mk-showcase-stack article {
+  border-color:var(--vf-line);
+  box-shadow:var(--vf-glow);
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
+}
+.vf-market :is(.mk-benefit-grid article,.mk-feature,.mk-segment,.mk-integration,.mk-showcase-stack article):hover {
+  transform:translateY(-4px);border-color:#CDBBF5;
+  box-shadow:0 22px 50px rgba(85,48,161,.13);
+}
+.vf-market .mk-cta-panel {
+  background:
+    radial-gradient(circle at 92% 5%,rgba(255,138,61,.20),transparent 36%),
+    linear-gradient(115deg,#3B1E82,#6A3DF0);
+  border:1px solid #7950D7;
+  box-shadow:0 20px 46px rgba(59,30,130,.18);
+}
+.vf-market .mk-cta-panel .mk-button-main {
+  background:#FFC857;color:#3B1E82!important;
+}
+.vf-market .mk-integration-intro>div:first-child{background:#F3EEFF;border-color:#DDD0FF}
+.vf-market .mk-disclosure{background:#F3EEFF;color:#513595}
+/* Dashboard: hierarquia e brilho contidos — leitura de dados em primeiro lugar. */
+.portal-shell{background:#F8F9FF}
+.portal-shell .portal-side{
+  background-color:#3B1E82;
+  background-image:radial-gradient(circle at 90% 8%,rgba(139,67,246,.28),transparent 50%),linear-gradient(180deg,#3B1E82,#24113F);
+}
+.portal-shell .portal-store{background:rgba(255,255,255,.07);border-color:rgba(237,231,255,.20)}
+.portal-shell .portal-panel,
+.portal-shell :is(.xp-panel,.xp-stat,.xp-action-card,.campaign-card) {
+  border-color:#E4DFF2;
+  box-shadow:var(--vf-glow);
+}
+.portal-shell :is(.portal-welcome,.xp-hero,.xp-action-banner,.campaign-hero,.reconcile-hero,.cost-hero) {
+  background-image:
+    radial-gradient(circle at 85% 12%,rgba(255,200,87,.16),transparent 29%),
+    radial-gradient(circle at 52% -10%,rgba(175,131,255,.23),transparent 37%),
+    linear-gradient(117deg,#3B1E82,#6A3DF0);
+  border-color:#7756C5;
+}
+.portal-shell .portal-welcome-icon{color:#FFC857;background:rgba(237,231,255,.13);border-color:#BFA6FF70}
+.portal-shell :is(.portal-primary,.xp-action-link,.xp-action-card,.xp-panel,.xp-stat,.portal-panel){
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
+}
+.portal-shell :is(.portal-panel,.xp-stat,.xp-action-card):hover{box-shadow:0 18px 43px rgba(85,48,161,.11)}
+.portal-shell .portal-primary{box-shadow:0 8px 19px rgba(106,61,240,.18)}
+.portal-shell .portal-primary:hover:not(:disabled){box-shadow:0 13px 25px rgba(106,61,240,.22)}
+/* Demo: mesmos fundos e sinais de benefício, sem mudar dados fictícios. */
+.layout .sidebar {
+  background-color:#3B1E82;
+  background-image:radial-gradient(circle at 92% 9%,rgba(139,67,246,.28),transparent 55%);
+}
+.layout .sidebar-tip{background:linear-gradient(135deg,#4B258D,#30145D);border-color:#8960DA}
+.layout .card-feature,.layout .wallet-demo{
+  background:radial-gradient(circle at 96% 12%,rgba(255,200,87,.15),transparent 38%),linear-gradient(130deg,#3B1E82,#6A3DF0);
+  border-color:#7251BD;
+}
+.layout .button-primary{box-shadow:0 10px 22px rgba(106,61,240,.20)}
+.layout .stat-card,.layout .panel{box-shadow:var(--vf-glow);border-color:var(--vf-line)}
+.layout .stat-icon.cyan{background:#FFF0E5;color:#BC541B}
+.layout .chart .bar{background:#B79CF5}
+.layout .chart .bar-wrap:last-child .bar{background:linear-gradient(0deg,#6A3DF0,#FF8A3D)}
+/* Clube mobile: roxo + laranja como estrutura Vidalys; marca do lojista
+   prevalece nos elementos que recebem cores dinamicamente por tenant. */
+.member-club-shell {
+  background:radial-gradient(ellipse at 8% 0%,#EDE7FF 0%,#F8F9FF 44%,#F8F9FF 100%);
+}
+.member-club-shell .member-club-panel,
+.member-club-shell .member-club-guest-benefits,
+.member-club-shell .member-club-reward {
+  border-color:#E4DFF2;
+  box-shadow:0 12px 35px rgba(59,30,130,.055);
+}
+.member-club-shell :is(.member-club-guest-perks>article,.member-club-reward,.member-club-journey li,.member-club-next){
+  background:#FAF8FF;border-color:#E4DFF2;
+}
+.member-club-shell :is(.member-club-guest-perk-icon,.member-club-reward-symbol,.member-club-journey-icon){
+  background:#EDE7FF;color:#6A3DF0;
+}
+.member-club-shell .member-club-sections{background:#EDE7FF;border-color:#E4DFF2}
+.member-club-shell .member-club-sections button.selected{color:#3B1E82}
+.member-club-shell .member-club-panel {border-radius:21px}
+.member-club-shell .member-club-reward {transition:transform .22s ease,box-shadow .22s ease}
+.member-club-shell .member-club-reward:hover{transform:translateY(-2px);box-shadow:0 18px 38px rgba(59,30,130,.10)}
+/* Cadastro público: desenho unificado, preservando overrides do programa. */
+.public-enroll-shell {background:radial-gradient(ellipse at 0% 0%,#EDE7FF,transparent 55%),#F8F9FF}
+.public-enroll-shell :is(input,button){min-height:44px}
+/* Microinterações: entrada uma vez, sem parallax em scroll nem loop de botões. */
+@keyframes vf-float-in{
+  from{opacity:0;transform:translateY(17px) rotate(1deg)}
+  to{opacity:1;transform:translateY(0) rotate(1deg)}
+}
+@keyframes vf-breathe{
+  from{opacity:.55;transform:scale(.95)}
+  to{opacity:1;transform:scale(1.07)}
+}
+@media(max-width:760px){
+  .vf-market .mk-demo{transform:none;animation:none}
+  .vf-market .mk-hero::before{width:68vw;right:-12%;top:5%}
+  .vf-market :is(.mk-benefit-grid article,.mk-feature,.mk-segment,.mk-integration,.mk-showcase-stack article):hover,
+  .member-club-shell .member-club-reward:hover{transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .vf-market .mk-hero::before,.vf-market .mk-demo{animation:none!important}
+  :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *,
+  :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *::before,
+  :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *::after {
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
