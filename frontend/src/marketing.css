@@ -13,14 +13,14 @@
 .vf-market input:focus-visible,.vf-market select:focus-visible{
   outline:3px solid var(--mk-primary);outline-offset:3px;
 }
-.mk-header{background:#fff;border-bottom:1px solid #EDF1F4;position:sticky;top:0;z-index:8}
+.mk-header{background:#fff;border-bottom:1px solid #F8F6FF;position:sticky;top:0;z-index:8}
 .mk-header-inner{width:min(1250px,calc(100% - 40px));margin:auto;min-height:82px;display:flex;align-items:center;justify-content:space-between;gap:26px}
 .mk-logo{display:flex;align-items:center;gap:10px;flex:none}
 .mk-logo>span{width:41px;height:41px;border-radius:13px;display:grid;place-items:center;color:#fff;background:var(--mk-primary)}
 .mk-logo strong{font:800 23px/1.1 Manrope,Inter,sans-serif;letter-spacing:-.065em}
 .mk-logo em{font-style:normal;color:var(--mk-primary);margin-left:4px}
 .mk-nav{display:flex;align-items:center;gap:4px}
-.mk-nav a{padding:12px 14px;border-radius:11px;font-size:14px;font-weight:750;color:#40546A;min-height:44px;display:inline-flex;align-items:center}
+.mk-nav a{padding:12px 14px;border-radius:11px;font-size:14px;font-weight:750;color:#513595;min-height:44px;display:inline-flex;align-items:center}
 .mk-nav a:hover,.mk-nav a[aria-current="page"]{background:#EDE7FF;color:#542CCB}
 .mk-header-actions{display:flex;align-items:center;gap:14px;white-space:nowrap}
 .mk-signin{font-size:14px;font-weight:750;padding:10px 4px}
@@ -43,9 +43,9 @@
 .mk-feature h2,.mk-segment h2,.mk-integration h2{font:800 21px/1.3 Manrope,Inter,sans-serif;letter-spacing:-.025em;margin:15px 0 9px}
 .mk-feature p,.mk-segment p,.mk-integration p{color:var(--mk-muted);font-size:14px;line-height:1.7;margin:0 0 12px}
 .mk-state{display:inline-flex;align-items:center;font-size:11px;font-weight:800;padding:7px 11px;border-radius:100px;margin-top:16px}
-.mk-state-interface{color:#176E53;background:#E5F7EE}
+.mk-state-interface{color:#3B1E82;background:#F0E9FF}
 .mk-state-homologacao{color:#8B5813;background:#FFF2D9}
-.mk-state-planejado{color:#526071;background:#EFF2F6}
+.mk-state-planejado{color:#513595;background:#F8F6FF}
 .mk-disclosure{margin-top:31px;display:flex;align-items:flex-start;gap:14px;padding:22px;background:#EDE7FF;color:#513595;border-radius:16px}
 .mk-disclosure svg{flex:none;margin-top:3px}
 .mk-disclosure p{margin:0;font-size:14px;line-height:1.7}
@@ -54,18 +54,18 @@
 .mk-segment .mk-text-link{margin-top:19px}
 .mk-disclaimer{color:var(--mk-muted);font-size:12px;line-height:1.7;margin:28px 0 0}
 .mk-integration-intro{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.mk-integration-intro>div{padding:28px;border-radius:19px;background:#F3EEFF;border:1px solid #D4EAE2}
-.mk-integration-intro>div:nth-child(2){background:#F3F6FD;border-color:#DBE4F4}
+.mk-integration-intro>div{padding:28px;border-radius:19px;background:#F3EEFF;border:1px solid #DCCFF4}
+.mk-integration-intro>div:nth-child(2){background:#F8F6FF;border-color:#F0E9FF}
 .mk-integration-intro>div>span{display:grid;place-items:center;width:49px;height:49px;background:#fff;color:var(--mk-primary);border-radius:14px}
 .mk-integration-intro h2{font:800 22px Manrope,Inter,sans-serif;margin:15px 0 8px}
 .mk-integration-intro p{font-size:14px;color:var(--mk-muted);margin:0}
 .mk-filter{display:flex;flex-wrap:wrap;gap:15px;margin:32px 0 19px}
-.mk-filter>label:first-child{display:flex;align-items:center;gap:10px;flex:1;min-width:220px;border:1px solid #BCCBD7;border-radius:13px;padding:0 14px;color:#567085}
+.mk-filter>label:first-child{display:flex;align-items:center;gap:10px;flex:1;min-width:220px;border:1px solid #DCCFF4;border-radius:13px;padding:0 14px;color:#665D7A}
 .mk-filter input{width:100%;height:47px;border:0;outline:0;background:transparent;font-size:15px;color:var(--mk-ink)}
 .mk-filter>label:first-child:focus-within{outline:3px solid var(--mk-primary);outline-offset:2px}
 .mk-filter input:focus-visible{outline:0}
 .mk-category{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800}
-.mk-filter select{height:49px;padding:0 12px;border-radius:12px;border:1px solid #BCCBD7;background:#fff;color:var(--mk-ink);font-size:14px}
+.mk-filter select{height:49px;padding:0 12px;border-radius:12px;border:1px solid #DCCFF4;background:#fff;color:var(--mk-ink);font-size:14px}
 .mk-integration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .mk-integration{border:1px solid var(--mk-line);border-radius:18px;padding:25px}
 .mk-integration .mk-state{margin-top:8px}
