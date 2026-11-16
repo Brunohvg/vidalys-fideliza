@@ -41,7 +41,7 @@ for(const width of [390,768,1440]) {
       await mockMerchant(page);
       await page.goto("/app/visao-geral");
       await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
-      await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
       await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes ativos");
       await expect(page.getByRole("heading",{name:"PRÓXIMA AÇÃO RECOMENDADA"})).toHaveCount(0);
 
