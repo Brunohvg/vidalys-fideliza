@@ -81,7 +81,7 @@ test("Início usa rascunho de pontos e não apresenta cashback antigo",async({pa
   }),
  }));
  await page.goto("/app/visao-geral");
- await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
   if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
     await page.locator(".portal-advanced-menu > summary").click();
  await page.locator(".portal-nav").getByRole("button",{name:"Campanhas"}).click();
