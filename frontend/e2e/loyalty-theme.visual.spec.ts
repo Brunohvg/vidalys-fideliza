@@ -37,7 +37,7 @@ for (const width of [390,768,1440]){
         const cta=document.querySelector(".portal-primary");
         return {
           primary:root.getPropertyValue("--vf-primary").trim(),
-          mint:root.getPropertyValue("--vf-mint").trim(),
+          orange:root.getPropertyValue("--vf-orange").trim(),
           gold:root.getPropertyValue("--vf-reward").trim(),
           navy:root.getPropertyValue("--vf-ink").trim(),
           overflow:document.documentElement.scrollWidth-innerWidth,
@@ -46,7 +46,7 @@ for (const width of [390,768,1440]){
         };
       });
       expect(palette.primary).toBe("#6A3DF0");
-      expect(palette.mint).toBe("#FF8A3D");
+      expect(palette.orange).toBe("#FF8A3D");
       expect(palette.gold).toBe("#FFC857");
       expect(palette.navy).toBe("#3B1E82");
       expect(palette.displayFont).toContain("Manrope");
