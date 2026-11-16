@@ -190,3 +190,71 @@ html {scroll-behavior:smooth}
   .vf-market .mk-hero::before{right:0;width:min(64vw,250px)}
   .vf-market .mk-hero>*{min-width:0}
 }
+
+/* Coerência visual validada contra capturas do ambiente de homologação:
+   remover verde petróleo do login, clube, painel e adesão. */
+.portal-auth-layout .portal-auth-brand,
+.merchant-access .portal-auth-brand {
+  background:radial-gradient(circle at 80% 85%,rgba(255,138,61,.18),transparent 36%),linear-gradient(150deg,#24113F,#3B1E82 63%,#5A2BB7)!important;
+  color:#fff;
+}
+.portal-auth-layout .portal-auth-text h1 em{color:#FFC857!important}
+.portal-auth-layout .portal-eyebrow{color:#CBB6FF!important}
+.portal-auth-layout .portal-auth-features svg{color:#FFC857!important}
+.portal-auth-layout .merchant-wordmark span{color:#D8C8FF!important}
+.portal-auth-layout .portal-login-panel{background:radial-gradient(circle at 5% 3%,#F2EAFF,#FFFFFF 65%)!important}
+.portal-auth-layout .portal-login-icon{color:#6A3DF0!important;background:#EDE7FF!important}
+.portal-auth-layout .portal-login-card input{color:#24113F;background:#FFFFFF;border-color:#DDD0F4}
+.portal-auth-layout .portal-login-card input:focus{border-color:#6A3DF0;outline:3px solid #EDE7FF}
+.portal-auth-layout .portal-primary{background:linear-gradient(110deg,#8B43F6,#5926C6)!important}
+.portal-shell .portal-nav button.is-active{background:#6A3DF0!important}
+.portal-shell :is(.vf-home-welcome h2,.vf-home-welcome p,.portal-content-head h1){color:#3B1E82}
+.portal-shell .portal-status{background:#F2ECFF;color:#513595;border-color:#E4DFF2}
+.portal-shell .portal-test-label{background:#FFF6E7;color:#8F5200;border-color:#F4E2BC}
+.portal-shell .portal-avatar{background:#EDE7FF;color:#6A3DF0}
+.portal-shell .portal-side-guide{background:linear-gradient(125deg,#4B258D,#2B1550);border-color:#805ABF}
+.portal-shell .portal-side-guide svg{color:#FFC857}
+.portal-shell :is(.portal-top,.portal-content){color:#3B1E82}
+/* Portal do participante: marca da plataforma, sem sobrescrever nome ou recompensas da loja. */
+.member-club-shell .member-club-top{background:#FFFFFF;border-color:#E4DFF2}
+.member-club-shell .member-club-mark{background:transparent!important;color:#6A3DF0!important;overflow:hidden}
+.member-club-shell .member-club-mark img{display:block;border-radius:12px}
+.member-club-shell .member-club-hero-guest,
+.member-club-shell .member-club-hero-account{
+  background:radial-gradient(circle at 95% 0%,rgba(255,200,87,.20),transparent 42%),linear-gradient(125deg,#3B1E82,#6A3DF0)!important;
+  color:#fff!important;
+  box-shadow:0 22px 55px rgba(59,30,130,.16);
+}
+.member-club-shell .member-club-hero-guest h1 em{text-decoration-color:#FF8A3D;color:#FFC857}
+.member-club-shell .member-club-hero-join{color:#3B1E82;background:#fff}
+.member-club-shell .member-club-kicker,
+.member-club-shell .member-club-eyebrow{color:inherit}
+.member-club-shell .member-club-guest-perk-icon,
+.member-club-shell .member-club-reward-symbol{background:#EDE7FF;color:#6A3DF0}
+.member-club-shell .member-club-steps>div{background:#F6F2FF;border-color:#E4DFF2}
+.member-club-shell .member-club-button{background:linear-gradient(110deg,#8B43F6,#5926C6);color:white}
+.member-club-shell .member-club-sections button.selected{color:#3B1E82}
+.member-club-shell :is(.member-club-guest-perks>article,.member-club-reward,.member-club-journey li){background:#FAF8FF;border-color:#E4DFF2}
+.member-club-shell .member-club-login input{border-color:#D8CDF0}
+.member-club-shell .member-club-login input:focus{outline:3px solid #EDE7FF;border-color:#6A3DF0}
+/* Adesão: a coluna editorial sempre segue o mesmo sistema, mesmo que
+   as preferências antigas do tenant ainda estejam registradas no banco. */
+.public-enroll-shell{background:radial-gradient(circle at 5% 0%,#EDE7FF,transparent 50%),#F8F9FF;color:#3B1E82}
+.public-enroll-layout .public-enroll-story{
+  background:radial-gradient(circle at 100% 10%,rgba(255,200,87,.18),transparent 39%),linear-gradient(145deg,#3B1E82,#6A3DF0)!important;
+  color:#fff!important;
+}
+.public-enroll-layout .public-enroll-story-intro em{text-decoration-color:#FF8A3D;color:#FFC857}
+.public-enroll-layout :is(.public-enroll-story-brand>span,.public-enroll-brand>span){background:transparent!important;color:#6A3DF0!important}
+.public-enroll-layout .public-enroll-story-steps{border-color:#A68AE4;background:rgba(255,255,255,.08)}
+.public-enroll-layout .public-enroll-story-steps li>span{background:#FFC857;color:#3B1E82}
+.public-enroll-layout .public-enroll-card{background:#fff;border-color:#E4DFF2}
+.public-enroll-layout .public-enroll-top h1{color:#3B1E82}
+.public-enroll-layout .public-enroll-submit:not(:disabled){background:linear-gradient(110deg,#8B43F6,#5926C6)!important;color:white!important}
+.public-enroll-layout .public-enroll-value{background:#FFF8EA;border-color:#F2E1BD;color:#513595}
+.public-enroll-layout .public-enroll-value svg{color:#6A3DF0}
+.public-enroll-layout :is(.public-enroll-fields input,.public-enroll-policies details){border-color:#E4DFF2}
+@media(max-width:700px){
+  .public-enroll-layout .public-enroll-story{padding:27px 22px}
+  .member-club-shell .member-club-hero-guest{padding:28px 24px}
+}
