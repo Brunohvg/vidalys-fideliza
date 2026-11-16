@@ -15,6 +15,7 @@ import "./fideliza-theme.css";
 import "./experience.css";
 import "./demo-theme.css";
 import "./brand-experience.css";
+import "./merchant-shell.css";
 
 const entry = entryRoute(window.location.pathname);
 const content = (() => {
