@@ -42,6 +42,7 @@ html {scroll-behavior:smooth}
 .vf-market .mk-hero {
   isolation:isolate;
   position:relative;
+  overflow:clip;
   background:
     radial-gradient(ellipse at 86% 18%,rgba(255,200,87,.22),transparent 34%),
     radial-gradient(ellipse at 56% -18%,rgba(139,67,246,.20),transparent 45%),
@@ -181,4 +182,11 @@ html {scroll-behavior:smooth}
     transition-duration:.01ms!important;
     scroll-behavior:auto!important;
   }
+}
+
+/* Impede que a auréola ultrapasse a largura útil do telefone. */
+@media(max-width:580px){
+  .vf-market .mk-hero{overflow:clip;min-width:0}
+  .vf-market .mk-hero::before{right:0;width:min(64vw,250px)}
+  .vf-market .mk-hero>*{min-width:0}
 }
