@@ -17,14 +17,7 @@ const nav = [
 type Page = (typeof nav)[number]["key"];
 function Brand() {
   return <div className="brand" aria-label="Vidalys Fideliza">
-    <div className="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 44 44" fill="none" width="44" height="44">
-        <rect x="1" y="1" width="42" height="42" rx="13" fill="#087F79" />
-        <path d="m11 13 11 20 11-20" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M13 30c8 7 19 4 23-8" stroke="#37D5BB" strokeWidth="2.7" strokeLinecap="round" />
-      </svg>
-    </div>
-    <span className="brand-copy">vidalys<span>fideliza</span></span>
+    <img src="/brand-logo-white.svg" width={185} height={52} alt="Vidalys Fideliza" />
   </div>;
 }
 
@@ -56,7 +49,7 @@ export default function App() {
   const title = nav.find(p => p.key === page)?.text || "Visão geral";
   const navigate = (next: Page) => { setPage(next); setDrawer(false); };
 
-  return <div className="layout">
+  return <div className="layout loyalty-demo">
     <aside className={"sidebar" + (drawer ? " open" : "")} aria-label="Menu do aplicativo">
       <div className="sidebar-head"><Brand/><button className="close-mobile" aria-label="Fechar menu" onClick={() => setDrawer(false)}><X size={21}/></button></div>
       <div className="shop-select"><span className="shop-avatar">V</span><span className="shop-copy"><b>Loja demonstração</b><small>Ambiente de protótipo</small></span><ChevronDown size={15}/></div>
@@ -75,7 +68,7 @@ export default function App() {
       <button className="nav-link" onClick={() => setInfo(true)}><CircleHelp size={19}/>Sobre a demonstração</button>
       <div className="sidebar-bottom">
         <div className="sidebar-tip"><span className="tip-symbol"><ShieldCheck size={20}/></span><b>Incentivos com inteligência.</b><p>Recompensa boa é aquela que cabe na margem da loja.</p><button onClick={() => navigate("margin")}>Fazer simulação <ArrowRight size={16}/></button></div>
-        <small className="sidebar-version">FIDELIZA <span>•</span> DEMO VISUAL V2</small>
+        <small className="sidebar-version">FIDELIZA <span>•</span> DEMO VISUAL · IDENTIDADE FIDELIZA</small>
       </div>
     </aside>
     {drawer && <button aria-label="Fechar navegação" className="overlay" onClick={() => setDrawer(false)} />}

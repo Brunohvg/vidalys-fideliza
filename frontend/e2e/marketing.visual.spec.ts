@@ -4,17 +4,20 @@ for(const width of [390,768,1440]){
   test("Apresentação comercial é clara e sem overflow em "+width+"px",async({page},info)=>{
     await page.setViewportSize({width,height:900});
     await page.goto("/");
-    await expect(page.getByRole("heading",{level:1,name:/Clientes que voltam/})).toBeVisible();
-    await expect(page.getByText("PRÉVIA ILUSTRATIVA · NÃO É SALDO REAL")).toBeVisible();
-    await expect(page.getByRole("link",{name:"Conhecer o piloto"})).toHaveAttribute("href","/cadastrar");
+    await expect(page.getByRole("heading",{level:1,name:/Seus clientes sempre voltam!/})).toBeVisible();
+    await expect(page.locator(".loyalty-home-sample")).toContainText("EXEMPLO ILUSTRATIVO");
+    await expect(page.locator(".loyalty-home-gift")).toHaveAttribute("src","/loyalty-gift.svg");
+    await expect(page.getByRole("link",{name:"Conhecer o Fideliza"})).toHaveAttribute("href","/cadastrar");
     await expect(page.getByRole("navigation",{name:"Apresentação comercial"})).toBeVisible();
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+    const overflowDetails=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-innerWidth,offenders:[...document.querySelectorAll("body *")].filter(el=>{const r=el.getBoundingClientRect();return r.right>innerWidth+1||r.left< -1}).slice(0,12).map(el=>({tag:el.tagName,cls:String(el.className).slice(0,120),left:Math.round(el.getBoundingClientRect().left),right:Math.round(el.getBoundingClientRect().right)}))}));
+    expect(overflowDetails.overflow,JSON.stringify(overflowDetails)).toBeLessThanOrEqual(1);
     await page.screenshot({path:info.outputPath("marketing-home-"+width+".png"),fullPage:true});
     await expect(page.getByRole("link",{name:"Entrar",exact:true}).first()).toHaveAttribute("href","/entrar");
     await page.getByRole("navigation",{name:"Apresentação comercial"}).getByRole("link",{name:"Segmentos"}).click();
     await expect(page).toHaveURL(/\/conhecer\/segmentos$/);
     await expect(page.getByRole("heading",{name:"Artesanato e aviamentos"})).toBeVisible();
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+    const overflowInfo=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-innerWidth,offenders:[...document.querySelectorAll(".vf-market *")].map(el=>({el,r:el.getBoundingClientRect()})).filter(({r})=>r.right>innerWidth+1||r.left< -1).slice(0,12).map(({el,r})=>({tag:el.tagName,cls:typeof el.className==="string"?el.className:"",left:Math.round(r.left),right:Math.round(r.right)}))}));
+    expect(overflowInfo.overflow,JSON.stringify(overflowInfo)).toBeLessThanOrEqual(1);
   });
 }
 test("Catálogo de integrações permite buscar e não anuncia conexão fictícia",async({page},info)=>{

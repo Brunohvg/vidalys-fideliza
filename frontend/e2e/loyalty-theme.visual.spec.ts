@@ -31,24 +31,24 @@ for (const width of [390,768,1440]){
       await page.setViewportSize({width,height:width===390?844:900});
       await mockShop(page);
       await page.goto("/app/visao-geral");
-      await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
       const palette=await page.evaluate(()=>{
         const root=getComputedStyle(document.documentElement);
         const cta=document.querySelector(".portal-primary");
         return {
           primary:root.getPropertyValue("--vf-primary").trim(),
-          mint:root.getPropertyValue("--vf-mint").trim(),
+          orange:root.getPropertyValue("--vf-orange").trim(),
           gold:root.getPropertyValue("--vf-reward").trim(),
           navy:root.getPropertyValue("--vf-ink").trim(),
           overflow:document.documentElement.scrollWidth-innerWidth,
-          displayFont:getComputedStyle(document.querySelector(".vf-home-welcome h2")!).fontFamily,
+          displayFont:getComputedStyle(document.querySelector(".loyalty-dashboard-intro h2")!).fontFamily,
           mainArea:document.querySelector(".portal-main")?.getBoundingClientRect().left
         };
       });
-      expect(palette.primary).toBe("#087F79");
-      expect(palette.mint).toBe("#37D5BB");
-      expect(palette.gold).toBe("#F5BA51");
-      expect(palette.navy).toBe("#10253E");
+      expect(palette.primary).toBe("#6A3DF0");
+      expect(palette.orange).toBe("#FF8A3D");
+      expect(palette.gold).toBe("#FFC857");
+      expect(palette.navy).toBe("#3B1E82");
       expect(palette.displayFont).toContain("Manrope");
       expect(palette.overflow).toBeLessThanOrEqual(1);
       if(width<=1020) expect(palette.mainArea).toBeLessThanOrEqual(1);
@@ -85,14 +85,14 @@ test("Login usa identidade nova sem afirmar programa ativo",async ({page})=>{
     body:JSON.stringify({authenticated:false,user:null,tenants:[]})
   }));
   await page.goto("/app/visao-geral");
-  await expect(page.getByText("Clientes voltam.")).toBeVisible();
-  await expect(page.getByText("Sua loja cresce.")).toBeVisible();
+  await expect(page.getByText("Cada compra aproxima.")).toBeVisible();
+  await expect(page.getByText("Cada retorno recompensa.")).toBeVisible();
   const hero=page.locator(".portal-auth-brand");
   await expect(hero).toBeVisible();
   const colors=await hero.evaluate(el=>({
     background:getComputedStyle(el).backgroundImage,
     title:getComputedStyle(el.querySelector("h1")!).fontFamily
   }));
-  expect(colors.background).toContain("rgb(8, 27, 41)");
+  expect(colors.background).toContain("rgb(59, 30, 130)");
   expect(colors.title).toContain("Manrope");
 });

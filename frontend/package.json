@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run audit:brand && npm run check:brand && tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:brand": "node scripts/brand-guard.mjs",
+    "audit:brand": "node scripts/brand-legacy-audit.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

@@ -1,0 +1,36 @@
+/* Illustrative demo inherits the same visual foundation as the merchant app. */
+.loyalty-demo{--demo-ink:#3B1E82;--demo-primary:#6A3DF0;--demo-surface:#FFFFFF;--demo-border:#E4DFF2;--demo-muted:#6B607E;background:#F8F9FF;color:#3B1E82;font-family:Manrope,Inter,sans-serif}
+.loyalty-demo .sidebar{background:radial-gradient(circle at 83% 10%,#6A3DF077,transparent 46%),linear-gradient(165deg,#3B1E82,#24113F);color:#fff;border-right:1px solid #EDE7FF2C}
+.loyalty-demo .sidebar .brand img{display:block;width:186px;height:auto;object-fit:contain}
+.loyalty-demo .shop-select{background:#FFFFFF15;border:1px solid #FFFFFF27;border-radius:15px}
+.loyalty-demo .shop-avatar{background:#FFFFFF24;color:#FFC857;border-radius:11px}
+.loyalty-demo .shop-copy small{color:#D9C8F5}
+.loyalty-demo .nav-heading{color:#DACDF0}
+.loyalty-demo .nav-link{color:#EDE7FF;border-radius:11px;transition:background .18s}
+.loyalty-demo .nav-link:hover{color:white;background:#FFFFFF1B}
+.loyalty-demo .nav-link.selected{background:linear-gradient(100deg,#8B43F6,#6A3DF0);box-shadow:0 8px 18px #1808384A;color:white}
+.loyalty-demo .sidebar-tip{border:1px solid #FFFFFF2B;background:linear-gradient(140deg,#5E35B6,#2D1457);border-radius:17px}
+.loyalty-demo .sidebar-tip .tip-symbol{background:#EDE7FF33;color:#FFC857}
+.loyalty-demo .topbar{background:#FFFFFFED;backdrop-filter:blur(14px);border-bottom:1px solid #E4DFF2}
+.loyalty-demo .content{color:#3B1E82}
+.loyalty-demo :is(.stat-card,.panel){background:#FFFFFF;border:1px solid #E4DFF2;border-radius:20px;box-shadow:0 13px 38px #3B1E8210}
+.loyalty-demo :is(h1,h2,h3){font-family:Manrope,Inter,sans-serif;letter-spacing:-.04em;color:#3B1E82}
+.loyalty-demo .intro{background:radial-gradient(circle at 93% 7%,#FFC85726,transparent 38%),linear-gradient(120deg,#3B1E82,#6A3DF0);border-radius:24px;padding:clamp(22px,3vw,37px);color:white}
+.loyalty-demo .intro :is(h1,h2,.eyebrow){color:white}
+.loyalty-demo .intro p{color:#F1E8FF}
+.loyalty-demo .button-primary{background:linear-gradient(115deg,#8B43F6,#5926C6);border-radius:12px;box-shadow:0 9px 21px #6A3DF035}
+.loyalty-demo .stat-top .stat-icon{border-radius:14px}
+.loyalty-demo .stat-icon.blue{background:#EDE7FF;color:#6A3DF0}
+.loyalty-demo .stat-icon.cyan{background:#FFF2E6;color:#C45C22}
+.loyalty-demo .stat-icon.violet{background:#FFF7DC;color:#8F5200}
+.loyalty-demo .card-feature,.loyalty-demo .wallet-demo{background:radial-gradient(circle at 95% 9%,#FFC85736,transparent 40%),linear-gradient(125deg,#3B1E82,#6A3DF0);color:#fff;border-color:#7754C5}
+.loyalty-demo :is(.card-feature,.wallet-demo) :is(h2,h3){color:#fff}
+.loyalty-demo .chart .bar{background:#BB9CF4}
+.loyalty-demo .chart .bar-wrap:last-child .bar{background:linear-gradient(0deg,#6A3DF0,#FF8A3D)}
+.loyalty-demo .sample-pill{background:#FFF8EA;color:#84521A;border-color:#F2DBAF}
+.loyalty-demo .program-icon.blue{background:#EDE7FF;color:#6A3DF0}
+.loyalty-demo .program-icon.cyan{background:#FFF2E6;color:#C05C22}
+.loyalty-demo :is(button,a,input):focus-visible{outline:3px solid #AD90F8;outline-offset:3px}
+@media(max-width:960px){.loyalty-demo .intro{border-radius:18px}.loyalty-demo .content{padding-inline:18px}}
+@media(max-width:580px){.loyalty-demo .intro{padding:22px 18px}.loyalty-demo :is(.stat-card,.panel){border-radius:17px}}
+@media(prefers-reduced-motion:reduce){.loyalty-demo .nav-link{transition:none}}

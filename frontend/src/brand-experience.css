@@ -1,0 +1,105 @@
+/* Vidalys Fideliza | Loyalty Motion System — aplicado após os módulos legados.
+   Produto Vidalys: marca roxa com recompensa dourada e movimento circular.
+   Não substitui cores white-label explícitas de lojistas. */
+
+html {scroll-behavior:smooth}
+:where(.vf-market,.portal-shell,.portal-auth-layout,.layout,.member-club-shell,.public-enroll-shell){
+  font-family:var(--vf-font);
+  -webkit-font-smoothing:antialiased;
+}
+:where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) :is(h1,h2,h3){
+  font-family:var(--vf-font-display);
+  letter-spacing:-.035em;
+}
+:where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) :is(button,a,input,select,textarea):focus-visible {
+  outline:3px solid #8B43F6;
+  outline-offset:3px;
+}
+:where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) :is(button,a){
+  -webkit-tap-highlight-color:transparent;
+}
+/* Home: direção aprovada, superfícies lilás com brilhos delicados. */
+.vf-market {
+  background:var(--vf-paper);
+  color:var(--vf-purple-900);
+}
+.vf-market .mk-header {
+  background:rgba(255,255,255,.94);
+  border-bottom:1px solid var(--vf-line);
+  backdrop-filter:blur(14px);
+}
+.vf-market .mk-integration-intro>div:first-child{background:#F3EEFF;border-color:#DDD0FF}
+.vf-market .mk-disclosure{background:#F3EEFF;color:#513595}
+/* Dashboard: hierarquia e brilho contidos — leitura de dados em primeiro lugar. */
+.portal-shell{background:#F8F9FF}
+.portal-shell .portal-side{
+  background-color:#3B1E82;
+  background-image:radial-gradient(circle at 90% 8%,rgba(139,67,246,.28),transparent 50%),linear-gradient(180deg,#3B1E82,#24113F);
+}
+.portal-shell .portal-store{background:rgba(255,255,255,.07);border-color:rgba(237,231,255,.20)}
+.portal-shell .portal-panel,
+.portal-shell :is(.xp-panel,.xp-stat,.xp-action-card,.campaign-card) {
+  border-color:#E4DFF2;
+  box-shadow:var(--vf-glow);
+}
+.portal-shell :is(.portal-welcome,.xp-hero,.xp-action-banner,.campaign-hero,.reconcile-hero,.cost-hero) {
+  background-image:
+    radial-gradient(circle at 85% 12%,rgba(255,200,87,.16),transparent 29%),
+    radial-gradient(circle at 52% -10%,rgba(175,131,255,.23),transparent 37%),
+    linear-gradient(117deg,#3B1E82,#6A3DF0);
+  border-color:#7756C5;
+}
+.portal-shell .portal-welcome-icon{color:#FFC857;background:rgba(237,231,255,.13);border-color:#BFA6FF70}
+.portal-shell :is(.portal-primary,.xp-action-link,.xp-action-card,.xp-panel,.xp-stat,.portal-panel){
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
+}
+.portal-shell :is(.portal-panel,.xp-stat,.xp-action-card):hover{box-shadow:0 18px 43px rgba(85,48,161,.11)}
+.portal-shell .portal-primary{box-shadow:0 8px 19px rgba(106,61,240,.18)}
+.portal-shell .portal-primary:hover:not(:disabled){box-shadow:0 13px 25px rgba(106,61,240,.22)}
+/* Clube mobile: roxo + laranja como estrutura Vidalys; marca do lojista
+   prevalece nos elementos que recebem cores dinamicamente por tenant. */
+.member-club-shell {
+  background:radial-gradient(ellipse at 8% 0%,#EDE7FF 0%,#F8F9FF 44%,#F8F9FF 100%);
+}
+.member-club-shell .member-club-panel,
+.member-club-shell .member-club-guest-benefits,
+.member-club-shell .member-club-reward {
+  border-color:#E4DFF2;
+  box-shadow:0 12px 35px rgba(59,30,130,.055);
+}
+.member-club-shell :is(.member-club-guest-perks>article,.member-club-reward,.member-club-journey li,.member-club-next){
+  background:#FAF8FF;border-color:#E4DFF2;
+}
+.member-club-shell :is(.member-club-guest-perk-icon,.member-club-reward-symbol,.member-club-journey-icon){
+  background:#EDE7FF;color:#6A3DF0;
+}
+.member-club-shell .member-club-sections{background:#EDE7FF;border-color:#E4DFF2}
+.member-club-shell .member-club-sections button.selected{color:#3B1E82}
+.member-club-shell .member-club-panel {border-radius:21px}
+.member-club-shell .member-club-reward {transition:transform .22s ease,box-shadow .22s ease}
+.member-club-shell .member-club-reward:hover{transform:translateY(-2px);box-shadow:0 18px 38px rgba(59,30,130,.10)}
+/* Cadastro público: desenho unificado, preservando overrides do programa. */
+.public-enroll-shell {background:radial-gradient(ellipse at 0% 0%,#EDE7FF,transparent 55%),#F8F9FF}
+.public-enroll-shell :is(input,button){min-height:44px}
+/* Microinterações: entrada uma vez, sem parallax em scroll nem loop de botões. */
+@keyframes vf-float-in{
+  from{opacity:0;transform:translateY(17px) rotate(1deg)}
+  to{opacity:1;transform:translateY(0) rotate(1deg)}
+}
+@keyframes vf-breathe{
+  from{opacity:.55;transform:scale(.95)}
+  to{opacity:1;transform:scale(1.07)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *,
+  :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *::before,
+  :where(.vf-market,.portal-shell,.layout,.member-club-shell,.public-enroll-shell) *::after {
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 670" role="img" aria-label="Presente roxo com laço dourado representando recompensas"><defs>
+<linearGradient id="body" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#B365FF"/><stop offset=".43" stop-color="#742CE9"/><stop offset="1" stop-color="#301069"/></linearGradient>
+<linearGradient id="side" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6223B9"/><stop offset="1" stop-color="#1D0C4F"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2=".9"><stop stop-color="#FFF1A1"/><stop offset=".38" stop-color="#FFC857"/><stop offset=".72" stop-color="#FF9D31"/><stop offset="1" stop-color="#C96812"/></linearGradient>
+<radialGradient id="glow"><stop stop-color="#FFDC7D" stop-opacity=".70"/><stop offset="1" stop-color="#FFDC7D" stop-opacity="0"/></radialGradient>
+<filter id="shadow" x="-30%" y="-40%" width="160%" height="180%"><feGaussianBlur stdDeviation="21"/></filter>
+<filter id="bright" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+</defs>
+<ellipse cx="370" cy="525" rx="270" ry="108" fill="url(#glow)"/>
+<ellipse cx="368" cy="572" rx="213" ry="47" fill="#321458" opacity=".25" filter="url(#shadow)"/>
+<g transform="translate(80 82)">
+<path d="M114 236 318 170 533 245 334 318Z" fill="#C18BFF"/>
+<path d="M114 236 334 318 334 520 114 426Z" fill="url(#body)"/>
+<path d="M334 318 533 245 533 434 334 520Z" fill="url(#side)"/>
+<path d="M114 236 318 170 533 245 334 318Z" fill="url(#body)"/>
+<path d="M296 182 342 170 374 516 332 523Z" fill="url(#gold)"/>
+<path d="M193 211 237 195 452 276 403 295Z" fill="url(#gold)"/>
+<path d="M335 315 377 299 377 500 335 520Z" fill="url(#gold)"/>
+<path d="M117 254 333 331 533 257" fill="none" stroke="#F4C8FF" stroke-width="4" opacity=".45"/>
+<path d="M89 211 314 135 554 219 335 301Z" fill="url(#body)" stroke="#DDAFFF" stroke-width="3"/>
+<path d="M89 211 335 301 335 335 89 249Z" fill="#6824C1"/>
+<path d="M335 301 554 219 554 252 335 335Z" fill="#45178D"/>
+<path d="M295 141 339 127 383 287 338 302Z" fill="url(#gold)"/>
+<path d="M193 175 237 159 454 257 406 276Z" fill="url(#gold)"/>
+<path d="M334 155 C235 66 208 108 234 160 C248 188 309 192 334 155Z" fill="url(#gold)" stroke="#FFE9A5" stroke-width="6"/>
+<path d="M334 155 C428 58 473 100 444 157 C424 188 361 190 334 155Z" fill="url(#gold)" stroke="#FFE9A5" stroke-width="6"/>
+<path d="M330 158 C278 102 247 117 258 144 C271 158 303 168 330 158Z" fill="#8D42C3" opacity=".72"/>
+<path d="M340 158 C392 102 432 117 420 143 C405 161 374 167 340 158Z" fill="#7B36B9" opacity=".70"/>
+<ellipse cx="335" cy="157" rx="31" ry="22" fill="url(#gold)" stroke="#FFE9A5" stroke-width="4"/>
+<path d="M319 171 284 229 312 214 337 240 344 175" fill="url(#gold)"/>
+<path d="M343 173 374 231 392 207 420 213 367 167" fill="url(#gold)"/>
+<path d="M121 426 334 520 530 432" fill="none" stroke="#D9A1FF" stroke-width="3" opacity=".55"/>
+</g>
+<g fill="#FFC857">
+<path d="m88 168 8 23 23 8-23 8-8 23-8-23-23-8 23-8z"/>
+<path d="m611 175 6 17 17 6-17 6-6 17-6-17-17-6 17-6z"/>
+<circle cx="154" cy="379" r="5"/><circle cx="601" cy="342" r="6"/>
+</g>
+</svg>

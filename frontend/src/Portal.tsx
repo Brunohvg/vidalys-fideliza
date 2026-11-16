@@ -31,13 +31,7 @@ const roleLabel: Record<Store["role"], string> = {
 };
 
 function Symbol({ small = false }: { small?: boolean }) {
-  return <div className={"portal-symbol" + (small ? " small" : "")} aria-hidden="true">
-    <svg viewBox="0 0 48 48" width={small ? 28 : 42} height={small ? 28 : 42} fill="none">
-      <rect width="48" height="48" rx="14" fill="#087F79"/>
-      <path d="M12 14 24 35 36 14" stroke="#fff" strokeWidth="5.3" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M12 31c8 9 21 6 25-8" stroke="#37D5BB" strokeWidth="3" strokeLinecap="round"/>
-    </svg>
-  </div>;
+  return <img src="/brand-mark.svg" width={small ? 28 : 42} height={small ? 28 : 42} alt="" aria-hidden="true" />;
 }
 
 function Wordmark() {
@@ -243,9 +237,9 @@ export default function Portal() {
       busy={authBusy} authError={authError}/>;
   }
 
-  return <div className="portal-shell">
+  return <div className="portal-shell loyalty-merchant">
     <aside id="portal-sidebar" ref={sideRef} className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista" aria-hidden={compactMenu && !drawer}>
-      <div className="portal-side-brand"><Symbol small/><Wordmark/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
+      <div className="portal-side-brand"><img className="loyalty-merchant-logo" src="/brand-logo-white.svg" alt="Vidalys Fideliza" width={178} height={48}/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
       <div className="portal-store">
         <div className="portal-store-mark"><ShoppingBag size={18}/></div>
         <div><strong>{tenant?.name || "Nenhuma loja"}</strong><span>{tenant ? roleLabel[tenant.role] : "Sem vínculo"}</span></div>

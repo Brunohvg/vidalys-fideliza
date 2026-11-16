@@ -1,6 +1,7 @@
+import MarketingHome from "./MarketingHome";
 import {useEffect,useMemo,useState} from "react";
 import {
-  ArrowRight, BookOpen, CheckCircle2, ChevronRight, Coffee,
+  ArrowRight, Coffee,
   Gift, HeartHandshake, Mail, Paintbrush, PawPrint, Scissors, Search,
   ShieldCheck, ShoppingBag, Sparkles, Store, TicketPercent, Workflow
 } from "lucide-react";
@@ -72,8 +73,7 @@ export default function MarketingSite(){
     <header className="mk-header">
       <div className="mk-header-inner">
         <a className="mk-logo" href="/" aria-label="Vidalys Fideliza · início">
-          <span><HeartHandshake size={24}/></span>
-          <strong>vidalys<em>fideliza</em></strong>
+          <img src="/brand-logo.svg" alt="Vidalys Fideliza" width={175} height={51} />
         </a>
         <nav className="mk-nav" aria-label="Apresentação comercial">
           {nav.map(item=><a key={item.page} href={item.href}
@@ -85,62 +85,7 @@ export default function MarketingSite(){
         </div>
       </div>
     </header>
-    {page==="inicio"&&<main>
-      <section className="mk-hero">
-        <div className="mk-hero-copy">
-          <span className="mk-eyebrow"><Sparkles size={16}/> LOJAS FÍSICAS, ONLINE E HÍBRIDAS</span>
-          <h1>Clientes que voltam. <em>Relações que crescem.</em></h1>
-          <p>Um clube de vantagens para sua loja reconhecer quem compra, apresentar recompensas e criar motivos para a próxima visita.</p>
-          <div className="mk-hero-actions">
-            <a className="mk-button mk-button-main" href="/cadastrar">Conhecer o piloto <ArrowRight size={18}/></a>
-            <a className="mk-button mk-button-quiet" href="/conhecer/recursos">Explorar recursos <ChevronRight size={18}/></a>
-          </div>
-          <div className="mk-honesty"><ShieldCheck size={17}/> Produto em homologação. Nenhum desconto financeiro é ativado automaticamente.</div>
-        </div>
-        <div className="mk-demo" aria-label="Exemplo ilustrativo de clube de vantagens">
-          <div className="mk-demo-ribbon">PRÉVIA ILUSTRATIVA · NÃO É SALDO REAL</div>
-          <div className="mk-demo-header"><span className="mk-demo-avatar"><HeartHandshake size={22}/></span>
-            <div><strong>Meu Clube</strong><small>A experiência do seu cliente</small></div></div>
-          <div className="mk-demo-topline">Um espaço com a identidade da sua loja</div>
-          <div className="mk-demo-panel"><span>RECOMPENSA EXEMPLO</span>
-            <strong>Desconto na próxima compra</strong>
-            <p>A loja define as condições. O cliente acompanha as vantagens publicadas.</p>
-            <span className="mk-demo-pill"><Gift size={15}/> Resgate ainda em validação</span>
-          </div>
-          <div className="mk-demo-row"><span><CheckCircle2 size={18}/> Adesão por e-mail</span>
-            <span><BookOpen size={18}/> Regras claras</span></div>
-        </div>
-      </section>
-      <section className="mk-section mk-benefits">
-        <div className="mk-section-head">
-          <span className="mk-eyebrow">UM CLUBE COM PROPÓSITO</span>
-          <h2>Simples de entender. Bom de participar.</h2>
-          <p>O lojista configura o programa. O cliente conhece as regras e encontra as recompensas em um só lugar.</p>
-        </div>
-        <div className="mk-benefit-grid">
-          <article><span><HeartHandshake size={24}/></span><h3>Seu clube, sua marca</h3><p>A experiência do participante acompanha o nome e as cores da sua loja.</p></article>
-          <article><span><Gift size={24}/></span><h3>Vantagens que fazem sentido</h3><p>O benefício fica visível com suas regras e condições, sem falsas promessas.</p></article>
-          <article><span><ShieldCheck size={24}/></span><h3>Confiança para começar</h3><p>As operações financeiras só serão liberadas após validação e controle de riscos.</p></article>
-        </div>
-      </section>
-      <section className="mk-section mk-showcase">
-        <div><span className="mk-eyebrow">FEITO PARA QUEM VENDE</span>
-          <h2>Não importa se sua loja é física ou virtual.</h2>
-          <p>O Fideliza começa pelo relacionamento com o consumidor, sem exigir uma plataforma de e-commerce para criar seu clube.</p>
-          <a className="mk-text-link" href="/conhecer/segmentos">Conhecer ideias por segmento <ArrowRight size={18}/></a>
-        </div>
-        <div className="mk-showcase-stack">
-          {segments.slice(0,3).map(s=>{const Icon=s.Icon;return <article key={s.title}>
-            <span><Icon size={20}/></span><div><strong>{s.title}</strong><small>{s.copy}</small></div>
-          </article>})}
-        </div>
-      </section>
-      <section className="mk-cta-panel"><div><span className="mk-eyebrow">VIDALYS FIDELIZA</span>
-        <h2>O próximo passo é conhecer seu próprio clube.</h2>
-        <p>Veja o que já funciona no piloto e o que ainda está em validação.</p></div>
-        <a className="mk-button mk-button-main" href="/cadastrar">Criar minha conta <ArrowRight size={18}/></a>
-      </section>
-    </main>}
+    {page==="inicio"&&<MarketingHome/>}
     {page==="recursos"&&<main className="mk-inner">
       <SectionTop eyebrow="RECURSOS" title="O que você pode fazer com o Fideliza."
         copy="Uma visão clara das funcionalidades do produto, separando as interfaces existentes das integrações que ainda exigem homologação."/>
@@ -192,7 +137,7 @@ export default function MarketingSite(){
       <p className="mk-disclaimer">Não anunciamos integração com ERPs, marketplaces ou CRMs sem contrato técnico e testes de ponta a ponta.</p>
     </main>}
     <footer className="mk-footer"><div className="mk-footer-inner">
-      <div><div className="mk-footer-brand"><HeartHandshake size={23}/> Vidalys <strong>Fideliza</strong></div>
+      <div><div className="mk-footer-brand"><img src="/brand-logo-white.svg" alt="Vidalys Fideliza" width={180} height={52}/></div>
         <p>Relacionamento, recompensas e cuidado com cada compra.</p>
         <small>Esta apresentação é uma prévia de homologação, não uma oferta de recursos comerciais ativados.</small>
       </div>
