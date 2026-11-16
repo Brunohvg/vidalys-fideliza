@@ -21,7 +21,7 @@
 .public-enroll-terms summary{padding:12px 15px;color:#1b6753;line-height:1.5;font-size:12px;font-weight:800;cursor:pointer}
 .public-enroll-terms p{max-height:230px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.75;color:#52695d;margin:0;padding:15px;border-top:1px solid #e1eee4;background:#fff}
 .public-enroll-choice{display:flex;align-items:flex-start;gap:10px;color:#365d4b;font-size:12px;line-height:1.65;cursor:pointer}
-.public-enroll-choice input{width:19px;height:19px;flex:none;margin:1px 0 0;accent-color:#087f79}
+.public-enroll-choice input{width:19px;height:19px;flex:none;margin:1px 0 0;accent-color:#6A3DF0}
 .public-enroll-choice strong{color:#155b47}
 .public-enroll-submit{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:49px;border:0;border-radius:11px;padding:12px 16px;color:#fff;font-size:13px;font-weight:850;cursor:pointer}
 .public-enroll-submit:disabled{opacity:.45;cursor:not-allowed}
@@ -35,7 +35,7 @@
 .public-enroll-privacy-link a{display:inline-flex;align-items:center;gap:5px;color:#0b7866;font-weight:800;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 .public-enroll-state{padding:27px;color:#687d70;text-align:center;font-size:13px}
 .public-enroll-shell>footer{max-width:690px;text-align:center;font-size:10px;color:#778c7d;line-height:1.6}
-.public-enroll-card input:focus-visible,.public-enroll-card button:focus-visible,.public-enroll-card summary:focus-visible,.public-enroll-card a:focus-visible{outline:3px solid #37d5bb;outline-offset:3px}
+.public-enroll-card input:focus-visible,.public-enroll-card button:focus-visible,.public-enroll-card summary:focus-visible,.public-enroll-card a:focus-visible{outline:3px solid #FF8A3D;outline-offset:3px}
 @media(max-width:640px){.public-enroll-shell{padding:15px 11px;gap:12px}.public-enroll-card{padding:24px 18px;border-radius:17px}.public-enroll-brand{margin-bottom:24px}.public-enroll-fields{grid-template-columns:1fr;gap:13px}.public-enroll-card form{gap:15px}}
 @media(max-width:340px){.public-enroll-card{padding:20px 14px}.public-enroll-brand small{font-size:10px}}
 
@@ -44,16 +44,16 @@
    Acessibilidade: contraste herdado de readableForeground(primary/accent).
    Não simular crédito, recompensa ativa ou conversão realizada. */
 .public-enroll-shell{
-  --join-primary:#087F79;--join-foreground:#fff;--join-accent:#37D5BB;
-  --join-accent-foreground:#10253E;
-  background:radial-gradient(ellipse at top left,#E8F9F4,transparent 47%),#F6F8FB;
-  color:#10253E;padding:clamp(12px,2.5vw,30px);
+  --join-primary:#6A3DF0;--join-foreground:#fff;--join-accent:#FF8A3D;
+  --join-accent-foreground:#3B1E82;
+  background:radial-gradient(ellipse at top left,#EDE7FF,transparent 47%),#F8F9FF;
+  color:#3B1E82;padding:clamp(12px,2.5vw,30px);
   gap:16px;
 }
 .public-enroll-layout{
   width:min(100%,1160px);display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  background:#fff;border:1px solid #DDE7EF;
+  background:#fff;border:1px solid #E4DFF2;
   border-radius:27px;overflow:hidden;
   box-shadow:0 23px 70px rgba(16,37,62,.10);
   min-width:0;align-items:stretch;
@@ -124,36 +124,36 @@
 .public-enroll-layout .public-enroll-brand{display:none}
 .public-enroll-layout .public-enroll-top h1{
   font:800 clamp(27px,2.8vw,37px)/1.16 Manrope,Inter,sans-serif;
-  color:#10253E;letter-spacing:-.05em;
+  color:#3B1E82;letter-spacing:-.05em;
 }
-.public-enroll-layout .public-enroll-top>p{font-size:15px;line-height:1.65;color:#577085}
+.public-enroll-layout .public-enroll-top>p{font-size:15px;line-height:1.65;color:#665D7A}
 .public-enroll-layout .public-enroll-eyebrow{
-  font-size:11px;background:#FFF6E6;color:#98631A;
+  font-size:11px;background:#FFF5E5;color:#8F5200;
   border:1px solid #F0DFB7;padding:7px 10px;border-radius:100px;width:fit-content;
 }
 .public-enroll-layout .public-enroll-value{
-  background:#FFF9EC;border:1px solid #F0DFB7;color:#10253E;
+  background:#FFF9EC;border:1px solid #F0DFB7;color:#3B1E82;
   padding:17px;align-items:flex-start;gap:13px;border-radius:15px;
 }
 .public-enroll-value-icon{
   display:grid;place-items:center;flex:none;width:43px;height:43px;
-  background:#F6E3BC;color:#98631A;border-radius:13px;
+  background:#F6E3BC;color:#8F5200;border-radius:13px;
 }
 .public-enroll-value strong{display:block;font:800 14px/1.45 Manrope,Inter,sans-serif}
 .public-enroll-value div>span{display:block;font-size:13px;line-height:1.6;color:#66583E;margin-top:3px}
-.public-enroll-layout .public-enroll-fields label{font-size:13px;color:#10253E}
-.public-enroll-layout .public-enroll-fields input{font-size:16px;border-color:#BCCBD7;color:#10253E;border-radius:12px}
+.public-enroll-layout .public-enroll-fields label{font-size:13px;color:#3B1E82}
+.public-enroll-layout .public-enroll-fields input{font-size:16px;border-color:#BCCBD7;color:#3B1E82;border-radius:12px}
 .public-enroll-layout .public-enroll-choice{font-size:13px;color:#394F62}
 .public-enroll-layout .public-enroll-submit{min-height:54px;font-size:15px;box-shadow:0 8px 20px rgba(16,37,62,.13)}
 .public-enroll-layout .public-enroll-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 25px rgba(16,37,62,.18)}
 .public-enroll-layout .public-enroll-brand small{font-size:12px}
-.public-enroll-layout .public-enroll-warning{font-size:12px;color:#577085}
+.public-enroll-layout .public-enroll-warning{font-size:12px;color:#665D7A}
 .public-enroll-layout .public-enroll-terms summary{font-size:13px}
 .public-enroll-layout .public-enroll-terms p{font-size:13px}
-.public-enroll-layout .public-enroll-privacy-link{font-size:12px;color:#577085}
-.public-enroll-layout .public-enroll-privacy-link a{color:#087F79}
-.public-enroll-shell>footer{max-width:1160px;font-size:12px;color:#577085}
-.public-enroll-layout :is(a,input,summary,button):focus-visible{outline:3px solid #087F79;outline-offset:3px}
+.public-enroll-layout .public-enroll-privacy-link{font-size:12px;color:#665D7A}
+.public-enroll-layout .public-enroll-privacy-link a{color:#6A3DF0}
+.public-enroll-shell>footer{max-width:1160px;font-size:12px;color:#665D7A}
+.public-enroll-layout :is(a,input,summary,button):focus-visible{outline:3px solid #6A3DF0;outline-offset:3px}
 @media(max-width:960px){
   .public-enroll-layout{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)}
   .public-enroll-story{padding:30px 25px;gap:25px}
