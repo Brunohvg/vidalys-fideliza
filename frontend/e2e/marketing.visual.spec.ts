@@ -8,7 +8,8 @@ for(const width of [390,768,1440]){
     await expect(page.getByText("PRÉVIA ILUSTRATIVA · NÃO É SALDO REAL")).toBeVisible();
     await expect(page.getByRole("link",{name:"Conhecer o piloto"})).toHaveAttribute("href","/cadastrar");
     await expect(page.getByRole("navigation",{name:"Apresentação comercial"})).toBeVisible();
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+    const overflowDetails=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-innerWidth,offenders:[...document.querySelectorAll("body *")].filter(el=>{const r=el.getBoundingClientRect();return r.right>innerWidth+1||r.left< -1}).slice(0,12).map(el=>({tag:el.tagName,cls:String(el.className).slice(0,120),left:Math.round(el.getBoundingClientRect().left),right:Math.round(el.getBoundingClientRect().right)}))}));
+    expect(overflowDetails.overflow,JSON.stringify(overflowDetails)).toBeLessThanOrEqual(1);
     await page.screenshot({path:info.outputPath("marketing-home-"+width+".png"),fullPage:true});
     await expect(page.getByRole("link",{name:"Entrar",exact:true}).first()).toHaveAttribute("href","/entrar");
     await page.getByRole("navigation",{name:"Apresentação comercial"}).getByRole("link",{name:"Segmentos"}).click();
