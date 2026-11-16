@@ -16,7 +16,8 @@ for(const width of [390,768,1440]){
     await page.getByRole("navigation",{name:"Apresentação comercial"}).getByRole("link",{name:"Segmentos"}).click();
     await expect(page).toHaveURL(/\/conhecer\/segmentos$/);
     await expect(page.getByRole("heading",{name:"Artesanato e aviamentos"})).toBeVisible();
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+    const overflowInfo=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-innerWidth,offenders:[...document.querySelectorAll(".vf-market *")].map(el=>({el,r:el.getBoundingClientRect()})).filter(({r})=>r.right>innerWidth+1||r.left< -1).slice(0,12).map(({el,r})=>({tag:el.tagName,cls:typeof el.className==="string"?el.className:"",left:Math.round(r.left),right:Math.round(r.right)}))}));
+    expect(overflowInfo.overflow,JSON.stringify(overflowInfo)).toBeLessThanOrEqual(1);
   });
 }
 test("Catálogo de integrações permite buscar e não anuncia conexão fictícia",async({page},info)=>{
