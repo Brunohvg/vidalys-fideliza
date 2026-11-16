@@ -1,5 +1,5 @@
 /* Vidalys Fideliza — Loyalty Experience v2
-   Tokens de referência, espelhados no frontend/src/fideliza-theme.css.
+   Referência documental. Fonte executável: frontend/src/brand-tokens.css.
    O widget para clientes herda o visual da loja parceira, NÃO estes estilos.
 */
 :root {
@@ -25,7 +25,7 @@
   --vf-radius-sm: 10px;
   --vf-radius-md: 16px;
   --vf-radius-lg: 22px;
-  --vf-shadow-card: 0 14px 40px rgba(16,37,62,.055);
+  --vf-shadow-card: 0 14px 40px rgba(59,30,130,.055);
   --vf-font: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --vf-font-display: "Manrope", "Inter", system-ui, sans-serif;
 }
