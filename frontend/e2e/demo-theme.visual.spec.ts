@@ -7,11 +7,11 @@ for(const width of [390,768,1440]){
     await page.goto("/demo");
     await expect(page.getByRole("heading",{name:"Uma experiência de fidelidade que dá vontade de voltar."})).toBeVisible();
     await expect(page.getByText("DADOS FICTÍCIOS")).toBeVisible();
-    await expect(page.getByText("DEMO VISUAL V2")).toBeAttached();
+    await expect(page.getByText("DEMO VISUAL · IDENTIDADE FIDELIZA")).toBeAttached();
     await expect(page.getByRole("link",{name:"Voltar ao Fideliza"})).toHaveAttribute("href","/");
-    await expect(page.locator(".layout .sidebar")).toHaveCSS("background-color","rgb(16, 37, 62)");
+    await expect(page.locator(".layout .sidebar")).toHaveCSS("background-color","rgb(59, 30, 130)");
     await expect(page.locator(".layout .button-primary").first())
-      .toHaveCSS("background-color","rgb(8, 127, 121)");
+      .toHaveCSS("background-color","rgb(106, 61, 240)");
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
     await page.screenshot({path:info.outputPath("demo-v2-"+width+".png"),fullPage:true});
