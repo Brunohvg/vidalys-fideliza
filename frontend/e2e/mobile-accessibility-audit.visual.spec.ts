@@ -91,10 +91,10 @@ for(const width of [320,360,390,430,768,1024,1440]){
     await page.setViewportSize({width,height:width<=390?700:900});
     await setup(page);
     await page.goto("/app/visao-geral");
-    await expect(page.getByRole("heading",{name:"Seu clube, sem complicação."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
     await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
-    await expect(page.getByText("Recompensas exibidas")).toBeVisible();
-    await expect(page.getByText("pontos a partir",{exact:false})).toBeVisible();
+    await expect(page.getByText("Recompensas publicadas")).toBeVisible();
+    await expect(page.getByText("pontos de pedidos online",{exact:false})).toBeVisible();
     await assertNoHorizontalOverflow(page,"visão geral "+width);
     if(width<=1020){
       const opener=page.getByRole("button",{name:"Abrir menu"});
