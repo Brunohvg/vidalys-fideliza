@@ -2,7 +2,7 @@ import {useEffect,useState} from "react";
 import {ArrowRight,CheckCircle2,ClipboardCheck,Gift,PlugZap,UsersRound,ShieldCheck} from "lucide-react";
 import {merchantApi,type DiscountRewardDraft,type ManualSaleList,
  type NuvemshopConnectionStatus,type ParticipantDirectoryResponse,type Store} from "./api";
-import "./action-center.css";
+import "./loyalty-dashboard.css";
 
 type Destination="program"|"clients"|"sales"|"campaign"|"catalog"|"results"|"settings";
 type Data={
@@ -77,62 +77,51 @@ export default function ActionCenter({tenantId,role,platform,onNavigate}:{
     button:"Ver participantes",destination:"clients"};
   }
  }
- return <div className="vf-home" aria-label="Resumo da loja">
-  <section className="vf-home-welcome">
-   <span className="portal-eyebrow">VISÃO GERAL</span>
-   <h2>Seu clube, sem complicação.</h2>
-   <p>Uma visão rápida do que existe hoje e do que precisa da sua atenção.</p>
+ return <div className="vf-home loyalty-dashboard" aria-label="Resumo da loja">
+  <section className="loyalty-dashboard-intro">
+   <div><span className="loyalty-dashboard-eyebrow">SEU CENTRO DE FIDELIDADE</span>
+    <h2>Olá! Seu clube está ganhando forma.</h2>
+    <p>Veja quem participa, quais benefícios estão publicados e o que precisa de atenção. Sem números inventados.</p>
+   </div>
+   <span className="loyalty-dashboard-intro-icon" aria-hidden="true"><Gift size={42}/></span>
   </section>
-  {data?.incomplete&&<p className="vf-home-warning" role="status">
-   Alguns dados estão indisponíveis. Um traço não significa zero.
-  </p>}
-  <section className="vf-home-overview" aria-label="Indicadores reais do clube">
-   <article><div><UsersRound size={18}/><span>Participantes ativos</span></div>
+  {data?.incomplete&&<p className="loyalty-dashboard-warning" role="status">Algumas informações não puderam ser consultadas. Dados indisponíveis aparecem como traço, não como zero.</p>}
+  <section className="loyalty-dashboard-metrics" aria-label="Indicadores reais do clube">
+   <article className="loyalty-dashboard-metric">
+    <div className="loyalty-dashboard-metric-top"><span><UsersRound size={22}/></span><small>Participantes ativos</small></div>
     <strong>{data?count??"—":"…"}</strong>
-    <small>Adesões registradas</small>
-    <button type="button" onClick={()=>onNavigate("clients")}>Ver clientes <ArrowRight size={14}/></button>
+    <p>Adesões confirmadas nesta loja</p>
+    <button type="button" onClick={()=>onNavigate("clients")}>Ver clientes <ArrowRight size={16}/></button>
    </article>
-   <article><div><ClipboardCheck size={18}/><span>Vendas para conferir</span></div>
+   <article className="loyalty-dashboard-metric">
+    <div className="loyalty-dashboard-metric-top"><span><ClipboardCheck size={22}/></span><small>Vendas para conferir</small></div>
     <strong>{data?pending??"—":"…"}</strong>
-    <small>Até 30 registros do balcão</small>
-    <button type="button" onClick={()=>onNavigate("sales")}>Ver vendas <ArrowRight size={14}/></button>
+    <p>Entre os últimos 30 registros de balcão</p>
+    <button type="button" onClick={()=>onNavigate("sales")}>Conferir vendas <ArrowRight size={16}/></button>
    </article>
-   <article><div><Gift size={18}/><span>Recompensas exibidas</span></div>
+   <article className="loyalty-dashboard-metric">
+    <div className="loyalty-dashboard-metric-top"><span><Gift size={22}/></span><small>Recompensas publicadas</small></div>
     <strong>{data?published??"—":"…"}</strong>
-    <small>Catálogo do Meu Clube, não cupons liberados</small>
-    <button type="button" onClick={()=>onNavigate("program")}>Ver benefícios <ArrowRight size={14}/></button>
+    <p>Benefícios visíveis; não são cupons liberados</p>
+    <button type="button" onClick={()=>onNavigate("program")}>Ver benefícios <ArrowRight size={16}/></button>
    </article>
   </section>
-  <section className="vf-home-next" aria-labelledby="vf-home-next-title">
-   <div className="vf-home-next-symbol"><CheckCircle2 size={24}/></div>
-   <div className="vf-home-next-copy">
-    <span className="portal-eyebrow">PRÓXIMA AÇÃO RECOMENDADA</span>
-    <h3 id="vf-home-next-title">{data?next.heading:"Verificando sua loja…"}</h3>
-    <p>{data?next.detail:"Consultando o estado atual do clube."}</p>
-   </div>
-   <button type="button" disabled={!data} onClick={()=>onNavigate(next.destination)}>
-    {next.button}<ArrowRight size={17}/>
-   </button>
-  </section>
-  <section className="vf-home-integrations" aria-label="Resumo de integração">
-   <div className="vf-home-integration-icon"><PlugZap size={20}/></div>
-   <div>
-    <strong>Nuvemshop</strong>
-    <p>{!data?"Verificando a autorização…":
-      data.integration===null?"Situação indisponível":
-      !connected?"Integração não autorizada nesta loja":
-      ordersReady?"Leitura de pedidos habilitada · saldo e cupons ainda não automáticos":
-      "Autorização registrada · leitura de pedidos ainda depende de permissão ou configuração"}
-    </p>
-   </div>
-   <button type="button" onClick={()=>onNavigate(connected?"sales":"settings")}>
-    {connected?"Ver pedidos":"Conectar"}<ArrowRight size={15}/>
-   </button>
-  </section>
-  <p className="vf-home-safe"><ShieldCheck size={16}/>
-   O Fideliza ainda não calcula ROI, vendas atribuídas nem pontos a partir
-   de pedidos online. Esses dados só aparecerão quando a integração
-   transacional estiver validada.
-  </p>
+  <div className="loyalty-dashboard-columns">
+   <section className="loyalty-dashboard-next" aria-labelledby="loyalty-dashboard-action">
+    <div className="loyalty-dashboard-next-star"><CheckCircle2 size={25}/></div>
+    <span className="loyalty-dashboard-eyebrow">SUA PRÓXIMA AÇÃO</span>
+    <h3 id="loyalty-dashboard-action">{data?next.heading:"Consultando sua loja…"}</h3>
+    <p>{data?next.detail:"Verificando participantes e programa."}</p>
+    <button type="button" disabled={!data} onClick={()=>onNavigate(next.destination)}>{next.button}<ArrowRight size={18}/></button>
+   </section>
+   <section className="loyalty-dashboard-connection" aria-labelledby="loyalty-dashboard-integration">
+    <div className="loyalty-dashboard-connection-icon"><PlugZap size={23}/></div>
+    <span className="loyalty-dashboard-eyebrow">SEUS CANAIS</span>
+    <h3 id="loyalty-dashboard-integration">Nuvemshop</h3>
+    <p>{!data?"Verificando conexão…":data.integration===null?"Situação indisponível":!connected?"Integração ainda não autorizada nesta loja":ordersReady?"Leitura de pedidos habilitada; saldo e cupons não são automáticos":"Autorização registrada; leitura de pedidos depende das permissões e configurações"}</p>
+    <button type="button" onClick={()=>onNavigate(connected?"sales":"settings")}>{connected?"Consultar pedidos":"Configurar integração"}<ArrowRight size={18}/></button>
+   </section>
+  </div>
+  <p className="loyalty-dashboard-disclosure"><ShieldCheck size={17}/> O Fideliza ainda não calcula ROI, vendas atribuídas ou pontos de pedidos online. Esses indicadores serão exibidos somente após validação transacional.</p>
  </div>;
 }
