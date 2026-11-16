@@ -88,7 +88,7 @@ export default function MarketingSite(){
       <section className="mk-hero">
         <div className="mk-hero-copy">
           <span className="mk-eyebrow"><Sparkles size={16}/> LOJAS FÍSICAS, ONLINE E HÍBRIDAS</span>
-          <h1>Clientes que voltam. <em>Relações que crescem.</em></h1>
+          <h1>Clientes que voltam. <em>Seu negócio cresce!</em></h1>
           <p>Um clube de vantagens para sua loja reconhecer quem compra, apresentar recompensas e criar motivos para a próxima visita.</p>
           <div className="mk-hero-actions">
             <a className="mk-button mk-button-main" href="/cadastrar">Conhecer o piloto <ArrowRight size={18}/></a>
@@ -96,7 +96,7 @@ export default function MarketingSite(){
           </div>
           <div className="mk-honesty"><ShieldCheck size={17}/> Produto em homologação. Nenhum desconto financeiro é ativado automaticamente.</div>
         </div>
-        <div className="mk-demo" aria-label="Exemplo ilustrativo de clube de vantagens">
+        <div className="mk-reward-scene"><img className="mk-gift-illustration" src="/loyalty-gift.svg" alt="Presente roxo com laço dourado, símbolo das recompensas do Fideliza"/><div className="mk-demo" aria-label="Exemplo ilustrativo de clube de vantagens">
           <div className="mk-demo-ribbon">PRÉVIA ILUSTRATIVA · NÃO É SALDO REAL</div>
           <div className="mk-demo-header"><span className="mk-demo-avatar"><HeartHandshake size={22}/></span>
             <div><strong>Meu Clube</strong><small>A experiência do seu cliente</small></div></div>
@@ -108,7 +108,7 @@ export default function MarketingSite(){
           </div>
           <div className="mk-demo-row"><span><CheckCircle2 size={18}/> Adesão por e-mail</span>
             <span><BookOpen size={18}/> Regras claras</span></div>
-        </div>
+        </div></div>
       </section>
       <section className="mk-section mk-benefits">
         <div className="mk-section-head">
