@@ -4,8 +4,9 @@ for(const width of [390,768,1440]){
   test("Apresentação comercial é clara e sem overflow em "+width+"px",async({page},info)=>{
     await page.setViewportSize({width,height:900});
     await page.goto("/");
-    await expect(page.getByRole("heading",{level:1,name:/Clientes que voltam/})).toBeVisible();
+    await expect(page.getByRole("heading",{level:1,name:/Seus clientes sempre voltam!/})).toBeVisible();
     await expect(page.getByText("PRÉVIA ILUSTRATIVA · NÃO É SALDO REAL")).toBeVisible();
+    await expect(page.locator(".mk-gift-illustration")).toHaveAttribute("src","/loyalty-gift.svg");
     await expect(page.getByRole("link",{name:"Conhecer o piloto"})).toHaveAttribute("href","/cadastrar");
     await expect(page.getByRole("navigation",{name:"Apresentação comercial"})).toBeVisible();
     const overflowDetails=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth-innerWidth,offenders:[...document.querySelectorAll("body *")].filter(el=>{const r=el.getBoundingClientRect();return r.right>innerWidth+1||r.left< -1}).slice(0,12).map(el=>({tag:el.tagName,cls:String(el.className).slice(0,120),left:Math.round(el.getBoundingClientRect().left),right:Math.round(el.getBoundingClientRect().right)}))}));
