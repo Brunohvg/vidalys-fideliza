@@ -1,18 +1,7 @@
 /* Vidalys Fideliza | Loyalty Motion System — aplicado após os módulos legados.
    Produto Vidalys: marca roxa com recompensa dourada e movimento circular.
    Não substitui cores white-label explícitas de lojistas. */
-:root {
-  --vf-purple-950:#24113F;
-  --vf-purple-900:#3B1E82;
-  --vf-purple-700:#6A3DF0;
-  --vf-purple-500:#8B43F6;
-  --vf-lavender:#EDE7FF;
-  --vf-orange:#FF8A3D;
-  --vf-gold:#FFC857;
-  --vf-paper:#F8F9FF;
-  --vf-line:#E4DFF2;
-  --vf-glow:0 16px 48px rgba(85,48,161,.10),0 3px 14px rgba(85,48,161,.045);
-}
+
 html {scroll-behavior:smooth}
 :where(.vf-market,.portal-shell,.portal-auth-layout,.layout,.member-club-shell,.public-enroll-shell){
   font-family:var(--vf-font);
@@ -113,5 +102,4 @@ html {scroll-behavior:smooth}
     scroll-behavior:auto!important;
   }
 }
-
 
