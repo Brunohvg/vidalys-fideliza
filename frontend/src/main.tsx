@@ -14,6 +14,7 @@ import "./portal.css";
 import "./fideliza-theme.css";
 import "./experience.css";
 import "./demo-theme.css";
+import "./brand-experience.css";
 
 const entry = entryRoute(window.location.pathname);
 const content = (() => {
