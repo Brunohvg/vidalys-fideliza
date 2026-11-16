@@ -55,7 +55,7 @@
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   background:#fff;border:1px solid #E4DFF2;
   border-radius:27px;overflow:hidden;
-  box-shadow:0 23px 70px rgba(16,37,62,.10);
+  box-shadow:0 23px 70px rgba(59,30,130,.10);
   min-width:0;align-items:stretch;
 }
 .public-enroll-layout .public-enroll-card{
@@ -144,8 +144,8 @@
 .public-enroll-layout .public-enroll-fields label{font-size:13px;color:#3B1E82}
 .public-enroll-layout .public-enroll-fields input{font-size:16px;border-color:#DCCFF4;color:#3B1E82;border-radius:12px}
 .public-enroll-layout .public-enroll-choice{font-size:13px;color:#513595}
-.public-enroll-layout .public-enroll-submit{min-height:54px;font-size:15px;box-shadow:0 8px 20px rgba(16,37,62,.13)}
-.public-enroll-layout .public-enroll-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 25px rgba(16,37,62,.18)}
+.public-enroll-layout .public-enroll-submit{min-height:54px;font-size:15px;box-shadow:0 8px 20px rgba(59,30,130,.13)}
+.public-enroll-layout .public-enroll-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 25px rgba(59,30,130,.18)}
 .public-enroll-layout .public-enroll-brand small{font-size:12px}
 .public-enroll-layout .public-enroll-warning{font-size:12px;color:#665D7A}
 .public-enroll-layout .public-enroll-terms summary{font-size:13px}
