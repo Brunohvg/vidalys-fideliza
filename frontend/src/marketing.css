@@ -88,6 +88,11 @@
   .mk-header-actions{gap:7px}
 }
 @media(max-width:800px){
+  .mk-feature-grid,.mk-segments,.mk-integration-grid,.mk-integration-intro{grid-template-columns:minmax(0,1fr)}
+  .mk-feature,.mk-segment,.mk-integration{min-width:0;overflow-wrap:anywhere}
+  .mk-segment-example{min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .mk-inner,.mk-section-top{min-width:0;max-width:100%}
+
   .mk-header-inner{flex-wrap:wrap;padding:13px 0;gap:8px;justify-content:space-between}
   .mk-nav{order:3;width:100%;overflow-x:auto;justify-content:space-around}
   .mk-footer-inner{flex-direction:column}
