@@ -1,0 +1,56 @@
+/* Home rebuild: independent components; no dependence on the old .mk-hero/.mk-demo styles */
+.loyalty-home{font-family:Manrope,Inter,sans-serif;color:#3B1E82;background:#F8F9FF;overflow:clip}
+.loyalty-home *{box-sizing:border-box}
+.loyalty-home-hero{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);max-width:1500px;margin:auto;align-items:center;min-height:665px;gap:22px;padding:74px clamp(26px,5.8vw,94px) 48px;position:relative;isolation:isolate;background:radial-gradient(circle at 83% 20%,#F4DDFB 0,transparent 34%),radial-gradient(circle at 6% 84%,#EDE7FF 0,transparent 52%)}
+.loyalty-home-hero-copy{position:relative;z-index:2;max-width:680px;min-width:0}
+.loyalty-home-eyebrow{display:inline-flex;align-items:center;gap:9px;color:#6A3DF0;letter-spacing:.115em;font-size:11px;font-weight:850;line-height:1.5}
+.loyalty-home-hero h1{font-size:clamp(42px,5.2vw,77px);line-height:1.07;letter-spacing:-.07em;max-width:12ch;margin:23px 0 22px;font-weight:850}
+.loyalty-home-hero h1 em{font-style:normal;color:#F16A32}
+.loyalty-home-hero-copy>p:not(.loyalty-home-disclaimer){font-size:clamp(16px,1.4vw,19px);line-height:1.65;max-width:52ch;color:#554869}
+.loyalty-home-actions{display:flex;flex-wrap:wrap;gap:12px;margin:28px 0 36px}
+.loyalty-home-button{display:inline-flex;align-items:center;justify-content:center;gap:11px;min-height:50px;padding:13px 22px;border-radius:13px;text-decoration:none;font-weight:800;font-size:14px;transition:transform .2s,box-shadow .2s}
+.loyalty-home-button:hover{transform:translateY(-2px)}
+.loyalty-home-button.primary{background:linear-gradient(115deg,#8B43F6,#5926C6);color:white;box-shadow:0 12px 25px #6A3DF033}
+.loyalty-home-button.secondary{border:1px solid #CAB8ED;background:#FFFFFFE6;color:#4B258D}
+.loyalty-home-proof{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:650px;padding:14px 0;border-top:1px solid #D7C6F0;border-bottom:1px solid #D7C6F0}
+.loyalty-home-proof span{display:flex;align-items:center;gap:10px;font-size:11px;line-height:1.45;font-weight:750;color:#3B1E82}
+.loyalty-home-proof svg{flex:none;color:#6A3DF0}
+.loyalty-home-disclaimer{display:flex;align-items:flex-start;gap:8px;margin:16px 0 0;font-size:11px;color:#756B85;line-height:1.55}
+.loyalty-home-disclaimer svg{flex:none}
+.loyalty-home-art{position:relative;isolation:isolate;display:grid;place-items:center;min-height:530px;min-width:0}
+.loyalty-home-art:before{content:"";z-index:-2;position:absolute;inset:7% 1% 8%;border-radius:50%;background:radial-gradient(circle,#E3B8FF 0%,#ECD7FF99 35%,transparent 69%);filter:blur(21px)}
+.loyalty-home-orbit{position:absolute;border:1px solid #D3B5F7;border-radius:50%;pointer-events:none;z-index:-1}
+.loyalty-home-orbit.orbit-one{width:84%;aspect-ratio:1;transform:rotate(-25deg) scaleY(.56)}
+.loyalty-home-orbit.orbit-two{width:110%;aspect-ratio:1;transform:rotate(24deg) scaleY(.5);border-color:#FFAD7455}
+.loyalty-home-gift{width:min(100%,600px);max-height:550px;object-fit:contain;filter:drop-shadow(0 22px 24px #3B1E8228);animation:loyalty-appear .8s both}
+.loyalty-home-sample{position:absolute;right:-2%;bottom:2%;display:flex;align-items:center;gap:12px;width:min(295px,63%);background:#3B1E82;color:white;border:1px solid #9772E2;padding:14px 16px;border-radius:18px;box-shadow:0 20px 35px #3B1E8242;transform:rotate(-3deg)}
+.loyalty-home-sample-mark{display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:13px;color:#FFC857;background:#FFFFFF20}
+.loyalty-home-sample div{min-width:0;display:grid;gap:3px}
+.loyalty-home-sample small{font-size:9px;letter-spacing:.07em;color:#E9D8FF}
+.loyalty-home-sample strong{font-size:13px;line-height:1.3}
+.loyalty-home-sample div>span{font-size:10px;color:#F7E7FF}
+.loyalty-home-benefits{padding:84px clamp(22px,5vw,88px);background:white}
+.loyalty-home-section-heading{max-width:800px;text-align:center;margin:0 auto 36px}
+.loyalty-home :is(.loyalty-home-section-heading h2,.loyalty-home-how h2,.loyalty-home-cta h2){font-size:clamp(27px,3.2vw,45px);line-height:1.15;letter-spacing:-.045em;margin:14px 0;font-weight:850}
+.loyalty-home-section-heading p,.loyalty-home-how-copy>p{color:#6B607E;font-size:15px;line-height:1.7}
+.loyalty-home-benefit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:1220px;margin:auto;gap:20px}
+.loyalty-home-benefit-grid article{border-radius:23px;border:1px solid #E4DFF2;background:linear-gradient(150deg,#fff,#FBF9FF);padding:31px;box-shadow:0 15px 40px #3B1E8210;transition:transform .2s,box-shadow .2s}
+.loyalty-home-benefit-grid article:hover{transform:translateY(-3px);box-shadow:0 20px 45px #3B1E821D}
+.loyalty-home-benefit-icon{display:grid;place-items:center;width:57px;height:57px;border-radius:17px;background:#EDE7FF;color:#6A3DF0}
+.loyalty-home-benefit-grid h3{font-size:19px;margin:21px 0 9px}
+.loyalty-home-benefit-grid p{font-size:13px;line-height:1.7;color:#665D7A;margin:0}
+.loyalty-home-how{display:grid;grid-template-columns:1fr 1fr;gap:clamp(32px,6vw,90px);align-items:center;padding:90px clamp(22px,6vw,90px);background:linear-gradient(125deg,#F8F9FF,#F0E9FF)}
+.loyalty-home-how-visual{display:grid;place-items:center;gap:12px;min-height:320px;border-radius:32px;background:radial-gradient(circle at 60% 40%,#A675F7,#4A239A 67%,#2B1550);color:#fff;box-shadow:0 24px 50px #3B1E8222;text-align:center;padding:30px}
+.loyalty-home-how-symbol{display:grid;place-items:center;width:148px;height:148px;border:1px solid #FFFFFF3A;border-radius:38px;background:#FFFFFF1A;transform:rotate(-7deg)}
+.loyalty-home-how-visual>span{font-size:16px;font-weight:750}
+.loyalty-home-how-copy{max-width:570px}
+.loyalty-home-how-copy>a{display:inline-flex;gap:8px;align-items:center;color:#6A3DF0;font-weight:800;text-decoration:none;margin-top:14px}
+.loyalty-home-cta{display:flex;justify-content:space-between;align-items:center;gap:28px;margin:70px auto;max-width:1220px;padding:46px clamp(26px,4vw,57px);border-radius:26px;color:white;background:radial-gradient(circle at 90% 0%,#A16CF477,transparent 42%),linear-gradient(120deg,#3B1E82,#6A3DF0);box-shadow:0 22px 46px #3B1E8228}
+.loyalty-home-cta>div{max-width:750px}.loyalty-home-cta span{font-size:11px;letter-spacing:.12em;font-weight:800;color:#FFC857}
+.loyalty-home-cta h2{color:#fff}.loyalty-home-cta p{font-size:14px;color:#EEE5FF}
+.loyalty-home-cta>a{display:inline-flex;align-items:center;justify-content:center;gap:10px;white-space:nowrap;background:#FFC857;color:#3B1E82;padding:15px 21px;border-radius:12px;font-size:13px;font-weight:850;text-decoration:none}
+.loyalty-home-final-note{display:flex;align-items:center;justify-content:center;gap:10px;color:#756B85;font-size:11px;padding:0 20px 45px;text-align:center}
+@keyframes loyalty-appear{from{opacity:0;transform:translateY(22px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:950px){.loyalty-home-hero{grid-template-columns:1fr;padding:50px 28px 36px}.loyalty-home-hero h1{max-width:16ch}.loyalty-home-art{min-height:460px;max-width:600px;width:100%;margin:auto}.loyalty-home-how{gap:28px}.loyalty-home-cta{margin-inline:24px}}
+@media(max-width:650px){.loyalty-home-hero{padding:42px 19px 24px}.loyalty-home-hero h1{font-size:clamp(38px,10vw,52px)}.loyalty-home-actions{display:grid}.loyalty-home-proof{gap:8px}.loyalty-home-proof span{display:grid;justify-items:start;font-size:10px}.loyalty-home-art{min-height:320px}.loyalty-home-gift{max-height:340px}.loyalty-home-sample{width:min(195px,59%);padding:9px;right:0}.loyalty-home-sample-mark{width:30px;height:30px}.loyalty-home-sample strong{font-size:11px}.loyalty-home-sample div>span{display:none}.loyalty-home-benefits{padding:58px 18px}.loyalty-home-benefit-grid,.loyalty-home-how{grid-template-columns:1fr}.loyalty-home-benefit-grid article{padding:23px}.loyalty-home-how{padding:55px 18px}.loyalty-home-how-visual{min-height:250px}.loyalty-home-cta{margin:32px 16px 40px;padding:29px 24px;display:grid}.loyalty-home-cta>a{white-space:normal}.loyalty-home-final-note{line-height:1.6}}
+@media(prefers-reduced-motion:reduce){.loyalty-home-gift{animation:none}.loyalty-home-button,.loyalty-home-benefit-grid article{transition:none}}
