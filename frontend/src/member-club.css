@@ -30,7 +30,7 @@
 .member-club-entry{display:grid;align-content:center;gap:10px;scroll-margin-top:25px}
 .member-club-panel h2{font:800 clamp(20px,2.6vw,26px)/1.25 Manrope,Inter,sans-serif;letter-spacing:-.025em;color:var(--mc-ink);margin:3px 0 6px}
 .member-club-panel p{font-size:12px;line-height:1.65;color:#64786d;margin:3px 0 10px}
-.member-club-kicker{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:850;letter-spacing:.08em;color:#12806e}
+.member-club-kicker{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:850;letter-spacing:.08em;color:#6A3DF0}
 .member-club-login{display:grid;gap:10px;margin-top:6px}
 .member-club-login label{font-size:12px;font-weight:800;color:#315c4e}
 .member-club-login input{min-height:48px;border:1px solid #cadcd1;border-radius:10px;padding:10px 13px;background:#fff;color:var(--mc-ink);font-size:16px;width:100%;min-width:0}
@@ -38,9 +38,9 @@
 .member-club-button:disabled{opacity:.55;cursor:not-allowed}
 .member-club-light{border:1px solid #b4ddc8;background:#eaf7ef;color:#185c4d;padding:10px 13px;border-radius:10px;min-height:42px;font-weight:800;cursor:pointer}
 .member-club-join{font-size:11px!important;margin-top:4px!important}
-.member-club-join a,.member-club-support a{color:#0b806c;text-decoration:underline;font-weight:800}
+.member-club-join a,.member-club-support a{color:#6A3DF0;text-decoration:underline;font-weight:800}
 .member-club-access{display:grid;justify-items:start;align-content:center;gap:10px}
-.member-club-access>svg{color:#0b806c}
+.member-club-access>svg{color:#6A3DF0}
 .member-club-access h2,.member-club-access p{margin:0}
 .member-club-access .member-club-button{margin-top:8px}
 .member-club-error{background:#fff0ef;border:1px solid #e9c7c1;border-radius:12px;color:#903d38;padding:12px 15px;font-size:12px}
@@ -51,7 +51,7 @@
 .member-club-guest-benefits-head>a{display:flex;align-items:center;gap:7px;white-space:nowrap;color:#6A3DF0;font-size:12px;font-weight:850;text-decoration:none;padding:10px}
 .member-club-guest-perks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .member-club-guest-perks>article{display:grid;align-content:start;justify-items:start;gap:8px;padding:20px;border-radius:14px;background:#f7faf7;border:1px solid #e2ece4;min-width:0}
-.member-club-guest-perk-icon{display:grid;place-items:center;width:43px;height:43px;background:#e1f3e9;color:#0a7d6b;border-radius:12px}
+.member-club-guest-perk-icon{display:grid;place-items:center;width:43px;height:43px;background:#EDE7FF;color:#6A3DF0;border-radius:12px}
 .member-club-guest-perks article>strong{font:850 29px/1.2 Manrope,Inter,sans-serif;letter-spacing:-.03em;color:#166451}
 .member-club-guest-perks h3{margin:0;font-size:14px;line-height:1.4;color:var(--mc-ink)}
 .member-club-guest-perks p{margin:0;color:#6d8073;font-size:11px;line-height:1.6}
