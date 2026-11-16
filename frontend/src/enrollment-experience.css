@@ -1,0 +1,34 @@
+/* Enrollment: branded editorial split and consent-first forms */
+.loyalty-enroll{font-family:Manrope,Inter,sans-serif;background:radial-gradient(circle at 8% 0%,#EDE7FF,transparent 55%),#F8F9FF;color:#3B1E82;padding:clamp(12px,2.5vw,38px)}
+.loyalty-enroll .public-enroll-layout{max-width:1170px;margin:auto;border-radius:30px;border:1px solid #E4DFF2;box-shadow:0 25px 66px #3B1E8214;overflow:hidden;background:#fff}
+.loyalty-enroll .public-enroll-story{position:relative;isolation:isolate;min-height:700px;background:radial-gradient(circle at 90% 95%,#FFC85724,transparent 42%),linear-gradient(135deg,#3B1E82,#6A3DF0);color:#fff;padding:clamp(27px,4.1vw,56px)}
+.loyalty-enroll .public-enroll-story::before{border-color:#FFFFFF38;opacity:.5}
+.loyalty-enroll .loyalty-enroll-decoration{position:absolute;right:-34px;bottom:100px;width:190px;height:auto;opacity:.23;transform:rotate(8deg);pointer-events:none}
+.loyalty-enroll .public-enroll-story-brand{position:relative;z-index:2}
+.loyalty-enroll .public-enroll-story-brand>span{background:transparent;color:#fff}
+.loyalty-enroll .public-enroll-story-brand strong{font-size:19px}
+.loyalty-enroll .public-enroll-story-kicker{font-size:11px;color:#FFE0A2}
+.loyalty-enroll .public-enroll-story-intro h2{font-size:clamp(37px,4.3vw,59px);line-height:1.1;color:white;letter-spacing:-.06em;max-width:14ch}
+.loyalty-enroll .public-enroll-story-intro em{color:#FFC857;text-decoration:none}
+.loyalty-enroll .public-enroll-story-intro p{max-width:48ch;font-size:15px;color:#EDE7FF}
+.loyalty-enroll .public-enroll-story-steps{position:relative;z-index:2;border:1px solid #D1B6F455;background:#FFFFFF17;border-radius:20px;box-shadow:inset 0 1px #FFFFFF15}
+.loyalty-enroll .public-enroll-story-steps li>span{background:#FFC857;color:#3B1E82;border-radius:9px}
+.loyalty-enroll .public-enroll-story-note{position:relative;z-index:2;color:#EDE7FF}
+.loyalty-enroll .public-enroll-card{border:0;box-shadow:none;padding:clamp(29px,4vw,54px);color:#3B1E82}
+.loyalty-enroll .public-enroll-top h1{color:#3B1E82;font-size:clamp(30px,3.2vw,44px);font-weight:850}
+.loyalty-enroll .public-enroll-top>p{color:#6B607E;font-size:14px}
+.loyalty-enroll .public-enroll-eyebrow{color:#6A3DF0}
+.loyalty-enroll .public-enroll-value{background:#FFF8EA;border:1px solid #F0DBAF;color:#645078;border-radius:15px}
+.loyalty-enroll .public-enroll-value svg{color:#8B43F6}
+.loyalty-enroll .public-enroll-fields label{color:#3B1E82}
+.loyalty-enroll .public-enroll-fields input{background:#fff;border:1px solid #DCCFF3;border-radius:12px;min-height:48px;color:#3B1E82}
+.loyalty-enroll .public-enroll-fields input:focus{border-color:#6A3DF0;outline:3px solid #EDE7FF}
+.loyalty-enroll .public-enroll-policies details{background:#F9F6FF;border:1px solid #E4DFF2;border-radius:12px}
+.loyalty-enroll .public-enroll-choice{color:#665D7A}
+.loyalty-enroll .public-enroll-submit{background:linear-gradient(110deg,#8B43F6,#5926C6);color:#FFFFFF;border:0;border-radius:12px;min-height:50px;box-shadow:0 11px 24px #6A3DF030}
+.loyalty-enroll .public-enroll-submit:disabled{background:#BBB1D7;color:#fff;box-shadow:none}
+.loyalty-enroll .public-enroll-privacy-link a{color:#6A3DF0}
+.loyalty-enroll :is(input,button,a,summary):focus-visible{outline:3px solid #A98AF5;outline-offset:3px}
+@media(max-width:960px){.loyalty-enroll .public-enroll-story{min-height:640px}.loyalty-enroll .public-enroll-story-intro h2{font-size:clamp(32px,4.6vw,47px)}}
+@media(max-width:700px){.loyalty-enroll{padding:12px}.loyalty-enroll .public-enroll-layout{border-radius:21px}.loyalty-enroll .public-enroll-story{min-height:270px;padding:28px 22px}.loyalty-enroll .public-enroll-story-brand,.loyalty-enroll .public-enroll-story-steps{display:none}.loyalty-enroll .public-enroll-story-intro h2{max-width:none;font-size:clamp(29px,7vw,38px)}.loyalty-enroll .loyalty-enroll-decoration{width:125px;bottom:-18px;opacity:.16}.loyalty-enroll .public-enroll-card{padding:26px 21px}}
+@media(prefers-reduced-motion:reduce){.loyalty-enroll .loyalty-enroll-decoration{transform:none}}
