@@ -198,6 +198,8 @@
 .vfd-table-wrap { overflow-x: auto; }
 .vfd-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .vfd-table th, .vfd-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--vf-border); }
+.vfd-table td { white-space: nowrap; }
+.vfd-table tbody th { min-width: 140px; }
 .vfd-table thead th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--vf-muted); }
 .vfd-table tbody th { font-weight: 700; }
 .vfd-ratio { display: grid; grid-template-columns: minmax(60px, 1fr) auto; gap: 8px; align-items: center; }
