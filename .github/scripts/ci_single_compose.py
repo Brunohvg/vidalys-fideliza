@@ -166,9 +166,9 @@ def main():
         # Isolamento no Docker inspect (containers de verdade), nao so YAML.
         # NUNCA imprimir valores de ambiente.
         import json
-        from check_coolify_env_isolation import verify_service_env
+        from check_coolify_env_isolation import SERVICES, verify_service_env
         live = {}
-        for name in ("api", "worker", "nuvemshop-sync", "frontend", "redis"):
+        for name in SERVICES:
             identifier = execute(compose + ["ps", "-q", name], env,
                                  label="identificar container " + name)
             raw = execute(["docker", "inspect", "--format",
