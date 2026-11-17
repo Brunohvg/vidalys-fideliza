@@ -110,7 +110,7 @@ Manter Vidalys Fideliza identificável, mas tratar roxo como **cor de marca**, n
 |---|---|---|---|
 | 17/11/2026 | Inspeção inicial das cinco capturas e estrutura CSS/React | Feito | Capturas fornecidas e `main.tsx`, `App.tsx`, `Portal.tsx`, `portal.css`, `styles.css`, `fideliza-theme.css`, `experience.css`, `demo-theme.css` lidos |
 | 17/11/2026 | Especificação visual única e gates de reconstrução | Feito | Este documento |
-| 17/11/2026 | Reconstrução integral de todas as rotas | Pendente | Não declarar concluído sem código, testes e capturas |
+| 17/11/2026 | Primeira revisão do dashboard operacional (estilos encapsulados) | Código alterado; QA pendente | `frontend/src/action-center.css`, commit `9bc3ddae04a7b975acaf58ca4bb4e3931ebfc58b` |\n| 17/11/2026 | Reconstrução integral das demais rotas | Pendente | Não declarar concluído sem código, testes e capturas |
 | 17/11/2026 | Deploy em homologação e QA real | Pendente | Gate operacional e SHA implantado ainda não comprovados neste trabalho |
 
 **Regra de encerramento:** não confundir documentação/planejamento com interface reconstruída. Cada caixa só passa a marcada após alteração verificável, teste correspondente e evidência visual.
