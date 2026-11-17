@@ -144,6 +144,25 @@ services:
     command: celery -A config worker --loglevel=INFO --concurrency=1 --queues=nuvemshop --hostname=nuvemshop@%h
     logging: *bounded_logs
 
+  beat:
+    build: ./backend
+    restart: unless-stopped
+    # Agendador Celery (settings.CELERY_BEAT_SCHEDULE). INSTANCIA UNICA: nunca escalar.
+    # So publica tarefas na fila; cada tarefa confere suas flags e vira no-op enquanto
+    # desligada. Sem banco, sem SMTP e sem credenciais Nuvemshop.
+    user: "65534:65534"
+    networks: [app]
+    mem_limit: 128m
+    cpus: 0.10
+    environment:
+      <<: *django_env
+      HOME: /tmp
+    depends_on:
+      api:
+        condition: service_healthy
+    command: celery -A config beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+    logging: *bounded_logs
+
   frontend:
     build: ./frontend
     restart: unless-stopped

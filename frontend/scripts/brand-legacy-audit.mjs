@@ -22,9 +22,9 @@ const legacy={
  "#6de5c4":"ícone menta antigo"
 };
 const legacyRgb = [
- {name:"jade RGB",regex:/rgba?\\(\\s*8\\s*,\\s*127\\s*,\\s*121\\s*(?:,|\\))/gi},
- {name:"menta RGB",regex:/rgba?\\(\\s*55\\s*,\\s*213\\s*,\\s*187\\s*(?:,|\\))/gi},
- {name:"marinho RGB",regex:/rgba?\\(\\s*16\\s*,\\s*37\\s*,\\s*62\\s*(?:,|\\))/gi}
+ {name:"jade RGB",regex:/rgba?\(\s*8\s*,\s*127\s*,\s*121\s*(?:,|\))/gi},
+ {name:"menta RGB",regex:/rgba?\(\s*55\s*,\s*213\s*,\s*187\s*(?:,|\))/gi},
+ {name:"marinho RGB",regex:/rgba?\(\s*16\s*,\s*37\s*,\s*62\s*(?:,|\))/gi}
 ];
 const results=[];
 for(const filename of fs.readdirSync(directory).filter(file=>file.endsWith(".css"))){
@@ -63,16 +63,16 @@ function obsoleteHue(hex){
  const saturation=difference/(1-Math.abs(2*lightness-1))||0;
  return hue>=95&&hue<=250&&saturation>.095;
 }
-const semantic=/\\b(success|paid|approved|confirmed|refund|cancelled|canceled|error|danger|warning|negative|positive|green|invalid|failed|verified|healthy|ready|settled)\\b/i;
+const semantic=/\b(success|paid|approved|confirmed|refund|cancelled|canceled|error|danger|warning|negative|positive|green|invalid|failed|verified|healthy|ready|settled)\b/i;
 const residual=[];
 for(const filename of fs.readdirSync(directory).filter(name=>name.endsWith(".css"))){
  const source=fs.readFileSync(path.join(directory,filename),"utf8");
- for(const found of source.matchAll(/#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\\b/g)){
+ for(const found of source.matchAll(/#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b/g)){
   const hex=found[0].slice(0,7).toLowerCase();
   if(approved.has(hex)||!obsoleteHue(hex))continue;
   const rule=source.slice(source.lastIndexOf("}",found.index)+1,source.lastIndexOf("{",found.index));
   if(semantic.test(rule))continue;
-  residual.push({filename,hex,rule:rule.trim().replace(/\\s+/g," ").slice(-80)});
+  residual.push({filename,hex,rule:rule.trim().replace(/\s+/g," ").slice(-80)});
  }
 }
 console.log("Tons azuis/verdes residuais fora de estados semânticos: "+residual.length);

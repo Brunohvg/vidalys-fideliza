@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-SERVICES = ("api", "worker", "nuvemshop-sync", "frontend", "redis")
+SERVICES = ("api", "worker", "nuvemshop-sync", "beat", "frontend", "redis")
 SMTP = {
     "EMAIL_BACKEND", "EMAIL_HOST", "EMAIL_PORT", "EMAIL_HOST_USER",
     "EMAIL_HOST_PASSWORD", "EMAIL_USE_TLS", "EMAIL_USE_SSL",
@@ -65,6 +65,7 @@ def verify_service_env(services):
                 "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED",
                 "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED",
             },
+            "beat": set(DJANGO),
             "redis": set(),
             "frontend": set(),
         }[service]
@@ -129,6 +130,7 @@ def main():
                 "api": {"app", "database"},
                 "worker": {"app", "database"},
                 "nuvemshop-sync": {"app", "database"},
+                "beat": {"app"},
                 "frontend": {"app", "proxy"},
                 "redis": {"app"},
             }[name]
@@ -186,7 +188,7 @@ def main():
             raise SystemExit("Negative control failed to detect leaked DB credentials")
         if not any("api:EMAIL_HOST_PASSWORD" == x for x in detected):
             raise SystemExit("Negative control failed to detect leaked SMTP credentials")
-    print("RAW_SCOPE_OK: five isolated services, external networks, TLS labels")
+    print("RAW_SCOPE_OK: six isolated services, external networks, TLS labels")
     print("MANAGED_INJECTION_DETECTED: negative control blocks leaked secrets")
 
 

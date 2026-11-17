@@ -1,0 +1,118 @@
+{
+  "_aviso": "DADOS FICTÍCIOS gerados por harness/dump_fixtures.py",
+  "clarity": {
+    "seal": true,
+    "items": [
+      {
+        "key": "regulamento_completo",
+        "label": "Regulamento completo, sem lacunas",
+        "ok": true,
+        "required": true,
+        "detail": ""
+      },
+      {
+        "key": "regulamento_igual_ao_motor",
+        "label": "Regulamento cita os mesmos prazos da regra",
+        "ok": true,
+        "required": true,
+        "detail": ""
+      },
+      {
+        "key": "recompensa_publicada",
+        "label": "Pelo menos uma recompensa publicada",
+        "ok": true,
+        "required": true,
+        "detail": "A mais acessível pede 300 pontos (gasto mínimo de R$ 300,00)."
+      },
+      {
+        "key": "aviso_de_vencimento",
+        "label": "Cliente é avisado antes de pontos vencerem",
+        "ok": true,
+        "required": true,
+        "detail": ""
+      },
+      {
+        "key": "validade_generosa",
+        "label": "Validade de pelo menos 180 dias ou renovável",
+        "ok": true,
+        "required": false,
+        "detail": "Vencimento é o principal motivo de abandono de programas."
+      }
+    ],
+    "summary": {
+      "headline": "Cada R$ 1,00 em compras vale 1 ponto.",
+      "sentences": [
+        "Cada R$ 1,00 em compras vale 1 ponto.",
+        "Centavos que não completam a faixa não somam: uma compra de R$ 9,99 gera 9 pontos.",
+        "Os pontos ficam pendentes por 7 dias depois da compra confirmada (prazo de trocas e devoluções) e então são liberados.",
+        "Depois de liberados, valem por 180 dias, e cada nova compra renova o prazo de todos os seus pontos (até 365 dias contados da liberação).",
+        "Avisamos você 30, 7 e 1 dias antes de qualquer ponto vencer.",
+        "Exemplo: uma compra de R$ 100,00 gera 100 pontos."
+      ]
+    }
+  },
+  "margin": {
+    "ranked": [
+      {
+        "id": "oficina",
+        "title": "Vaga na oficina de bordado",
+        "points_cost": 1500,
+        "perceived_value_cents": 12000,
+        "merchant_cost_cents": 3000,
+        "value_ratio": 4.0
+      },
+      {
+        "id": "kit-washi",
+        "title": "Kit de fitas washi",
+        "points_cost": 500,
+        "perceived_value_cents": 4500,
+        "merchant_cost_cents": 1300,
+        "value_ratio": 3.46
+      },
+      {
+        "id": "cupom-20",
+        "title": "R$ 20 de desconto",
+        "points_cost": 400,
+        "perceived_value_cents": 2000,
+        "merchant_cost_cents": 2000,
+        "value_ratio": 1.0
+      }
+    ],
+    "excluded": [
+      {
+        "id": "frete",
+        "title": "Frete grátis",
+        "reason": "custo_desconhecido",
+        "reason_label": "Informe o custo para entrar no ranking de margem."
+      },
+      {
+        "id": "caneta",
+        "title": "Caneta brush edição limitada",
+        "reason": "indisponivel",
+        "reason_label": "Inativa ou sem estoque."
+      }
+    ]
+  },
+  "health": {
+    "liability": {
+      "low_cents": 96400,
+      "high_cents": 241000,
+      "basis": "faixa"
+    },
+    "expiring_30d_points": 2500,
+    "repurchase_90d": {
+      "status": "ok",
+      "value": 0.3476,
+      "low": 0.2789,
+      "high": 0.4232,
+      "successes": 57,
+      "total": 164
+    },
+    "lift": {
+      "status": "dados_insuficientes",
+      "difference": null,
+      "low": null,
+      "high": null
+    }
+  }
+}

@@ -125,6 +125,10 @@ CELERY_TASK_IGNORE_RESULT = True
 # Worker único na homologação: não reservar quatro tarefas adiantadas.
 # Ajuda a manter a fila responsiva se houver processamento mais demorado.
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+# Agendamentos do Celery Beat no horario de Brasilia (dados continuam em UTC).
+# tzdata ja e dependencia obrigatoria no uv.lock.
+CELERY_TIMEZONE = "America/Sao_Paulo"
+CELERY_ENABLE_UTC = True
 
 
 # Limitação de tentativas de login compartilhada entre workers em homologação/produção.
