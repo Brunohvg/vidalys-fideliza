@@ -1,61 +1,56 @@
-/* Vidalys Fideliza / Unified merchant surfaces.
-   These rules are limited to the new shell and leave status/safety signals intact.
-   Component-specific business behavior, form validation and actions are unchanged. */
-.loyalty-merchant{
- --loyalty-card:#FFFFFF;
- --loyalty-page:#F8F9FF;
- --loyalty-line:#E4DFF2;
- --loyalty-ink:#3B1E82;
- --loyalty-copy:#655B79;
- --loyalty-purple:#6A3DF0;
- --loyalty-soft:#EDE7FF;
- --loyalty-gold:#FFC857;
- --loyalty-elev:0 12px 35px #3B1E820F;
-}
-.loyalty-merchant :is(.experience-page,.vf-program-page,.vf-campaign-new,.vf-sales-page,.ss-root,.vf-results-root){font-family:Manrope,Inter,sans-serif;min-width:0;display:grid;gap:20px;color:var(--loyalty-ink)}
-.loyalty-merchant :is(.vf-clients-intro,.vf-program-intro,.vf-campaign-hero,.vf-sale-intro,.ss-intro,.vf-results-hero){
+/* VIDALYS FIDELIZA — Superfícies das páginas do lojista (arquivo completo e consolidado).
+   O título da página fica só no cabeçalho do painel; Clientes, Vendas, Clube e
+   Configurações não repetem um banner roxo. Campanhas e Resultados mantêm o
+   destaque até a V3c. Só tokens de brand-tokens.css. */
+
+.loyalty-merchant :is(.experience-page,.vf-program-page,.vf-campaign-new,.vf-sales-page,.ss-root,.vf-results-root){
+ font-family:var(--vf-font);min-width:0;display:grid;gap:18px;color:var(--vf-ink)}
+
+/* Destaque mantido apenas em Campanhas e Resultados */
+.loyalty-merchant :is(.vf-campaign-hero,.vf-results-hero){
  position:relative;isolation:isolate;overflow:hidden;
- border:1px solid #7554C3;
- border-radius:24px;
- padding:clamp(23px,3.2vw,40px);
- background:radial-gradient(circle at 94% 0%,#FFC85733,transparent 35%),linear-gradient(120deg,#3B1E82,#6A3DF0);
- box-shadow:0 18px 40px #3B1E8225;
- color:#FFFFFF;
-}
-.loyalty-merchant :is(.vf-clients-intro,.vf-program-intro,.vf-campaign-hero,.vf-sale-intro,.ss-intro,.vf-results-hero) :is(h1,h2,h3){color:#FFFFFF;font-family:Manrope,Inter,sans-serif;letter-spacing:-.04em}
-.loyalty-merchant :is(.vf-clients-intro,.vf-program-intro,.vf-campaign-hero,.vf-sale-intro,.ss-intro,.vf-results-hero) p{color:#EEE5FF;max-width:70ch;line-height:1.65}
-.loyalty-merchant :is(.vf-clients-intro,.vf-program-intro,.vf-campaign-hero,.vf-sale-intro,.ss-intro,.vf-results-hero) .portal-eyebrow{color:#FFDB95}
+ border:1px solid color-mix(in srgb,var(--vf-purple-500) 60%,var(--vf-purple-900));
+ border-radius:var(--vf-radius-lg);padding:clamp(22px,3vw,36px);
+ background:radial-gradient(circle at 94% 0%,color-mix(in srgb,var(--vf-gold) 20%,transparent),transparent 35%),
+   linear-gradient(120deg,var(--vf-purple-900),var(--vf-purple-700));
+ box-shadow:var(--vf-glow);color:var(--vf-primary-contrast)}
+.loyalty-merchant :is(.vf-campaign-hero,.vf-results-hero) :is(h1,h2,h3){color:var(--vf-primary-contrast);font-family:var(--vf-font-display);letter-spacing:-.04em}
+.loyalty-merchant :is(.vf-campaign-hero,.vf-results-hero) p{color:var(--vf-lavender);max-width:70ch;line-height:1.65}
+.loyalty-merchant :is(.vf-campaign-hero,.vf-results-hero) .portal-eyebrow{color:var(--vf-gold)}
+
+/* Cartões */
 .loyalty-merchant :is(.xp-panel,.xp-stat,.vf-program-area,.vf-benefit-panel,.vf-benefit-card,.vf-sale-card,.ss-card,.vf-results-panel,.vf-results-stats article,.vf-program-connection,.vf-sales-online){
- background:#FFFFFF;border:1px solid #E4DFF2;border-radius:20px;
- box-shadow:var(--loyalty-elev);color:var(--loyalty-ink);
- min-width:0;
-}
-.loyalty-merchant :is(.xp-stat,.vf-benefit-card,.vf-sale-card,.vf-results-stats article){transition:box-shadow .22s ease,transform .22s ease}
-.loyalty-merchant :is(.xp-stat,.vf-benefit-card,.vf-sale-card,.vf-results-stats article):hover{box-shadow:0 17px 40px #3B1E821A;transform:translateY(-2px)}
-.loyalty-merchant :is(.xp-panel-title,.vf-program-area-heading,.vf-sale-card-heading,.ss-card-heading) :is(h2,h3,strong){color:#3B1E82;letter-spacing:-.025em}
+ background:var(--vf-surface);border:1px solid var(--vf-border);border-radius:var(--vf-radius-lg);
+ box-shadow:var(--vf-shadow-card);color:var(--vf-ink);min-width:0}
+.loyalty-merchant :is(.vf-benefit-card,.vf-sale-card,.vf-results-stats article){transition:box-shadow .2s ease}
+.loyalty-merchant :is(.vf-benefit-card,.vf-sale-card,.vf-results-stats article):hover{box-shadow:var(--vf-glow)}
+.loyalty-merchant :is(.xp-panel-title,.vf-program-area-heading,.vf-sale-card-heading,.ss-card-heading) :is(h2,h3,strong){color:var(--vf-ink);letter-spacing:-.025em}
 .loyalty-merchant :is(.xp-toolbar,.vf-campaign-goals,.vf-campaign-actions,.vf-sale-tabs,.ss-action-row){gap:12px}
+
+/* Campos */
 .loyalty-merchant :is(.xp-search,.xp-filter,.vf-sale-simple-form,.ss-form,.vf-benefit-form) :is(input,select,textarea){
- border-radius:11px;border-color:#D9CDEC;background:#FFF;color:#3B1E82;min-height:43px;
-}
+ border-radius:11px;border-color:var(--vf-border);background:var(--vf-surface);color:var(--vf-ink);min-height:44px}
 .loyalty-merchant :is(.xp-search,.xp-filter,.vf-sale-simple-form,.ss-form,.vf-benefit-form) :is(input,select,textarea):focus{
- border-color:#6A3DF0;outline:3px solid #EDE7FF;
-}
+ border-color:var(--vf-primary);outline:3px solid var(--vf-lavender)}
+
+/* Tabelas */
 .loyalty-merchant :is(.xp-table-wrap,.vf-sale-table-wrap,.ss-preview-stage){
- border-radius:18px;border:1px solid #E4DFF2;overflow:auto;background:#fff;
-}
-.loyalty-merchant :is(.xp-table,.vf-sales-table) th{background:#F6F2FF;color:#4A2785;font-weight:800}
-.loyalty-merchant :is(.xp-table,.vf-sales-table) tr:hover td{background:#FAF8FF}
-.loyalty-merchant :is(.vf-sale-tabs,.vf-program-benefit-switch){background:#F4EFFD;border-color:#E4DFF2;border-radius:14px}
+ border-radius:var(--vf-radius-md);border:1px solid var(--vf-border);overflow:auto;background:var(--vf-surface)}
+.loyalty-merchant :is(.xp-table,.vf-sales-table) th{background:var(--vf-info-soft);color:var(--vf-ink-soft);font-weight:800}
+.loyalty-merchant :is(.xp-table,.vf-sales-table) tr:hover td{background:var(--vf-canvas)}
+
+/* Navegação de uma página (um nível só, igual ao Clube) */
+.loyalty-merchant .vf-sale-tabs{background:var(--vf-surface);border:1px solid var(--vf-border);border-radius:18px;padding:6px}
 .loyalty-merchant :is(.vf-benefit-state,.vf-draft-confirm,.vf-campaign-warning,.ss-feedback){border-radius:13px}
-.loyalty-merchant :is(.vf-program-outline,.vf-sales-online-footnote,.vf-campaign-bottom-note){color:#6B607E}
+.loyalty-merchant :is(.vf-program-outline,.vf-sales-online-footnote,.vf-campaign-bottom-note){color:var(--vf-muted)}
 .loyalty-merchant :is(.ss-brand-layout,.ss-layout,.vf-program-sections,.vf-benefit-grid){min-width:0}
 .loyalty-merchant :is(.portal-primary,.xp-link-btn){border-radius:12px}
+
 @media(max-width:760px){
  .loyalty-merchant :is(.experience-page,.vf-program-page,.vf-campaign-new,.vf-sales-page,.ss-root,.vf-results-root){gap:14px}
- .loyalty-merchant :is(.vf-clients-intro,.vf-program-intro,.vf-campaign-hero,.vf-sale-intro,.ss-intro,.vf-results-hero){padding:23px 20px;border-radius:19px}
- .loyalty-merchant :is(.xp-panel,.xp-stat,.vf-program-area,.vf-benefit-panel,.vf-benefit-card,.vf-sale-card,.ss-card,.vf-results-panel){border-radius:17px}
+ .loyalty-merchant :is(.vf-campaign-hero,.vf-results-hero){padding:22px 18px;border-radius:var(--vf-radius-md)}
+ .loyalty-merchant :is(.xp-panel,.xp-stat,.vf-program-area,.vf-benefit-panel,.vf-benefit-card,.vf-sale-card,.ss-card,.vf-results-panel){border-radius:var(--vf-radius-md)}
 }
 @media(prefers-reduced-motion:reduce){
- .loyalty-merchant :is(.xp-stat,.vf-benefit-card,.vf-sale-card,.vf-results-stats article){transition:none}
- .loyalty-merchant :is(.xp-stat,.vf-benefit-card,.vf-sale-card,.vf-results-stats article):hover{transform:none}
+ .loyalty-merchant :is(.vf-benefit-card,.vf-sale-card,.vf-results-stats article){transition:none}
 }

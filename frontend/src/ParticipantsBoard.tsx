@@ -126,7 +126,7 @@ export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantI
             :"Ajuste a busca ou o filtro para encontrar outros participantes."}</p>
           {response.summary.total===0&&
             <button type="button" className="vf-clients-empty-cta" onClick={onOpenProgram}>
-              Abrir Programa e compartilhar o convite <ArrowRight size={16}/>
+              Abrir Clube e compartilhar o convite <ArrowRight size={16}/>
             </button>}
         </div> : !error && response && <>
         <div className="xp-table-wrap">

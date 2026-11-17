@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 TOPICS = {
     "paid": OrderWebhookEvent.Topic.PAID,
     "updated": OrderWebhookEvent.Topic.UPDATED,
+    "cancelled": OrderWebhookEvent.Topic.CANCELLED,
+    "voided": OrderWebhookEvent.Topic.VOIDED,
 }
 
 
@@ -114,6 +116,7 @@ def order_webhook(request, kind):
                 return _response()  # Uma loja não vinculada não pode gerar eventos locais.
             valid_installation = NuvemshopInstallation.objects.filter(
                 tenant=tenant, store_id=store_id, client_id=client_id,
+                uninstalled_at__isnull=True,
             ).first()
             if not valid_installation or not has_order_access(
                 valid_installation.scope, preview_enabled=True
@@ -158,7 +161,7 @@ class OrderEventsView(APIView):
         client_id = _positive_id(os.getenv("NUVEMSHOP_CLIENT_ID", ""))
         installed = NuvemshopInstallation.objects.filter(
             tenant=tenant, store_id=tenant.external_store_id,
-            client_id=client_id,
+            client_id=client_id, uninstalled_at__isnull=True,
         ).first() if client_id else None
         if (tenant.status != Tenant.Status.ACTIVE or tenant.platform != "nuvemshop"
                 or not installed or not has_order_access(installed.scope, preview_enabled=True)):

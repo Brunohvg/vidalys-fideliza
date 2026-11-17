@@ -31,6 +31,14 @@ class NuvemshopInstallation(models.Model):
                                      on_delete=models.SET_NULL)
     connected_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Preenchido pelo webhook assinado app/uninstalled. Um token de app
+    # desinstalado deixa de valer imediatamente; o painel não pode seguir
+    # mostrando "Conectada" até o store/redact (que chega depois).
+    uninstalled_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def active(self):
+        return self.uninstalled_at is None
 
     class Meta:
         constraints = [models.UniqueConstraint(

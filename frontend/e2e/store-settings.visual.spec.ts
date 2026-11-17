@@ -87,7 +87,7 @@ async function goSettings(page:Page,width:number){
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Configurações",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
+  await expect(page.getByRole("navigation",{name:"Seções das configurações"})).toBeVisible();
 }
 
 for(const width of [390,768,1440]){

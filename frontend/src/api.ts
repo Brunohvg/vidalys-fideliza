@@ -477,7 +477,7 @@ export type NuvemshopConnectionStatus = {
   };
   connection_check?: {
     next_step: "activate_tenant" | "configure_app" | "authorize_store" |
-      "grant_read_products_and_reinstall" | "verify_catalog_with_live_get";
+      "grant_read_products_and_reinstall" | "verify_catalog_with_live_get" | "reinstall_app";
     installation_recorded: boolean;
     catalog_scope_granted: boolean;
     live_access_checked: false;
@@ -485,6 +485,10 @@ export type NuvemshopConnectionStatus = {
     permissions_must_be_changed_in_partner_portal: boolean;
     reinstallation_required_after_scope_change: boolean;
   };
+  /** Preenchido pelo webhook app/uninstalled (ISO 8601). */
+  uninstalled_at?: string | null;
+  /** Último aviso assinado de pedido recebido (ISO 8601). */
+  last_order_event_at?: string | null;
   store_id: string | null;
   scope: string | null;
   mode: "read_products_only";

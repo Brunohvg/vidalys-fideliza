@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState,type FormEvent} from "react";
 import {
-  ArrowRight,Check,CheckCircle2,Globe2,HeartHandshake,
-  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
+  ArrowRight,Check,CheckCircle2,CircleHelp,Globe2,HeartHandshake,
+  LockKeyhole,Mail,Palette,RefreshCw,Save,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
 } from "lucide-react";
 import {
   ApiError,merchantApi,type NuvemshopConnectionStatus,
@@ -19,6 +19,42 @@ function Status({ready,label}:{ready:boolean;label:string}){
     {ready?<CheckCircle2 size={14}/>:<LockKeyhole size={14}/>}
     {label}
   </span>;
+}
+type Diagnostic={key:string;label:string;detail:string;state:"ok"|"todo"|"unknown"};
+function since(iso:string|null|undefined){
+  if(!iso)return null;
+  const when=new Date(iso);
+  return Number.isNaN(when.getTime())?null:when.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+}
+/* Diagnóstico legível da Nuvemshop: cada linha é uma pergunta de sim ou não.
+   Sem resposta da API, a linha fica "não verificado", nunca "ok". */
+function nuvemshopDiagnostics(status:NuvemshopConnectionStatus|null,
+  liveCheck:"idle"|"running"|"verified"|"failed"):Diagnostic[]{
+  const known=status!==null;
+  const flag=(value:boolean|undefined):Diagnostic["state"]=>value===undefined||!known?"unknown":value?"ok":"todo";
+  const uninstalled=since(status?.uninstalled_at);
+  const lastEvent=since(status?.last_order_event_at);
+  const inbox=status?.order_verification?.signed_event_inbox_enabled;
+  return [
+    {key:"app",label:"Aplicativo preparado pela Vidalys",state:flag(status?.configured),
+     detail:status?.configured?"Credenciais do app configuradas no servidor.":"A equipe Vidalys conclui esta etapa."},
+    {key:"store",label:"Loja autorizada",state:uninstalled?"todo":flag(status?.connected),
+     detail:uninstalled?`App desinstalado em ${uninstalled}. Reinstale para reconectar.`
+       :status?.connected?"Autorização registrada para esta loja.":"Use o botão Conectar minha loja."},
+    {key:"products",label:"Leitura de produtos",state:flag(status?.connection_check?.catalog_scope_granted),
+     detail:"Usada para custos e conciliação do catálogo."},
+    {key:"orders",label:"Leitura de pedidos",state:flag(status?.order_verification?.order_scope_granted),
+     detail:"Necessária para pontuar compras do site."},
+    {key:"customers",label:"Leitura de clientes",state:flag(status?.customer_matching?.customer_scope_granted),
+     detail:"Permite vincular quem já compra ao clube, com consentimento."},
+    {key:"events",label:"Avisos de pedidos chegando",
+     state:!known||!inbox?"unknown":lastEvent?"ok":"todo",
+     detail:lastEvent?`Último aviso recebido em ${lastEvent}.`
+       :inbox?"Nenhum aviso recebido ainda.":"Recebimento de avisos ainda não ativado na plataforma."},
+    {key:"live",label:"Acesso confirmado agora",
+     state:liveCheck==="verified"?"ok":liveCheck==="failed"?"todo":"unknown",
+     detail:liveCheck==="verified"?"A Nuvemshop respondeu nesta sessão.":"Use o botão de verificação abaixo."},
+  ];
 }
 function friendlyError(error:unknown,defaultMessage:string){
   // Esconder detalhes técnicos de falhas de integração do painel do lojista.
@@ -210,6 +246,8 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
     ?"Sua loja precisa estar ativa para utilizar a integração."
     :connectionStep==="configure_app"
       ?"O aplicativo ainda precisa ser configurado pela equipe Vidalys na plataforma."
+      :connectionStep==="reinstall_app"
+      ?"O aplicativo foi desinstalado na Nuvemshop. Reinstale para voltar a ler pedidos e produtos."
       :connectionStep==="authorize_store"
         ?"Autorize a conexão da sua loja pela Nuvemshop para começar."
         :connectionStep==="grant_read_products_and_reinstall"
@@ -225,14 +263,14 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
   const programColor=/^#[0-9A-Fa-f]{6}$/.test(brand.primary_color)?brand.primary_color:"#087F79";
   const accent=/^#[0-9A-Fa-f]{6}$/.test(brand.accent_color)?brand.accent_color:"#37D5BB";
 
+  const diagnostics=nuvemshopDiagnostics(integration,liveCheck);
   return <div className="ss-root">
-    <div className="ss-intro">
-      <div className="ss-intro-icon"><Settings2 size={23}/></div>
-      <div><span className="portal-eyebrow">SUA LOJA, SUA IDENTIDADE</span>
-        <h2>Configurações</h2>
-        <p>Personalize a identidade do clube e administre os canais. Regras e convites ficam no menu Programa.</p>
-      </div>
-    </div>
+    <nav className="ss-index" aria-label="Seções das configurações">
+      <a href="#ss-brand-title"><Palette size={16}/> Aparência</a>
+      <a href="#ss-store-connection"><ShoppingBag size={16}/> Canais e integração</a>
+      <a href="#ss-domains-title"><Globe2 size={16}/> Página do clube</a>
+      {editable&&<a href="#ss-privacy-title"><FileText size={16}/> Privacidade</a>}
+    </nav>
     {error&&<div className="ss-feedback ss-error" role="alert"><TriangleAlert size={17}/>{error}</div>}
     {notice&&<div className="ss-feedback ss-success" role="status"><Check size={17}/>{notice}</div>}
     <div className="ss-layout">
@@ -317,6 +355,15 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
           <Status ready={connected} label={connected?"Autorização registrada":"Não vinculada"}/>
         </div>
         <p className="ss-muted">{connectionExplanation}</p>
+        <ul className="ss-diagnostic" aria-label="Diagnóstico da conexão Nuvemshop">
+          {diagnostics.map(item=><li key={item.key} data-state={item.state}>
+            <span className="ss-diagnostic-mark" aria-hidden="true">
+              {item.state==="ok"?<CheckCircle2 size={16}/>:item.state==="todo"?<LockKeyhole size={16}/>:<CircleHelp size={16}/>}
+            </span>
+            <span className="ss-diagnostic-text"><strong>{item.label}</strong><small>{item.detail}</small></span>
+            <span className="portal-sr">{item.state==="ok"?"ok":item.state==="todo"?"pendente":"não verificado"}</span>
+          </li>)}
+        </ul>
         {connected&&<p className="ss-muted">{customerReady
           ?"Consulta de cadastros consentidos disponível para teste, sem ativar benefícios."
           :"A leitura de clientes permanece condicionada às permissões e à homologação."}</p>}
@@ -389,7 +436,7 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
           </div>
           <div><small>Cadastro público de participantes</small>
             <strong>{enrollmentReady
-              ?"Pode ser divulgado após aprovar o regulamento no Programa."
+              ?"Pode ser divulgado após aprovar o regulamento no Clube."
               :"Aguardando liberação ou ativação da loja."}</strong>
             <button className="ss-secondary" type="button" onClick={onGoToProgram}>
               Gerenciar regulamento e convites <ArrowRight size={15}/>

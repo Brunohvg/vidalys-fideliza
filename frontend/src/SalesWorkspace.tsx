@@ -191,16 +191,6 @@ export default function SalesWorkspace({tenantId,role}:{
   const canReview=(item:ManualSaleRecord)=>canEdit&&item.state==="awaiting_review";
 
   return <div className="vf-sales-page">
-    <header className="vf-sale-intro">
-      <div className="vf-sale-intro-icon" aria-hidden="true"><ShoppingBag size={24}/></div>
-      <div>
-        <span className="portal-eyebrow">PEDIDOS E VENDAS</span>
-        <h2>Acompanhe as compras do seu clube.</h2>
-        <p>Pedidos da Nuvemshop são consultados automaticamente pela integração autorizada.
-          O registro manual fica reservado às vendas do balcão.</p>
-      </div>
-    </header>
-
     <nav className="vf-sale-tabs" aria-label="Canais de vendas">
       <button type="button" className={section==="nuvemshop"?"is-active":""}
         aria-current={section==="nuvemshop"?"page":undefined}

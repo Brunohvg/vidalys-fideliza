@@ -116,7 +116,7 @@ test("visão geral encaminha Nuvemshop sem conexão para Configurações", async
   }));
   await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Configurar integração"}).click();
-  await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
+  await expect(page.getByRole("navigation",{name:"Seções das configurações"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Conectar minha loja"})).toBeVisible();
 });
@@ -161,7 +161,7 @@ test("OAuth não configurado impede conexão sem enviar segredos", async ({page}
   await expect(page.getByRole("button",{name:/Autorizar minha loja/})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Ver conexão em Configurações"})).toBeVisible();
   await page.getByRole("button",{name:"Ver conexão em Configurações"}).click();
-  await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
+  await expect(page.getByRole("navigation",{name:"Seções das configurações"})).toBeVisible();
 });
 
 test("Analista não pode começar OAuth", async ({page})=>{
@@ -199,7 +199,7 @@ test("Retorno do OAuth não exibe code ou token", async ({page})=>{
     }),
   }));
   await page.goto("/app/configuracoes?nuvemshop=connected&nuvemshop_tenant="+tenant.id);
-  await expect(page.getByRole("heading",{name:"Configurações"})).toBeVisible();
+  await expect(page.getByRole("navigation",{name:"Seções das configurações"})).toBeVisible();
   await expect(page.getByText("Autorização registrada.",{exact:false})).toBeVisible();
   await expect(page).toHaveURL("http://127.0.0.1:4173/app/configuracoes");
   await expect(page.locator("body")).not.toContainText("access_token");

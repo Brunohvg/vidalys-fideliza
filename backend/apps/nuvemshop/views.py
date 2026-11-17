@@ -39,6 +39,14 @@ def _owner_admin(member):
     return member.role in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN)
 
 
+def _last_order_event_at(tenant):
+    """Data do último aviso assinado de pedido: prova de que os webhooks chegam."""
+    from .order_webhook_models import OrderWebhookEvent
+    latest = OrderWebhookEvent.objects.filter(tenant=tenant).only(
+        "received_at").order_by("-received_at").first()
+    return latest.received_at.isoformat() if latest else None
+
+
 def _safe_result(status, tenant_id=None):
     # Não transportar code/state/token para HTML, redirect ou histórico do navegador.
     response = HttpResponse(status=303)
@@ -65,7 +73,7 @@ class NuvemshopStatusView(APIView):
             cfg,configured=None,False
         # Um único cálculo para todos os indicadores do painel.
         connected=bool(
-            configured and installed
+            configured and installed and installed.active
             and installed.client_id==cfg.client_id
             and installed.store_id==tenant.external_store_id
         )
@@ -80,6 +88,8 @@ class NuvemshopStatusView(APIView):
             next_step="activate_tenant"
         elif not configured:
             next_step="configure_app"
+        elif installed and not installed.active:
+            next_step="reinstall_app"
         elif not connected:
             next_step="authorize_store"
         elif not catalog_scope_granted:
@@ -137,6 +147,9 @@ class NuvemshopStatusView(APIView):
                     connected and not catalog_scope_granted
                 ),
             },
+            "uninstalled_at":(installed.uninstalled_at.isoformat()
+                              if installed and installed.uninstalled_at else None),
+            "last_order_event_at":_last_order_event_at(tenant),
             "store_id":installed.store_id if installed else None,
             "scope":installed.scope if installed else None,
             "mode":"read_products_only",
@@ -247,8 +260,11 @@ def oauth_callback(request):
                 installed.token_ciphertext = ciphertext
                 installed.scope = received["scope"]
                 installed.connected_by = request.user
+                # Reinstalar o app reativa a mesma instalação.
+                installed.uninstalled_at = None
                 installed.save(update_fields=[
-                    "token_ciphertext", "scope", "connected_by", "updated_at"
+                    "token_ciphertext", "scope", "connected_by",
+                    "uninstalled_at", "updated_at",
                 ])
             else:
                 NuvemshopInstallation.objects.create(
