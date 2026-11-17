@@ -1,41 +1,69 @@
-/* New merchant overview. All selectors scoped; replaces action-center.css on overview. */
-.loyalty-dashboard{display:grid;gap:22px;min-width:0;font-family:Manrope,Inter,sans-serif;color:#3B1E82}
-.loyalty-dashboard *{box-sizing:border-box}
-.loyalty-dashboard-intro{display:flex;align-items:center;justify-content:space-between;gap:30px;border-radius:25px;padding:35px clamp(23px,3vw,43px);background:radial-gradient(circle at 84% 13%,#AD7AFF60,transparent 36%),linear-gradient(120deg,#3B1E82,#6A3DF0);color:white;min-width:0;box-shadow:0 18px 45px #3B1E8223}
-.loyalty-dashboard-eyebrow{font-size:10px;letter-spacing:.115em;font-weight:800;line-height:1.5}
-.loyalty-dashboard-intro .loyalty-dashboard-eyebrow{color:#EEDCFF}
-.loyalty-dashboard-intro h2{font:800 clamp(25px,2.8vw,39px)/1.16 Manrope,Inter,sans-serif;letter-spacing:-.045em;margin:11px 0 10px;color:#fff}
-.loyalty-dashboard-intro p{font-size:13px;line-height:1.7;color:#EDE7FF;max-width:64ch;margin:0}
-.loyalty-dashboard-intro-icon{display:grid;place-items:center;flex:none;width:105px;height:105px;border-radius:29px;transform:rotate(-8deg);color:#FFC857;border:1px solid #D8BFFB80;background:#FFFFFF1C}
-.loyalty-dashboard-warning{border:1px solid #EFD8A1;color:#755012;background:#FFF6E4;padding:14px 17px;border-radius:13px;font-size:12px;margin:0}
-.loyalty-dashboard-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-.loyalty-dashboard-metric{min-width:0;display:flex;flex-direction:column;align-items:flex-start;border:1px solid #E4DFF2;background:linear-gradient(145deg,#FFFFFF,#FCFAFF);box-shadow:0 13px 36px #3B1E820D;border-radius:21px;padding:24px}
-.loyalty-dashboard-metric-top{display:flex;align-items:center;gap:12px;width:100%}
-.loyalty-dashboard-metric-top>span{display:grid;place-items:center;flex:none;width:46px;height:46px;border-radius:14px;background:#EDE7FF;color:#6A3DF0}
-.loyalty-dashboard-metric:nth-child(2) .loyalty-dashboard-metric-top>span{background:#FFF2E6;color:#C05C24}
-.loyalty-dashboard-metric:nth-child(3) .loyalty-dashboard-metric-top>span{background:#FFF7DC;color:#8F5200}
-.loyalty-dashboard-metric-top small{font-size:12px;font-weight:800;color:#665D7A}
-.loyalty-dashboard-metric>strong{font:800 clamp(32px,4vw,52px)/1.1 Manrope,Inter,sans-serif;color:#3B1E82;margin-top:22px;font-variant-numeric:tabular-nums}
-.loyalty-dashboard-metric>p{color:#665D7A;font-size:11px;line-height:1.6;margin:7px 0 17px;flex:1}
-.loyalty-dashboard-metric>button{border:0;background:transparent;padding:5px 0;color:#6A3DF0;font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:36px}
-.loyalty-dashboard-columns{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,.7fr);gap:18px}
-.loyalty-dashboard-next,.loyalty-dashboard-connection{display:flex;flex-direction:column;align-items:flex-start;min-width:0;min-height:240px;border-radius:23px;padding:29px;position:relative;overflow:hidden}
-.loyalty-dashboard-next{background:radial-gradient(circle at 95% 5%,#FFBD6650,transparent 38%),linear-gradient(130deg,#3B1E82,#6036C6);color:#fff}
-.loyalty-dashboard-next-star{display:grid;place-items:center;color:#FFC857;background:#FFFFFF25;width:45px;height:45px;border-radius:14px;margin-bottom:13px}
-.loyalty-dashboard-next .loyalty-dashboard-eyebrow{color:#EDDEFF}
-.loyalty-dashboard-next h3{color:white;font-size:clamp(22px,2.4vw,29px);line-height:1.22;letter-spacing:-.035em;margin:7px 0}
-.loyalty-dashboard-next p{font-size:12px;line-height:1.7;max-width:54ch;color:#EDE7FF;margin:0 0 20px}
-.loyalty-dashboard-next button{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;background:#FFC857;color:#3B1E82;border-radius:12px;padding:12px 17px;min-height:44px;font-size:12px;font-weight:800;cursor:pointer;margin-top:auto}
-.loyalty-dashboard-next button:disabled{opacity:.6;cursor:not-allowed}
-.loyalty-dashboard-connection{border:1px solid #E4DFF2;background:#fff;box-shadow:0 13px 36px #3B1E820D;color:#3B1E82}
-.loyalty-dashboard-connection-icon{display:grid;place-items:center;width:45px;height:45px;border-radius:14px;background:#EDE7FF;color:#6A3DF0;margin-bottom:13px}
-.loyalty-dashboard-connection .loyalty-dashboard-eyebrow{color:#6A3DF0}
-.loyalty-dashboard-connection h3{font-size:23px;margin:7px 0}
-.loyalty-dashboard-connection p{font-size:12px;line-height:1.65;color:#665D7A;margin:0 0 20px}
-.loyalty-dashboard-connection button{display:inline-flex;align-items:center;gap:9px;color:#6A3DF0;background:none;border:0;padding:0;min-height:37px;font-size:12px;font-weight:800;cursor:pointer;margin-top:auto}
-.loyalty-dashboard-disclosure{display:flex;align-items:flex-start;gap:10px;font-size:11px;line-height:1.7;color:#766B86;margin:0;padding:8px 3px}
-.loyalty-dashboard-disclosure svg{flex:none}
-.loyalty-dashboard button:focus-visible{outline:3px solid #A98AF5;outline-offset:3px}
-@media(max-width:980px){.loyalty-dashboard-columns{grid-template-columns:1fr}.loyalty-dashboard-metrics{gap:12px}.loyalty-dashboard-metric{padding:20px}}
-@media(max-width:650px){.loyalty-dashboard{gap:15px}.loyalty-dashboard-intro{padding:26px 21px}.loyalty-dashboard-intro-icon{display:none}.loyalty-dashboard-metrics{grid-template-columns:1fr}.loyalty-dashboard-metric{padding:20px}.loyalty-dashboard-metric>strong{margin-top:12px}.loyalty-dashboard-next,.loyalty-dashboard-connection{padding:23px;min-height:220px}}
-@media(prefers-reduced-motion:no-preference){.loyalty-dashboard-metric{transition:box-shadow .2s,transform .2s}.loyalty-dashboard-metric:hover{transform:translateY(-2px);box-shadow:0 19px 38px #3B1E821A}}
+/* VIDALYS FIDELIZA — Início do lojista (arquivo completo e consolidado; arquivo
+   protegido pelo brand-guard). Ordem: o que falta para o clube ir ao ar,
+   números reais, canais. Só tokens de brand-tokens.css. */
+
+.loyalty-dashboard{display:grid;gap:18px;min-width:0;font-family:var(--vf-font);color:var(--vf-ink)}
+.loyalty-dashboard-eyebrow{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--vf-primary)}
+
+/* ---------- Checklist "Coloque seu clube no ar" ---------- */
+.loyalty-checklist{display:grid;gap:16px;padding:24px;border-radius:var(--vf-radius-lg);background:var(--vf-surface);border:1px solid var(--vf-border);box-shadow:var(--vf-shadow-card)}
+.loyalty-checklist-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.loyalty-checklist-head h2{margin:6px 0 4px;font:850 clamp(22px,2.2vw,28px)/1.15 var(--vf-font-display);letter-spacing:-.03em;color:var(--vf-ink)}
+.loyalty-checklist-head p{margin:0;font-size:15px;color:var(--vf-muted)}
+.loyalty-checklist-cta{display:inline-flex;align-items:center;gap:8px;flex:none;min-height:48px;padding:0 22px;border:0;border-radius:999px;background:var(--vf-primary);color:var(--vf-primary-contrast);font:inherit;font-size:15px;font-weight:800;cursor:pointer;box-shadow:var(--vf-glow)}
+.loyalty-checklist-cta:hover{background:var(--vf-primary-hover)}
+.loyalty-checklist-bar{height:8px;border-radius:999px;background:var(--vf-lavender);overflow:hidden}
+.loyalty-checklist-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--vf-purple-700),var(--vf-purple-500));transition:width .4s ease}
+.loyalty-checklist-steps{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.loyalty-checklist-steps li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;border:1px solid var(--vf-border);background:var(--vf-surface)}
+.loyalty-checklist-steps li[data-state="next"]{border-color:color-mix(in srgb,var(--vf-primary) 45%,var(--vf-border));background:var(--vf-info-soft)}
+.loyalty-checklist-steps li[data-state="done"]{background:var(--vf-canvas)}
+.loyalty-checklist-steps li[data-state="done"] strong{color:var(--vf-muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--vf-muted) 50%,transparent)}
+.loyalty-step-mark{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;font-size:14px;font-weight:850;background:var(--vf-lavender);color:var(--vf-ink-soft)}
+li[data-state="next"] .loyalty-step-mark{background:var(--vf-primary);color:var(--vf-primary-contrast)}
+li[data-state="done"] .loyalty-step-mark{background:color-mix(in srgb,var(--vf-success) 14%,var(--vf-surface));color:var(--vf-success)}
+.loyalty-step-text{display:grid;gap:2px;min-width:0}
+.loyalty-step-text strong{font-size:15px;color:var(--vf-ink)}
+.loyalty-step-text span{font-size:13.5px;color:var(--vf-muted)}
+.loyalty-step-action{min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--vf-border);background:var(--vf-surface);color:var(--vf-ink);font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+li[data-state="next"] .loyalty-step-action{border-color:var(--vf-primary);color:var(--vf-primary)}
+.loyalty-step-action:hover{background:var(--vf-info-soft)}
+.loyalty-step-action:disabled{opacity:.6;cursor:progress}
+
+/* ---------- Avisos ---------- */
+.loyalty-dashboard-warning{margin:0;padding:12px 16px;border-radius:12px;font-size:13.5px;color:var(--vf-reward-ink);background:var(--vf-reward-soft);border:1px solid color-mix(in srgb,var(--vf-gold) 50%,var(--vf-surface))}
+.loyalty-dashboard-disclosure{display:flex;align-items:flex-start;gap:8px;margin:0;font-size:12.5px;line-height:1.6;color:var(--vf-muted)}
+.loyalty-dashboard-disclosure svg{flex:none;margin-top:2px;color:var(--vf-primary)}
+
+/* ---------- Indicadores reais ---------- */
+.loyalty-dashboard-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.loyalty-dashboard-metric{display:flex;flex-direction:column;gap:6px;min-width:0;padding:18px;border-radius:var(--vf-radius-lg);background:var(--vf-surface);border:1px solid var(--vf-border);box-shadow:var(--vf-shadow-card)}
+.loyalty-dashboard-metric-top{display:flex;align-items:center;gap:10px}
+.loyalty-dashboard-metric-top span{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:11px;background:var(--vf-info-soft);color:var(--vf-primary)}
+.loyalty-dashboard-metric:nth-child(2) .loyalty-dashboard-metric-top span{background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
+.loyalty-dashboard-metric:nth-child(3) .loyalty-dashboard-metric-top span{background:var(--vf-lavender);color:var(--vf-ink-soft)}
+.loyalty-dashboard-metric-top small{font-size:13.5px;font-weight:750;color:var(--vf-muted)}
+.loyalty-dashboard-metric strong{margin-top:6px;font:850 34px/1.05 var(--vf-font-display);letter-spacing:-.03em;color:var(--vf-ink);font-variant-numeric:tabular-nums}
+.loyalty-dashboard-metric strong.loyalty-dashboard-status{font-size:22px;line-height:1.2}
+.loyalty-dashboard-status[data-on="true"]{color:var(--vf-success)}
+.loyalty-dashboard-metric p{margin:0;font-size:13px;line-height:1.5;color:var(--vf-muted);flex:1}
+.loyalty-dashboard-metric button{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0;border:0;background:none;color:var(--vf-primary);font:inherit;font-size:13.5px;font-weight:800;text-align:left;cursor:pointer}
+.loyalty-dashboard-metric button:hover{text-decoration:underline;text-underline-offset:4px}
+.loyalty-dashboard :is(button):focus-visible{outline:3px solid var(--vf-primary);outline-offset:3px;border-radius:10px}
+
+@media(max-width:1180px){.loyalty-dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){
+  .loyalty-checklist{padding:18px 14px}
+  .loyalty-checklist-head{flex-direction:column;align-items:stretch}
+  .loyalty-checklist-cta{justify-content:center}
+  .loyalty-checklist-steps li{grid-template-columns:auto minmax(0,1fr)}
+  .loyalty-step-action{grid-column:2;justify-self:start}
+  .loyalty-dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .loyalty-dashboard-metric{padding:14px}
+  .loyalty-dashboard-metric strong{font-size:28px}
+  .loyalty-dashboard-metric strong.loyalty-dashboard-status{font-size:18px}
+  .loyalty-dashboard-metric p{font-size:12px}
+  .loyalty-dashboard-metric-top{flex-direction:column;align-items:flex-start;gap:6px}
+}
+@media(max-width:340px){.loyalty-dashboard-metrics{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){.loyalty-checklist-bar span{transition:none}}

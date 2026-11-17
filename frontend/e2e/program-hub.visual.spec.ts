@@ -50,13 +50,11 @@ for(const width of [320,390,1440]){
   });
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
-  await expect(page.getByRole("heading",{name:"Seu clube em três passos."})).toBeVisible();
+  await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
   await expect(page.getByText("Autorização Nuvemshop registrada")).toBeVisible();
   await expect(page.getByText("Permissão de pedidos pendente",{exact:false})).toBeVisible();
   const navigation=page.getByRole("navigation",{name:"Áreas do programa"});
-  await expect(navigation.getByRole("button",{name:"Benefícios"})).toHaveAttribute("aria-pressed","true");
-  await expect(page.getByRole("heading",{name:"Benefícios do seu clube"})).toBeVisible();
+  await expect(navigation.getByRole("button",{name:"Recompensas"})).toHaveAttribute("aria-pressed","true");
   await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
   await navigation.getByRole("button",{name:"Participantes"}).click();
   await expect(page.getByRole("heading",{name:"Entrada de participantes"})).toBeVisible();

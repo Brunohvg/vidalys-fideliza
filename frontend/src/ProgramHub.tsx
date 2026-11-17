@@ -7,15 +7,24 @@ import LoyaltyTrialPanel from "./LoyaltyTrialPanel";
 import {merchantApi,type NuvemshopConnectionStatus,type Store} from "./api";
 import "./program-hub.css";
 
-type Area="benefits"|"participants"|"testing";
-export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platform,onViewClients,onViewSales,onOpenSettings}:{
+/* Clube: UM nível de navegação (sem abas dentro de abas). Cada área é uma tarefa. */
+export type ProgramArea="rewards"|"earning"|"participants"|"testing";
+
+const areas:{key:ProgramArea;label:string;hint:string;Icon:typeof Gift}[]=[
+ {key:"rewards",label:"Recompensas",hint:"O que o cliente troca",Icon:Gift},
+ {key:"earning",label:"Regra de pontos",hint:"Como ganhar pontos",Icon:Settings2},
+ {key:"participants",label:"Participantes",hint:"Convites e adesões",Icon:UsersRound},
+ {key:"testing",label:"Testes",hint:"Simular sem publicar",Icon:FlaskConical},
+];
+
+export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platform,initialArea="rewards",onViewClients,onViewSales,onOpenSettings}:{
  tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"];platform:Store["platform"];
+ initialArea?:ProgramArea;
  onViewClients:()=>void;onViewSales:()=>void;onOpenSettings:()=>void;
 }){
  const [ruleRefresh,setRuleRefresh]=useState(0);
  const [rewardsRefresh,setRewardsRefresh]=useState(0);
- const [area,setArea]=useState<Area>("benefits");
- const [benefitPanel,setBenefitPanel]=useState<"rewards"|"earning">("rewards");
+ const [area,setArea]=useState<ProgramArea>(initialArea);
  const [connection,setConnection]=useState<NuvemshopConnectionStatus|null>(null);
  const [connectionError,setConnectionError]=useState(false);
  useEffect(()=>{
@@ -42,74 +51,49 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
   :connection?.connected?"Permissão de pedidos pendente":"Pedidos ainda não conectados";
 
  return <div className="vf-program-page">
-  <section className="vf-program-intro">
-   <div><span className="portal-eyebrow">SEU CLUBE DE VANTAGENS</span>
-    <h2>Seu clube em três passos.</h2>
-    <p>Recompensas, regras de pontos e participantes em áreas separadas.
-      As compras do site ficam em Vendas.</p>
-   </div>
-   <div className="vf-program-intro-actions">
-    <a className="vf-program-outline" href={"/clube/"+encodeURIComponent(storeSlug)}
-      target="_blank" rel="noopener noreferrer">
-      <HeartHandshake size={17}/> Prévia do Meu Clube <ArrowRight size={16}/>
-    </a>
-   </div>
-  </section>
+  <div className="vf-program-toolbar">
+   <nav className="vf-program-sections" aria-label="Áreas do programa">
+    {areas.map(({key,label,hint,Icon})=><button key={key} type="button"
+      className={area===key?"selected":""} aria-pressed={area===key} onClick={()=>setArea(key)}>
+      <Icon size={18}/><span><b>{label}</b><small>{hint}</small></span>
+    </button>)}
+   </nav>
+   <a className="vf-program-outline" href={"/clube/"+encodeURIComponent(storeSlug)}
+     target="_blank" rel="noopener noreferrer">
+     <HeartHandshake size={17}/> Prévia do Meu Clube <ArrowRight size={16}/>
+   </a>
+  </div>
   <div className="vf-program-connection vf-program-connection-slim" role="status">
     <PlugZap size={17}/>
     <span>{connectionTitle} · {ordersTitle}.</span>
     <button type="button" onClick={onOpenSettings}>{independentChannel?"Conectar loja online (opcional)":"Ver integração"} <ArrowRight size={15}/></button>
   </div>
-  <nav className="vf-program-sections" aria-label="Áreas do programa">
-    <button type="button" className={area==="benefits"?"selected":""}
-      aria-pressed={area==="benefits"} onClick={()=>setArea("benefits")}>
-      <Gift size={17}/> Benefícios
-    </button>
-    <button type="button" className={area==="participants"?"selected":""}
-      aria-pressed={area==="participants"} onClick={()=>setArea("participants")}>
-      <UsersRound size={17}/> Participantes
-    </button>
-    <button type="button" className={area==="testing"?"selected":""}
-      aria-pressed={area==="testing"} onClick={()=>setArea("testing")}>
-      <FlaskConical size={17}/> Testes
-    </button>
-  </nav>
-  {area==="benefits"&&<section className="vf-program-area" aria-label="Configurar benefícios do clube">
-    <div className="vf-program-area-heading">
-      <h3>Benefícios do seu clube</h3>
-      <p>Uma regra de pontos e as recompensas que o cliente poderá consultar.</p>
-    </div>
-    <div className="vf-program-benefit-switch" role="group" aria-label="Editar benefícios">
-      <button type="button" className={benefitPanel==="rewards"?"is-active":""}
-        aria-pressed={benefitPanel==="rewards"} onClick={()=>setBenefitPanel("rewards")}>
-        <Gift size={16}/> Recompensas
-      </button>
-      <button type="button" className={benefitPanel==="earning"?"is-active":""}
-        aria-pressed={benefitPanel==="earning"} onClick={()=>setBenefitPanel("earning")}>
-        <Settings2 size={16}/> Regra de pontos
-      </button>
-    </div>
-    {benefitPanel==="rewards"&&<RewardDraftEditor tenantId={tenantId} role={role}
-      ruleRefresh={ruleRefresh}
-      onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>}
-    {benefitPanel==="earning"&&<PointRuleDraftEditor tenantId={tenantId} role={role}
-      onRuleSaved={()=>setRuleRefresh(value=>value+1)}/>}
+  {area==="rewards"&&<section className="vf-program-area vf-program-area-plain" aria-label="Recompensas do clube">
+    <RewardDraftEditor tenantId={tenantId} role={role} ruleRefresh={ruleRefresh}
+      onDraftsChanged={()=>setRewardsRefresh(value=>value+1)}/>
+  </section>}
+  {area==="earning"&&<section className="vf-program-area vf-program-area-plain" aria-label="Regra de pontos">
+    <PointRuleDraftEditor tenantId={tenantId} role={role}
+      onRuleSaved={()=>setRuleRefresh(value=>value+1)}/>
   </section>}
   {area==="participants"&&<section className="vf-program-area" aria-label="Gerenciar adesões do clube">
     <div className="vf-program-area-heading">
-      <h3>Entrada de participantes</h3>
-      <p>Regulamento, convites e adesão com consentimento. Os clientes que já fazem parte
-        do programa aparecem na área Clientes.</p>
+      <div>
+        <h3>Entrada de participantes</h3>
+        <p>Regulamento, convites e adesão com consentimento. Quem já faz parte do clube aparece em Clientes.</p>
+      </div>
+      <button type="button" className="vf-program-outline vf-program-view-clients"
+        onClick={onViewClients}><UsersRound size={16}/> Consultar clientes do clube <ArrowRight size={16}/></button>
     </div>
-    <button type="button" className="vf-program-outline vf-program-view-clients"
-      onClick={onViewClients}><UsersRound size={16}/> Consultar clientes do clube <ArrowRight size={16}/></button>
     <EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug}
       tenantStatus={tenantStatus}/>
   </section>}
   {area==="testing"&&<section className="vf-program-area" aria-label="Ferramentas de homologação">
     <div className="vf-program-area-heading">
-      <h3>Validar antes de ativar</h3>
-      <p>Ferramentas de teste para conferir o funcionamento sem gerar pontos ou cupons reais.</p>
+      <div>
+        <h3>Validar antes de ativar</h3>
+        <p>Confira o funcionamento sem gerar pontos ou cupons reais.</p>
+      </div>
     </div>
     <div className="vf-program-operation-link">
       <span>As compras da loja virtual ficam em <strong>Vendas → Nuvemshop</strong>.
@@ -126,8 +110,8 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
   </section>}
   <p className="vf-program-status-note">
     Publicar uma recompensa mostra o benefício no Meu Clube, mas não libera
-    descontos no checkout. A concessão de pontos e o resgate continuam bloqueados
-    até a integração de pagamentos ser homologada.
+    descontos no checkout. Pontos e resgates continuam bloqueados até a
+    integração de pagamentos ser homologada.
   </p>
  </div>;
 }

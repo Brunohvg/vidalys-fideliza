@@ -54,7 +54,7 @@ for(const width of [320,390,1440]){
     });
     await page.goto("/app/visao-geral");
     if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-    await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+    await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
       await page.getByRole("navigation",{name:"Áreas do programa"}).getByRole("button",{name:"Testes"}).click();
     await page.getByText("Testar pontos e recompensas sem publicar").click();
     await expect(page.getByRole("heading",{name:"Teste o caminho dos pontos"})).toBeVisible();

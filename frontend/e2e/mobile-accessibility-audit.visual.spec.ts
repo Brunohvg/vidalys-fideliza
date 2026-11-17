@@ -91,7 +91,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
     await page.setViewportSize({width,height:width<=390?700:900});
     await setup(page);
     await page.goto("/app/visao-geral");
-    await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Coloque seu clube no ar"})).toBeVisible();
     await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
     await expect(page.getByText("Recompensas publicadas")).toBeVisible();
     await expect(page.getByText("pontos de pedidos online",{exact:false})).toBeVisible();
@@ -200,23 +200,18 @@ for(const width of [320,390,768,1440]){
     }));
     await page.goto("/app/visao-geral");
     const screens=[
-      ["Programa","Seu programa de fidelidade."],
+      ["Clube","Seu programa de fidelidade."],
       ["Clientes","Participantes do clube."],
       ["Vendas","Pedidos e vendas."],
       ["Campanhas","Uma campanha em poucos passos."],
       ["Resultados","Resultados que importam."],
       ["Custo dos benefícios","Quanto custa meu programa?"],
-      ["Custos por SKU","Conheça o custo antes do benefício."],
+      ["Custos dos produtos","Conheça o custo antes do benefício."],
       ["Conciliação","Valide variantes antes de importar."],
       ["Configurações","Sua loja, do seu jeito."],
     ] as const;
     for(const [nav,title] of screens){
       if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-      if(["Campanhas","Resultados","Custo dos benefícios","Custos por SKU","Conciliação"].includes(nav)){
-        const group=page.locator(".portal-advanced-menu");
-        if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))
-          await group.locator("summary").click();
-      }
       await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+nav+"(?:\\s|$)")}).click();
       await expect(page.getByRole("heading",{level:1,name:title})).toBeVisible();
       if(nav==="Configurações"){
@@ -234,7 +229,7 @@ for(const width of [320,390,768,1440]){
         await expect(page.getByText("Ainda não medido")).toBeVisible();
       }
       await assertNoHorizontalOverflow(page,nav+" "+width);
-      if(width===390&&["Vendas","Resultados","Programa"].includes(nav)){
+      if(width===390&&["Vendas","Resultados","Clube"].includes(nav)){
         await page.screenshot({path:info.outputPath(
           "audit-"+nav.toLowerCase()+"-"+width+".png"),fullPage:true});
       }

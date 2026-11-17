@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight, ChevronDown,
-  Gift, LayoutDashboard, LoaderCircle, LockKeyhole,
+  Gift, LayoutDashboard, LoaderCircle,
   LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, UsersRound, X, BarChart3, HeartHandshake, Settings2
 } from "lucide-react";
 import BenefitCostOverview from "./BenefitCostOverview";
 import MerchantAccess from "./MerchantAccess";
 import CampaignGuide from "./CampaignGuide";
 import ParticipantsBoard from "./ParticipantsBoard";
-import ProgramHub from "./ProgramHub";
+import ProgramHub, { type ProgramArea } from "./ProgramHub";
 import SalesWorkspace from "./SalesWorkspace";
 import StoreSettings from "./StoreSettings";
 import ActionCenter from "./ActionCenter";
@@ -30,6 +30,26 @@ const roleLabel: Record<Store["role"], string> = {
   owner: "Proprietário", admin: "Administrador", analyst: "Analista"
 };
 
+// Menu único, agrupado por intenção. Nada escondido em "mais ferramentas".
+type NavItem = { page: Screen; label: string; Icon: typeof Gift; badge?: string };
+const navGroups: { caption: string | null; items: NavItem[] }[] = [
+  { caption: null, items: [{ page: "overview", label: "Início", Icon: LayoutDashboard }] },
+  { caption: "PROGRAMA", items: [
+    { page: "program", label: "Clube", Icon: HeartHandshake },
+    { page: "campaign", label: "Campanhas", Icon: Gift, badge: "Prévia" }] },
+  { caption: "OPERAÇÃO", items: [
+    { page: "clients", label: "Clientes", Icon: UsersRound },
+    { page: "sales", label: "Vendas", Icon: ShoppingBag }] },
+  { caption: "ANÁLISE", items: [
+    { page: "results", label: "Resultados", Icon: BarChart3 },
+    { page: "margin", label: "Custo dos benefícios", Icon: ShieldCheck }] },
+  { caption: "AJUSTES", items: [
+    { page: "settings", label: "Configurações", Icon: Settings2 },
+    { page: "costs", label: "Custos dos produtos", Icon: PackageSearch },
+    { page: "catalog", label: "Conciliação", Icon: ScanSearch }] },
+];
+const navItems = navGroups.flatMap(group => group.items.map(item => ({ ...item, caption: group.caption })));
+
 function Symbol({ small = false }: { small?: boolean }) {
   return <img src="/brand-mark.svg" width={small ? 28 : 42} height={small ? 28 : 42} alt="" aria-hidden="true" />;
 }
@@ -38,11 +58,8 @@ function Wordmark() {
   return <span className="portal-wordmark">vidalys<span>fideliza</span></span>;
 }
 
-function StatusPill({ children }: { children: ReactNode }) {
-  return <span className="portal-status"><ShieldCheck size={14}/>{children}</span>;
-}
-
 export default function Portal() {
+  const [programArea, setProgramArea] = useState<ProgramArea>("rewards");
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [sessionError, setSessionError] = useState("");
   const [authRoute, setAuthRoute] = useState(() => isMerchantAuthPage(window.location.pathname));
@@ -203,7 +220,8 @@ export default function Portal() {
     }
   };
 
-  const navigate = (next: Screen) => {
+  const navigate = (next: Screen, area?: ProgramArea) => {
+    setProgramArea(area ?? "rewards");
     if (window.location.pathname !== merchantPaths[next]) {
       window.history.pushState(null, "", merchantPaths[next]);
     }
@@ -240,28 +258,28 @@ export default function Portal() {
   return <div className="portal-shell loyalty-merchant">
     <aside id="portal-sidebar" ref={sideRef} className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista" aria-hidden={compactMenu && !drawer}>
       <div className="portal-side-brand"><img className="loyalty-merchant-logo" src="/brand-logo-white.svg" alt="Vidalys Fideliza" width={178} height={48}/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
-      <div className="portal-store">
+      {tenant ? <div className="portal-store">
         <div className="portal-store-mark"><ShoppingBag size={18}/></div>
-        <div><strong>{tenant?.name || "Nenhuma loja"}</strong><span>{tenant ? roleLabel[tenant.role] : "Sem vínculo"}</span></div>
-      </div>
-      <div className="portal-nav-caption">MENU PRINCIPAL</div>
-      <nav className="portal-nav">
-        <button onClick={()=>navigate("overview")} className={page==="overview"?"is-active":""}><LayoutDashboard size={19}/> Visão geral</button>
-        <button onClick={()=>navigate("clients")} className={page==="clients"?"is-active":""}><UsersRound size={19}/> Clientes</button>
-        <button onClick={()=>navigate("program")} className={page==="program"?"is-active":""}><HeartHandshake size={19}/> Programa</button>
-        <button onClick={()=>navigate("campaign")} className={page==="campaign"?"is-active":""}><Gift size={19}/> Campanhas <span>Prévia</span></button>
-        <button onClick={()=>navigate("sales")} className={page==="sales"?"is-active":""}><ShoppingBag size={19}/> Vendas</button>
-        <button onClick={()=>navigate("settings")} className={page==="settings"?"is-active":""}><Settings2 size={19}/> Configurações</button>
-      </nav>
-      <details className="portal-advanced-menu">
-        <summary><span>Mais ferramentas</span><ChevronDown size={16}/></summary>
-        <nav className="portal-nav portal-nav-secondary" aria-label="Ferramentas adicionais">
-          <button onClick={()=>navigate("results")} className={page==="results"?"is-active":""}><BarChart3 size={19}/> Resultados</button>
-          <button onClick={()=>navigate("margin")} className={page==="margin"?"is-active":""}><ShieldCheck size={19}/> Custo dos benefícios</button>
-          <button onClick={()=>navigate("costs")} className={page==="costs"?"is-active":""}><PackageSearch size={19}/> Custos por SKU</button>
-          <button onClick={()=>navigate("catalog")} className={page==="catalog"?"is-active":""}><ScanSearch size={19}/> Conciliação</button>
+        <div className="portal-store-switch">
+          <label htmlFor="portal-tenant" className="portal-sr">Loja selecionada</label>
+          <select id="portal-tenant" value={tenant.id} onChange={e=>{setSelectedId(e.target.value);setSeedItem(null);setPage("overview");}}>
+            {tenants.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          {tenants.length>1 && <ChevronDown size={15} aria-hidden="true"/>}
+          <span>{roleLabel[tenant.role]}{tenant.status!=="active" && " · "+(tenant.status==="draft"?"cadastro em preparação":"suspensa")}</span>
+        </div>
+      </div> : <div className="portal-store">
+        <div className="portal-store-mark"><ShoppingBag size={18}/></div>
+        <div><strong>Nenhuma loja</strong><span>Sem vínculo</span></div>
+      </div>}
+      {navGroups.map(group => <div className="portal-nav-group" key={group.caption ?? "inicio"}>
+        {group.caption && <div className="portal-nav-caption">{group.caption}</div>}
+        <nav className="portal-nav" aria-label={group.caption ? "Menu " + group.caption.toLowerCase() : "Menu principal"}>
+          {group.items.map(({ page: target, label, Icon, badge }) => <button key={target} onClick={()=>navigate(target)}
+            className={page===target?"is-active":""} aria-current={page===target?"page":undefined}>
+            <Icon size={19}/> {label}{badge && <span>{badge}</span>}</button>)}
         </nav>
-      </details>
+      </div>)}
       <div className="portal-side-bottom">
         <button className="portal-signout" disabled={authBusy} onClick={doLogout}><LogOut size={18}/> Sair da conta</button>
       </div>
@@ -270,17 +288,16 @@ export default function Portal() {
     <div className="portal-main">
       <header className="portal-top">
         <div className="portal-top-title"><button onClick={()=>setDrawer(true)} ref={menuButtonRef} className="portal-menu" aria-label="Abrir menu" aria-controls="portal-sidebar" aria-expanded={compactMenu && drawer}><Menu size={23}/></button>
-          <span>Plataforma</span><span className="portal-breadcrumb">/</span><strong>{page==="overview"?"Visão geral":page==="program"?"Programa":page==="clients"?"Clientes":page==="sales"?"Vendas":page==="campaign"?"Campanhas":page==="results"?"Resultados":page==="margin"?"Custo dos benefícios":page==="costs"?"Custos por SKU":page==="catalog"?"Conciliação":page==="settings"?"Configurações":"Motor de benefícios"}</strong>
+          <span>{navItems.find(item => item.page === page)?.caption?.toLowerCase().replace(/^./, c => c.toUpperCase()) ?? "Painel"}</span><span className="portal-breadcrumb">/</span><strong>{navItems.find(item => item.page === page)?.label ?? "Início"}</strong>
         </div>
         <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
       </header>
       <main className="portal-content">
         <div className="portal-content-head">
-          <div><span className="portal-eyebrow">CENTRO DE FIDELIDADE</span>
+          <div>
             <h1>{page==="overview"?"O próximo passo da sua loja.":page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="sales"?"Pedidos e vendas.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Quanto custa meu programa?":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
-            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Regulamento, divulgação e solicitações — cada coisa em seu lugar.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Acompanhe os pedidos da Nuvemshop e registre vendas presenciais sem duplicar compras.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Entenda o custo dos benefícios antes de publicá-los.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
+            <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Recompensas, regra de pontos e participantes — uma área de cada vez.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Acompanhe os pedidos da Nuvemshop e registre vendas presenciais sem duplicar compras.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Entenda o custo dos benefícios antes de publicá-los.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
-          <StatusPill>Ambiente de teste</StatusPill>
         </div>
 
         {tenants.length===0 ? <section className="portal-empty panel">
@@ -289,16 +306,10 @@ export default function Portal() {
             <p>Contas técnicas criadas no Django Admin não recebem loja automaticamente. Um administrador pode verificar a empresa em Empresas → Lojas e seus vínculos, sem associar usuários apenas pelo nome ou e-mail.</p>
             <button onClick={doLogout} className="portal-secondary">Trocar de conta</button>
           </section> : <>
-            <div className="portal-tenant-bar"><label htmlFor="portal-tenant">Loja selecionada</label>
-              <div className="portal-select-wrap"><select id="portal-tenant" value={tenant.id} onChange={e=>{setSelectedId(e.target.value);setSeedItem(null);setPage("overview");}}>
-                {tenants.map(t=><option key={t.id} value={t.id}>{t.name} · {roleLabel[t.role]}</option>)}
-              </select><ChevronDown size={17}/></div>
-              {tenant.status!=="active" && <span className="portal-unlinked">Cadastro {tenant.status==="draft"?"em preparação":"suspenso"}</span>}
-            </div>
             {page==="overview" && <ActionCenter tenantId={tenant.id} role={tenant.role} platform={tenant.platform} key={tenant.id}
-              onNavigate={destination=>navigate(destination)}/>}
-            {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} platform={tenant.platform} onViewClients={()=>navigate("clients")} onViewSales={()=>navigate("sales")} onOpenSettings={()=>navigate("settings")} key={tenant.id}/>}
-            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} onOpenProgram={()=>navigate("program")} key={tenant.id}/>}
+              onNavigate={(destination, area)=>navigate(destination, area)}/>}
+            {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} platform={tenant.platform} initialArea={programArea} onViewClients={()=>navigate("clients")} onViewSales={()=>navigate("sales")} onOpenSettings={()=>navigate("settings")} key={tenant.id+":"+programArea}/>}
+            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} onOpenProgram={()=>navigate("program", "participants")} key={tenant.id}/>}
             {page==="sales" && <SalesWorkspace tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role}
               onGoToProgram={()=>navigate("program")} key={tenant.id}/>}
@@ -311,7 +322,6 @@ export default function Portal() {
             {page==="campaign" && <CampaignGuide tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
           </>}
         {authError && <div className="portal-auth-error" role="alert">{authError}</div>}
-        <footer className="portal-footer"><LockKeyhole size={14}/> Vidalys Fideliza · Homologação · Nenhuma alteração aplicada à plataforma de vendas</footer>
       </main>
     </div>
   </div>;

@@ -27,11 +27,6 @@ async function mockMerchant(page:Page) {
 }
 async function nav(page:Page,name:string,width:number){
   if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
-  if(["Campanhas","Resultados","Custo dos benefícios","Custos por SKU","Conciliação"].includes(name)){
-   const group=page.locator(".portal-advanced-menu");
-   if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))
-     await group.locator("summary").click();
-  }
   await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+name)}).click();
 }
 for(const width of [390,768,1440]) {
@@ -41,7 +36,7 @@ for(const width of [390,768,1440]) {
       await mockMerchant(page);
       await page.goto("/app/visao-geral");
       await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
-      await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Coloque seu clube no ar"})).toBeVisible();
       await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes ativos");
       await expect(page.getByRole("heading",{name:"PRÓXIMA AÇÃO RECOMENDADA"})).toHaveCount(0);
 
@@ -89,7 +84,7 @@ test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",
   await page.goto("/app/visao-geral");
   await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
   await page.getByRole("button",{name:"Ver benefícios"}).click();
-  await expect(page.getByRole("heading",{name:"Seu clube em três passos."})).toBeVisible();
+  await expect(page.getByRole("navigation",{name:"Áreas do programa"}).getByRole("button",{name:"Recompensas"})).toHaveAttribute("aria-pressed","true");
 });
 
 

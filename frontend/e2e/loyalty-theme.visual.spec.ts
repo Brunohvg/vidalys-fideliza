@@ -31,7 +31,7 @@ for (const width of [390,768,1440]){
       await page.setViewportSize({width,height:width===390?844:900});
       await mockShop(page);
       await page.goto("/app/visao-geral");
-      await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Coloque seu clube no ar"})).toBeVisible();
       const palette=await page.evaluate(()=>{
         const root=getComputedStyle(document.documentElement);
         const cta=document.querySelector(".portal-primary");
@@ -41,7 +41,7 @@ for (const width of [390,768,1440]){
           gold:root.getPropertyValue("--vf-reward").trim(),
           navy:root.getPropertyValue("--vf-ink").trim(),
           overflow:document.documentElement.scrollWidth-innerWidth,
-          displayFont:getComputedStyle(document.querySelector(".loyalty-dashboard-intro h2")!).fontFamily,
+          displayFont:getComputedStyle(document.querySelector(".loyalty-checklist-head h2")!).fontFamily,
           mainArea:document.querySelector(".portal-main")?.getBoundingClientRect().left
         };
       });
@@ -58,8 +58,6 @@ for (const width of [390,768,1440]){
       });
 
       if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
-    await page.locator(".portal-advanced-menu > summary").click();
       await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
       await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
       await page.getByRole("button",{name:"Continuar"}).click();

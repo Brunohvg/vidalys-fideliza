@@ -56,7 +56,7 @@ for(const width of [390,1440]){
   });
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
   await expect(page.getByRole("region",{name:"Conferência da recompensa planejada"})).toHaveCount(0);
   await expect(page.getByLabel("Conferência da recompensa planejada")).toContainText(
@@ -106,7 +106,7 @@ test("Recompensa existente pode ser editada e excluída com confirmação",async
  });
  await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
  await page.getByRole("button",{name:"Editar",exact:true}).click();
  await page.getByPlaceholder("Ex.: R$ 5 de desconto").fill("R$ 10 de desconto");
  await page.getByRole("button",{name:"Salvar alterações"}).click();
@@ -140,7 +140,7 @@ test("Recompensa mostra esforço real em pontos, taxa e orçamento sem publicar"
  }));
  await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
  const economics=page.getByLabel("Conferência da recompensa planejada");
  await expect(economics).toContainText("R$ 200,00");
  await expect(economics).toContainText("2,5%");
@@ -182,9 +182,9 @@ test("Salvar regra recalcula economia da recompensa na mesma tela",async({page})
   })}));
  await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
  const econ=page.getByLabel("Conferência da recompensa planejada");
- const editor=page.getByRole("group",{name:"Editar benefícios"});
+ const editor=page.getByRole("navigation",{name:"Áreas do programa"});
  await expect(econ).toContainText("Salve uma regra de pontos");
  await editor.getByRole("button",{name:"Regra de pontos"}).click();
  await page.getByRole("button",{name:"Salvar rascunho"}).click();
@@ -234,7 +234,7 @@ for(const width of [390,1440]){
   });
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.locator(".portal-nav").getByRole("button",{name:"Programa"}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
   const catalog=page.locator(".vf-benefit-saved");
   await catalog.getByRole("button",{name:"Publicar no Meu Clube"}).click();
   await expect(page.getByRole("group",{name:"Confirmação de publicação da recompensa"})).toBeVisible();
