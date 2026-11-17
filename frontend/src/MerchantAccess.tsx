@@ -156,11 +156,20 @@ export default function MerchantAccess({
   return <div className="portal-auth-layout merchant-access loyalty-access">
     <aside className="portal-auth-brand merchant-aside">
       <Brand/>
-      <img className="loyalty-access-art" src="/loyalty-gift.svg" alt="" aria-hidden="true" width={320} height={320}/>
       <div className="portal-auth-text">
         <span className="portal-eyebrow">FIDELIDADE QUE CRIA CONEXÕES</span>
         <h1>Cada compra aproxima.<br/><em>Cada retorno recompensa.</em></h1>
         <p>Transforme compras em relacionamento, com benefícios que respeitam a margem do negócio.</p>
+        <div className="loyalty-access-preview" aria-hidden="true">
+          <span className="loyalty-access-preview-tag">O que seu cliente vê</span>
+          <div className="loyalty-access-preview-wallet">
+            <small>Disponível para trocar</small><strong>420<span> pts</span></strong>
+          </div>
+          <div className="loyalty-access-preview-goal">
+            <span>Faltam 80 pontos para o <b>Kit de fitas washi</b></span>
+            <i><b/></i>
+          </div>
+        </div>
         <div className="portal-auth-features">
           <span><ShieldCheck size={18}/> Seu programa, no seu ritmo</span>
           <span><Gift size={18}/> Conecte a Nuvemshop quando quiser</span>
