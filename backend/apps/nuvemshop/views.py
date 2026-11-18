@@ -267,7 +267,12 @@ def oauth_callback(request):
                 tenant.external_store_id = received["store_id"]
                 tenant.save(update_fields=["platform", "external_store_id", "updated_at"])
         return _safe_result("connected", attempt.tenant_id)
-    except (OAuthExchangeError, OAuthConfigurationError, IntegrityError, Tenant.DoesNotExist):
+    except OAuthExchangeError as exc:
+        logger.warning("nuvemshop oauth exchange refused tenant=%s reason=%s", attempt.tenant_id, exc)
+        # O app pediu permissões de escrita: a Nuvemshop já trocou o token, mas
+        # o sistema não guarda credencial com mais poder do que o aprovado.
+        return _safe_result("scopes" if "Permissões" in str(exc) else "failed")
+    except (OAuthConfigurationError, IntegrityError, Tenant.DoesNotExist):
         return _safe_result("failed")
 
 

@@ -100,13 +100,14 @@ export default function StoreSettings({tenantId,role,userName,userEmail,initialS
    setSettings(prefs);setBrand(prefs.branding);setIntegration(link);setPrivacy(requests);setTerms(currentTerms);
    const query=new URLSearchParams(window.location.search);
    const result=query.get("nuvemshop");
-   if(result==="connected"||result==="failed"){
+   if(result==="connected"||result==="failed"||result==="scopes"){
     setSection("canais");
     const sourceTenant=query.get("nuvemshop_tenant");
     query.delete("nuvemshop");query.delete("nuvemshop_tenant");
     const rest=query.toString();
     window.history.replaceState(null,"",window.location.pathname+(rest?"?"+rest:"")+window.location.hash);
     if(sourceTenant&&sourceTenant!==tenantId)setError("A autorização retornou para outra loja. Confira a loja selecionada.");
+    else if(result==="scopes")setError("A Nuvemshop autorizou, mas o app não tem permissão para ler produtos, pedidos ou clientes. Ajuste as permissões no Portal de Parceiros e clique em Atualizar conexão de novo.");
     else if(result==="failed")setError("A autorização não foi concluída. Tente novamente.");
     else if(link?.connected)setNotice("Autorização registrada. Verifique o acesso à Nuvemshop antes de usar o catálogo.");
     else setError("A autorização retornou, mas a conexão não foi confirmada. Atualize a página.");

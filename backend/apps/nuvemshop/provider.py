@@ -1,7 +1,6 @@
 """Troca OAuth: somente destino oficial, sem redirect de token nem segredos no log."""
 import json
-from django.conf import settings
-from .scopes import allowed_scopes, parse_scopes
+from .scopes import acceptable_token_scopes, parse_scopes
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -53,13 +52,10 @@ def exchange_code(code: str, client_id: str, client_secret: str, *, opener=None)
         raise OAuthExchangeError("Loja OAuth inválida.")
     if not isinstance(scopes, str):
         raise OAuthExchangeError("Escopos OAuth inválidos.")
-    # Nunca armazenar credencial com poderes de escrita sem aprovação do escopo.
-    if not allowed_scopes(scopes, customer_preview_enabled=(
-            settings.FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED),
-            orders_preview_enabled=settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED,
-            coupons_outbound_enabled=getattr(settings, "FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED", False),
-        ) or token_type != "bearer":
-        raise OAuthExchangeError("Permissões inesperadas; somente leituras aprovadas são permitidas.")
+    # Permissões a mais são aceitas: escrita só acontece quando o recurso
+    # correspondente é ligado no código, nunca por causa do token.
+    if not acceptable_token_scopes(scopes) or token_type != "bearer":
+        raise OAuthExchangeError("Permissões inesperadas: o app precisa ao menos ler produtos, pedidos ou clientes.")
     if data.get("user_id") is not None and data.get("store_id") is not None:
         if str(data["user_id"]) != str(data["store_id"]):
             raise OAuthExchangeError("Loja OAuth inconsistente.")

@@ -4,6 +4,8 @@ Permissões extras concedidas pelo lojista não habilitam funcionalidades.
 A aplicação somente faz chamadas GET suportadas e auditadas. write_*
 não é usado como autorização para executar alterações.
 """
+import re
+
 
 
 def parse_scopes(value: str) -> frozenset[str]:
@@ -51,3 +53,19 @@ def allowed_scopes(value: str, *, customer_preview_enabled: bool,
     if coupons_outbound_enabled:
         permitted.update(("read_coupons", "write_coupons"))
     return bool(scopes) and scopes.issubset(permitted)
+
+
+SCOPE_NAME = re.compile(r"^(read|write)_[a-z_]{3,40}$")
+USABLE = {"read_products", "write_products", "read_orders", "write_orders",
+          "read_customers", "write_customers"}
+
+
+def acceptable_token_scopes(value: str) -> bool:
+    """Conexão aceita mesmo com permissões a mais.
+
+    O token fica cifrado e o que o Fideliza faz continua controlado pelo código
+    e pelas chaves de cada recurso: ter write_* NÃO liga nenhuma escrita.
+    Exige formato conhecido e ao menos uma leitura que o sistema usa.
+    """
+    scopes = parse_scopes(value)
+    return bool(scopes) and all(SCOPE_NAME.match(item) for item in scopes) and bool(USABLE & scopes)
