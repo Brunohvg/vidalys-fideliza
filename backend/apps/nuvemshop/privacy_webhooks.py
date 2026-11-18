@@ -145,6 +145,7 @@ def _revoke_customer(tenant, customer_id, payload):
             tenant=tenant, pk__in=ids,
         ).update(
             name="", email="", marketing_opt_in=False, phone_digest="", phone_last4="",
+            birth_day=None, birth_month=None,
             status=EnrollmentSubmission.Status.WITHDRAWN,
             withdrawn_at=now,
         )

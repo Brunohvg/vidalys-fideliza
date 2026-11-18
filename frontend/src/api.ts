@@ -294,13 +294,30 @@ export type DiscountRewardDraft = {
 };
 export type DiscountRewardDraftInput = Omit<DiscountRewardDraft,
   "id"|"status"|"published"|"published_at"|"redemption_enabled">;
-export type PointCampaignDraft = {
-  id:string;goal:"second_purchase"|"reactivation"|"recurrence";
-  bonus_points:number;max_customers:number;maximum_bonus_points:number;
-  status:"draft";published:false;sending_enabled:false;
+export type CampaignGoal = "second_purchase"|"reactivation"|"recurrence"|"near_reward"|"multiplier"|"birthday";
+export type CampaignAudience = {
+  eligible:number;reached:number;comparison:number;max_cost_cents:number;max_cost_if_full_cents:number;
 };
-export type PointCampaignDraftInput = Pick<PointCampaignDraft,
-  "goal"|"bonus_points"|"max_customers">;
+export type PointCampaignDraft = {
+  id:string;goal:CampaignGoal;
+  bonus_points:number;max_customers:number;maximum_bonus_points:number;
+  title:string;message:string;display_title:string;display_message:string;
+  starts_on:string|null;ends_on:string|null;
+  window_days:number;inactive_days:number;near_points:number;multiplier:number;holdout_percent:number;
+  status:"draft"|"scheduled"|"live"|"ended";published:boolean;published_at:string|null;
+  sending_enabled:false;points_credited:false;
+  audience:CampaignAudience;
+  result?:{reached:number;reached_returned:number;comparison:number;comparison_returned:number}|null;
+};
+export type PointCampaignDraftInput = {
+  goal:CampaignGoal;bonus_points:number;max_customers:number;
+  title?:string;message?:string;starts_on?:string|null;ends_on?:string|null;
+  window_days?:number;inactive_days?:number;near_points?:number;multiplier?:number;holdout_percent?:number;
+};
+export type MemberOffer = {
+  id:string;goal:CampaignGoal;title:string;message:string;bonus_points:number;
+  multiplier:number|null;ends_on:string|null;
+};
 
 export type ManualSaleRecord = {
   id:string;channel:"counter";reference:string;participant_id:string|null;
@@ -566,7 +583,7 @@ export const merchantApi = {
       "PATCH","/api/v1/tenants/"+encodeURIComponent(tenantId)+
       "/loyalty/reward-drafts/"+encodeURIComponent(id)+"/publication/",{published}),
   listPointCampaignDrafts:(tenantId:string)=>getJson<{
-    mode:"draft_only";activation_available:false;items:PointCampaignDraft[]
+    mode:string;activation_available:false;items:PointCampaignDraft[]
   }>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"),
   savePointCampaignDraft:(tenantId:string,payload:PointCampaignDraftInput)=>
     postJson<{mode:"draft_only";campaign:PointCampaignDraft;messages_sent:false}>(
@@ -574,6 +591,12 @@ export const merchantApi = {
   updatePointCampaignDraft:(tenantId:string,id:string,payload:PointCampaignDraftInput)=>
     writeJson<{mode:"draft_only";campaign:PointCampaignDraft;messages_sent:false}>(
       "PATCH", "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"+encodeURIComponent(id)+"/", payload),
+  previewCampaignAudience:(tenantId:string,payload:PointCampaignDraftInput)=>
+    postJson<{audience:CampaignAudience;saved:false}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/audience/",payload),
+  publishPointCampaign:(tenantId:string,id:string,published:boolean)=>
+    postJson<{campaign:PointCampaignDraft;points_credited:false;messages_sent:false}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"+encodeURIComponent(id)+"/publish/",{published}),
   deletePointCampaignDraft:(tenantId:string,id:string)=>
     deleteJson<{deleted:true;id:string}>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-campaign-drafts/"+encodeURIComponent(id)+"/"),
@@ -778,8 +801,15 @@ export type MemberClubReward = {
   min_order_cents:number;redemption_unit:"points"|"cashback";status:"available"|"locked"|"paused"|"sold_out";
   points_missing:number|null;redemption_enabled:boolean;
 };
+export type MemberProfile = {
+  display_name:string;email:string;phone_last4:string;
+  birth_day:number|null;birth_month:number|null;marketing_opt_in:boolean;
+};
+export type MemberProfileInput = Partial<{name:string;phone:string;birth_day:number|null;birth_month:number|null;marketing_opt_in:boolean}>;
 export type MemberClubPrivate = {
   store_name:string;display_name:string;phone_last4?:string;
+  email?:string;birth_day?:number|null;birth_month?:number|null;marketing_opt_in?:boolean;
+  session_expires_at?:string;offers?:MemberOffer[];
   status:"active"|"paused"|"awaiting_link";joined_at:string|null;
   terms:ProgramTerms;
   points_balance:number|null;points_pending:number|null;points_expiring:number|null;
@@ -810,8 +840,13 @@ export const publicEnrollmentApi = {
   }>("/api/v1/public/clubs/"+encodeURIComponent(slug)+"/vouchers/issue/",{reward_id:rewardId}),
   clubRequestAccess:(slug:string,email:string)=>postJson<{status:"accepted"}>(
     "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/request/",{email}),
-  clubConfirmAccess:(slug:string,token:string)=>postJson<{authenticated:true}>(
-    "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/confirm/",{token}),
+  clubConfirmAccess:(slug:string,token:string,remember=false)=>postJson<{authenticated:true}>(
+    "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/confirm/",{token,remember}),
+  clubEnterWithCode:(slug:string,email:string,code:string,remember:boolean)=>postJson<{authenticated:true}>(
+    "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/code/",{email,code,remember}),
+  clubUpdateProfile:(slug:string,data:MemberProfileInput)=>writeJson<{profile:MemberProfile;updated:true}>(
+    "PATCH","/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/profile/",data),
+  clubExportUrl:(slug:string)=>"/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/export/",
   clubLogout:(slug:string)=>postJson<{authenticated:false}>(
     "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/logout/",{}),
   requestWithdrawal: (slug:string,email:string) =>

@@ -182,17 +182,31 @@ class DiscountRewardDraft(models.Model):
 
 
 class PointCampaignDraft(models.Model):
-    """Ação de marketing em pontos, sem publicação nem disparo."""
+    """Campanha de pontos bônus. Publicar só mostra a oferta no Meu Clube:
+    nunca credita pontos nem envia mensagens enquanto a carteira estiver travada."""
     class Goal(models.TextChoices):
         SECOND = "second_purchase", "Segunda compra"
         REACTIVATION = "reactivation", "Recuperar clientes"
         RECURRENCE = "recurrence", "Estimular recorrência"
+        NEAR_REWARD = "near_reward", "Quase lá"
+        MULTIPLIER = "multiplier", "Pontos em dobro"
+        BIRTHDAY = "birthday", "Aniversário"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="point_campaign_drafts")
     goal = models.CharField(max_length=24, choices=Goal.choices)
     bonus_points = models.PositiveIntegerField()
     max_customers = models.PositiveIntegerField()
+    title = models.CharField(max_length=80, blank=True, default="")
+    message = models.CharField(max_length=180, blank=True, default="")
+    starts_on = models.DateField(null=True, blank=True)
+    ends_on = models.DateField(null=True, blank=True)
+    window_days = models.PositiveSmallIntegerField(default=30)
+    inactive_days = models.PositiveSmallIntegerField(default=60)
+    near_points = models.PositiveIntegerField(default=100)
+    multiplier = models.PositiveSmallIntegerField(default=2)
+    holdout_percent = models.PositiveSmallIntegerField(default=10)
+    published_at = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
         related_name="point_campaign_drafts",
@@ -204,6 +218,7 @@ class PointCampaignDraft(models.Model):
         constraints = [
             models.CheckConstraint(condition=Q(bonus_points__gt=0), name="point_campaign_bonus_positive"),
             models.CheckConstraint(condition=Q(max_customers__gt=0), name="point_campaign_max_customers_positive"),
+            models.CheckConstraint(condition=Q(holdout_percent__lte=50), name="point_campaign_holdout_max"),
         ]
 
 

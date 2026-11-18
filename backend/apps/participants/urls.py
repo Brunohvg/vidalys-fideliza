@@ -1,8 +1,9 @@
 from django.urls import path
 from .member_portal_views import (
     MemberClubPublicView, MemberClubRequestAccessView,
-    MemberClubConfirmAccessView, MemberClubMeView, MemberClubLogoutView,
+    MemberClubConfirmAccessView, MemberClubMeView, MemberClubLogoutView, MemberClubCodeView,
 )
+from .member_profile_views import ClubIconView, ClubManifestView, MemberExportView, MemberProfileView
 from .views import ParticipantListView
 from .phone_views import ParticipantPhoneLookupView, ParticipantPhoneView
 from .customer_link_preview import CustomerLinkPreviewView
@@ -25,6 +26,16 @@ urlpatterns = [
          MemberClubMeView.as_view(), name="member-club-me"),
     path("public/clubs/<slug:slug>/logout/",
          MemberClubLogoutView.as_view(), name="member-club-logout"),
+    path("public/clubs/<slug:slug>/access/code/",
+         MemberClubCodeView.as_view(), name="member-club-access-code"),
+    path("public/clubs/<slug:slug>/me/profile/",
+         MemberProfileView.as_view(), name="member-club-profile"),
+    path("public/clubs/<slug:slug>/me/export/",
+         MemberExportView.as_view(), name="member-club-export"),
+    path("public/clubs/<slug:slug>/manifest.webmanifest",
+         ClubManifestView.as_view(), name="member-club-manifest"),
+    path("public/clubs/<slug:slug>/icon.svg",
+         ClubIconView.as_view(), name="member-club-icon"),
     path("tenants/<uuid:tenant_id>/participants/", ParticipantListView.as_view(),
          name="tenant-participants"),
     path("tenants/<uuid:tenant_id>/participants/by-phone/", ParticipantPhoneLookupView.as_view(),

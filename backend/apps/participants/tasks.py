@@ -95,7 +95,7 @@ def send_enrollment_email(self, challenge_id: str, event_id=None):
 def send_member_access_email(self, challenge_id: str, event_id=None):
     """Token HMAC é derivado no worker; Redis recebe somente UUIDs."""
     from .enrollment_models import MemberAccessChallenge
-    from .email_proof import make_token, digest
+    from .email_proof import make_code, make_token, digest
     if not claim_delivery(event_id):
         return "duplicate"
     if not email_delivery_ready():
@@ -126,20 +126,22 @@ def send_member_access_email(self, challenge_id: str, event_id=None):
             return "expired"
         url = (settings.FIDELIZA_PUBLIC_BASE_URL.rstrip("/")
                + "/clube/" + submission.tenant.slug + "#acesso=" + token)
+        code = make_code(challenge.id)
         plain, html = transactional_message(
             title="Seu Clube de Vantagens",
             greeting="Olá, " + submission.name + "!",
             description=("Você pediu um acesso privado ao Clube " +
                          submission.tenant.name +
-                         ". Use o botão abaixo para acompanhar sua participação e as regras."),
+                         ". Toque no botão abaixo ou, no app do clube, digite o código " +
+                         code[:3] + " " + code[3:] + "."),
             action_label="Acessar Meu Clube",
             action_url=url,
             context="Acesso privado do participante",
-            safety_note="Link pessoal, válido por 15 minutos e de uso único. Não encaminhe.",
+            safety_note="Link e código pessoais, válidos por 15 minutos e de uso único. Não encaminhe.",
             footer_note="Se você não pediu este acesso, ignore o e-mail. Nenhum ponto ou recompensa é criado por este link.",
         )
         message = EmailMultiAlternatives(
-            subject="Acesse seu clube | " + submission.tenant.name,
+            subject=code + " é seu código do clube | " + submission.tenant.name,
             body=plain, from_email=settings.DEFAULT_FROM_EMAIL,
             to=[submission.email],
         )

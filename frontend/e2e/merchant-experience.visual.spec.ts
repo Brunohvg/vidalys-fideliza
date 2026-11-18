@@ -67,20 +67,20 @@ for(const width of [390,768,1440]) {
       await page.getByRole("button",{name:"Nova campanha"}).click();
       await expect(page.getByRole("heading",{name:"Qual é o objetivo?"})).toBeVisible();
       await page.getByRole("button",{name:/Trazer de volta/}).click();
-      await page.getByRole("button",{name:"Próximo"}).click();
       await expect(page.getByRole("heading",{name:"Quanto de bônus?"})).toBeVisible();
       await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("20");
       await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("100");
       await page.getByRole("button",{name:"Próximo"}).click();
-      await expect(page.getByRole("heading",{name:"Revise antes de salvar"})).toBeVisible();
-      await expect(page.getByText("2.000 pontos",{exact:false})).toBeVisible();
-      await expect(page.getByText("Envio de mensagens e crédito de pontos ligam",{exact:false})).toBeVisible();
+      await page.getByRole("button",{name:"Próximo"}).click();
+      await expect(page.getByRole("heading",{name:"Revise antes de publicar"})).toBeVisible();
+      await expect(page.getByText("20 pontos extras por pessoa",{exact:false})).toBeVisible();
+      await expect(page.getByText("Nenhum ponto é creditado e nada é enviado",{exact:false})).toBeVisible();
       const geom=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(geom.doc).toBeLessThanOrEqual(geom.width+1);
       await page.evaluate(()=>window.scrollTo(0,0));
       await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
       await page.screenshot({path:info.outputPath("new-campaign-"+width+".png"),fullPage:true});
-      expect(await page.getByRole("button",{name:/Publicar|Ativar/}).count()).toBe(0);
+      expect(await page.getByRole("button",{name:/Ativar/}).count()).toBe(0);
     });
 }
 test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",async ({page})=>{

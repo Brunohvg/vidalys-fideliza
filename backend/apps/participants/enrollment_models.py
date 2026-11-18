@@ -72,6 +72,9 @@ class EnrollmentSubmission(models.Model):
     marketing_opt_in = models.BooleanField(default=False)
     phone_digest = models.CharField(max_length=64, blank=True, default="")
     phone_last4 = models.CharField(max_length=4, blank=True, default="")
+    # Só dia e mês: serve para a campanha de aniversário sem guardar idade.
+    birth_day = models.PositiveSmallIntegerField(null=True, blank=True)
+    birth_month = models.PositiveSmallIntegerField(null=True, blank=True)
     participant = models.OneToOneField(
         "participants.ProgramParticipant", on_delete=models.PROTECT,
         null=True, blank=True, related_name="local_enrollment"

@@ -61,6 +61,7 @@ def sanitize_store_privacy(receipt_id: str) -> str:
         ).update(consumed_at=now)
         submissions = EnrollmentSubmission.objects.filter(tenant=tenant).update(
             name="", email="", marketing_opt_in=False, phone_digest="", phone_last4="",
+            birth_day=None, birth_month=None,
             status=EnrollmentSubmission.Status.WITHDRAWN,
             withdrawn_at=now,
         )

@@ -4,9 +4,10 @@ Um link HMAC de uso único autentica uma submissão com e-mail comprovado.
 Não usa login do lojista nem permite escolher participant_id na requisição.
 """
 import hashlib
+import hmac
 import re
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.core.cache import cache
@@ -23,6 +24,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.delivery_tracking import enqueue_email
+from apps.sales.campaign_engine import offers_for
 from apps.sales.models import DiscountRewardDraft, PointRuleDraft
 from apps.points.models import PointWallet, PointLot, PointEntry, PointEvent
 from apps.loyalty.models import LoyaltyGrant, LoyaltyRule, LoyaltyEngagement
@@ -32,7 +34,7 @@ from apps.tenants.club_address import canonical_slug
 from apps.tenants.branding_models import TenantBranding
 from apps.tenants.models import Tenant
 from apps.tenants.settings_views import _display
-from .email_proof import digest, email_links_enabled, make_token
+from .email_proof import digest, email_links_enabled, make_code, make_token
 from .enrollment_models import (
     EnrollmentSubmission, MemberAccessChallenge, ProgramTerms,
 )
@@ -41,6 +43,9 @@ from .models import ProgramParticipant
 
 LINK_TTL = timedelta(minutes=15)
 SESSION_TTL = timedelta(hours=12)
+# "Manter conectado neste aparelho": o cliente entra uma vez e o app instalado continua aberto.
+REMEMBER_TTL = timedelta(days=180)
+CODE_ATTEMPTS = 5
 SESSION_SUBMISSION = "fideliza_member_submission_id"
 SESSION_TENANT = "fideliza_member_tenant_id"
 SESSION_EXPIRES = "fideliza_member_expires_ts"
@@ -380,7 +385,10 @@ class MemberClubConfirmAccessView(APIView):
         tenant = _tenant(slug)
         if _limit_public(request):
             return secure(Response({"detail": "Muitas tentativas."}, status=429))
-        if not valid_object(request, ("token",)):
+        if not (valid_object(request, ("token",)) or valid_object(request, ("token", "remember"))):
+            return secure(Response({"detail": "Link inválido."}, status=400))
+        remember = request.data.get("remember", False)
+        if type(remember) is not bool:
             return secure(Response({"detail": "Link inválido."}, status=400))
         token = request.data["token"]
         if not isinstance(token, str) or not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", token):
@@ -396,12 +404,66 @@ class MemberClubConfirmAccessView(APIView):
             return secure(Response({"detail": "Link usado ou expirado."}, status=410))
         challenge.consumed_at = timezone.now()
         challenge.save(update_fields=["consumed_at"])
-        # Impede fixação de sessão; a sessão de lojista nunca dá acesso ao consumidor.
-        request.session.cycle_key()
-        request.session[SESSION_SUBMISSION] = str(challenge.submission_id)
-        request.session[SESSION_TENANT] = str(tenant.id)
-        request.session[SESSION_EXPIRES] = int((timezone.now() + SESSION_TTL).timestamp())
-        return secure(Response({"authenticated": True, "store_slug": tenant.slug}))
+        _start_session(request, tenant, challenge.submission_id, remember)
+        return secure(Response({"authenticated": True, "store_slug": tenant.slug, "remembered": remember}))
+
+
+def _start_session(request, tenant, submission_id, remember):
+    # Impede fixação de sessão; a sessão de lojista nunca dá acesso ao consumidor.
+    request.session.cycle_key()
+    ttl = REMEMBER_TTL if remember else SESSION_TTL
+    request.session[SESSION_SUBMISSION] = str(submission_id)
+    request.session[SESSION_TENANT] = str(tenant.id)
+    request.session[SESSION_EXPIRES] = int((timezone.now() + ttl).timestamp())
+    if remember:
+        request.session.set_expiry(int(REMEMBER_TTL.total_seconds()))
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class MemberClubCodeView(APIView):
+    """Entrar com o código de 6 dígitos do e-mail (funciona dentro do app instalado)."""
+    permission_classes = [AllowAny]
+    http_method_names = ["post", "options"]
+
+    @transaction.atomic
+    def post(self, request, slug):
+        tenant = _tenant(slug)
+        if _limit_public(request):
+            return secure(Response({"detail": "Muitas tentativas. Tente novamente depois."}, status=429))
+        if not (valid_object(request, ("email", "code")) or valid_object(request, ("email", "code", "remember"))):
+            return secure(Response({"detail": "Informe o e-mail e o código."}, status=400))
+        email, code = request.data["email"], request.data["code"]
+        remember = request.data.get("remember", False)
+        if (not isinstance(email, str) or not isinstance(code, str) or type(remember) is not bool
+                or len(email) > 254):
+            return secure(Response({"detail": "Informe o e-mail e o código."}, status=400))
+        code = re.sub(r"\D", "", code)
+        wrong = secure(Response({"detail": "Código incorreto ou expirado. Peça um novo."}, status=410))
+        if len(code) != 6:
+            return wrong
+        challenge = MemberAccessChallenge.objects.select_for_update().select_related("submission").filter(
+            submission__tenant_id=tenant.id, submission__email__iexact=email.strip(),
+            submission__withdrawn_at__isnull=True,
+            consumed_at__isnull=True, expires_at__gt=timezone.now(),
+        ).order_by("-created_at").first()
+        if not challenge or not _is_verified(challenge.submission, tenant.id):
+            return wrong
+        attempts_key = "fideliza:club:code:" + str(challenge.id)
+        cache.add(attempts_key, 0, timeout=int(LINK_TTL.total_seconds()))
+        try:
+            attempts = cache.incr(attempts_key)
+        except ValueError:
+            attempts = CODE_ATTEMPTS + 1
+        if attempts > CODE_ATTEMPTS:
+            challenge.consumed_at = timezone.now()
+            challenge.save(update_fields=["consumed_at"])
+            return wrong
+        if not hmac.compare_digest(code, make_code(challenge.id)):
+            return wrong
+        challenge.consumed_at = timezone.now()
+        challenge.save(update_fields=["consumed_at"])
+        _start_session(request, tenant, challenge.submission_id, remember)
+        return secure(Response({"authenticated": True, "store_slug": tenant.slug, "remembered": remember}))
 
 
 def _authorized_submission(request, tenant):
@@ -451,7 +513,14 @@ class MemberClubMeView(APIView):
         return secure(Response({
             "store_name": tenant.name,
             "display_name": submission.name,
+            "email": submission.email,
             "phone_last4": (participant.phone_last4 if participant else "") or submission.phone_last4,
+            "birth_day": submission.birth_day,
+            "birth_month": submission.birth_month,
+            "marketing_opt_in": submission.marketing_opt_in,
+            "session_expires_at": datetime.fromtimestamp(
+                request.session.get(SESSION_EXPIRES), tz=timezone.get_current_timezone()).isoformat(),
+            "offers": offers_for(tenant.id, participant.pk) if active else [],
             "status": "active" if active else (
                 "paused" if participant else "awaiting_link"
             ),

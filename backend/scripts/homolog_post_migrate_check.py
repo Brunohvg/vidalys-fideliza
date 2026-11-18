@@ -61,6 +61,8 @@ def main():
         ("sales", "0007_counter_phone_digest"),
         ("participants", "0008_participant_phone"),
         ("tenants", "0005_tenant_slug_alias"),
+        ("sales", "0008_smart_point_campaigns"),
+        ("participants", "0009_member_birthday"),
         ("loyalty", "0002_voucher_reward_origin"),
         ("loyalty", "0003_voucher_redemption_evidence"),
         ("points", "0002_immutable_postgres_ledger"),

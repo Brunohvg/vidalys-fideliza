@@ -1,7 +1,8 @@
 import {useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode} from "react";
-import {ArrowRight, BookOpen, CheckCircle2, CircleHelp, Clock3, Gift, House, ListOrdered, LockKeyhole,
-  LogOut, Mail, ScanLine, ShieldCheck, Sparkles, Store, TicketPercent, TriangleAlert, UserRound, X} from "lucide-react";
-import {ApiError, publicEnrollmentApi, type MemberClubPrivate, type MemberClubPublic, type MemberClubReward} from "./api";
+import {ArrowRight, BookOpen, Cake, CalendarDays, CheckCircle2, CircleHelp, Clock3, Download, Gift, House, KeyRound, ListOrdered, LockKeyhole,
+  LogOut, Mail, ScanLine, Share, ShieldCheck, Smartphone, Sparkles, Store, TicketPercent, TriangleAlert, UserRound, X} from "lucide-react";
+import {ApiError, publicEnrollmentApi, type MemberClubPrivate, type MemberClubPublic, type MemberClubReward, type MemberOffer} from "./api";
+import {installState, onInstallChange, promptInstall, setupClubApp, type InstallState} from "./club-app";
 import {readableForeground} from "./brand-contrast";
 import {clubSectionForPath, clubSectionPath, clubSlugFromPath, type ClubSection} from "./routes";
 import {MemberMissions, MemberVipCard} from "./MemberOverview";
@@ -105,6 +106,7 @@ export default function MemberClub(){
     "--clb-accent":accent, "--clb-accent-ink":readableForeground(accent),
   } as CSSProperties;
   const program = club?.branding.program_name || (club ? "Clube "+club.store_name : "Meu Clube");
+  useEffect(()=>{if(club) setupClubApp(slug,brand);},[club,slug,brand]);
   const support = club?.branding.support_email || "";
 
   return <div className={"clb-shell"+(me?" is-member":"")} style={style}>
@@ -114,7 +116,8 @@ export default function MemberClub(){
         <strong>{program}</strong>
         <span>{me?"Olá, "+(me.display_name.split(" ")[0]||"cliente"):club?club.store_name:"Carregando…"}</span>
       </div>
-      {me&&<AccountMenu me={me} onLogout={()=>void logout()}/>}
+      {me&&<button type="button" className={"clb-icon-btn"+(section==="profile"?" is-on":"")} aria-label="Meu perfil"
+        onClick={()=>openSection("profile")}><UserRound size={20} aria-hidden="true"/></button>}
     </header>
 
     <main className="clb-main" id="conteudo">
@@ -122,14 +125,15 @@ export default function MemberClub(){
       {error&&<div className="clb-alert is-danger" role="alert"><TriangleAlert size={20} aria-hidden="true"/><span>{error}</span></div>}
       {!loading&&club&&!me&&<Guest slug={slug} club={club} token={token} ready={ready}
         onEntered={account=>{setToken("");setMe(account);openSection("home");}}/>}
-      {!loading&&club&&me&&<Member slug={slug} club={club} me={me} section={section} onOpen={openSection}/>}
+      {!loading&&club&&me&&<Member slug={slug} club={club} me={me} section={section} onOpen={openSection}
+        onLogout={()=>void logout()} onChange={next=>setMe(next)}/>}
       {!loading&&!club&&!error&&<div className="clb-card clb-state" role="alert">Clube não encontrado. Confira o endereço com a loja.</div>}
       {support&&<p className="clb-support">Dúvidas sobre o clube? <a href={"mailto:"+support}>Fale com a loja</a></p>}
       <p className="clb-footer"><LockKeyhole size={13} aria-hidden="true"/> Clube com tecnologia Vidalys Fideliza</p>
     </main>
 
     {me&&<nav className="clb-tabs" aria-label="Seções do clube">
-      {([["home","Início",House],["rewards","Trocar",Gift],["history","Extrato",ListOrdered],["rules","Regras",CircleHelp]] as const)
+      {([["home","Início",House],["rewards","Trocar",Gift],["history","Extrato",ListOrdered],["rules","Regras",CircleHelp],["profile","Perfil",UserRound]] as const)
         .map(([key,label,Icon])=><button key={key} type="button" className={"clb-tab"+(section===key?" is-on":"")}
           aria-current={section===key?"page":undefined} onClick={()=>openSection(key)}>
           <Icon size={22} aria-hidden="true"/>{label}</button>)}
@@ -153,6 +157,8 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
   const [accepted,setAccepted] = useState(false);
   const [marketing,setMarketing] = useState(false);
   const [loginEmail,setLoginEmail] = useState("");
+  const [code,setCode] = useState("");
+  const [remember,setRemember] = useState(true);
   const formRef = useRef<HTMLDivElement>(null);
   const earning = club.earning;
   const rewards = club.published_rewards||[];
@@ -186,11 +192,24 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
     if(!ready||busy||!token) return;
     setBusy(true);setError("");
     try{
-      await publicEnrollmentApi.clubConfirmAccess(slug,token);
+      await publicEnrollmentApi.clubConfirmAccess(slug,token,remember);
       onEntered(await publicEnrollmentApi.clubMe(slug));
     }catch(cause){setError(cause instanceof ApiError?cause.message:"Este link não pôde ser confirmado. Peça um novo.");}
     finally{setBusy(false);}
   };
+
+  const enterWithCode = async (event:FormEvent) => {
+    event.preventDefault();
+    if(busy||!ready) return;
+    setBusy(true);setError("");
+    try{
+      await publicEnrollmentApi.clubEnterWithCode(slug,loginEmail.trim(),code,remember);
+      onEntered(await publicEnrollmentApi.clubMe(slug));
+    }catch(cause){setError(cause instanceof ApiError?cause.message:"Código incorreto ou expirado. Peça um novo.");}
+    finally{setBusy(false);}
+  };
+  const rememberBox = <label className="clb-check"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/>
+    <span>Manter conectado neste aparelho <small>(até 6 meses; desmarque em aparelho compartilhado)</small></span></label>;
 
   return <div className="clb-stack">
     <section className="clb-hero" aria-labelledby="clb-hero-title">
@@ -206,6 +225,7 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
       <span className="clb-badge"><LockKeyhole size={26} aria-hidden="true"/></span>
       <h2 id="clb-confirm-title">Confirme seu acesso</h2>
       <p>Este link é pessoal, vale uma vez e expira em 15 minutos.</p>
+      {rememberBox}
       {error&&<p className="clb-error" role="alert">{error}</p>}
       <button type="button" className="clb-btn is-primary is-wide" disabled={!ready||busy} onClick={()=>void confirm()}>
         {busy?"Confirmando…":"Confirmar e entrar"} <ArrowRight size={18} aria-hidden="true"/></button>
@@ -213,9 +233,19 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
     :joined?<Done title="Confira seu e-mail" icon={<Mail size={30} aria-hidden="true"/>}
       text={"Enviamos um link para "+(email.trim()||"o seu e-mail")+". Toque nele para confirmar sua participação. Confira também o spam."}
       action={<button type="button" className="clb-btn is-wide" onClick={()=>{setJoined(false);setMode("login");}}>Já confirmei, quero entrar</button>}/>
-    :sent?<Done title="Confira seu e-mail" icon={<Mail size={30} aria-hidden="true"/>}
-      text="Se este e-mail participa do clube, você vai receber um link de acesso. Ele vale por 15 minutos."
-      action={<button type="button" className="clb-btn is-wide" onClick={()=>setSent(false)}>Usar outro e-mail</button>}/>
+    :sent?<form className="clb-card clb-form" aria-labelledby="clb-code-title" onSubmit={e=>void enterWithCode(e)}>
+      <span className="clb-badge"><KeyRound size={26} aria-hidden="true"/></span>
+      <h2 id="clb-code-title">Digite o código do e-mail</h2>
+      <p className="clb-lead">Se <strong>{loginEmail.trim()}</strong> participa do clube, enviamos um código de 6 dígitos e um link. Valem por 15 minutos.</p>
+      <label className="clb-field">Código
+        <input className="clb-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]*" maxLength={7} required
+          value={code} onChange={e=>setCode(e.target.value.replace(/[^0-9]/g,"").slice(0,6))} placeholder="000000"/></label>
+      {rememberBox}
+      {error&&<p className="clb-error" role="alert">{error}</p>}
+      <button type="submit" className="clb-btn is-primary is-wide" disabled={busy||!ready||code.length!==6}>
+        {busy?"Entrando…":"Entrar"} <ArrowRight size={18} aria-hidden="true"/></button>
+      <button type="button" className="clb-btn is-ghost" onClick={()=>{setSent(false);setCode("");setError("");}}>Usar outro e-mail ou pedir novo código</button>
+    </form>
     :mode==="join"&&club.signup_available&&club.terms?<>
       <form className="clb-card clb-form" aria-labelledby="clb-join-title" onSubmit={e=>void join(e)}>
         <h2 id="clb-join-title">Quero participar</h2>
@@ -241,20 +271,20 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
         <span className="clb-hint">Enviamos um link de confirmação. Sem senha para lembrar.</span>
       </form>
       <section className="clb-card clb-switch" aria-label="Já participa">
-        <div><strong>Já participa?</strong><span>Receba um link de acesso no seu e-mail.</span></div>
+        <div><strong>Já participa?</strong><span>Entre com o código que chega no seu e-mail.</span></div>
         <button type="button" className="clb-btn" onClick={()=>{setMode("login");setError("");}}>Entrar</button>
       </section>
     </>
     :<>
       <form className="clb-card clb-form" aria-labelledby="clb-login-title" onSubmit={e=>void requestAccess(e)}>
         <h2 id="clb-login-title">Entrar no Meu Clube</h2>
-        <p className="clb-lead">Informe o e-mail que você usou para participar. Enviamos um link seguro, sem senha.</p>
+        <p className="clb-lead">Informe o e-mail que você usou para participar. Enviamos um código e um link, sem senha.</p>
         <label className="clb-field">Seu e-mail
           <input id="clb-login-email" type="email" autoComplete="email" required maxLength={254} value={loginEmail}
             onChange={e=>setLoginEmail(e.target.value)} placeholder="voce@email.com"/></label>
         {error&&<p className="clb-error" role="alert">{error}</p>}
         <button type="submit" className="clb-btn is-primary is-wide" disabled={busy||!ready}>
-          {busy?"Enviando…":"Enviar link de acesso"} <ArrowRight size={18} aria-hidden="true"/></button>
+          {busy?"Enviando…":"Receber código de acesso"} <ArrowRight size={18} aria-hidden="true"/></button>
       </form>
       {club.signup_available&&club.terms?<section className="clb-card clb-switch" aria-label="Ainda não participa">
         <div><strong>Ainda não participa?</strong><span>É grátis e leva menos de um minuto.</span></div>
@@ -292,30 +322,8 @@ function Done({title,text,icon,action}:{title:string;text:string;icon:ReactNode;
 
 /* ---------- Cliente que entrou ---------- */
 
-function AccountMenu({me,onLogout}:{me:MemberClubPrivate;onLogout:()=>void}){
-  const [open,setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(()=>{
-    if(!open) return;
-    const close = (e:MouseEvent|KeyboardEvent) => {
-      if(e instanceof KeyboardEvent ? e.key==="Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown",close);document.addEventListener("keydown",close);
-    return ()=>{document.removeEventListener("mousedown",close);document.removeEventListener("keydown",close);};
-  },[open]);
-  return <div className="clb-account" ref={ref}>
-    <button type="button" className="clb-icon-btn" aria-label="Minha conta" aria-expanded={open} onClick={()=>setOpen(!open)}>
-      <UserRound size={20} aria-hidden="true"/></button>
-    {open&&<div className="clb-menu" role="menu">
-      <div className="clb-menu-head"><strong>{me.display_name}</strong>
-        <span>{me.phone_last4?"Celular final "+me.phone_last4:"Sem celular cadastrado"}</span></div>
-      <button type="button" role="menuitem" onClick={onLogout}><LogOut size={17} aria-hidden="true"/> Sair do clube</button>
-    </div>}
-  </div>;
-}
-
-function Member({slug,club,me,section,onOpen}:{slug:string;club:MemberClubPublic;me:MemberClubPrivate;
-  section:ClubSection;onOpen:(s:ClubSection)=>void}){
+function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;club:MemberClubPublic;me:MemberClubPrivate;
+  section:ClubSection;onOpen:(s:ClubSection)=>void;onLogout:()=>void;onChange:(me:MemberClubPrivate)=>void}){
   const [showCounter,setShowCounter] = useState(false);
   const verified = me.points_status==="verified" && typeof me.points_balance==="number";
   const balance = typeof me.points_balance==="number" ? me.points_balance : null;
@@ -337,6 +345,11 @@ function Member({slug,club,me,section,onOpen}:{slug:string;club:MemberClubPublic
         {me.points_status==="ledger_only"&&<span className="clb-wallet-sub">Saldo em conferência: ainda não pode ser trocado.</span>}
         <button type="button" className="clb-btn is-light" onClick={()=>setShowCounter(true)}><ScanLine size={18} aria-hidden="true"/> Mostrar no caixa</button>
       </section>
+
+      {(me.offers||[]).length>0&&<section className="clb-offers" aria-labelledby="clb-offers-title">
+        <h2 id="clb-offers-title" className="clb-section-label">Para você</h2>
+        {(me.offers||[]).map(o=><OfferCard key={o.id} offer={o} live={club.points_enabled}/>)}
+      </section>}
 
       {typeof me.points_expiring==="number"&&me.points_expiring>0&&<div className="clb-alert is-warn" role="status">
         <Clock3 size={20} aria-hidden="true"/><div><strong>{pts(me.points_expiring)} pontos vencem em breve</strong>
@@ -367,6 +380,8 @@ function Member({slug,club,me,section,onOpen}:{slug:string;club:MemberClubPublic
       {rewards.length===0&&<section className="clb-card clb-empty"><Gift size={24} aria-hidden="true"/>
         <div><strong>Recompensas a caminho</strong><span>Quando a loja publicar as trocas, elas aparecem aqui.</span></div></section>}
 
+      <ProfileNudge me={me} onOpen={()=>onOpen("profile")}/>
+
       {(me.vip_level||me.vip_next_level)&&<MemberVipCard me={me}/>}
       {(me.missions||[]).length>0&&<MemberMissions me={me}/>}
 
@@ -379,6 +394,7 @@ function Member({slug,club,me,section,onOpen}:{slug:string;club:MemberClubPublic
     {section==="rewards"&&<Redeem slug={slug} me={me} balance={balance} verified={verified}/>}
     {section==="history"&&<History me={me}/>}
     {section==="rules"&&<Rules slug={slug} club={club} me={me}/>}
+    {section==="profile"&&<Profile slug={slug} club={club} me={me} onLogout={onLogout} onChange={onChange}/>}
 
     {showCounter&&<CounterSheet me={me} onClose={()=>setShowCounter(false)}/>}
   </>;
@@ -493,6 +509,159 @@ function Rules({slug,club,me}:{slug:string;club:MemberClubPublic;me:MemberClubPr
       <details className="clb-details"><summary>Ler o regulamento completo</summary><p>{me.terms.body}</p></details>
       {me.terms.privacy_notice&&<details className="clb-details"><summary>Ler o aviso de privacidade</summary><p>{me.terms.privacy_notice}</p></details>}
       <a className="clb-text-link" href={"/retirar/"+encodeURIComponent(slug)}><ShieldCheck size={16} aria-hidden="true"/> Quero sair do clube</a>
+    </section>
+  </div>;
+}
+
+/* ---------- Ofertas, perfil e app ---------- */
+
+const MONTHS = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const daysLeft = (iso:string|null) => {
+  if(!iso) return null;
+  const end = new Date(iso+"T23:59:59");
+  return Math.max(0, Math.ceil((end.getTime()-Date.now())/86400000));
+};
+
+function OfferCard({offer,live}:{offer:MemberOffer;live:boolean}){
+  const left = daysLeft(offer.ends_on);
+  const Icon = offer.goal==="birthday" ? Cake : offer.goal==="multiplier" ? Sparkles : Gift;
+  return <article className="clb-offer">
+    <span className="clb-offer-ico" aria-hidden="true"><Icon size={22}/></span>
+    <div>
+      <strong>{offer.title}</strong>
+      <span>{offer.message}</span>
+      <em>{left===null?"Por tempo limitado":left===0?"Termina hoje":left===1?"Termina amanhã":"Faltam "+left+" dias"}
+        {!live&&" · os pontos entram quando a loja ativar o clube"}</em>
+    </div>
+  </article>;
+}
+
+function completeness(me:MemberClubPrivate){
+  const items = [Boolean(me.display_name), Boolean(me.phone_last4), Boolean(me.birth_day&&me.birth_month)];
+  return Math.round(items.filter(Boolean).length/items.length*100);
+}
+
+function ProfileNudge({me,onOpen}:{me:MemberClubPrivate;onOpen:()=>void}){
+  const pct = completeness(me);
+  if(pct>=100) return null;
+  const missing = [!me.phone_last4&&"celular", !(me.birth_day&&me.birth_month)&&"aniversário"].filter(Boolean).join(" e ");
+  return <button type="button" className="clb-card clb-link-card clb-nudge" onClick={onOpen}>
+    <span className="clb-ring" style={{"--pct":pct} as CSSProperties} aria-hidden="true"><span>{pct}%</span></span>
+    <div><strong>Complete seu perfil</strong><span>Adicione {missing}: identificação mais rápida no caixa e presente no seu mês.</span></div>
+    <ArrowRight size={18} aria-hidden="true"/></button>;
+}
+
+function Profile({slug,club,me,onLogout,onChange}:{slug:string;club:MemberClubPublic;me:MemberClubPrivate;
+  onLogout:()=>void;onChange:(me:MemberClubPrivate)=>void}){
+  const [name,setName] = useState(me.display_name);
+  const [phone,setPhone] = useState("");
+  const [day,setDay] = useState(me.birth_day?String(me.birth_day):"");
+  const [month,setMonth] = useState(me.birth_month?String(me.birth_month):"");
+  const [busy,setBusy] = useState(false);
+  const [notice,setNotice] = useState("");
+  const [error,setError] = useState("");
+  const [install,setInstall] = useState<InstallState>(()=>installState());
+  useEffect(()=>onInstallChange(()=>setInstall(installState())),[]);
+  const pct = completeness(me);
+
+  const apply = async (data:Parameters<typeof publicEnrollmentApi.clubUpdateProfile>[1], done:string) => {
+    setBusy(true);setError("");setNotice("");
+    try{
+      const {profile} = await publicEnrollmentApi.clubUpdateProfile(slug,data);
+      onChange({...me,...profile});
+      setPhone("");setNotice(done);
+    }catch(cause){setError(cause instanceof ApiError?cause.message:"Não foi possível salvar. Tente novamente.");}
+    finally{setBusy(false);}
+  };
+  const save = (event:FormEvent) => {
+    event.preventDefault();
+    if(busy) return;
+    const data:Parameters<typeof publicEnrollmentApi.clubUpdateProfile>[1] = {};
+    if(name.trim()!==me.display_name) data.name = name.trim();
+    if(phone.trim()) data.phone = phone.trim();
+    const d = day?Number(day):null, m = month?Number(month):null;
+    if((d===null)!==(m===null)){setError("Escolha o dia e o mês do aniversário.");return;}
+    if(d!==(me.birth_day??null)||m!==(me.birth_month??null)){data.birth_day=d;data.birth_month=m;}
+    if(!Object.keys(data).length){setNotice("Nada mudou.");return;}
+    void apply(data,"Perfil atualizado.");
+  };
+  const installNow = async () => {
+    const ok = await promptInstall();
+    setInstall(installState());
+    if(ok) setNotice("Pronto! O clube está na tela inicial do seu celular.");
+  };
+  const until = me.session_expires_at ? new Date(me.session_expires_at) : null;
+  const long = until ? until.getTime()-Date.now() > 3*86400000 : false;
+
+  return <div className="clb-stack">
+    <section className="clb-card clb-profile-head" aria-label="Seu perfil">
+      <span className="clb-store-tile is-big" aria-hidden="true">{initials(me.display_name)}</span>
+      <div><h1>{me.display_name}</h1><span>{me.email}</span></div>
+      <div className="clb-profile-meter">
+        <div className="clb-bar" role="progressbar" aria-label="Perfil completo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+          <span style={{width:pct+"%"}}/></div>
+        <small>{pct===100?"Perfil completo":"Perfil "+pct+"% completo"}</small>
+      </div>
+    </section>
+
+    {notice&&<div className="clb-alert is-ok" role="status"><CheckCircle2 size={20} aria-hidden="true"/><span>{notice}</span></div>}
+    {error&&<div className="clb-alert is-danger" role="alert"><TriangleAlert size={20} aria-hidden="true"/><span>{error}</span></div>}
+
+    <form className="clb-card clb-form" aria-labelledby="clb-data-title" onSubmit={save}>
+      <h2 id="clb-data-title">Seus dados</h2>
+      <label className="clb-field">Nome
+        <input autoComplete="name" minLength={3} maxLength={140} value={name} onChange={e=>setName(e.target.value)}/></label>
+      <label className="clb-field">Celular
+        <input type="tel" inputMode="tel" autoComplete="tel" maxLength={20} value={phone} onChange={e=>setPhone(e.target.value)}
+          placeholder={me.phone_last4?"Cadastrado: final "+me.phone_last4+" · digite para trocar":"(31) 9 9999-9999"}/>
+        <small>{me.phone_last4?"Guardamos o número protegido; aparecem só os 4 últimos dígitos.":"Com o celular, o vendedor encontra você no caixa em segundos."}</small></label>
+      <fieldset className="clb-birth">
+        <legend>Aniversário <small>(sem o ano)</small></legend>
+        <label className="clb-field"><span className="clb-sr">Dia</span>
+          <select value={day} onChange={e=>setDay(e.target.value)} aria-label="Dia do aniversário">
+            <option value="">Dia</option>{Array.from({length:31},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select></label>
+        <label className="clb-field"><span className="clb-sr">Mês</span>
+          <select value={month} onChange={e=>setMonth(e.target.value)} aria-label="Mês do aniversário">
+            <option value="">Mês</option>{MONTHS.map((label,i)=><option key={label} value={i+1}>{label}</option>)}</select></label>
+      </fieldset>
+      <button type="submit" className="clb-btn is-primary is-wide" disabled={busy}>{busy?"Salvando…":"Salvar perfil"}</button>
+      {me.phone_last4&&<button type="button" className="clb-btn is-ghost" disabled={busy} onClick={()=>void apply({phone:""},"Celular removido.")}>Remover celular</button>}
+    </form>
+
+    <section className="clb-card" aria-labelledby="clb-notify-title">
+      <h2 id="clb-notify-title">Avisos</h2>
+      <div className="clb-toggle-row">
+        <div><strong>Ofertas e pontos por e-mail</strong><span>Campanhas, pontos perto de vencer e novidades da loja.</span></div>
+        <button type="button" role="switch" aria-checked={Boolean(me.marketing_opt_in)} aria-label="Receber ofertas por e-mail"
+          className={"clb-switch-btn"+(me.marketing_opt_in?" is-on":"")} disabled={busy}
+          onClick={()=>void apply({marketing_opt_in:!me.marketing_opt_in},me.marketing_opt_in?"Você não vai mais receber ofertas por e-mail.":"Pronto! Você vai receber as ofertas por e-mail.")}>
+          <span/></button>
+      </div>
+      <p className="clb-hint is-left">Notificações no celular chegam numa próxima versão do app.</p>
+    </section>
+
+    <section className="clb-card" aria-labelledby="clb-app-title">
+      <div className="clb-app-head"><span className="clb-reward-ico is-soft"><Smartphone size={22} aria-hidden="true"/></span>
+        <div><h2 id="clb-app-title">App do clube</h2><span>{club.branding.program_name} na tela inicial, abre direto no seu saldo.</span></div></div>
+      {install==="installed"?<p className="clb-app-done"><CheckCircle2 size={18} aria-hidden="true"/> Você está usando o app do clube.</p>
+      :install==="ready"?<button type="button" className="clb-btn is-primary is-wide" onClick={()=>void installNow()}><Download size={18} aria-hidden="true"/> Instalar app</button>
+      :install==="ios"?<ol className="clb-steps is-compact">
+        <li><span>1</span><p>Toque em <strong>Compartilhar</strong> <Share size={15} aria-label="ícone de compartilhar"/> na barra do Safari.</p></li>
+        <li><span>2</span><p>Escolha <strong>Adicionar à Tela de Início</strong>.</p></li>
+        <li><span>3</span><p>Toque em <strong>Adicionar</strong>. Pronto!</p></li></ol>
+      :<p className="clb-lead">Abra este endereço no <strong>Chrome</strong> (Android) ou no <strong>Safari</strong> (iPhone) do celular para instalar.</p>}
+    </section>
+
+    <section className="clb-card" aria-labelledby="clb-access-title">
+      <h2 id="clb-access-title">Acesso</h2>
+      <p className="clb-lead"><CalendarDays size={16} aria-hidden="true"/> {until?(long?"Este aparelho fica conectado até "+until.toLocaleDateString("pt-BR",{day:"2-digit",month:"long"})+".":"Sessão válida até "+until.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". Na próxima entrada, marque “Manter conectado”."):"Você entra com um código enviado ao seu e-mail, sem senha."}</p>
+      <button type="button" className="clb-btn" onClick={onLogout}><LogOut size={17} aria-hidden="true"/> Sair desta conta</button>
+    </section>
+
+    <section className="clb-card" aria-labelledby="clb-privacy-title">
+      <h2 id="clb-privacy-title">Privacidade</h2>
+      <a className="clb-text-link" href={publicEnrollmentApi.clubExportUrl(slug)} download><Download size={16} aria-hidden="true"/> Baixar meus dados</a>
+      <a className="clb-text-link is-danger" href={"/retirar/"+encodeURIComponent(slug)}><ShieldCheck size={16} aria-hidden="true"/> Sair do clube e retirar meu consentimento</a>
     </section>
   </div>;
 }

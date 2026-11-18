@@ -85,14 +85,28 @@ for(const width of [320,390,768,1440]){
   });
 }
 
-test("Quem já participa pede o link de acesso sem revelar se o e-mail existe",async({page})=>{
+test("Quem já participa entra com o código do e-mail e fica conectado",async({page},testInfo)=>{
   await page.setViewportSize({width:390,height:844});
   await mockClub(page);
+  let sent:Record<string,unknown>|null=null;
+  await page.route("**/api/v1/public/clubs/*/access/code/",async r=>{sent=r.request().postDataJSON();
+    await page.unroute("**/api/v1/public/clubs/*/me/");
+    await page.route("**/api/v1/public/clubs/*/me/",m=>m.fulfill({contentType:"application/json",body:JSON.stringify(member)}));
+    return r.fulfill({contentType:"application/json",body:JSON.stringify({authenticated:true,remembered:true})});});
   await page.goto("/clube/loja-jardim");
   await page.getByRole("button",{name:"Entrar",exact:true}).click();
   await page.getByRole("textbox",{name:"Seu e-mail"}).fill("cliente@example.invalid");
-  await page.getByRole("button",{name:"Enviar link de acesso"}).click();
-  await expect(page.getByText("Se este e-mail participa do clube",{exact:false})).toBeVisible();
+  await page.getByRole("button",{name:"Receber código de acesso"}).click();
+  await expect(page.getByRole("heading",{name:"Digite o código do e-mail"})).toBeVisible();
+  await expect(page.getByText("Se cliente@example.invalid participa do clube",{exact:false})).toBeVisible();
+  const enter=page.getByRole("button",{name:"Entrar",exact:true});
+  await expect(enter).toBeDisabled();
+  await page.getByRole("textbox",{name:"Código"}).fill("123 456");
+  await expect(page.getByRole("checkbox",{name:/Manter conectado/})).toBeChecked();
+  await page.screenshot({path:testInfo.outputPath("club-code-390.png"),fullPage:true});
+  await enter.click();
+  await expect(page.getByText("Olá, Cliente")).toBeVisible();
+  expect(sent).toEqual({email:"cliente@example.invalid",code:"123456",remember:true});
 });
 
 test("Link antigo de adesão abre o clube no formulário",async({page})=>{
@@ -168,11 +182,57 @@ test("Trocas fechadas não oferecem botão e o saldo em conferência é avisado"
   await expect(page.getByText("Saldo em conferência",{exact:false})).toBeVisible();
 });
 
-test("Cliente sai do clube pelo menu da conta",async({page})=>{
+for(const width of [390,1440]){
+  test("Perfil: completa dados, ofertas por e-mail, app e saída em "+width+"px",async({page},testInfo)=>{
+    await page.setViewportSize({width,height:900});
+    await mockClub(page,{loggedIn:true,me:{...member,phone_last4:"",email:"cliente@example.invalid",birth_day:null,birth_month:null,
+      marketing_opt_in:false,session_expires_at:new Date(Date.now()+170*86400000).toISOString()}});
+    const patches:Record<string,unknown>[]=[];
+    await page.route("**/api/v1/public/clubs/*/me/profile/",r=>{const body=r.request().postDataJSON();patches.push(body);
+      return r.fulfill({contentType:"application/json",body:JSON.stringify({updated:true,profile:{display_name:"Cliente QA",
+        email:"cliente@example.invalid",phone_last4:body.phone?"7777":"",birth_day:body.birth_day??null,birth_month:body.birth_month??null,
+        marketing_opt_in:Boolean(body.marketing_opt_in)}})});});
+    await page.goto("/clube/loja-jardim");
+    await page.getByRole("button",{name:/Complete seu perfil/}).click();
+    await expect(page).toHaveURL(/\/clube\/loja-jardim\/perfil$/);
+    await expect(page.getByRole("progressbar",{name:"Perfil completo"})).toHaveAttribute("aria-valuenow","33");
+    await page.getByRole("textbox",{name:/Celular/}).fill("(31) 98888-7777");
+    await page.getByRole("combobox",{name:"Dia do aniversário"}).selectOption("12");
+    await page.getByRole("combobox",{name:"Mês do aniversário"}).selectOption("3");
+    await page.getByRole("button",{name:"Salvar perfil"}).click();
+    await expect(page.getByText("Perfil atualizado.")).toBeVisible();
+    expect(patches[0]).toEqual({phone:"(31) 98888-7777",birth_day:12,birth_month:3});
+    await expect(page.getByRole("progressbar",{name:"Perfil completo"})).toHaveAttribute("aria-valuenow","100");
+    const toggle=page.getByRole("switch",{name:"Receber ofertas por e-mail"});
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked","true");
+    await expect(page.getByRole("heading",{name:"App do clube"})).toBeVisible();
+    await expect(page.getByText("Este aparelho fica conectado até",{exact:false})).toBeVisible();
+    await expect(page.getByRole("link",{name:"Baixar meus dados"})).toHaveAttribute("href","/api/v1/public/clubs/loja-jardim/me/export/");
+    await noOverflow(page);
+    await page.screenshot({path:testInfo.outputPath("club-profile-"+width+".png"),fullPage:true});
+    await page.getByRole("button",{name:"Sair desta conta"}).click();
+    await expect(page.getByRole("heading",{name:"Quero participar"})).toBeVisible();
+  });
+}
+
+test("Oferta de campanha aparece em Para você com prazo e aviso honesto",async({page},testInfo)=>{
   await page.setViewportSize({width:390,height:844});
-  await mockClub(page,{loggedIn:true});
+  const ends=new Date(Date.now()+5*86400000);
+  const iso=ends.getFullYear()+"-"+String(ends.getMonth()+1).padStart(2,"0")+"-"+String(ends.getDate()).padStart(2,"0");
+  await mockClub(page,{loggedIn:true,me:{...member,offers:[{id:"o1",goal:"reactivation",title:"Sentimos sua falta: +200 pontos",
+    message:"Compre até "+iso.slice(8)+"/"+iso.slice(5,7)+" e ganhe 200 pontos extras.",bonus_points:200,multiplier:null,ends_on:iso}]}});
   await page.goto("/clube/loja-jardim");
-  await page.getByRole("button",{name:"Minha conta"}).click();
-  await page.getByRole("menuitem",{name:"Sair do clube"}).click();
-  await expect(page.getByRole("heading",{name:"Quero participar"})).toBeVisible();
+  const offers=page.getByRole("region",{name:"Para você"});
+  await expect(offers).toContainText("Sentimos sua falta: +200 pontos");
+  await expect(offers).toContainText("os pontos entram quando a loja ativar o clube");
+  await expect(offers).toContainText(/Faltam [56] dias/);
+  await page.screenshot({path:testInfo.outputPath("club-offer-390.png"),fullPage:true});
+});
+
+test("App do clube usa o manifest da loja",async({page})=>{
+  await mockClub(page);
+  await page.goto("/clube/loja-jardim");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href","/api/v1/public/clubs/loja-jardim/manifest.webmanifest");
+  await expect(page.locator('meta[name="theme-color"]').first()).toHaveAttribute("content","#0B4FA8");
 });

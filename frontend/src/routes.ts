@@ -6,7 +6,7 @@ export type MerchantScreen =
   | "overview" | "clients" | "program" | "campaign" | "sales" | "settings"
   | "results" | "margin" | "costs" | "catalog";
 
-export type ClubSection = "home" | "rewards" | "history" | "rules";
+export type ClubSection = "home" | "rewards" | "history" | "rules" | "profile";
 
 export const merchantPaths: Record<MerchantScreen, string> = {
   overview: "/app/visao-geral",
@@ -40,18 +40,18 @@ export const merchantAuthPaths = [
 ] as const;
 
 export function clubSlugFromPath(pathname: string): string | null {
-  const match = /^\/clube\/([a-z0-9-]+)(?:\/(recompensas|historico|regras))?\/?$/i.exec(pathname);
+  const match = /^\/clube\/([a-z0-9-]+)(?:\/(recompensas|historico|regras|perfil))?\/?$/i.exec(pathname);
   return match ? match[1].toLowerCase() : null;
 }
 
 const clubSegments: Record<Exclude<ClubSection, "home">, string> = {
-  rewards: "recompensas", history: "historico", rules: "regras",
+  rewards: "recompensas", history: "historico", rules: "regras", profile: "perfil",
 };
 
 export function clubSectionForPath(pathname: string): ClubSection {
   const segment = pathname.replace(/\/+$/, "").split("/").at(-1);
   return segment === "recompensas" ? "rewards" : segment === "historico" ? "history"
-    : segment === "regras" ? "rules" : "home";
+    : segment === "regras" ? "rules" : segment === "perfil" ? "profile" : "home";
 }
 
 export function clubSectionPath(slug: string, section: ClubSection): string {
