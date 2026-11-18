@@ -25,7 +25,10 @@ async function mockMerchant(page:Page) {
       mode:"read_products_only",ready_for_write:false})
   }));
 }
+const toolPaths:Record<string,string>={"Custo dos benefícios":"/app/ferramentas/margem",
+  "Custos dos produtos":"/app/ferramentas/custos","Conciliação":"/app/ferramentas/conciliacao"};
 async function nav(page:Page,name:string,width:number){
+  if(toolPaths[name]){await page.goto(toolPaths[name]);return;}
   if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+name)}).click();
 }
@@ -35,9 +38,9 @@ for(const width of [390,768,1440]) {
       await page.setViewportSize({width,height:width===390?844:900});
       await mockMerchant(page);
       await page.goto("/app/visao-geral");
-      await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
-      await expect(page.getByRole("heading",{name:"Coloque seu clube no ar"})).toBeVisible();
-      await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes ativos");
+      await expect(page.getByRole("heading",{name:"Seu clube hoje"})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"O que fazer agora"})).toBeVisible();
+      await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes");
       await expect(page.getByRole("heading",{name:"PRÓXIMA AÇÃO RECOMENDADA"})).toHaveCount(0);
 
       await nav(page,"Clientes",width);
@@ -83,7 +86,7 @@ test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",
   await mockMerchant(page);
   await page.goto("/app/visao-geral");
   await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
-  await page.getByRole("button",{name:"Ver benefícios"}).click();
+  await page.getByRole("button",{name:/Recompensas publicadas/}).click();
   await expect(page.getByRole("navigation",{name:"Áreas do programa"}).getByRole("button",{name:"Recompensas"})).toHaveAttribute("aria-pressed","true");
 });
 

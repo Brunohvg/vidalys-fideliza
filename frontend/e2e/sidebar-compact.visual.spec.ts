@@ -35,7 +35,7 @@ for (const width of [390, 768, 1440]) {
     const menu=page.getByRole("complementary",{name:"Menu do lojista"});
     await expect(menu.getByRole("button",{name:"Início"})).toBeVisible();
     await expect(menu.getByRole("button",{name:"Clientes"})).toBeVisible();
-    await expect(menu.getByText("ANÁLISE",{exact:true})).toBeVisible();
+    await expect(menu.getByRole("button",{name:"Resultados"})).toBeVisible();
     await expect(menu.getByRole("button",{name:/Campanhas/})).toBeVisible();
     await expect(menu.getByRole("button",{name:/Sair da conta/})).toBeAttached();
     await menu.getByRole("button",{name:"Clientes"}).click();

@@ -127,7 +127,7 @@ test("Regra configurável é apenas rascunho e pertence ao Programa",async ({pag
     })});
   });
   await page.goto("/app/visao-geral");
-  await page.locator(".portal-nav").getByRole("button",{name:"Clube",exact:true}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
   await page.getByRole("navigation",{name:"Áreas do programa"}).getByRole("button",{name:"Regra de pontos"}).click();
   await expect(page.getByRole("heading",{name:"Como o participante vai ganhar pontos?"})).toBeVisible();
   await expect(page.getByText("Não publicado")).toBeVisible();

@@ -20,6 +20,20 @@ def _allowed(request, tenant_id, writing=False):
     return membership, None
 
 
+def _channels_for(tenant):
+    """Recompensa criada no painel vale em todos os canais da loja.
+
+    O padrão do modelo (balcão + Flow) deixava toda recompensa trancada no Meu
+    Clube das lojas Nuvemshop, que só libera troca com "nuvemshop" no canal.
+    Isto não ativa resgate: a troca online continua dependendo das flags e da
+    homologação do checkout.
+    """
+    channels = ["counter", "vidalys_flow"]
+    if tenant.platform == "nuvemshop":
+        channels.insert(0, "nuvemshop")
+    return ",".join(channels)
+
+
 def _int(value, start, end):
     return type(value) is int and start <= value <= end
 
@@ -72,6 +86,7 @@ class DiscountRewardDraftsView(APIView):
             points_cost=data["points_cost"],discount_cents=data["discount_cents"],
             min_order_cents=data["min_order_cents"],
             max_redemptions=data["max_redemptions"],updated_by=request.user,
+            allowed_channels=_channels_for(member.tenant),
         )
         return safe_reply({"mode":"draft_only","reward":_reward(obj),
                            "points_credited":False,"coupon_created":False},201)

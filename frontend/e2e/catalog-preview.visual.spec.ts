@@ -28,9 +28,9 @@ async function init(page: Page) {
 
 async function navigate(page: Page, width: number) {
   await page.goto("/app/visao-geral");
-  await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
-  if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
-  await page.locator(".portal-nav").getByRole("button", { name: /Conciliação/ }).click();
+  await expect(page.getByRole("heading", { name: "Seu clube hoje" })).toBeVisible();
+  // Ferramentas moram em Configurações; a rota direta continua valendo.
+  await page.goto("/app/ferramentas/conciliacao");
   if (width <= 1020) {
     await expect.poll(() => page.locator(".portal-side").evaluate(
       el => el.getBoundingClientRect().right

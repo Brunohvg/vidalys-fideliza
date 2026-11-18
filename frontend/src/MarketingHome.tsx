@@ -37,7 +37,7 @@ function PhoneMockup() {
           <strong>420<span> pts</span></strong>
           <em><Clock3 size={12}/> 85 pts a liberar</em>
         </div>
-        <div className="lh-expiry"><Clock3 size={14}/><span><b>120 pontos vencem em 6 dias</b>Uma nova compra renova o prazo.</span></div>
+        <div className="lh-expiry"><Clock3 size={14}/><span><b>120 pontos vencem em 6 dias</b>Avisamos antes de vencer.</span></div>
         <div className="lh-goal">
           <span className="lh-goal-icon"><Gift size={16}/></span>
           <div><small>Sua próxima meta</small><b>Kit de fitas washi</b></div>

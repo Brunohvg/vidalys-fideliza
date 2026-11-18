@@ -17,7 +17,7 @@ async function mockMerchant(page:Page){
 test("Rotas do lojista suportam deep link, voltar e recarga sem perder a loja",async({page})=>{
   await mockMerchant(page);
   await page.goto("/app/visao-geral");
-  await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Seu clube hoje"})).toBeVisible();
   await page.getByRole("button",{name:"Clientes",exact:true}).click();
   await expect(page).toHaveURL(/\/app\/clientes$/);
   await expect(page.getByRole("heading",{name:"Participantes do clube."})).toBeVisible();

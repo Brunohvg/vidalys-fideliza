@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowRight, ChevronDown,
+  ArrowRight, Bell, ChevronDown,
   Gift, LayoutDashboard, LoaderCircle,
-  LogOut, Menu, PackageSearch, ScanSearch, ShieldCheck, ShoppingBag, UsersRound, X, BarChart3, HeartHandshake, Settings2
+  LogOut, Menu, Megaphone, Plus, Search, ShoppingBag, UsersRound, X, BarChart3, HeartHandshake, Settings2
 } from "lucide-react";
 import BenefitCostOverview from "./BenefitCostOverview";
 import MerchantAccess from "./MerchantAccess";
@@ -11,7 +11,7 @@ import ParticipantsBoard from "./ParticipantsBoard";
 import ProgramHub, { type ProgramArea } from "./ProgramHub";
 import SalesWorkspace from "./SalesWorkspace";
 import StoreSettings from "./StoreSettings";
-import ActionCenter from "./ActionCenter";
+import ActionCenter, { initialsOf as initials } from "./ActionCenter";
 import ResultsOverview from "./ResultsOverview";
 import CostCatalog from "./CostCatalog";
 import CatalogReconciliation from "./CatalogReconciliation";
@@ -30,25 +30,23 @@ const roleLabel: Record<Store["role"], string> = {
   owner: "Proprietário", admin: "Administrador", analyst: "Analista"
 };
 
-// Menu único, agrupado por intenção. Nada escondido em "mais ferramentas".
-type NavItem = { page: Screen; label: string; Icon: typeof Gift; badge?: string };
-const navGroups: { caption: string | null; items: NavItem[] }[] = [
-  { caption: null, items: [{ page: "overview", label: "Início", Icon: LayoutDashboard }] },
-  { caption: "PROGRAMA", items: [
-    { page: "program", label: "Clube", Icon: HeartHandshake },
-    { page: "campaign", label: "Campanhas", Icon: Gift, badge: "Prévia" }] },
-  { caption: "OPERAÇÃO", items: [
-    { page: "clients", label: "Clientes", Icon: UsersRound },
-    { page: "sales", label: "Vendas", Icon: ShoppingBag }] },
-  { caption: "ANÁLISE", items: [
-    { page: "results", label: "Resultados", Icon: BarChart3 },
-    { page: "margin", label: "Custo dos benefícios", Icon: ShieldCheck }] },
-  { caption: "AJUSTES", items: [
-    { page: "settings", label: "Configurações", Icon: Settings2 },
-    { page: "costs", label: "Custos dos produtos", Icon: PackageSearch },
-    { page: "catalog", label: "Conciliação", Icon: ScanSearch }] },
+// Menu do protótipo aprovado: sete destinos, sem grupos. Ferramentas avançadas
+// (custos, conciliação, custo dos benefícios) ficam em Configurações.
+type NavItem = { page: Screen; label: string; Icon: typeof Gift };
+const navItems: NavItem[] = [
+  { page: "overview", label: "Início", Icon: LayoutDashboard },
+  { page: "program", label: "Meu clube", Icon: HeartHandshake },
+  { page: "campaign", label: "Campanhas", Icon: Megaphone },
+  { page: "clients", label: "Clientes", Icon: UsersRound },
+  { page: "sales", label: "Vendas", Icon: ShoppingBag },
+  { page: "results", label: "Resultados", Icon: BarChart3 },
+  { page: "settings", label: "Configurações", Icon: Settings2 },
 ];
-const navItems = navGroups.flatMap(group => group.items.map(item => ({ ...item, caption: group.caption })));
+const toolLabels: Partial<Record<Screen, string>> = {
+  margin: "Custo dos benefícios", costs: "Custos dos produtos", catalog: "Conciliação do catálogo",
+};
+/** Ferramentas acendem "Configurações" no menu. */
+const menuPageFor = (page: Screen): Screen => (page in toolLabels ? "settings" : page);
 
 function Symbol({ small = false }: { small?: boolean }) {
   return <img src="/brand-mark.svg" width={small ? 28 : 42} height={small ? 28 : 42} alt="" aria-hidden="true" />;
@@ -60,6 +58,8 @@ function Wordmark() {
 
 export default function Portal() {
   const [programArea, setProgramArea] = useState<ProgramArea>("rewards");
+  const [clientQuery, setClientQuery] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [sessionError, setSessionError] = useState("");
   const [authRoute, setAuthRoute] = useState(() => isMerchantAuthPage(window.location.pathname));
@@ -235,6 +235,18 @@ export default function Portal() {
   };
   const tenants = session?.authenticated ? session.tenants : [];
   const tenant = tenants.find(value => value.id === selectedId) || tenants[0];
+  const tenantKey = tenant ? tenant.id : "";
+  const canReview = tenant ? tenant.role === "owner" || tenant.role === "admin" : false;
+  /* Contador real de vendas aguardando conferência: alimenta o selo de Vendas e o sino. */
+  const [pendingSales, setPendingSales] = useState(0);
+  useEffect(() => {
+    let active = true; setPendingSales(0);
+    if (!tenantKey || !canReview) return;
+    merchantApi.listManualSales(tenantKey)
+      .then(list => { if (active) setPendingSales(list.items.filter(item => item.state === "awaiting_review").length); })
+      .catch(() => { if (active) setPendingSales(0); });
+    return () => { active = false; };
+  }, [tenantKey, canReview, page]);
 
   if (!session) {
     return <div className="portal-loading">
@@ -259,46 +271,60 @@ export default function Portal() {
     <aside id="portal-sidebar" ref={sideRef} className={"portal-side" + (drawer ? " is-open" : "")} aria-label="Menu do lojista" aria-hidden={compactMenu && !drawer}>
       <div className="portal-side-brand"><img className="loyalty-merchant-logo" src="/brand-logo-white.svg" alt="Vidalys Fideliza" width={178} height={48}/><button ref={closeMenuRef} className="portal-mobile-close" onClick={closeDrawer} aria-label="Fechar menu"><X size={21}/></button></div>
       {tenant ? <div className="portal-store">
-        <div className="portal-store-mark"><ShoppingBag size={18}/></div>
+        <span className="portal-store-avatar" aria-hidden="true">{initials(tenant.name)}</span>
         <div className="portal-store-switch">
           <label htmlFor="portal-tenant" className="portal-sr">Loja selecionada</label>
           <select id="portal-tenant" value={tenant.id} onChange={e=>{setSelectedId(e.target.value);setSeedItem(null);setPage("overview");}}>
             {tenants.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           {tenants.length>1 && <ChevronDown size={15} aria-hidden="true"/>}
-          <span>{roleLabel[tenant.role]}{tenant.status!=="active" && " · "+(tenant.status==="draft"?"cadastro em preparação":"suspensa")}</span>
+          <span>{roleLabel[tenant.role]}{tenants.length>1?" · trocar loja":tenant.status==="suspended"?" · suspensa":""}</span>
         </div>
       </div> : <div className="portal-store">
         <div className="portal-store-mark"><ShoppingBag size={18}/></div>
         <div><strong>Nenhuma loja</strong><span>Sem vínculo</span></div>
       </div>}
-      {navGroups.map(group => <div className="portal-nav-group" key={group.caption ?? "inicio"}>
-        {group.caption && <div className="portal-nav-caption">{group.caption}</div>}
-        <nav className="portal-nav" aria-label={group.caption ? "Menu " + group.caption.toLowerCase() : "Menu principal"}>
-          {group.items.map(({ page: target, label, Icon, badge }) => <button key={target} onClick={()=>navigate(target)}
-            className={page===target?"is-active":""} aria-current={page===target?"page":undefined}>
-            <Icon size={19}/> {label}{badge && <span>{badge}</span>}</button>)}
-        </nav>
-      </div>)}
+      <nav className="portal-nav" aria-label="Menu principal">
+        {navItems.map(({ page: target, label, Icon }) => <button key={target} type="button" onClick={()=>navigate(target)}
+          className={menuPageFor(page)===target?"is-active":""} aria-current={menuPageFor(page)===target?"page":undefined}>
+          <Icon size={20}/> {label}
+          {target==="sales" && pendingSales ? <span className="portal-nav-badge"><span aria-hidden="true">{pendingSales}</span><span className="portal-sr">, {pendingSales} para conferir</span></span> : null}</button>)}
+      </nav>
       <div className="portal-side-bottom">
-        <button className="portal-signout" disabled={authBusy} onClick={doLogout}><LogOut size={18}/> Sair da conta</button>
+        <span className="portal-env-label"><span aria-hidden="true"/> Ambiente de homologação</span>
+        <div className="portal-user">
+          <span className="portal-user-avatar" aria-hidden="true">{initials(session.user.display_name)}</span>
+          <div className="portal-user-text"><strong>{session.user.display_name}</strong>
+            <button className="portal-signout" type="button" disabled={authBusy} onClick={doLogout}><LogOut size={15}/> Sair da conta</button></div>
+        </div>
       </div>
     </aside>
     {compactMenu && drawer && <button aria-label="Fechar navegação" className="portal-overlay" onClick={closeDrawer}/>}
     <div className="portal-main">
       <header className="portal-top">
         <div className="portal-top-title"><button onClick={()=>setDrawer(true)} ref={menuButtonRef} className="portal-menu" aria-label="Abrir menu" aria-controls="portal-sidebar" aria-expanded={compactMenu && drawer}><Menu size={23}/></button>
-          <span>{navItems.find(item => item.page === page)?.caption?.toLowerCase().replace(/^./, c => c.toUpperCase()) ?? "Painel"}</span><span className="portal-breadcrumb">/</span><strong>{navItems.find(item => item.page === page)?.label ?? "Início"}</strong>
+          {toolLabels[page] && <><button type="button" className="portal-crumb" onClick={()=>navigate("settings")}>Configurações</button><span className="portal-breadcrumb">/</span><strong>{toolLabels[page]}</strong></>}
         </div>
-        <div className="portal-top-right"><span className="portal-test-label"><span/> HOMOLOGAÇÃO</span><span className="portal-avatar">{session.user.display_name.slice(0,2).toUpperCase()}</span></div>
+        {tenant && <form className="portal-search" role="search" onSubmit={event=>{event.preventDefault();setClientQuery(searchDraft.trim());navigate("clients");}}>
+          <Search size={17} aria-hidden="true"/>
+          <label htmlFor="portal-search-input" className="portal-sr">Buscar cliente</label>
+          <input id="portal-search-input" type="search" value={searchDraft} onChange={e=>setSearchDraft(e.target.value)}
+            placeholder="Buscar cliente por nome ou e-mail" autoComplete="off"/>
+        </form>}
+        <div className="portal-top-right">
+          {tenant && (tenant.role==="owner"||tenant.role==="admin") && <button type="button" className="portal-bell" onClick={()=>navigate("sales")}
+            aria-label={pendingSales ? `Avisos: ${pendingSales} venda${pendingSales===1?"":"s"} para conferir` : "Avisos: nada pendente"}>
+            <Bell size={20}/>{pendingSales ? <span className="portal-bell-dot" aria-hidden="true"/> : null}</button>}
+          {tenant && page!=="sales" && (tenant.role==="owner"||tenant.role==="admin") && <button type="button" className="portal-top-cta" onClick={()=>navigate("sales")}><Plus size={17}/> Registrar venda</button>}
+        </div>
       </header>
       <main className="portal-content">
-        <div className="portal-content-head">
+        {page!=="overview" && <div className="portal-content-head">
           <div>
             <h1>{page==="overview"?"O próximo passo da sua loja.":page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="sales"?"Pedidos e vendas.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Quanto custa meu programa?":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
             <p>{page==="overview"?"Ações práticas e transparentes para fortalecer a recompra.":page==="program"?"Recompensas, regra de pontos e participantes — uma área de cada vez.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Acompanhe os pedidos da Nuvemshop e registre vendas presenciais sem duplicar compras.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Entenda o custo dos benefícios antes de publicá-los.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
           </div>
-        </div>
+        </div>}
 
         {tenants.length===0 ? <section className="portal-empty panel">
             <UsersRound size={36}/><h2>Sua conta está ativa, mas sem empresa associada</h2>
@@ -306,13 +332,13 @@ export default function Portal() {
             <p>Contas técnicas criadas no Django Admin não recebem loja automaticamente. Um administrador pode verificar a empresa em Empresas → Lojas e seus vínculos, sem associar usuários apenas pelo nome ou e-mail.</p>
             <button onClick={doLogout} className="portal-secondary">Trocar de conta</button>
           </section> : <>
-            {page==="overview" && <ActionCenter tenantId={tenant.id} role={tenant.role} platform={tenant.platform} key={tenant.id}
+            {page==="overview" && <ActionCenter tenantId={tenant.id} role={tenant.role} platform={tenant.platform} userName={session.user.display_name} key={tenant.id}
               onNavigate={(destination, area)=>navigate(destination, area)}/>}
             {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} platform={tenant.platform} initialArea={programArea} onViewClients={()=>navigate("clients")} onViewSales={()=>navigate("sales")} onOpenSettings={()=>navigate("settings")} key={tenant.id+":"+programArea}/>}
-            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} onOpenProgram={()=>navigate("program", "participants")} key={tenant.id}/>}
+            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} initialSearch={clientQuery} onOpenProgram={()=>navigate("program", "participants")} key={tenant.id+":"+clientQuery}/>}
             {page==="sales" && <SalesWorkspace tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role}
-              onGoToProgram={()=>navigate("program")} key={tenant.id}/>}
+              onGoToProgram={()=>navigate("program")} onOpenTool={tool=>navigate(tool)} key={tenant.id}/>}
             {page==="results" && <ResultsOverview tenantId={tenant.id}
               onClients={()=>navigate("clients")} onSales={()=>navigate("sales")}
               onProgram={()=>navigate("program")} key={tenant.id}/>}

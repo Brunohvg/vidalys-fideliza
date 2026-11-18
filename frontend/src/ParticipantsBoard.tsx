@@ -33,12 +33,12 @@ function displayName(item: ProgramParticipant) {
   return item.display_name || "Participante sem nome informado";
 }
 
-export default function ParticipantsBoard({ tenantId, onOpenProgram }: { tenantId: string; onOpenProgram: () => void }) {
+export default function ParticipantsBoard({ tenantId, onOpenProgram, initialSearch = "" }: { tenantId: string; onOpenProgram: () => void; initialSearch?: string }) {
   const [response, setResponse] = useState<ParticipantDirectoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchText, setSearchText] = useState("");
-  const [search, setSearch] = useState("");
+  const [searchText, setSearchText] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
   const [status, setStatus] = useState<"all"|"active"|"paused">("all");
   const [offset, setOffset] = useState(0);
   const [version, setVersion] = useState(0);

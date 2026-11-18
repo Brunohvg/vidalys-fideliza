@@ -79,7 +79,7 @@ test("Início usa rascunho de pontos e não apresenta cashback antigo",async({pa
   }),
  }));
  await page.goto("/app/visao-geral");
- await expect(page.getByRole("heading",{name:"Coloque seu clube no ar"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"O que fazer agora"})).toBeVisible();
  await page.locator(".portal-nav").getByRole("button",{name:"Campanhas"}).click();
  await expect(page.getByRole("heading",{name:"Rascunhos salvos"})).toBeVisible();
  await expect(page.getByText("30 pontos extras",{exact:false})).toBeVisible();

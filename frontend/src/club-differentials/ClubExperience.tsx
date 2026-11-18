@@ -36,7 +36,7 @@ export function ExpiryBanner({data}: {data: ClubInsights}) {
     <Clock3 size={20} aria-hidden="true"/>
     <div>
       <strong>{points(amount)} vencem {days_left <= 1 ? "hoje" : `em ${days(days_left)}`}</strong>
-      <span>A partir de {dateBR(earliest_expiry)}. Uma nova compra renova o prazo.</span>
+      <span>A partir de {dateBR(earliest_expiry)}. Use antes dessa data para não perder.</span>
     </div>
     <a className="vfd-link-button" href="#vfd-recompensas">Trocar agora</a>
   </aside>;

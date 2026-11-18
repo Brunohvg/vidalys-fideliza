@@ -127,7 +127,7 @@ export default function App() {
             <div className="demo-example-balance"><span>Pontos do exemplo</span><b>{demoClub.balance?.available ?? 0} pontos</b><em><Check size={14}/> Saldo demonstrativo</em></div>
             <ul className="demo-diff-list">
               <li><b>Meta com Margem</b><span>A próxima meta é a recompensa próxima que vale mais para o cliente por real de custo da loja.</span></li>
-              <li><b>Pontos sem Susto</b><span>Um aviso só, no prazo mais urgente; cada compra renova a validade.</span></li>
+              <li><b>Pontos sem Susto</b><span>Um aviso só, no prazo mais urgente, antes de qualquer ponto vencer.</span></li>
               <li><b>Clube Claro</b><span>“Regras em 30 segundos”, geradas da própria configuração do programa.</span></li>
               <li><b>Reconhecimento</b><span>Conquistas no clube, com no máximo uma mensagem por semana.</span></li>
             </ul>

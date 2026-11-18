@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState,type FormEvent} from "react";
 import {
   ArrowRight,Check,CheckCircle2,CircleHelp,Globe2,HeartHandshake,
-  LockKeyhole,Mail,Palette,RefreshCw,Save,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
+  LockKeyhole,Mail,Palette,Wrench,RefreshCw,Save,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
 } from "lucide-react";
 import {
   ApiError,merchantApi,type NuvemshopConnectionStatus,
@@ -13,6 +13,8 @@ import "./store-settings.css";
 type Props={
   tenantId:string;role:Store["role"];
   onGoToProgram:()=>void;
+  /** Ferramentas avançadas moradas em Configurações (protótipo aprovado). */
+  onOpenTool?:(tool:"margin"|"costs"|"catalog")=>void;
 };
 function Status({ready,label}:{ready:boolean;label:string}){
   return <span className={"ss-state "+(ready?"is-ready":"is-pending")}>
@@ -67,7 +69,7 @@ function friendlyError(error:unknown,defaultMessage:string){
   return defaultMessage;
 }
 
-export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
+export default function StoreSettings({tenantId,role,onGoToProgram,onOpenTool}:Props){
   const [settings,setSettings]=useState<TenantPreferences|null>(null);
   const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
   const [privacy,setPrivacy]=useState<PrivacyRequestsSummary|null>(null);
@@ -270,6 +272,7 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
       <a href="#ss-store-connection"><ShoppingBag size={16}/> Canais e integração</a>
       <a href="#ss-domains-title"><Globe2 size={16}/> Página do clube</a>
       {editable&&<a href="#ss-privacy-title"><FileText size={16}/> Privacidade</a>}
+      {onOpenTool&&<a href="#ss-tools-title"><Wrench size={16}/> Ferramentas</a>}
     </nav>
     {error&&<div className="ss-feedback ss-error" role="alert"><TriangleAlert size={17}/>{error}</div>}
     {notice&&<div className="ss-feedback ss-success" role="status"><Check size={17}/>{notice}</div>}
@@ -492,6 +495,21 @@ export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
           Fideliza e acompanha a eliminação. A loja responde ao cliente.
           Registros sujeitos à retenção legal exigem análise antes da conclusão.
         </p>
+      </section>}
+      {onOpenTool&&<section className="ss-card" aria-labelledby="ss-tools-title">
+        <div className="ss-card-heading">
+          <div className="ss-card-icon"><Wrench size={20}/></div>
+          <div><h3 id="ss-tools-title">Ferramentas avançadas</h3>
+            <p>Para conferir margem e catálogo. Não são necessárias no dia a dia.</p></div>
+        </div>
+        <ul className="ss-tools">
+          <li><div><strong>Custo dos benefícios</strong><span>Quanto cada recompensa custa na sua margem.</span></div>
+            <button type="button" className="ss-secondary" onClick={()=>onOpenTool("margin")}>Abrir custo dos benefícios <ArrowRight size={15}/></button></li>
+          <li><div><strong>Custos dos produtos</strong><span>Custo por produto quando a loja não informa.</span></div>
+            <button type="button" className="ss-secondary" onClick={()=>onOpenTool("costs")}>Abrir custos dos produtos <ArrowRight size={15}/></button></li>
+          <li><div><strong>Conciliação do catálogo</strong><span>Confere variantes da Nuvemshop antes de importar custos.</span></div>
+            <button type="button" className="ss-secondary" onClick={()=>onOpenTool("catalog")}>Abrir conciliação <ArrowRight size={15}/></button></li>
+        </ul>
       </section>}
     </div>
     <div className="ss-security-note"><ShieldCheck size={18}/>

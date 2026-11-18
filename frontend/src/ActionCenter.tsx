@@ -1,13 +1,17 @@
 import {useEffect,useState} from "react";
-import {ArrowRight,CheckCircle2,ClipboardCheck,Gift,PlugZap,UsersRound,ShieldCheck} from "lucide-react";
+import {ArrowRight,CircleDollarSign,ClipboardCheck,Clock3,Gift,MessageCircle,PlugZap,ScrollText,
+ Share2,ShieldCheck,ShoppingBag,Sparkles,Star,UserRound} from "lucide-react";
 import {merchantApi,type DiscountRewardDraft,type ManualSaleList,
  type NuvemshopConnectionStatus,type ParticipantDirectoryResponse,type PointRuleDraft,
- type ProgramTermsStatus,type Store} from "./api";
+ type ProgramParticipant,type ProgramTermsStatus,type Store} from "./api";
 import type {ProgramArea} from "./ProgramHub";
+import {percentText,pointValueText,summarizeClub} from "./club-summary";
 import "./loyalty-dashboard.css";
 
-/* Início do lojista: (1) o que falta para o clube ir ao ar, (2) números reais,
-   (3) canais. Dado indisponível aparece como "—" e nunca conta como passo feito. */
+/* Início do lojista — réplica do protótipo aprovado: saudação e estágio, o clube
+   em uma frase com o anel de progresso, quatro números, "O que fazer agora" e os
+   clientes recentes. Só números reais: dado indisponível aparece como "—",
+   nunca como zero, e nunca conta como passo concluído. */
 
 type Destination="program"|"clients"|"sales"|"campaign"|"catalog"|"results"|"settings";
 type Data={
@@ -19,11 +23,55 @@ type Data={
  terms:ProgramTermsStatus|null;
  incomplete:boolean;
 };
-type Step={key:string;title:string;detail:string;action:string;done:boolean|null;
- destination:Destination;area?:ProgramArea};
+type Tone="gold"|"purple"|"green"|"rose";
+type Action={key:string;title:string;detail:string;button:string;tone:Tone;Icon:typeof Star;
+ destination:Destination;area?:ProgramArea;className?:string};
 
-export default function ActionCenter({tenantId,role,platform,onNavigate}:{
- tenantId:string;role:Store["role"];platform:Store["platform"];
+const AVATAR_TONES=["tone-1","tone-2","tone-3","tone-4","tone-5"];
+export const initialsOf=(name:string|null|undefined)=>{
+ const parts=(name||"").trim().split(/\s+/).filter(Boolean);
+ if(!parts.length)return "?";
+ return ((parts[0][0]||"")+(parts.length>1?parts[parts.length-1][0]:parts[0][1]||"")).toUpperCase();
+};
+const greeting=(hour:number)=>hour<12?"Bom dia":hour<18?"Boa tarde":"Boa noite";
+const brl=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const DAY=86400000;
+const joinedOf=(p:ProgramParticipant)=>p.joined_at||p.consented_at||"";
+/** "hoje", "ontem" ou "12 de nov." — sem inventar data quando ela falta. */
+export const whenText=(iso:string,now=new Date())=>{
+ const date=new Date(iso);
+ if(!iso||Number.isNaN(date.getTime()))return "";
+ const start=(d:Date)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+ const diff=Math.round((start(now)-start(date))/DAY);
+ if(diff===0)return "hoje";
+ if(diff===1)return "ontem";
+ return date.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"});
+};
+const channelOf=(p:ProgramParticipant)=>p.nuvemshop_customer_linked||p.consent_channel==="storefront_opt_in"
+ ?"Site":p.manual_sales_count>0?"Balcão":"Convite";
+const periodText=(days:number)=>days%365===0?`${days/365} ano${days===365?"":"s"}`:`${days} dia${days===1?"":"s"}`;
+
+/** Número que conta do zero ao valor real; quem desliga animação vê o valor direto. */
+function useCountUp(target:number|null|undefined){
+ const [value,setValue]=useState(0);
+ useEffect(()=>{
+  if(typeof target!=="number")return;
+  const reduce=typeof window!=="undefined"&&window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if(reduce||target===0){setValue(target);return;}
+  let frame=0;const start=performance.now();
+  const step=(now:number)=>{
+   const progress=Math.min(1,(now-start)/800);
+   setValue(Math.round(target*(1-Math.pow(1-progress,3))));
+   if(progress<1)frame=requestAnimationFrame(step);
+  };
+  frame=requestAnimationFrame(step);
+  return()=>cancelAnimationFrame(frame);
+ },[target]);
+ return typeof target==="number"?value:null;
+}
+
+export default function ActionCenter({tenantId,role,platform,userName,onNavigate}:{
+ tenantId:string;role:Store["role"];platform:Store["platform"];userName?:string;
  onNavigate:(target:Destination,area?:ProgramArea)=>void;
 }){
  const canManage=role==="owner"||role==="admin";
@@ -55,89 +103,173 @@ export default function ActionCenter({tenantId,role,platform,onNavigate}:{
   return()=>{active=false};
  },[tenantId,canManage,platform]);
 
- const count=data?.participants?.summary.active;
- const pending=data?.sales?.items.filter(v=>v.state==="awaiting_review").length;
- const published=data?.rewards?.filter(v=>v.published).length;
+ const people=data?.participants??null;
+ const items=people?.items??[];
+ const complete=people!==null&&people.total_filtered<=items.length;
+ const members=people?people.summary.active:null;
+ const weekNew=complete?items.filter(p=>{const t=new Date(joinedOf(p)).getTime();return !Number.isNaN(t)&&Date.now()-t<7*DAY;}).length:null;
+ const balances=items.map(p=>p.points_balance);
+ const pointsHeld=complete&&items.length>0&&balances.every(v=>typeof v==="number")
+  ?balances.reduce<number>((sum,v)=>sum+(v as number),0):null;
+ const pending=data?.sales?data.sales.items.filter(v=>v.state==="awaiting_review").length:null;
+ const published=data?.rewards?data.rewards.filter(v=>v.published).length:null;
  const connected=data?.integration?.connected;
  const ordersReady=data?.integration?.order_verification?.read_only_preview_available;
 
- const steps:Step[]=[
-  {key:"rule",title:"Defina como o cliente ganha pontos",detail:"Ex.: 1 ponto a cada R$ 1,00, com carência e validade.",
-   action:"Definir regra",destination:"program",area:"earning",
-   done:!data||data.rule===undefined?null:data.rule!==null},
-  {key:"reward",title:"Publique a primeira recompensa",detail:"O que o cliente poderá trocar pelos pontos.",
-   action:"Criar recompensa",destination:"program",area:"rewards",
-   done:published===undefined?null:published>0},
-  {key:"terms",title:"Aprove o regulamento do clube",detail:"Regras claras antes do primeiro convite.",
-   action:"Aprovar regulamento",destination:"program",area:"participants",
-   done:!data||data.terms===null?null:data.terms.terms!==null},
-  {key:"invite",title:"Convide o primeiro cliente",detail:"Compartilhe o link; o cliente confirma a adesão por e-mail.",
-   action:"Convidar clientes",destination:"program",area:"participants",
-   done:count===undefined?null:count>0},
-  {key:"sale",title:"Registre a primeira venda",detail:"No balcão ou pela Nuvemshop, com conferência.",
-   action:"Registrar venda",destination:"sales",
-   done:!data?.sales?null:data.sales.items.length>0},
- ];
- const doneCount=steps.filter(step=>step.done===true).length;
- const next=steps.find(step=>step.done===false);
- const progress=Math.round(doneCount/steps.length*100);
+ const summary=data&&canManage?summarizeClub(data.rule??null,data.rewards??[]):null;
+ const pv=summary?.pointValue&&summary.pointValue.min===summary.pointValue.max?summary.pointValue.max:null;
+ const pointsBrl=(points:number)=>pv===null?null:brl(Math.round(points*pv/100));
+
+ const animMembers=useCountUp(members);
+ const animPoints=useCountUp(pointsHeld);
+ const animPending=useCountUp(pending);
+ const animPublished=useCountUp(published);
+
+ /* Passos de montagem: só contam como feitos quando a API confirmou. */
+ const ruleDone=!data||data.rule===undefined?null:data.rule!==null;
+ const rewardDone=published===null?null:published>0;
+ const termsDone=!data||data.terms===null?null:data.terms.terms!==null;
+ const inviteDone=members===null?null:members>0;
+ const saleDone=!data?.sales?null:data.sales.items.length>0;
+ const stepStates=[ruleDone,rewardDone,termsDone,inviteDone,saleDone];
+ const doneCount=stepStates.filter(v=>v===true).length;
+ const progress=Math.round(doneCount/stepStates.length*100);
+ const ready=doneCount===stepStates.length;
+
+ const setup:Action[]=[];
+ if(ruleDone===false)setup.push({key:"rule",title:"Definir como o cliente ganha pontos",detail:"Ex.: 1 ponto a cada R$ 1,00, com carência e validade.",
+  button:"Definir",tone:"purple",Icon:Sparkles,destination:"program",area:"earning"});
+ if(rewardDone===false)setup.push({key:"reward",title:"Publicar a primeira recompensa",detail:"Sem recompensa, os pontos não têm uso para o cliente.",
+  button:"Criar",tone:"green",Icon:Star,destination:"program",area:"rewards"});
+ if(termsDone===false)setup.push({key:"terms",title:"Aprovar o regulamento do clube",detail:"Regras claras antes do primeiro convite.",
+  button:"Aprovar",tone:"purple",Icon:ScrollText,destination:"program",area:"participants"});
+ if(inviteDone===false)setup.push({key:"invite",title:"Convidar o primeiro cliente",detail:"Compartilhe o link no caixa, no Instagram e no WhatsApp.",
+  button:"Convidar",tone:"gold",Icon:MessageCircle,destination:"program",area:"participants"});
+ if(saleDone===false)setup.push({key:"sale",title:"Registrar a primeira venda",detail:"No balcão ou pela Nuvemshop, com conferência.",
+  button:"Registrar",tone:"purple",Icon:ShoppingBag,destination:"sales"});
+ const actions:Action[]=[];
+ if(pending)actions.push({key:"review",title:`Conferir ${pending} venda${pending===1?"":"s"} do balcão`,
+  detail:"Os pontos só liberam depois da conferência.",button:"Conferir",tone:"purple",Icon:ClipboardCheck,destination:"sales"});
+ actions.push(...setup.slice(0,pending?2:3));
+ if(data&&data.integration!==null)actions.push(connected
+  ?{key:"nuvemshop",title:"Consultar pedidos da Nuvemshop",className:"loyalty-dashboard-connection",
+    detail:ordersReady?"Leitura de pedidos habilitada; saldo e cupons não são automáticos."
+     :"Autorização registrada; leitura de pedidos depende das permissões e configurações.",
+    button:"Consultar pedidos",tone:"green",Icon:PlugZap,destination:"sales"}
+  :{key:"nuvemshop",title:"Conectar a Nuvemshop",className:"loyalty-dashboard-connection",
+    detail:"Integração ainda não autorizada nesta loja.",
+    button:"Configurar integração",tone:"gold",Icon:PlugZap,destination:"settings"});
+
+ /* Frase do clube no formato aprovado: % de volta em destaque, valor do ponto, carência e validade. */
+ const rule=data?.rule??null;
+ const ret=summary?.returnBps??null;
+ const hold=rule?(rule.hold_days===0?"libera na hora":`libera em ${periodText(rule.hold_days)}`):"";
+ const sentence=!data?null:rule&&ret?<>
+   A cada compra, o cliente recebe <strong>{ret.min===ret.max?percentText(ret.max):`de ${percentText(ret.min)} a ${percentText(ret.max)}`} de volta em pontos</strong>.
+   {" "}{pv!==null?`Cada ponto vale ${pointValueText(pv)}, `:"O valor do ponto muda conforme a recompensa; "}{hold} e vale por {periodText(rule.validity_days)}.</>
+  :rule?<>
+   A cada {brl(rule.per_cents)} em compras, o cliente ganha <strong>{rule.points} ponto{rule.points===1?"":"s"}</strong>, que {hold} e vale por {periodText(rule.validity_days)}.
+   {" "}Falta publicar a primeira recompensa para o ponto ter valor.</>
+  :<>Defina como o cliente ganha pontos e publique a primeira recompensa para ver o resumo do seu clube.</>;
+
+ const firstName=(userName||"").trim().split(/\s+/)[0];
+ const recent=[...items].sort((a,b)=>joinedOf(b).localeCompare(joinedOf(a))).slice(0,4);
+ const dash=(v:number|null)=>!data?"…":v===null?"—":v.toLocaleString("pt-BR");
 
  return <div className="vf-home loyalty-dashboard" aria-label="Resumo da loja">
-  {canManage&&<section className="loyalty-checklist" aria-labelledby="loyalty-checklist-title">
-   <header className="loyalty-checklist-head">
-    <div>
-     <span className="loyalty-dashboard-eyebrow">PRIMEIROS PASSOS</span>
-     <h2 id="loyalty-checklist-title">Coloque seu clube no ar</h2>
-     <p>{!data?"Consultando sua loja…":next?`${doneCount} de ${steps.length} concluídos. Próximo: ${next.title.toLowerCase()}.`
-       :doneCount===steps.length?"Tudo pronto. Agora acompanhe clientes e vendas.":"Alguns passos não puderam ser verificados agora."}</p>
-    </div>
-    {next&&<button type="button" className="loyalty-checklist-cta" onClick={()=>onNavigate(next.destination,next.area)}>
-     Continuar <ArrowRight size={18}/></button>}
-   </header>
-   <div className="loyalty-checklist-bar" role="progressbar" aria-label="Progresso da configuração"
-    aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{width:progress+"%"}}/></div>
-   <ol className="loyalty-checklist-steps">
-    {steps.map((step,index)=><li key={step.key} data-state={step.done===true?"done":step===next?"next":step.done===null?"unknown":"todo"}>
-     <span className="loyalty-step-mark" aria-hidden="true">{step.done===true?<CheckCircle2 size={20}/>:index+1}</span>
-     <div className="loyalty-step-text">
-      <strong>{step.title}</strong>
-      <span>{step.done===null&&data?"Não foi possível verificar agora.":step.detail}</span>
-     </div>
-     {step.done!==true&&<button type="button" className="loyalty-step-action" disabled={!data}
-      onClick={()=>onNavigate(step.destination,step.area)}>{step.action}</button>}
-     <span className="portal-sr">{step.done===true?"concluído":step.done===null?"não verificado":"pendente"}</span>
-    </li>)}
-   </ol>
+  <header className="loyalty-home-head">
+   <div>
+    <span className="loyalty-dashboard-eyebrow">{greeting(new Date().getHours()).toUpperCase()}{firstName?", "+firstName.toUpperCase():""}</span>
+    <h1 className="loyalty-home-title">Seu clube hoje</h1>
+   </div>
+   {canManage&&data&&<span className={"loyalty-stage"+(ready?" is-ready":"")}><Clock3 size={14} aria-hidden="true"/>
+    {ready?"Pronto para testar":`Em montagem · ${doneCount} de ${stepStates.length} passos`}</span>}
+  </header>
+
+  {canManage&&<section className="loyalty-hero" aria-label="Seu clube em uma frase">
+   <div className="loyalty-hero-ring" role="progressbar" aria-label="Progresso da configuração"
+    aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}
+    style={{background:`conic-gradient(var(--vf-gold) 0 ${progress}%, color-mix(in srgb,var(--vf-surface) 20%,transparent) ${progress}% 100%)`}}>
+    <span>{data?progress+"%":"…"}</span>
+   </div>
+   <div className="loyalty-hero-text">
+    <span className="loyalty-hero-eyebrow">SEU CLUBE EM UMA FRASE</span>
+    <p>{sentence??"Consultando sua loja…"}</p>
+   </div>
+   {data&&<button type="button" className="loyalty-hero-cta"
+    onClick={()=>{const first=setup[0];if(first)onNavigate(first.destination,first.area);else onNavigate("program");}}>
+    {setup.length?"Continuar configuração":"Ver meu clube"} <ArrowRight size={16}/></button>}
   </section>}
 
   {data?.incomplete&&<p className="loyalty-dashboard-warning" role="status">Algumas informações não puderam ser consultadas. Dados indisponíveis aparecem como traço, não como zero.</p>}
 
   <section className="loyalty-dashboard-metrics" aria-label="Indicadores reais do clube">
-   <article className="loyalty-dashboard-metric">
-    <div className="loyalty-dashboard-metric-top"><span><UsersRound size={20}/></span><small>Participantes ativos</small></div>
-    <strong>{data?count??"—":"…"}</strong>
-    <p>Adesões confirmadas nesta loja</p>
-    <button type="button" onClick={()=>onNavigate("clients")}>Ver clientes <ArrowRight size={15}/></button>
-   </article>
-   <article className="loyalty-dashboard-metric">
-    <div className="loyalty-dashboard-metric-top"><span><ClipboardCheck size={20}/></span><small>Vendas para conferir</small></div>
-    <strong>{data?pending??"—":"…"}</strong>
-    <p>Entre os últimos 30 registros de balcão</p>
-    <button type="button" onClick={()=>onNavigate("sales")}>Conferir vendas <ArrowRight size={15}/></button>
-   </article>
-   <article className="loyalty-dashboard-metric">
-    <div className="loyalty-dashboard-metric-top"><span><Gift size={20}/></span><small>Recompensas publicadas</small></div>
-    <strong>{data?published??"—":"…"}</strong>
-    <p>Benefícios visíveis; não são cupons liberados</p>
-    <button type="button" onClick={()=>onNavigate("program","rewards")}>Ver benefícios <ArrowRight size={15}/></button>
-   </article>
-   <article className="loyalty-dashboard-metric loyalty-dashboard-connection" aria-labelledby="loyalty-dashboard-integration">
-    <div className="loyalty-dashboard-metric-top"><span><PlugZap size={20}/></span><small id="loyalty-dashboard-integration">Nuvemshop</small></div>
-    <strong className="loyalty-dashboard-status" data-on={connected?"true":"false"}>{!data?"…":data.integration===null?"—":connected?"Conectada":"Não conectada"}</strong>
-    <p>{!data?"Verificando conexão…":data.integration===null?"Situação indisponível":!connected?"Integração ainda não autorizada nesta loja":ordersReady?"Leitura de pedidos habilitada; saldo e cupons não são automáticos":"Autorização registrada; leitura de pedidos depende das permissões e configurações"}</p>
-    <button type="button" onClick={()=>onNavigate(connected?"sales":"settings")}>{connected?"Consultar pedidos":"Configurar integração"}<ArrowRight size={15}/></button>
-   </article>
+   <button type="button" className="loyalty-dashboard-metric" onClick={()=>onNavigate("clients")}>
+    <span className="loyalty-metric-top"><span className="loyalty-ico tone-purple"><UserRound size={20}/></span><small>Participantes</small></span>
+    <strong>{members===null?dash(null):dash(animMembers)}</strong>
+    <span className="loyalty-metric-sub">{weekNew?`+${weekNew} nesta semana`:"adesões confirmadas"}</span>
+   </button>
+   <button type="button" className="loyalty-dashboard-metric" onClick={()=>onNavigate("clients")}>
+    <span className="loyalty-metric-top"><span className="loyalty-ico tone-gold"><CircleDollarSign size={20}/></span><small>Pontos com clientes</small></span>
+    <strong>{pointsHeld===null?dash(null):dash(animPoints)}</strong>
+    <span className="loyalty-metric-sub">{pointsHeld===null?"aparece quando os pontos estiverem ativos"
+     :pointsBrl(pointsHeld)?`equivalem a ${pointsBrl(pointsHeld)}`:"saldo disponível dos participantes"}</span>
+   </button>
+   <button type="button" className={"loyalty-dashboard-metric"+(pending?" is-attention":"")} onClick={()=>onNavigate("sales")}>
+    <span className="loyalty-metric-top"><span className="loyalty-ico tone-rose"><ClipboardCheck size={20}/></span><small>Vendas para conferir</small></span>
+    <strong>{pending===null?dash(null):dash(animPending)}</strong>
+    <span className="loyalty-metric-sub">{pending?"pontos aguardando sua conferência":"no balcão, últimos 30 registros"}</span>
+   </button>
+   <button type="button" className="loyalty-dashboard-metric" onClick={()=>onNavigate("program","rewards")}>
+    <span className="loyalty-metric-top"><span className="loyalty-ico tone-green"><Gift size={20}/></span><small>Recompensas publicadas</small></span>
+    <strong>{published===null?dash(null):dash(animPublished)}</strong>
+    <span className="loyalty-metric-sub">benefícios visíveis no Meu Clube</span>
+   </button>
   </section>
-  <p className="loyalty-dashboard-disclosure"><ShieldCheck size={16}/> O Fideliza ainda não calcula ROI, vendas atribuídas ou pontos de pedidos online. Esses indicadores aparecem somente após validação transacional.</p>
+
+  <div className={"loyalty-home-grid"+(canManage?"":" is-single")}>
+   {canManage&&<section className="loyalty-card loyalty-checklist" aria-labelledby="loyalty-checklist-title">
+    <div className="loyalty-checklist-head"><h2 id="loyalty-checklist-title">O que fazer agora</h2></div>
+    {!data?<p className="loyalty-recent-empty">Consultando sua loja…</p>
+     :actions.length===0?<p className="loyalty-recent-empty">Tudo em dia. Acompanhe clientes e vendas por aqui.</p>
+     :<ul className="loyalty-actions">
+      {actions.map(({key,title,detail,button,tone,Icon,destination,area,className})=><li key={key} className={className}>
+       <span className={"loyalty-ico tone-"+tone} aria-hidden="true"><Icon size={18}/></span>
+       <div><strong>{title}</strong><span>{detail}</span></div>
+       <button type="button" className="loyalty-pill" onClick={()=>onNavigate(destination,area)}>{button}</button>
+      </li>)}
+     </ul>}
+   </section>}
+
+   <section className="loyalty-card loyalty-recent" aria-labelledby="loyalty-recent-title">
+    <header>
+     <h2 id="loyalty-recent-title">Clientes recentes</h2>
+     <button type="button" className="loyalty-pill" onClick={()=>onNavigate("clients")}>Ver todos</button>
+    </header>
+    {!data?<p className="loyalty-recent-empty">Carregando clientes…</p>
+     :people===null?<p className="loyalty-recent-empty">Não foi possível consultar os clientes agora.</p>
+     :recent.length===0?<div className="loyalty-recent-empty">
+       <p>Ninguém entrou no clube ainda. Compartilhe o convite no caixa, no Instagram e no WhatsApp.</p>
+       {canManage&&<button type="button" className="loyalty-pill" onClick={()=>onNavigate("program","participants")}><Share2 size={15}/> Compartilhar convite</button>}
+      </div>
+     :<ul>
+       {recent.map((person,index)=>{
+        const when=whenText(joinedOf(person));
+        const pts=person.points_balance;
+        const money=typeof pts==="number"?pointsBrl(pts):null;
+        return <li key={person.id}>
+         <span className={"loyalty-avatar "+AVATAR_TONES[index%AVATAR_TONES.length]} aria-hidden="true">{initialsOf(person.display_name)}</span>
+         <div className="loyalty-recent-who"><strong>{person.display_name}</strong>
+          <span>{channelOf(person)}{when?" · "+when:""}</span></div>
+         <div className="loyalty-recent-points">
+          <strong>{typeof pts==="number"?pts.toLocaleString("pt-BR")+" pts":"—"}</strong>
+          {money&&<span>{money}</span>}
+         </div>
+        </li>;})}
+      </ul>}
+   </section>
+  </div>
+
+  <p className="loyalty-dashboard-disclosure"><ShieldCheck size={15}/> Só números verificados. O Fideliza ainda não calcula ROI, vendas atribuídas ou pontos de pedidos online.</p>
  </div>;
 }

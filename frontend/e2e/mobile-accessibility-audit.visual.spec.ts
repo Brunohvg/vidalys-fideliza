@@ -91,7 +91,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
     await page.setViewportSize({width,height:width<=390?700:900});
     await setup(page);
     await page.goto("/app/visao-geral");
-    await expect(page.getByRole("heading",{name:"Coloque seu clube no ar"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"O que fazer agora"})).toBeVisible();
     await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
     await expect(page.getByText("Recompensas publicadas")).toBeVisible();
     await expect(page.getByText("pontos de pedidos online",{exact:false})).toBeVisible();
@@ -200,7 +200,7 @@ for(const width of [320,390,768,1440]){
     }));
     await page.goto("/app/visao-geral");
     const screens=[
-      ["Clube","Seu programa de fidelidade."],
+      ["Meu clube","Seu programa de fidelidade."],
       ["Clientes","Participantes do clube."],
       ["Vendas","Pedidos e vendas."],
       ["Campanhas","Uma campanha em poucos passos."],
@@ -210,9 +210,14 @@ for(const width of [320,390,768,1440]){
       ["Conciliação","Valide variantes antes de importar."],
       ["Configurações","Sua loja, do seu jeito."],
     ] as const;
+    const toolPaths:Record<string,string>={"Custo dos benefícios":"/app/ferramentas/margem",
+      "Custos dos produtos":"/app/ferramentas/custos","Conciliação":"/app/ferramentas/conciliacao"};
     for(const [nav,title] of screens){
-      if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-      await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+nav+"(?:\\s|$)")}).click();
+      if(toolPaths[nav]){await page.goto(toolPaths[nav]);}
+      else{
+        if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+        await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+nav+"(?:\\s|$)")}).click();
+      }
       await expect(page.getByRole("heading",{level:1,name:title})).toBeVisible();
       if(nav==="Configurações"){
         await expect(page.getByRole("heading",{name:"Regras do clube"})).toHaveCount(0);
@@ -229,9 +234,9 @@ for(const width of [320,390,768,1440]){
         await expect(page.getByText("Ainda não medido")).toBeVisible();
       }
       await assertNoHorizontalOverflow(page,nav+" "+width);
-      if(width===390&&["Vendas","Resultados","Clube"].includes(nav)){
+      if(width===390&&["Vendas","Resultados","Meu clube"].includes(nav)){
         await page.screenshot({path:info.outputPath(
-          "audit-"+nav.toLowerCase()+"-"+width+".png"),fullPage:true});
+          "audit-"+nav.toLowerCase().replace(/\s+/g,"-")+"-"+width+".png"),fullPage:true});
       }
     }
   });

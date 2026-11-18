@@ -1,69 +1,127 @@
-/* VIDALYS FIDELIZA — Início do lojista (arquivo completo e consolidado; arquivo
-   protegido pelo brand-guard). Ordem: o que falta para o clube ir ao ar,
-   números reais, canais. Só tokens de brand-tokens.css. */
+/* VIDALYS FIDELIZA — Início do lojista (arquivo completo e consolidado).
+   Réplica do protótipo aprovado "Painel do lojista — protótipo navegável":
+   saudação + estágio, faixa roxa com anel e frase, quatro números, "O que fazer
+   agora" e "Clientes recentes". Só tokens de brand-tokens.css. */
 
-.loyalty-dashboard{display:grid;gap:18px;min-width:0;font-family:var(--vf-font);color:var(--vf-ink)}
-.loyalty-dashboard-eyebrow{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--vf-primary)}
+.loyalty-dashboard{display:flex;flex-direction:column;gap:20px;min-width:0;
+ font-family:var(--vf-font);color:var(--vf-purple-950);animation:vf-rise .38s cubic-bezier(.2,.7,.2,1) both}
 
-/* ---------- Checklist "Coloque seu clube no ar" ---------- */
-.loyalty-checklist{display:grid;gap:16px;padding:24px;border-radius:var(--vf-radius-lg);background:var(--vf-surface);border:1px solid var(--vf-border);box-shadow:var(--vf-shadow-card)}
-.loyalty-checklist-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
-.loyalty-checklist-head h2{margin:6px 0 4px;font:850 clamp(22px,2.2vw,28px)/1.15 var(--vf-font-display);letter-spacing:-.03em;color:var(--vf-ink)}
-.loyalty-checklist-head p{margin:0;font-size:15px;color:var(--vf-muted)}
-.loyalty-checklist-cta{display:inline-flex;align-items:center;gap:8px;flex:none;min-height:48px;padding:0 22px;border:0;border-radius:999px;background:var(--vf-primary);color:var(--vf-primary-contrast);font:inherit;font-size:15px;font-weight:800;cursor:pointer;box-shadow:var(--vf-glow)}
-.loyalty-checklist-cta:hover{background:var(--vf-primary-hover)}
-.loyalty-checklist-bar{height:8px;border-radius:999px;background:var(--vf-lavender);overflow:hidden}
-.loyalty-checklist-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--vf-purple-700),var(--vf-purple-500));transition:width .4s ease}
-.loyalty-checklist-steps{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-.loyalty-checklist-steps li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;border:1px solid var(--vf-border);background:var(--vf-surface)}
-.loyalty-checklist-steps li[data-state="next"]{border-color:color-mix(in srgb,var(--vf-primary) 45%,var(--vf-border));background:var(--vf-info-soft)}
-.loyalty-checklist-steps li[data-state="done"]{background:var(--vf-canvas)}
-.loyalty-checklist-steps li[data-state="done"] strong{color:var(--vf-muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--vf-muted) 50%,transparent)}
-.loyalty-step-mark{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;font-size:14px;font-weight:850;background:var(--vf-lavender);color:var(--vf-ink-soft)}
-li[data-state="next"] .loyalty-step-mark{background:var(--vf-primary);color:var(--vf-primary-contrast)}
-li[data-state="done"] .loyalty-step-mark{background:color-mix(in srgb,var(--vf-success) 14%,var(--vf-surface));color:var(--vf-success)}
-.loyalty-step-text{display:grid;gap:2px;min-width:0}
-.loyalty-step-text strong{font-size:15px;color:var(--vf-ink)}
-.loyalty-step-text span{font-size:13.5px;color:var(--vf-muted)}
-.loyalty-step-action{min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--vf-border);background:var(--vf-surface);color:var(--vf-ink);font:inherit;font-size:13.5px;font-weight:800;cursor:pointer;white-space:nowrap}
-li[data-state="next"] .loyalty-step-action{border-color:var(--vf-primary);color:var(--vf-primary)}
-.loyalty-step-action:hover{background:var(--vf-info-soft)}
-.loyalty-step-action:disabled{opacity:.6;cursor:progress}
+/* Saudação e estágio */
+.loyalty-home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.loyalty-home-head>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.loyalty-dashboard-eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--vf-primary)}
+.loyalty-dashboard .loyalty-home-title{margin:0;font-family:var(--vf-font-display);font-size:clamp(26px,2.6vw,34px);
+ line-height:1.1;font-weight:800;letter-spacing:-.035em;color:var(--vf-purple-950)}
+.loyalty-stage{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 12px;border-radius:999px;
+ font-size:12.5px;font-weight:800;background:var(--vf-reward-soft);color:var(--vf-reward-ink);
+ border:1px solid color-mix(in srgb,var(--vf-gold) 60%,transparent)}
+.loyalty-stage.is-ready{background:color-mix(in srgb,var(--vf-success) 10%,var(--vf-surface));color:var(--vf-success);
+ border-color:color-mix(in srgb,var(--vf-success) 20%,transparent)}
 
-/* ---------- Avisos ---------- */
-.loyalty-dashboard-warning{margin:0;padding:12px 16px;border-radius:12px;font-size:13.5px;color:var(--vf-reward-ink);background:var(--vf-reward-soft);border:1px solid color-mix(in srgb,var(--vf-gold) 50%,var(--vf-surface))}
-.loyalty-dashboard-disclosure{display:flex;align-items:flex-start;gap:8px;margin:0;font-size:12.5px;line-height:1.6;color:var(--vf-muted)}
-.loyalty-dashboard-disclosure svg{flex:none;margin-top:2px;color:var(--vf-primary)}
+/* Faixa roxa: anel, frase e um único botão */
+.loyalty-hero{display:flex;flex-wrap:wrap;align-items:center;gap:22px;padding:22px;border-radius:var(--vf-radius-lg);
+ background:linear-gradient(120deg,var(--vf-purple-900),var(--vf-primary));color:var(--vf-primary-contrast);
+ box-shadow:0 18px 50px color-mix(in srgb,var(--vf-primary) 25%,transparent)}
+.loyalty-hero-ring{width:84px;height:84px;min-width:84px;border-radius:50%;display:grid;place-items:center}
+.loyalty-hero-ring>span{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;
+ background:var(--vf-purple-900);color:var(--vf-primary-contrast);font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
+.loyalty-hero-text{flex:1 1 320px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.loyalty-hero-eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;color:var(--vf-gold)}
+.loyalty-hero-text p{margin:0;font-size:18px;line-height:1.55;font-weight:600;color:var(--vf-primary-contrast)}
+.loyalty-hero-text strong{color:var(--vf-gold);font-weight:800}
+.loyalty-hero-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;
+ border:0;border-radius:999px;background:var(--vf-surface);color:var(--vf-purple-900);font:800 14px/1 var(--vf-font);
+ cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.loyalty-hero-cta:hover{transform:translateY(-1px);box-shadow:0 8px 20px color-mix(in srgb,var(--vf-purple-950) 30%,transparent)}
 
-/* ---------- Indicadores reais ---------- */
+.loyalty-dashboard-warning{margin:0;padding:10px 14px;border-radius:12px;background:var(--vf-reward-soft);
+ color:var(--vf-reward-ink);font-size:13px;font-weight:700;border:1px solid color-mix(in srgb,var(--vf-gold) 40%,transparent)}
+
+/* Quatro números */
 .loyalty-dashboard-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.loyalty-dashboard-metric{display:flex;flex-direction:column;gap:6px;min-width:0;padding:18px;border-radius:var(--vf-radius-lg);background:var(--vf-surface);border:1px solid var(--vf-border);box-shadow:var(--vf-shadow-card)}
-.loyalty-dashboard-metric-top{display:flex;align-items:center;gap:10px}
-.loyalty-dashboard-metric-top span{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:11px;background:var(--vf-info-soft);color:var(--vf-primary)}
-.loyalty-dashboard-metric:nth-child(2) .loyalty-dashboard-metric-top span{background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
-.loyalty-dashboard-metric:nth-child(3) .loyalty-dashboard-metric-top span{background:var(--vf-lavender);color:var(--vf-ink-soft)}
-.loyalty-dashboard-metric-top small{font-size:13.5px;font-weight:750;color:var(--vf-muted)}
-.loyalty-dashboard-metric strong{margin-top:6px;font:850 34px/1.05 var(--vf-font-display);letter-spacing:-.03em;color:var(--vf-ink);font-variant-numeric:tabular-nums}
-.loyalty-dashboard-metric strong.loyalty-dashboard-status{font-size:22px;line-height:1.2}
-.loyalty-dashboard-status[data-on="true"]{color:var(--vf-success)}
-.loyalty-dashboard-metric p{margin:0;font-size:13px;line-height:1.5;color:var(--vf-muted);flex:1}
-.loyalty-dashboard-metric button{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0;border:0;background:none;color:var(--vf-primary);font:inherit;font-size:13.5px;font-weight:800;text-align:left;cursor:pointer}
-.loyalty-dashboard-metric button:hover{text-decoration:underline;text-underline-offset:4px}
-.loyalty-dashboard :is(button):focus-visible{outline:3px solid var(--vf-primary);outline-offset:3px;border-radius:10px}
+.loyalty-dashboard-metric{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0;padding:22px;
+ text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--vf-surface);border:1px solid var(--vf-border);
+ border-radius:var(--vf-radius-lg);box-shadow:var(--vf-shadow-card);transition:box-shadow .2s ease,transform .2s ease}
+.loyalty-dashboard-metric:hover{transform:translateY(-2px);box-shadow:0 18px 44px color-mix(in srgb,var(--vf-purple-900) 12%,transparent)}
+.loyalty-dashboard-metric.is-attention{border-color:color-mix(in srgb,var(--vf-gold) 60%,transparent)}
+.loyalty-metric-top{display:flex;align-items:center;gap:10px}
+.loyalty-metric-top small{font-size:13.5px;font-weight:700;color:var(--vf-muted)}
+.loyalty-dashboard-metric>strong{font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1.05;
+ color:var(--vf-purple-950);font-variant-numeric:tabular-nums}
+.loyalty-metric-sub{font-size:13px;color:var(--vf-muted);line-height:1.4}
 
-@media(max-width:1180px){.loyalty-dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){
-  .loyalty-checklist{padding:18px 14px}
-  .loyalty-checklist-head{flex-direction:column;align-items:stretch}
-  .loyalty-checklist-cta{justify-content:center}
-  .loyalty-checklist-steps li{grid-template-columns:auto minmax(0,1fr)}
-  .loyalty-step-action{grid-column:2;justify-self:start}
-  .loyalty-dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .loyalty-dashboard-metric{padding:14px}
-  .loyalty-dashboard-metric strong{font-size:28px}
-  .loyalty-dashboard-metric strong.loyalty-dashboard-status{font-size:18px}
-  .loyalty-dashboard-metric p{font-size:12px}
-  .loyalty-dashboard-metric-top{flex-direction:column;align-items:flex-start;gap:6px}
+/* Ícones em quadradinho, nas quatro cores do protótipo */
+.loyalty-ico{width:40px;height:40px;min-width:40px;border-radius:12px;display:grid;place-items:center}
+.loyalty-ico.tone-purple{background:var(--vf-info-soft);color:var(--vf-primary)}
+.loyalty-ico.tone-gold{background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
+.loyalty-ico.tone-green{background:color-mix(in srgb,var(--vf-success) 10%,var(--vf-surface));color:var(--vf-success)}
+.loyalty-ico.tone-rose{background:color-mix(in srgb,var(--vf-orange) 12%,var(--vf-surface));color:var(--vf-danger)}
+
+/* Duas colunas: o que fazer agora + clientes recentes */
+.loyalty-home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.loyalty-home-grid.is-single{grid-template-columns:minmax(0,1fr)}
+.loyalty-card{display:flex;flex-direction:column;gap:12px;min-width:0;padding:22px;background:var(--vf-surface);
+ border:1px solid var(--vf-border);border-radius:var(--vf-radius-lg);box-shadow:var(--vf-shadow-card)}
+.loyalty-card h2{margin:0;font-family:var(--vf-font-display);font-size:20px;line-height:1.2;font-weight:800;
+ letter-spacing:-.02em;color:var(--vf-purple-950)}
+.loyalty-pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;
+ border-radius:999px;border:1px solid var(--vf-border);background:var(--vf-surface);color:var(--vf-purple-900);
+ font:800 14px/1 var(--vf-font);cursor:pointer;white-space:nowrap;transition:transform .15s ease,box-shadow .15s ease}
+.loyalty-pill:hover{transform:translateY(-1px);box-shadow:0 8px 20px color-mix(in srgb,var(--vf-purple-900) 12%,transparent)}
+
+.loyalty-actions,.loyalty-recent ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.loyalty-actions li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:start;gap:12px;padding:12px 4px;border-bottom:1px solid var(--vf-info-soft)}
+.loyalty-actions li:last-child{border-bottom:0}
+.loyalty-actions li>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.loyalty-actions strong{font-size:15.5px;font-weight:800;color:var(--vf-purple-950)}
+.loyalty-actions li>div>span{font-size:13.5px;color:var(--vf-muted);line-height:1.4}
+
+.loyalty-recent{gap:6px}
+.loyalty-recent header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.loyalty-recent li{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--vf-info-soft)}
+.loyalty-recent li:last-child{border-bottom:0}
+.loyalty-recent-who{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.loyalty-recent-who strong{font-size:14.5px;font-weight:800;color:var(--vf-purple-950);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.loyalty-recent-who span,.loyalty-recent-points span{font-size:12.5px;color:var(--vf-muted)}
+.loyalty-recent-points{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
+.loyalty-recent-points strong{font-size:14.5px;font-weight:800;color:var(--vf-purple-950);font-variant-numeric:tabular-nums;white-space:nowrap}
+.loyalty-recent-empty{margin:0;color:var(--vf-muted);font-size:14px;line-height:1.5;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.loyalty-recent-empty p{margin:0}
+
+/* Avatares */
+.loyalty-avatar{width:40px;height:40px;min-width:40px;border-radius:50%;display:grid;place-items:center;
+ font-size:14px;font-weight:800;animation:vf-pop .45s ease both}
+.loyalty-avatar.tone-1{background:var(--vf-lavender);color:var(--vf-purple-900)}
+.loyalty-avatar.tone-2{background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
+.loyalty-avatar.tone-3{background:color-mix(in srgb,var(--vf-success) 10%,var(--vf-surface));color:var(--vf-success)}
+.loyalty-avatar.tone-4{background:color-mix(in srgb,var(--vf-danger) 10%,var(--vf-surface));color:var(--vf-danger)}
+.loyalty-avatar.tone-5{background:var(--vf-info-soft);color:var(--vf-primary)}
+
+.loyalty-dashboard-disclosure{margin:0;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--vf-muted)}
+.loyalty-dashboard-disclosure svg{min-width:15px}
+
+.loyalty-dashboard :is(button):focus-visible{outline:3px solid var(--vf-primary);outline-offset:2px}
+
+@keyframes vf-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes vf-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+
+@media(max-width:980px){
+ .loyalty-dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .loyalty-home-grid{grid-template-columns:minmax(0,1fr)}
 }
-@media(max-width:340px){.loyalty-dashboard-metrics{grid-template-columns:minmax(0,1fr)}}
-@media(prefers-reduced-motion:reduce){.loyalty-checklist-bar span{transition:none}}
+@media(max-width:760px){
+ .loyalty-dashboard-metrics{grid-template-columns:minmax(0,1fr)}
+ .loyalty-hero{flex-direction:column;align-items:flex-start}
+ .loyalty-hero-text{flex-basis:auto}
+ .loyalty-hero-text p{font-size:16.5px}
+ .loyalty-actions li{grid-template-columns:40px minmax(0,1fr);row-gap:10px}
+ .loyalty-actions .loyalty-pill{grid-column:2;justify-self:start}
+}
+@media(max-width:360px){
+ .loyalty-hero,.loyalty-card,.loyalty-dashboard-metric{padding:18px}
+}
+@media(prefers-reduced-motion:reduce){
+ .loyalty-dashboard,.loyalty-avatar{animation:none}
+ .loyalty-dashboard-metric,.loyalty-hero-cta,.loyalty-pill{transition:none}
+ .loyalty-dashboard-metric:hover,.loyalty-hero-cta:hover,.loyalty-pill:hover{transform:none}
+}

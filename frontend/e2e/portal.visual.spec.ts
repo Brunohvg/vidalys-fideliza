@@ -24,9 +24,8 @@ async function mockAuthenticated(page: Page) {
 
 async function enterMargin(page: Page, width: number) {
   await page.goto("/app/visao-geral");
-  await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
-  if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
-  await page.locator("#portal-sidebar").getByRole("button", { name: "Custo dos benefícios" }).click();
+  await expect(page.getByRole("heading", { name: "Seu clube hoje" })).toBeVisible();
+  await page.goto("/app/ferramentas/margem");
   if (width <= 1020) {
     await expect.poll(async () => page.locator(".portal-side").evaluate(
       node => node.getBoundingClientRect().right
@@ -128,7 +127,7 @@ test("login e logout respeitam sessão e CSRF de frontend", async ({ page }) => 
   await page.getByLabel("E-mail").fill("pilot@example.invalid");
   await page.getByLabel("Senha",{exact:true}).fill("example-only");
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Seu clube hoje" })).toBeVisible();
   await expect(page.getByLabel("Loja selecionada").locator("option:checked")).toHaveText("Bibelô — ambiente piloto");
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect(page.getByRole("heading", { name: "Bem-vindo de volta." })).toBeVisible();

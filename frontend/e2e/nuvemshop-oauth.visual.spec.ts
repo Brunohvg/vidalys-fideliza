@@ -25,9 +25,8 @@ async function session(page: Page, role: "owner" | "analyst" = "owner") {
 
 async function go(page: Page, width: number) {
   await page.goto("/app/visao-geral");
-  await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
-  if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
-  await page.locator(".portal-nav").getByRole("button", { name: /Conciliação/ }).click();
+  await expect(page.getByRole("heading", { name: "Seu clube hoje" })).toBeVisible();
+  await page.goto("/app/ferramentas/conciliacao");
   await expect(page.getByRole("heading", { name: "Consulte produtos da sua Nuvemshop" })).toBeVisible();
 }
 
