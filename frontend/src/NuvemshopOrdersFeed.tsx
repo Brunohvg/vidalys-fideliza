@@ -20,6 +20,7 @@ const PAY:Record<string,{label:string;tone:string}>={
 };
 const guidance=(err:unknown)=>{
   if(err instanceof ApiError){
+    if(err.status===409&&err.message.includes("recusou"))return err.message;
     if(err.status===409)return "A loja ainda não autorizou a leitura de pedidos. Em Configurações → Canais de venda, clique em “Verificar acesso à Nuvemshop” e autorize de novo se for pedido.";
     if(err.status===429)return "A loja acabou de ser consultada. Atualizando em instantes…";
     if(err.status===403)return "Somente proprietário ou administrador pode consultar pedidos.";

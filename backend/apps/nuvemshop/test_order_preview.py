@@ -290,6 +290,18 @@ class OrderPreviewApiTests(TestCase):
         self.assertEqual(self.client.get(url,secure=True).status_code,404)
         self.assertFalse(CashbackEvent.objects.exists())
 
+    def test_refused_token_asks_to_reconnect_instead_of_generic_error(self):
+        from .order_readonly import OrderReadError
+        url=reverse("nuvemshop-recent-orders-preview",kwargs={"tenant_id":self.tenant.id})
+        with (patch("apps.nuvemshop.recent_order_views.config",return_value=self.cfg),
+              patch("apps.nuvemshop.recent_order_views.decrypt_token",return_value="synthetic-token-123456"),
+              patch("apps.nuvemshop.recent_order_views.read_orders_page",
+                    side_effect=OrderReadError("Consulta de pedidos indisponível (HTTP 401)"))):
+            response=self.client.get(url,secure=True)
+        self.assertEqual(response.status_code,409)
+        self.assertTrue(response.json()["reconnect_required"])
+        self.assertNotIn("synthetic-token",response.content.decode())
+
     def test_recent_orders_require_scopes_and_readonly_feature(self):
         url=reverse("nuvemshop-recent-orders-preview",kwargs={"tenant_id":self.tenant.id})
         with override_settings(FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=False):

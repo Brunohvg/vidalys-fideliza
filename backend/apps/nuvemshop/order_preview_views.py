@@ -1,4 +1,6 @@
 """Prévia de pedido restrita ao administrador da loja, sem dados pessoais."""
+import logging
+
 from django.conf import settings
 from django.core.cache import cache
 from rest_framework.permissions import IsAuthenticated
@@ -7,10 +9,14 @@ from rest_framework.views import APIView
 from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation
-from .order_readonly import OrderReadError, OrderNotFound, read_order, read_order_by_number, summarize_order, safe_id
+from .order_readonly import (REFUSED_DETAIL, OrderReadError, OrderNotFound, access_refused, read_order,
+                             read_order_by_number, summarize_order, safe_id)
 from .scopes import has_customer_access, has_order_access
 from .security import OAuthConfigurationError, config, decrypt_token
 from .views import member_for
+
+logger = logging.getLogger(__name__)
+
 
 class OrderPreviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -86,5 +92,8 @@ class OrderPreviewView(APIView):
             return self.answer({"detail": "Pedido não encontrado."}, 404)
         except OAuthConfigurationError:
             return self.answer({"detail": "Credencial da loja indisponível."}, 503)
-        except (OrderReadError, ValueError):
+        except (OrderReadError, ValueError) as exc:
+            logger.warning("nuvemshop order preview failed tenant=%s reason=%s", tenant_id, exc)
+            if access_refused(exc):
+                return self.answer({"detail": REFUSED_DETAIL, "reconnect_required": True}, 409)
             return self.answer({"detail": "Não foi possível verificar o pedido."}, 502)

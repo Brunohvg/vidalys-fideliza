@@ -7,6 +7,15 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from django.utils.dateparse import parse_datetime
 from apps.catalog.client import API_ROOT
 
+def access_refused(exc) -> bool:
+    """A Nuvemshop recusou o token (401/403): a loja precisa reconectar o app."""
+    return "(HTTP 401)" in str(exc) or "(HTTP 403)" in str(exc)
+
+
+REFUSED_DETAIL = ("A Nuvemshop recusou a autorização desta loja (token inválido ou revogado). "
+                  "Em Configurações → Canais de venda, conecte a Nuvemshop de novo.")
+
+
 class OrderReadError(RuntimeError):
     pass
 
@@ -70,7 +79,7 @@ def read_order(*, store_id, order_id, access_token, user_agent, opener=None,
             if exc.code in (429, 502, 503, 504) and attempt < 2:
                 pause(min(attempt + 1, 2))
                 continue
-            raise OrderReadError("Consulta indisponível") from None
+            raise OrderReadError(f"Consulta indisponível (HTTP {exc.code})") from None
         except (URLError, TimeoutError, OSError):
             if attempt < 2:
                 pause(min(attempt + 1, 2))
@@ -110,7 +119,7 @@ def read_orders_page(*, store_id, access_token, user_agent, opener=None, pause=t
             if exc.code in (429,502,503,504) and attempt<2:
                 pause(min(attempt+1,2))
                 continue
-            raise OrderReadError("Consulta de pedidos indisponível") from None
+            raise OrderReadError(f"Consulta de pedidos indisponível (HTTP {exc.code})") from None
         except (URLError,TimeoutError,OSError):
             if attempt<2:
                 pause(min(attempt+1,2))
@@ -163,7 +172,7 @@ def read_order_by_number(*, store_id, number, access_token, user_agent,
             if exc.code in (429, 502, 503, 504) and attempt < 2:
                 pause(min(attempt+1,2))
                 continue
-            raise OrderReadError("Consulta de pedidos indisponível") from None
+            raise OrderReadError(f"Consulta de pedidos indisponível (HTTP {exc.code})") from None
         except (URLError,TimeoutError,OSError):
             if attempt < 2:
                 pause(min(attempt+1,2))

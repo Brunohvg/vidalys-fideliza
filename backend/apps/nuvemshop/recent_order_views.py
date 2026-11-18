@@ -8,7 +8,11 @@ from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation
 from .order_preview_views import OrderPreviewView
-from .order_readonly import OrderReadError, safe_id, read_orders_page, summarize_order
+import logging
+
+from .order_readonly import REFUSED_DETAIL, OrderReadError, access_refused, safe_id, read_orders_page, summarize_order
+
+logger = logging.getLogger(__name__)
 from .scopes import has_order_access, has_customer_access
 from .security import OAuthConfigurationError, config, decrypt_token
 from .views import member_for
@@ -85,5 +89,8 @@ class RecentOrdersPreviewView(APIView):
             return answer({**payload,"cached":False})
         except OAuthConfigurationError:
             return answer({"detail":"Credencial da loja indisponível."},503)
-        except (ValueError,OrderReadError):
+        except (ValueError,OrderReadError) as exc:
+            logger.warning("nuvemshop recent orders failed tenant=%s reason=%s", tenant.pk, exc)
+            if access_refused(exc):
+                return answer({"detail":REFUSED_DETAIL,"reconnect_required":True},409)
             return answer({"detail":"Não foi possível consultar os pedidos desta loja."},502)

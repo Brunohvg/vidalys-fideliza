@@ -1,4 +1,5 @@
 """OAuth restrito e leitura de amostra: não cria nem altera produtos ou créditos."""
+import logging
 import secrets
 from django.conf import settings
 from .scopes import has_product_access, has_customer_access, has_order_access
@@ -23,10 +24,13 @@ from apps.catalog.reconciliation import InvalidSnapshot, normalize_products, rec
 from apps.costs.models import CostItem
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation, OAuthAttempt
+from .order_readonly import REFUSED_DETAIL
 from .provider import OAuthExchangeError, exchange_code
 from .security import (AUTHORIZE_HOST, OAuthConfigurationError, config,
                        decrypt_token, digest, encrypt_token)
 
+
+logger = logging.getLogger(__name__)
 
 def member_for(user, tenant_id):
     return get_object_or_404(
@@ -331,7 +335,10 @@ class LiveCatalogPreviewView(APIView):
             return response
         except OAuthConfigurationError:
             return Response({"detail": "Chave de token indisponível."}, status=503)
-        except CatalogReadError:
+        except CatalogReadError as exc:
+            logger.warning("nuvemshop catalog preview failed tenant=%s reason=%s", tenant_id, exc)
+            if "(HTTP 401)" in str(exc) or "(HTTP 403)" in str(exc):
+                return Response({"detail": REFUSED_DETAIL, "reconnect_required": True}, status=409)
             return Response({"detail": "Falha na leitura da Nuvemshop; tente novamente."}, status=502)
         except InvalidSnapshot:
             return Response({"detail": "Página incompatível com a amostra limitada; revise os dados."}, status=422)

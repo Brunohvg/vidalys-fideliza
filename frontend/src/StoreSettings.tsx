@@ -57,6 +57,7 @@ function nuvemshopChecks(status:NuvemshopConnectionStatus|null,live:"idle"|"runn
 }
 function friendlyError(error:unknown,fallback:string){
  if(error instanceof ApiError){
+  if(error.status===409&&error.message.includes("recusou"))return error.message;
   if(error.status===409)return "Essas informações mudaram. Atualize a página antes de tentar novamente.";
   if(error.status===403)return "Seu usuário não tem autorização para realizar esta ação.";
   if(error.status===429)return "Já houve uma tentativa recente. Tente novamente em alguns instantes.";
