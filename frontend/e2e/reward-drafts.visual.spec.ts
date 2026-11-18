@@ -128,3 +128,55 @@ for(const width of [390,1440]){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  });
 }
+
+test("Edita faixa existente com nome e pontos próprios",async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await setup(page);
+ let reward={id,title:"R$ 5 de desconto",points_cost:500,discount_cents:500,min_order_cents:3000,max_redemptions:2,
+  status:"draft",published:false,redemption_enabled:false,published_at:null};
+ let patched:Record<string,unknown>|null=null;
+ await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",route=>route.fulfill({contentType:"application/json",
+  body:JSON.stringify({mode:"draft_only",activation_available:false,items:[reward]})}));
+ await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/"+id+"/",route=>{
+  expect(route.request().method()).toBe("PATCH");
+  expect(route.request().headers()["x-csrftoken"]).toBe("reward-csrf-test");
+  patched=route.request().postDataJSON();
+  reward={...reward,...patched};
+  return route.fulfill({contentType:"application/json",body:JSON.stringify({mode:"draft_only",reward,coupon_created:false})});
+ });
+ await openTiers(page,1440);
+ await page.getByRole("button",{name:"Editar R$ 5 de desconto"}).click();
+ await expect(page.getByRole("heading",{name:"Editar faixa de troca"})).toBeVisible();
+ await expect(page.getByLabel("Desconto (R$)")).toHaveValue("5,00");
+ await page.getByText("Mais opções (nome e pontos)").click();
+ await page.getByLabel("Nome da recompensa").fill("Mimo de aniversário");
+ await page.getByRole("spinbutton",{name:"Pontos necessários"}).fill("400");
+ await page.getByRole("button",{name:"Salvar faixa"}).click();
+ await expect(page.getByText("Faixa atualizada.")).toBeVisible();
+ expect(patched).toEqual({title:"Mimo de aniversário",points_cost:400,discount_cents:500,min_order_cents:3000,max_redemptions:2});
+ await expect(page.locator(".vf-tier")).toContainText("Mimo de aniversário");
+ await expect(page.locator(".vf-tier")).toContainText("Outro preço");
+});
+
+test("Regra aceita valores personalizados de pontos, carência e validade",async({page})=>{
+ await page.setViewportSize({width:390,height:850});
+ await setup(page);
+ let saved:Record<string,unknown>|null=null;
+ await page.route("**/api/v1/tenants/**/loyalty/point-rule-draft/",route=>{
+  if(route.request().method()==="GET")return route.fulfill({contentType:"application/json",body:JSON.stringify({mode:"draft_only",rule:null})});
+  saved=route.request().postDataJSON();
+  return route.fulfill({contentType:"application/json",body:JSON.stringify({mode:"draft_only",rule:{...saved,updated_at:"2026-11-18T10:00:00Z"}})});
+ });
+ await page.goto("/app/visao-geral");
+ await page.getByRole("button",{name:"Abrir menu"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
+ await page.getByText("Personalizar valores").click();
+ await page.getByRole("spinbutton",{name:"Pontos ganhos"}).fill("3");
+ await page.getByLabel("A cada (R$) em compras").fill("2,00");
+ await page.getByRole("spinbutton",{name:"Carência em dias"}).fill("10");
+ await page.getByRole("spinbutton",{name:"Validade em dias"}).fill("90");
+ await page.getByRole("button",{name:"Salvar regra"}).click();
+ await expect(page.getByText("Regra salva.",{exact:false})).toBeVisible();
+ expect(saved).toEqual({points:3,per_cents:200,hold_days:10,validity_days:90});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});

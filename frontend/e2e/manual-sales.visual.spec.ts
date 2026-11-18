@@ -96,7 +96,7 @@ for(const width of [390,1440]){
     if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
     await expect(page.getByRole("heading",{name:"Venda em 10 segundos"})).toBeVisible();
-    await page.getByText("Mais detalhes (cupom e data)").click();
+    await page.getByText("Outra data",{exact:true}).click();
     await expect(page.getByRole("button",{name:"A compra foi em outra data?"})).toHaveAttribute("aria-expanded","false");
     await page.getByLabel("Valor da compra (R$)").fill("100,00");
     await page.getByLabel("Número do cupom ou recibo").fill("0042");
@@ -192,7 +192,6 @@ test("Não participante exige escolha explícita e data antiga fica oculta",asyn
   await page.goto("/app/visao-geral");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByLabel("Valor da compra (R$)").fill("59,90");
-  await page.getByText("Mais detalhes (cupom e data)").click();
   await page.getByLabel("Número do cupom ou recibo").fill("0071");
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
   await expect(page.getByRole("alert")).toContainText("Escolha o cliente");
@@ -257,7 +256,6 @@ for(const width of [320,390]){
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
   await page.getByRole("list",{name:"Participantes encontrados"}).getByRole("button",{name:/Cliente Confirmado/}).click();
   await page.getByLabel("Valor da compra (R$)").fill("45,90");
-  await page.getByText("Mais detalhes (cupom e data)").click();
   await page.getByLabel("Número do cupom ou recibo").fill("0098");
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Vendas do balcão"})).toBeVisible();

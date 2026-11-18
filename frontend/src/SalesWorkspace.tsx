@@ -28,10 +28,6 @@ export const receiptReference=(raw:string):string|null=>{
  const reference=/^\d{1,72}$/.test(value)?"CUPOM-"+value:value;
  return /^[A-Z0-9][A-Z0-9._/-]{3,79}$/.test(reference)?reference:null;
 };
-const autoReference=()=>{
- const d=new Date();const pad=(n:number)=>String(n).padStart(2,"0");
- return `BALCAO-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-};
 const when=(iso:string)=>{
  const d=new Date(iso);if(Number.isNaN(d.getTime()))return "";
  const today=new Date();const same=d.toDateString()===today.toDateString();
@@ -124,8 +120,9 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
   setFormError("");setToast("");
   if(chosen===undefined){setFormError("Escolha o cliente ou marque que ele ainda não participa do clube.");return;}
   if(cents===null){setFormError("Confira o valor da compra. Ex.: 89,90");amountRef.current?.focus();return;}
-  const reference=receipt.trim()?receiptReference(receipt):autoReference();
-  if(!reference){setFormError("O número do cupom tem caracteres inválidos. Use letras, números, ponto ou traço.");return;}
+  const reference=receiptReference(receipt);
+  if(!reference){setFormError(receipt.trim()?"O número do cupom tem caracteres inválidos. Use letras, números, ponto ou traço."
+   :"Informe o número do cupom ou recibo para conferir depois.");return;}
   const time=customTime?new Date(paidAt):new Date();
   if(Number.isNaN(time.getTime())){setFormError("Informe uma data de venda válida.");return;}
   setBusy(true);
@@ -219,12 +216,12 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
       onClick={()=>setAmount((v/100).toFixed(2).replace(".",","))}>{money(v).replace(",00","")}</button>)}
     </div>
 
-    <details className="vf-sale-more">
-     <summary>Mais detalhes (cupom e data)</summary>
-     <label className="vf-field is-compact" htmlFor="vf-sale-receipt">Número do cupom ou recibo
-      <input id="vf-sale-receipt" maxLength={80} autoComplete="off" placeholder="Ex.: 0042" value={receipt} onChange={e=>setReceipt(e.target.value)}/>
-      <small>Evita registrar a mesma venda duas vezes. Se ficar vazio, o sistema cria um número.</small>
-     </label>
+    <label className="vf-field is-compact" htmlFor="vf-sale-receipt">Número do cupom ou recibo
+     <input id="vf-sale-receipt" maxLength={80} autoComplete="off" placeholder="Ex.: 0042" value={receipt} onChange={e=>setReceipt(e.target.value)}/>
+     <small>É o que você confere depois e evita registrar a mesma venda duas vezes.</small>
+    </label>
+    <details className="vf-sale-more" open={customTime}>
+     <summary>Outra data</summary>
      <button type="button" className="vf-btn is-link" aria-expanded={customTime} onClick={()=>{setCustomTime(v=>!v);setPaidAt(localNow());}}>
       <Clock3 size={15}/> A compra foi em outra data?</button>
      {customTime&&<label className="vf-field is-compact" htmlFor="vf-sale-date">Data e hora da venda
