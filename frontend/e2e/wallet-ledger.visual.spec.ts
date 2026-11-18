@@ -54,15 +54,16 @@ for(const width of [390,768,1440]){
     if(width<=760){
       const list=page.getByRole("list",{name:"Participantes encontrados"});
       await expect(list.getByText("Pessoa QA")).toBeVisible();
-      await list.getByText("Dados internos de teste").click();
-      await list.getByRole("button",{name:"Ver extrato técnico"}).click();
+      await list.getByRole("button",{name:/Pessoa QA/}).click();
     }else{
-      const table=page.locator(".xp-table");
+      const table=page.locator(".vf-clients-table");
       await expect(table.getByText("Pessoa QA")).toBeVisible();
-      await table.getByText("Registros internos de teste").click();
-      await table.getByRole("button",{name:"Ver extrato técnico"}).click();
+      await table.getByRole("button",{name:"Ver"}).click();
     }
-    await expect(page.getByRole("heading",{name:"Histórico de Pessoa QA"})).toBeVisible();
+    const profile=page.getByRole("region",{name:"Detalhes do participante"});
+    await expect(profile.getByRole("heading",{name:"Pessoa QA"})).toBeVisible();
+    await profile.getByText("Registros internos de teste").click();
+    await profile.getByRole("button",{name:"Ver extrato técnico"}).click();
     await expect(page.getByText("Pendente",{exact:true})).toBeVisible();
     await expect(page.getByText("Resgate desativado.",{exact:false})).toBeVisible();
     expect(await page.getByRole("button",{name:/Resgatar|Usar cashback/}).count()).toBe(0);

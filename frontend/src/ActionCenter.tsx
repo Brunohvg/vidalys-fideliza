@@ -25,7 +25,7 @@ type Data={
 };
 type Tone="gold"|"purple"|"green"|"rose";
 type Action={key:string;title:string;detail:string;button:string;tone:Tone;Icon:typeof Star;
- destination:Destination;area?:ProgramArea;className?:string};
+ destination:Destination;area?:ProgramArea|"channels";className?:string};
 
 const AVATAR_TONES=["tone-1","tone-2","tone-3","tone-4","tone-5"];
 export const initialsOf=(name:string|null|undefined)=>{
@@ -72,7 +72,7 @@ function useCountUp(target:number|null|undefined){
 
 export default function ActionCenter({tenantId,role,platform,userName,onNavigate}:{
  tenantId:string;role:Store["role"];platform:Store["platform"];userName?:string;
- onNavigate:(target:Destination,area?:ProgramArea)=>void;
+ onNavigate:(target:Destination,area?:ProgramArea|"channels")=>void;
 }){
  const canManage=role==="owner"||role==="admin";
  const [data,setData]=useState<Data|null>(null);
@@ -158,7 +158,7 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
     button:"Consultar pedidos",tone:"green",Icon:PlugZap,destination:"sales"}
   :{key:"nuvemshop",title:"Conectar a Nuvemshop",className:"loyalty-dashboard-connection",
     detail:"Integração ainda não autorizada nesta loja.",
-    button:"Configurar integração",tone:"gold",Icon:PlugZap,destination:"settings"});
+    button:"Configurar integração",tone:"gold",Icon:PlugZap,destination:"settings",area:"channels"});
 
  /* Frase do clube no formato aprovado: % de volta em destaque, valor do ponto, carência e validade. */
  const rule=data?.rule??null;

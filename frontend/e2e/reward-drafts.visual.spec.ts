@@ -27,231 +27,104 @@ async function setup(page:Page){
  }));
 }
 
+const id="b78f99bd-cbc0-4eaf-8f73-558e54b72a93";
+
+async function openTiers(page:Page,width:number){
+ await page.goto("/app/visao-geral");
+ if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+ await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
+ await page.getByRole("tab",{name:"2. Como usar"}).click();
+}
+
 for(const width of [390,1440]){
- test("Rascunho de desconto sem criar cupom ou pontos em "+width+"px",async({page},info)=>{
+ test("Nova faixa usa o preço do ponto e não cria cupom em "+width+"px",async({page},info)=>{
   await page.setViewportSize({width,height:850});
   await setup(page);
   const saved:Array<Record<string,unknown>>=[];
   let calls=0;
   await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",async(route:Route)=>{
-   if(route.request().method()==="GET")return route.fulfill({
-    contentType:"application/json",body:JSON.stringify({
-     mode:"draft_only",activation_available:false,items:saved,
-    }),
-   });
+   if(route.request().method()==="GET")return route.fulfill({contentType:"application/json",
+    body:JSON.stringify({mode:"draft_only",activation_available:false,items:saved})});
    calls++;
    const data=route.request().postDataJSON();
-   expect(data).toEqual({
-    title:"R$ 5 de desconto",points_cost:200,discount_cents:500,
-    min_order_cents:3000,max_redemptions:50,
-   });
+   expect(data).toEqual({title:"R$ 10 de desconto",points_cost:1000,discount_cents:1000,
+    min_order_cents:3000,max_redemptions:1000});
    expect(route.request().headers()["x-csrftoken"]).toBe("reward-csrf-test");
-   const reward={...data,id:"b78f99bd-cbc0-4eaf-8f73-558e54b72a93",
-    status:"draft",published:false,redemption_enabled:false};
+   const reward={...data,id,status:"draft",published:false,redemption_enabled:false};
    saved.unshift(reward);
    return route.fulfill({status:201,contentType:"application/json",
-    body:JSON.stringify({mode:"draft_only",reward,
-      coupon_created:false,points_credited:false}),
-   });
+    body:JSON.stringify({mode:"draft_only",reward,coupon_created:false,points_credited:false})});
   });
-  await page.goto("/app/visao-geral");
-  if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
-  await expect(page.getByRole("region",{name:"Conferência da recompensa planejada"})).toHaveCount(0);
-  await expect(page.getByLabel("Conferência da recompensa planejada")).toContainText(
-    "Salve uma regra de pontos");
-  await expect(page.getByLabel("Conferência da recompensa planejada"))
-    .toContainText("R$ 250,00");
-  await page.getByPlaceholder("Ex.: R$ 5 de desconto").fill("R$ 5 de desconto");
-  await page.getByRole("spinbutton",{name:"Pontos necessários"}).fill("200");
-  await page.getByRole("textbox",{name:"Valor do desconto (R$)"}).fill("5,00");
-  await page.getByRole("button",{name:"Criar rascunho"}).click();
-  await expect(page.getByText("Rascunho salvo.",{exact:false})).toBeVisible();
-  await expect(page.getByText("Resgate indisponível. Nenhum cupom ou saldo será alterado.")).toBeVisible();
+  await openTiers(page,width);
+  await expect(page.getByText("Nenhuma faixa ainda")).toBeVisible();
+  await page.getByRole("button",{name:"Nova faixa"}).click();
+  await page.getByRole("group",{name:"Valor do desconto"}).getByRole("button",{name:"R$ 10"}).click();
+  await expect(page.getByText("1.000 pontos",{exact:false})).toBeVisible();
+  await page.getByRole("button",{name:"Criar faixa"}).click();
+  await expect(page.getByText("Faixa criada como rascunho.",{exact:false})).toBeVisible();
+  await expect(page.locator(".vf-tier")).toHaveCount(1);
+  await expect(page.locator(".vf-tier")).toContainText("Rascunho");
   expect(calls).toBe(1);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
-   .toBeLessThanOrEqual(1);
-  await page.screenshot({path:info.outputPath("rewards-draft-"+width+".png"),fullPage:true});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({path:info.outputPath("tiers-"+width+".png"),fullPage:true});
  });
 }
 
-
-test("Recompensa existente pode ser editada e excluída com confirmação",async({page})=>{
+test("Pedido mínimo menor que o desconto é recusado sem chamar a API",async({page})=>{
  await page.setViewportSize({width:390,height:850});
  await setup(page);
- const id="b78f99bd-cbc0-4eaf-8f73-558e54b72a93";
- let reward={id,title:"R$ 5 de desconto",points_cost:200,
-  discount_cents:500,min_order_cents:3000,max_redemptions:50,
-  status:"draft",published:false,redemption_enabled:false};
- let deleted=false,patched=false;
- await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",r=>r.fulfill({
-  contentType:"application/json",body:JSON.stringify({
-   mode:"draft_only",activation_available:false,items:deleted?[]:[reward],
-  }),
- }));
- await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/"+id+"/",r=>{
-  expect(r.request().headers()["x-csrftoken"]).toBe("reward-csrf-test");
-  if(r.request().method()==="PATCH"){
-   patched=true;reward={...reward,...r.request().postDataJSON()};
-   return r.fulfill({contentType:"application/json",body:JSON.stringify({
-    mode:"draft_only",reward,coupon_created:false,
-   })});
-  }
-  expect(r.request().method()).toBe("DELETE");
-  deleted=true;
-  return r.fulfill({contentType:"application/json",body:JSON.stringify({
-   deleted:true,id,coupon_created:false,
-  })});
+ let posts=0;
+ await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",route=>{
+  if(route.request().method()!=="GET")posts++;
+  return route.fulfill({contentType:"application/json",body:JSON.stringify({mode:"draft_only",activation_available:false,items:[]})});
  });
- await page.goto("/app/visao-geral");
- await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
- await page.getByRole("button",{name:"Editar",exact:true}).click();
- await page.getByPlaceholder("Ex.: R$ 5 de desconto").fill("R$ 10 de desconto");
- await page.getByRole("button",{name:"Salvar alterações"}).click();
- await expect(page.getByText("R$ 10 de desconto",{exact:true})).toBeVisible();
- expect(patched).toBe(true);
- await page.getByRole("button",{name:"Excluir",exact:true}).click();
- await expect(page.getByRole("group",{name:"Confirmação de exclusão da recompensa"})).toBeVisible();
- await page.getByRole("button",{name:"Cancelar exclusão"}).click();
- expect(deleted,"cancelar não pode chamar DELETE").toBe(false);
- await expect(page.getByRole("group",{name:"Confirmação de exclusão da recompensa"})).toHaveCount(0);
- await page.getByRole("button",{name:"Excluir",exact:true}).click();
- await page.getByRole("button",{name:"Confirmar exclusão"}).click();
- await expect(page.getByText("Nenhuma recompensa definida.",{exact:false})).toBeVisible();
- expect(deleted).toBe(true);
- await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
+ await openTiers(page,390);
+ await page.getByRole("button",{name:"Nova faixa"}).click();
+ await page.getByRole("textbox",{name:"Pedido mínimo (R$)"}).fill("5,00");
+ await page.getByRole("button",{name:"Criar faixa"}).click();
+ await expect(page.getByRole("alert")).toContainText("pedido mínimo precisa ser igual ou maior");
+ expect(posts).toBe(0);
 });
-
-test("Recompensa mostra esforço real em pontos, taxa e orçamento sem publicar",async({page})=>{
- await page.setViewportSize({width:390,height:850});
- await setup(page);
- await page.route("**/api/v1/tenants/**/loyalty/point-rule-draft/",r=>r.fulfill({
-  contentType:"application/json",body:JSON.stringify({
-   mode:"draft_only",activation_available:false,
-   rule:{version:1,points:1,per_cents:100,hold_days:7,validity_days:180},
-  }),
- }));
- await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",r=>r.fulfill({
-  contentType:"application/json",body:JSON.stringify({
-   mode:"draft_only",activation_available:false,items:[],
-  }),
- }));
- await page.goto("/app/visao-geral");
- await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
- const economics=page.getByLabel("Conferência da recompensa planejada");
- await expect(economics).toContainText("R$ 200,00");
- await expect(economics).toContainText("2,5%");
- await expect(economics).toContainText("R$ 250,00");
- await expect(economics).toContainText("não comprova lucro");
- await page.getByRole("spinbutton",{name:"Pontos necessários"}).fill("1");
- await page.getByRole("textbox",{name:"Valor do desconto (R$)"}).fill("150,00");
- await expect(economics).toContainText("Revise essa combinação");
- await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
- expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
-  .toBeLessThanOrEqual(1);
-});
-
-
-test("Salvar regra recalcula economia da recompensa na mesma tela",async({page})=>{
- await page.setViewportSize({width:390,height:850});
- await setup(page);
- let rule:null|{version:number;points:number;per_cents:number;
-  hold_days:number;validity_days:number}=null;
- let gets=0,puts=0;
- await page.route("**/api/v1/tenants/**/loyalty/point-rule-draft/",route=>{
-  if(route.request().method()==="GET"){
-   gets++;
-   return route.fulfill({contentType:"application/json",
-    body:JSON.stringify({mode:"draft_only",activation_available:false,rule})});
-  }
-  expect(route.request().method()).toBe("POST");
-  const data=route.request().postDataJSON();
-  puts++;
-  rule={...data,version:puts};
-  return route.fulfill({contentType:"application/json",body:JSON.stringify({
-   mode:"draft_only",activation_available:false,...rule,points_credited:false,
-   example_for_100_reais:100,
-  })});
- });
- await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",route=>
-  route.fulfill({contentType:"application/json",body:JSON.stringify({
-   mode:"draft_only",activation_available:false,items:[],
-  })}));
- await page.goto("/app/visao-geral");
- await page.getByRole("button",{name:"Abrir menu"}).click();
- await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
- const econ=page.getByLabel("Conferência da recompensa planejada");
- const editor=page.getByRole("navigation",{name:"Áreas do programa"});
- await expect(econ).toContainText("Salve uma regra de pontos");
- await editor.getByRole("button",{name:"Regra de pontos"}).click();
- await page.getByRole("button",{name:"Salvar rascunho"}).click();
- await editor.getByRole("button",{name:"Recompensas"}).click();
- await expect(econ).toContainText("R$ 200,00");
- await expect(econ).toContainText("2,5%");
- await editor.getByRole("button",{name:"Regra de pontos"}).click();
- await page.getByRole("spinbutton",{name:"Pontos por faixa"}).fill("2");
- await page.getByRole("button",{name:"Salvar rascunho"}).click();
- await editor.getByRole("button",{name:"Recompensas"}).click();
- await expect(econ).toContainText("R$ 100,00");
- await expect(econ).toContainText("5%");
- expect(puts).toBe(2);
- expect(gets).toBeGreaterThanOrEqual(3);
- await expect(page.getByRole("button",{name:/Publicar/})).toHaveCount(0);
-});
-
 
 for(const width of [390,1440]){
- test("Publica e despublica recompensa para consulta sem criar cupom em "+width+"px",async({page})=>{
+ test("Publica, cancela, despublica e exclui faixa sem criar cupom em "+width+"px",async({page})=>{
   await page.setViewportSize({width,height:850});
   await setup(page);
-  const id="b78f99bd-cbc0-4eaf-8f73-558e54b72a93";
-  let calls=0;
-  let reward={
-   id,title:"R$ 5 de desconto",points_cost:200,discount_cents:500,
-   min_order_cents:3000,max_redemptions:2,
-   status:"draft" as "draft"|"published",published:false,
-   redemption_enabled:false,published_at:null as null|string,
-  };
-  await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",route=>
-   route.fulfill({contentType:"application/json",body:JSON.stringify({
-    mode:"draft_only",activation_available:false,items:[reward],
-   })}));
+  let calls=0,deleted=false;
+  let reward={id,title:"R$ 5 de desconto",points_cost:500,discount_cents:500,min_order_cents:3000,max_redemptions:2,
+   status:"draft" as "draft"|"published",published:false,redemption_enabled:false,published_at:null as null|string};
+  await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/",route=>route.fulfill({contentType:"application/json",
+   body:JSON.stringify({mode:"draft_only",activation_available:false,items:deleted?[]:[reward]})}));
   await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/"+id+"/publication/",route=>{
    calls++;
    expect(route.request().method()).toBe("PATCH");
    expect(route.request().headers()["x-csrftoken"]).toBe("reward-csrf-test");
    const {published}=route.request().postDataJSON();
-   expect(typeof published).toBe("boolean");
-   reward={...reward,published,status:published?"published":"draft",
-    published_at:published?"2026-11-14T00:00:00Z":null};
-   return route.fulfill({contentType:"application/json",body:JSON.stringify({
-    reward,catalog_published:published,redemption_enabled:false,
-    coupon_created:false,points_credited:false,points_debited:false,
-   })});
+   reward={...reward,published,status:published?"published":"draft",published_at:published?"2026-11-14T00:00:00Z":null};
+   return route.fulfill({contentType:"application/json",body:JSON.stringify({reward,catalog_published:published,
+    redemption_enabled:false,coupon_created:false,points_credited:false,points_debited:false})});
   });
-  await page.goto("/app/visao-geral");
-  if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
-  const catalog=page.locator(".vf-benefit-saved");
-  await catalog.getByRole("button",{name:"Publicar no Meu Clube"}).click();
-  await expect(page.getByRole("group",{name:"Confirmação de publicação da recompensa"})).toBeVisible();
-  await page.getByRole("button",{name:"Cancelar publicação"}).click();
+  await page.route("**/api/v1/tenants/**/loyalty/reward-drafts/"+id+"/",route=>{
+   expect(route.request().method()).toBe("DELETE");deleted=true;
+   return route.fulfill({contentType:"application/json",body:JSON.stringify({deleted:true,id})});
+  });
+  await openTiers(page,width);
+  const card=page.locator(".vf-tier");
+  await card.getByRole("button",{name:"Publicar",exact:true}).click();
+  await expect(card.getByText("Publicar no Meu Clube?")).toBeVisible();
+  await card.getByRole("button",{name:"Não"}).click();
   expect(calls,"cancelar publicação não pode fazer PATCH").toBe(0);
-  await catalog.getByRole("button",{name:"Publicar no Meu Clube"}).click();
-  await page.getByRole("button",{name:"Confirmar publicação"}).click();
-  await expect(catalog.getByText("Publicado no Meu Clube",{exact:true})).toBeVisible();
-  await expect(catalog.getByRole("button",{name:"Despublicar"})).toBeVisible();
-  await expect(catalog.getByRole("button",{name:"Editar"})).toHaveCount(0);
-  await expect(catalog.getByRole("button",{name:"Excluir"})).toHaveCount(0);
-  await catalog.getByRole("button",{name:"Despublicar"}).click();
-  await expect(catalog.getByRole("button",{name:"Publicar no Meu Clube"})).toBeVisible();
-  await expect(catalog.getByRole("button",{name:"Editar"})).toBeVisible();
+  await card.getByRole("button",{name:"Publicar",exact:true}).click();
+  await card.getByRole("button",{name:"Publicar",exact:true}).click();
+  await expect(page.getByText("Faixa publicada no Meu Clube.",{exact:false})).toBeVisible();
+  await expect(card.getByText("Publicada")).toBeVisible();
+  await card.getByRole("button",{name:"Despublicar"}).click();
+  await expect(page.getByText("Faixa despublicada.",{exact:false})).toBeVisible();
   expect(calls).toBe(2);
-  await expect(page.getByRole("button",{name:/Resgatar|Gerar cupom/})).toHaveCount(0);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
-   .toBeLessThanOrEqual(1);
+  await card.getByRole("button",{name:"Excluir R$ 5 de desconto"}).click();
+  await card.getByRole("button",{name:"Excluir",exact:true}).click();
+  await expect(page.getByText("Nenhuma faixa ainda")).toBeVisible();
+  expect(deleted).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
  });
 }

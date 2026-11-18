@@ -51,16 +51,17 @@ for(const width of [390,768,1440]){
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
-  await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
-  await page.getByRole("button",{name:"Continuar"}).click();
+  await page.getByRole("button",{name:"Nova campanha"}).click();
+  await expect(page.getByRole("heading",{name:"Qual é o objetivo?"})).toBeVisible();
+  await page.getByRole("button",{name:"Próximo"}).click();
   await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("20");
   await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("40");
-  await page.getByRole("button",{name:"Revisar campanha"}).click();
-  await expect(page.getByRole("heading",{name:"Sua campanha, antes de publicar"})).toBeVisible();
+  await page.getByRole("button",{name:"Próximo"}).click();
+  await expect(page.getByRole("heading",{name:"Revise antes de salvar"})).toBeVisible();
   await expect(page.getByText("800 pontos",{exact:false})).toBeVisible();
-  await page.getByRole("button",{name:"Guardar rascunho"}).click();
-  await expect(page.getByText("Rascunho salvo. Nenhuma mensagem foi enviada",{exact:false})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Rascunhos salvos"})).toBeVisible();
+  await page.getByRole("button",{name:"Salvar campanha"}).click();
+  await expect(page.getByText("Campanha salva como rascunho. Nenhuma mensagem foi enviada",{exact:false})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Suas campanhas"})).toBeVisible();
   await expect(page.getByText("20 pontos extras",{exact:false})).toBeVisible();
   expect(await page.getByRole("button",{name:/Publicar|Ativar campanha/}).count()).toBe(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
@@ -81,7 +82,7 @@ test("Início usa rascunho de pontos e não apresenta cashback antigo",async({pa
  await page.goto("/app/visao-geral");
  await expect(page.getByRole("heading",{name:"O que fazer agora"})).toBeVisible();
  await page.locator(".portal-nav").getByRole("button",{name:"Campanhas"}).click();
- await expect(page.getByRole("heading",{name:"Rascunhos salvos"})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Suas campanhas"})).toBeVisible();
  await expect(page.getByText("30 pontos extras",{exact:false})).toBeVisible();
  expect(await page.getByRole("button",{name:/Publicar|Ativar/}).count()).toBe(0);
 });

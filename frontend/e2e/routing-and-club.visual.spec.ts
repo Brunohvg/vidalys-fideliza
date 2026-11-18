@@ -20,13 +20,13 @@ test("Rotas do lojista suportam deep link, voltar e recarga sem perder a loja",a
   await expect(page.getByRole("heading",{name:"Seu clube hoje"})).toBeVisible();
   await page.getByRole("button",{name:"Clientes",exact:true}).click();
   await expect(page).toHaveURL(/\/app\/clientes$/);
-  await expect(page.getByRole("heading",{name:"Participantes do clube."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Quem faz parte do clube"})).toBeVisible();
   await page.getByRole("button",{name:"Vendas",exact:true}).click();
   await expect(page).toHaveURL(/\/app\/vendas$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/app\/clientes$/);
   await page.reload();
-  await expect(page.getByRole("heading",{name:"Participantes do clube."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Quem faz parte do clube"})).toBeVisible();
   await expect(page.getByLabel("Loja selecionada")).toHaveValue(merchant.id);
 });
 

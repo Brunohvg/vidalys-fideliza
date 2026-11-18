@@ -95,14 +95,14 @@ for(const width of [390,1440]){
     await page.goto("/app/visao-geral");
     if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
     await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-    await expect(page.getByRole("heading",{name:"Informações da compra"})).toBeVisible();
-    await expect(page.getByRole("button",{name:"Venda no balcão"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Venda em 10 segundos"})).toBeVisible();
+    await page.getByText("Mais detalhes (cupom e data)").click();
     await expect(page.getByRole("button",{name:"A compra foi em outra data?"})).toHaveAttribute("aria-expanded","false");
-    await page.getByLabel("Qual foi o valor?").fill("100,00");
+    await page.getByLabel("Valor da compra (R$)").fill("100,00");
     await page.getByLabel("Número do cupom ou recibo").fill("0042");
-    await page.locator("#vf-sale-client").selectOption(member.id);
+    await page.getByRole("list",{name:"Participantes encontrados"}).getByRole("button",{name:/Cliente Confirmado/}).click();
     await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
-    await expect(page.getByText("Venda registrada. Confira o comprovante abaixo.",{
+    await expect(page.getByText("Venda registrada. Os pontos ficam pendentes até a conferência.",{
       exact:false,
     })).toBeVisible();
     expect(saved).toBe(1);
@@ -128,11 +128,13 @@ test("Regra configurável é apenas rascunho e pertence ao Programa",async ({pag
   });
   await page.goto("/app/visao-geral");
   await page.locator(".portal-nav").getByRole("button",{name:"Meu clube",exact:true}).click();
-  await page.getByRole("navigation",{name:"Áreas do programa"}).getByRole("button",{name:"Regra de pontos"}).click();
-  await expect(page.getByRole("heading",{name:"Como o participante vai ganhar pontos?"})).toBeVisible();
-  await expect(page.getByText("Não publicado")).toBeVisible();
-  await page.getByRole("button",{name:"Salvar rascunho"}).click();
-  await expect(page.getByText("Regra salva como rascunho.",{exact:false})).toBeVisible();
+  await expect(page.getByRole("tab",{name:"1. Como ganhar"})).toHaveAttribute("aria-selected","true");
+  await expect(page.getByRole("heading",{name:"Quanto devolver ao cliente?"})).toBeVisible();
+  await page.getByRole("group",{name:"Porcentagem devolvida"}).getByRole("button",{name:"1%"}).click();
+  await page.getByRole("group",{name:"Carência"}).getByRole("button",{name:"7 dias"}).click();
+  await page.getByRole("group",{name:"Validade"}).getByRole("button",{name:"6 meses"}).click();
+  await page.getByRole("button",{name:"Salvar regra"}).click();
+  await expect(page.getByText("Regra salva.",{exact:false})).toBeVisible();
   expect(submitted).toBe(1);
 });
 
@@ -166,7 +168,6 @@ test("Segundo administrador confere venda sem gerar pontos",async ({page})=>{
   });
   await page.goto("/app/visao-geral");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-  await page.getByRole("button",{name:/Conferir vendas/}).click();
   await expect(page.locator(".vf-sale-record").first().locator(".vf-sale-state")).toContainText("Aguardando conferência");
   await page.locator(".vf-sale-record").getByRole("button",{name:"Conferir venda"}).click();
   await expect(page.getByText("CUPOM-0042",{exact:false})).toBeVisible();
@@ -190,16 +191,17 @@ test("Não participante exige escolha explícita e data antiga fica oculta",asyn
   });
   await page.goto("/app/visao-geral");
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-  await page.getByLabel("Qual foi o valor?").fill("59,90");
+  await page.getByLabel("Valor da compra (R$)").fill("59,90");
+  await page.getByText("Mais detalhes (cupom e data)").click();
   await page.getByLabel("Número do cupom ou recibo").fill("0071");
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
-  await expect(page.getByRole("alert")).toContainText("Selecione um participante");
+  await expect(page.getByRole("alert")).toContainText("Escolha o cliente");
   expect(captured).toBeNull();
-  await page.locator("#vf-sale-client").selectOption("");
-  await expect(page.getByText("Esta venda ficará registrada sem pontos.",{exact:false}))
+  await page.getByRole("button",{name:"Cliente ainda não participa do clube"}).click();
+  await expect(page.getByText("A venda fica registrada sem pontos.",{exact:false}))
     .toBeVisible();
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
-  await expect(page.getByText("Venda registrada sem participante.",{exact:false}))
+  await expect(page.getByText("Venda registrada sem cliente.",{exact:false}))
     .toBeVisible();
   expect(captured).toMatchObject({participant_id:null,reference:"CUPOM-0071"});
 });
@@ -253,8 +255,9 @@ for(const width of [320,390]){
   await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-  await page.locator("#vf-sale-client").selectOption(member.id);
-  await page.getByLabel("Qual foi o valor?").fill("45,90");
+  await page.getByRole("list",{name:"Participantes encontrados"}).getByRole("button",{name:/Cliente Confirmado/}).click();
+  await page.getByLabel("Valor da compra (R$)").fill("45,90");
+  await page.getByText("Mais detalhes (cupom e data)").click();
   await page.getByLabel("Número do cupom ou recibo").fill("0098");
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Vendas do balcão"})).toBeVisible();
@@ -270,9 +273,7 @@ for(const width of [320,390]){
   expect(submitted).toBe(true);expect(reviewed).toBe(true);
   // 'self_review' é conferência pelo próprio proprietário, não por outra pessoa.
   // A frase de feedback é diferente do selo permanente do registro.
-  await expect(page.locator(".vf-sale-record").getByText(
-    "Conferência do proprietário", {exact:true},
-  )).toBeVisible();
+  await expect(page.locator(".vf-sale-record").getByText("Conferida",{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
    .toBeLessThanOrEqual(1);
  });

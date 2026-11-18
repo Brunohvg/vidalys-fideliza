@@ -116,7 +116,7 @@ test("visão geral encaminha Nuvemshop sem conexão para Configurações", async
   await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Configurar integração"}).click();
   await expect(page.getByRole("navigation",{name:"Seções das configurações"})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Canais de venda"})).toBeVisible();
   await expect(page.getByRole("button",{name:"Conectar minha loja"})).toBeVisible();
 });
 

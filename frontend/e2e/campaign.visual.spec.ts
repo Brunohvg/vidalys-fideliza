@@ -21,20 +21,21 @@ for(const width of [320,390,768,1440]){
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
-  await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
+  await page.getByRole("button",{name:"Nova campanha"}).click();
+  await expect(page.getByRole("heading",{name:"Qual é o objetivo?"})).toBeVisible();
   if(width===1440){
-   const goalHeight=await page.locator(".vf-campaign-goals button").first().evaluate(
+   const goalHeight=await page.locator(".vf-camp-step .vf-pill").first().evaluate(
     el=>el.getBoundingClientRect().height);
    expect(goalHeight,"cards de campanha compactos no desktop").toBeLessThan(150);
   }
-  await page.getByRole("button",{name:/Reativar clientes/}).click();
-  await page.getByRole("button",{name:"Continuar"}).click();
+  await page.getByRole("button",{name:/Trazer de volta/}).click();
+  await page.getByRole("button",{name:"Próximo"}).click();
   await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("25");
   await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("100");
-  await page.getByRole("button",{name:"Revisar campanha"}).click();
+  await page.getByRole("button",{name:"Próximo"}).click();
   await expect(page.getByText("2.500 pontos",{exact:false})).toBeVisible();
   await expect(page.getByText("Isso não é um valor em reais",{exact:false})).toHaveCount(0);
-  await expect(page.getByText("A campanha não envia e-mail",{exact:false})).toBeVisible();
+  await expect(page.getByText("Envio de mensagens e crédito de pontos ligam",{exact:false})).toBeVisible();
   await expect(page.getByRole("button",{name:/Publicar campanha|Ativar campanha/})).toHaveCount(0);
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
   expect(overflow,"viewport "+width).toBeLessThanOrEqual(1);
@@ -79,12 +80,12 @@ test("Campanha planejada permite editar e excluir sem publicar",async({page})=>{
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
  await page.getByRole("button",{name:"Editar",exact:true}).click();
- await page.getByRole("button",{name:"Continuar"}).click();
+ await page.getByRole("button",{name:"Próximo"}).click();
  await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("35");
- await page.getByRole("button",{name:"Revisar campanha"}).click();
+ await page.getByRole("button",{name:"Próximo"}).click();
  await page.getByRole("button",{name:"Salvar alterações"}).click();
  expect(updated).toBe(true);
- await expect(page.getByText("35 pontos extras",{exact:true})).toBeVisible();
+ await expect(page.getByText("35 pontos extras",{exact:false})).toBeVisible();
  await page.getByRole("button",{name:"Excluir",exact:true}).click();
  await expect(page.getByRole("group",{name:"Confirmação de exclusão"})).toBeVisible();
  await page.getByRole("button",{name:"Cancelar exclusão"}).click();
@@ -93,5 +94,5 @@ test("Campanha planejada permite editar e excluir sem publicar",async({page})=>{
  await page.getByRole("button",{name:"Excluir",exact:true}).click();
  await page.getByRole("button",{name:"Confirmar exclusão"}).click();
  expect(removed).toBe(true);
- await expect(page.getByText("Nenhuma campanha salva.",{exact:false})).toBeVisible();
+ await expect(page.getByText("Nenhuma campanha ainda",{exact:false})).toBeVisible();
 });

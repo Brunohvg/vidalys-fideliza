@@ -1,0 +1,32 @@
+/* VIDALYS FIDELIZA — Clientes (arquivo completo e consolidado).
+   Protótipo aprovado "Quem faz parte do clube": selos de filtro, busca e tabela
+   com avatar; no celular a tabela vira lista de cartões. Só tokens. */
+
+.vf-clients{min-width:0}
+.vf-clients-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.vf-clients-search{flex:1 1 260px;min-width:0;max-width:100%;display:flex;align-items:center;gap:10px;min-height:52px;padding:0 6px 0 14px;border-radius:14px;
+ border:1px solid var(--vf-border);background:var(--vf-surface);color:var(--vf-muted)}
+.vf-clients-search:focus-within{outline:3px solid var(--vf-lavender);border-color:var(--vf-primary)}
+.vf-clients-search input{flex:1;width:100%;min-width:0;min-height:48px;border:0;background:transparent;font:600 16px var(--vf-font);color:var(--vf-purple-950);outline:0}
+.vf-clients-msg{padding:22px;margin:0}
+.vf-clients-person{display:flex;align-items:center;gap:12px;min-width:0}
+.vf-clients-person>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vf-clients-person span.vf-muted{font-size:12.5px}
+.vf-clients-pending{margin-left:6px}
+.vf-clients-cards{display:none;list-style:none;margin:0;padding:0}
+.vf-clients-cards li+li{border-top:1px solid var(--vf-info-soft)}
+.vf-clients-cards button{display:flex;align-items:center;gap:12px;width:100%;min-height:68px;padding:12px 16px;border:0;background:var(--vf-surface);
+ font:inherit;text-align:left;cursor:pointer}
+.vf-clients-card-pts{display:flex;flex-direction:column;align-items:flex-end;gap:4px;white-space:nowrap}
+.vf-clients-card-pts strong{font-size:14.5px;color:var(--vf-purple-950)}
+.vf-clients-pages{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-top:1px solid var(--vf-info-soft)}
+.vf-clients-pages>div{display:flex;align-items:center;gap:8px}
+.vf-client-profile{animation:vf-ui-rise .3s ease both}
+.vf-client-date{font-size:22px}
+
+@media(max-width:760px){
+ .vf-clients-table{display:none}
+ .vf-clients-cards{display:block}
+ .vf-clients-bar>.vf-btn{flex:1 1 auto}
+}
+@media(prefers-reduced-motion:reduce){.vf-client-profile{animation:none}}

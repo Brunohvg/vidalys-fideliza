@@ -67,8 +67,6 @@ for(const width of [320,390,1440]){
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-  await page.getByRole("navigation",{name:"Canais de vendas"})
-   .getByRole("button",{name:"Nuvemshop"}).click();
   const feed=page.getByRole("region",{name:"Pedidos recentes da Nuvemshop"});
   await expect(feed.getByText("#14111")).toBeVisible();
   await expect(feed.getByText("#14112")).toBeVisible();
@@ -96,8 +94,6 @@ test("Sem read_orders, painel avisa e não inventa ausência de vendas",async({p
  await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
- await page.getByRole("navigation",{name:"Canais de vendas"})
-  .getByRole("button",{name:"Nuvemshop"}).click();
  const feed=page.getByRole("region",{name:"Pedidos recentes da Nuvemshop"});
  await expect(feed).toContainText("precisa de read_orders");
  await expect(feed.getByText("Nenhum pedido retornado")).toHaveCount(0);

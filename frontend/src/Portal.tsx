@@ -10,7 +10,7 @@ import CampaignGuide from "./CampaignGuide";
 import ParticipantsBoard from "./ParticipantsBoard";
 import ProgramHub, { type ProgramArea } from "./ProgramHub";
 import SalesWorkspace from "./SalesWorkspace";
-import StoreSettings from "./StoreSettings";
+import StoreSettings, { type SettingsSection } from "./StoreSettings";
 import ActionCenter, { initialsOf as initials } from "./ActionCenter";
 import ResultsOverview from "./ResultsOverview";
 import CostCatalog from "./CostCatalog";
@@ -46,6 +46,8 @@ const toolLabels: Partial<Record<Screen, string>> = {
   margin: "Custo dos benefícios", costs: "Custos dos produtos", catalog: "Conciliação do catálogo",
 };
 /** Ferramentas acendem "Configurações" no menu. */
+/* Telas que já trazem o próprio título no padrão do protótipo. */
+const ownHeader = new Set<Screen>(["overview", "sales", "settings", "program", "campaign", "clients", "results"]);
 const menuPageFor = (page: Screen): Screen => (page in toolLabels ? "settings" : page);
 
 function Symbol({ small = false }: { small?: boolean }) {
@@ -57,8 +59,9 @@ function Wordmark() {
 }
 
 export default function Portal() {
-  const [programArea, setProgramArea] = useState<ProgramArea>("rewards");
+  const [programArea, setProgramArea] = useState<ProgramArea>("earning");
   const [clientQuery, setClientQuery] = useState("");
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>("aparencia");
   const [searchDraft, setSearchDraft] = useState("");
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [sessionError, setSessionError] = useState("");
@@ -221,7 +224,8 @@ export default function Portal() {
   };
 
   const navigate = (next: Screen, area?: ProgramArea) => {
-    setProgramArea(area ?? "rewards");
+    setProgramArea(area ?? "earning");
+    if (next !== "settings") setSettingsSection("aparencia");
     if (window.location.pathname !== merchantPaths[next]) {
       window.history.pushState(null, "", merchantPaths[next]);
     }
@@ -319,7 +323,7 @@ export default function Portal() {
         </div>
       </header>
       <main className="portal-content">
-        {page!=="overview" && <div className="portal-content-head">
+        {!ownHeader.has(page) && <div className="portal-content-head">
           <div>
             <h1>{page==="program"?"Seu programa de fidelidade.":page==="clients"?"Participantes do clube.":page==="sales"?"Pedidos e vendas.":page==="campaign"?"Uma campanha em poucos passos.":page==="results"?"Resultados que importam.":page==="margin"?"Quanto custa meu programa?":page==="costs"?"Conheça o custo antes do benefício.":page==="catalog"?"Valide variantes antes de importar.":page==="settings"?"Sua loja, do seu jeito.":"Motor de benefícios."}</h1>
             <p>{page==="program"?"Recompensas, regra de pontos e participantes — uma área de cada vez.":page==="clients"?"Consulte quem aderiu ao clube e a situação de cada participação.":page==="sales"?"Acompanhe os pedidos da Nuvemshop e registre vendas presenciais sem duplicar compras.":page==="campaign"?"Escolha um objetivo e revise o orçamento antes de agir.":page==="results"?"Acompanhe recompra e retorno quando houver eventos confiáveis.":page==="margin"?"Entenda o custo dos benefícios antes de publicá-los.":page==="costs"?"Cadastro manual complementar quando o custo não vem da loja.":page==="catalog"?"Valide variantes e custos antes de importar.":page==="settings"?"Personalize a identidade do programa e confira a situação das integrações.":"Preparando um motor de pontos e cashback seguro."}</p>
@@ -333,18 +337,18 @@ export default function Portal() {
             <button onClick={doLogout} className="portal-secondary">Trocar de conta</button>
           </section> : <>
             {page==="overview" && <ActionCenter tenantId={tenant.id} role={tenant.role} platform={tenant.platform} userName={session.user.display_name} key={tenant.id}
-              onNavigate={(destination, area)=>navigate(destination, area)}/>}
+              onNavigate={(destination, area)=>{ if (area === "channels") { setSettingsSection("canais"); navigate("settings"); } else navigate(destination, area); }}/>}
             {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} platform={tenant.platform} initialArea={programArea} onViewClients={()=>navigate("clients")} onViewSales={()=>navigate("sales")} onOpenSettings={()=>navigate("settings")} key={tenant.id+":"+programArea}/>}
             {page==="clients" && <ParticipantsBoard tenantId={tenant.id} initialSearch={clientQuery} onOpenProgram={()=>navigate("program", "participants")} key={tenant.id+":"+clientQuery}/>}
             {page==="sales" && <SalesWorkspace tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
-            {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role}
+            {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role} userName={session.user.display_name} userEmail={session.user.username} initialSection={settingsSection}
               onGoToProgram={()=>navigate("program")} onOpenTool={tool=>navigate(tool)} key={tenant.id}/>}
             {page==="results" && <ResultsOverview tenantId={tenant.id}
               onClients={()=>navigate("clients")} onSales={()=>navigate("sales")}
               onProgram={()=>navigate("program")} key={tenant.id}/>}
             {page==="margin" && <BenefitCostOverview initialItem={seedItem} onOpenProgram={()=>navigate("program")} key={tenant.id+":"+(seedItem?.id||"")}/>}
             {page==="costs" && <CostCatalog tenantId={tenant.id} role={tenant.role} onSimulate={simulateProduct} key={tenant.id}/>}
-            {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} onOpenSettings={()=>navigate("settings")} key={tenant.id}/>}
+            {page==="catalog" && <CatalogReconciliation tenantId={tenant.id} role={tenant.role} onOpenSettings={()=>{setSettingsSection("canais");navigate("settings");}} key={tenant.id}/>}
             {page==="campaign" && <CampaignGuide tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
           </>}
         {authError && <div className="portal-auth-error" role="alert">{authError}</div>}

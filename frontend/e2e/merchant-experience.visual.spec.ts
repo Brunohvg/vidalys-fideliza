@@ -44,7 +44,7 @@ for(const width of [390,768,1440]) {
       await expect(page.getByRole("heading",{name:"PRÓXIMA AÇÃO RECOMENDADA"})).toHaveCount(0);
 
       await nav(page,"Clientes",width);
-      await expect(page.getByRole("heading",{name:"Pessoas no clube",exact:true})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"Quem faz parte do clube",exact:true})).toBeVisible();
       const enrollmentAction=page.getByRole("button",{name:"Gerenciar adesões"});
       await expect(enrollmentAction).toBeVisible();
       const appearance=await enrollmentAction.evaluate(el=>{
@@ -54,8 +54,8 @@ for(const width of [390,768,1440]) {
       expect(["flex","inline-flex"]).toContain(appearance.display);
       expect(appearance.radius).not.toBe("0px");
       expect(appearance.height).toBeGreaterThanOrEqual(44);
-      await expect(page.getByText("Sua comunidade começa com o primeiro aceite")).toBeVisible();
-      await expect(page.getByText("Somente quem confirmou a adesão ao clube aparece aqui.",{exact:false})).toBeVisible();
+      await expect(page.getByText("Seu clube começa com o primeiro cliente")).toBeVisible();
+      await expect(page.getByText("Só entra quem aceita o regulamento.",{exact:false})).toBeVisible();
       expect(await page.getByRole("button",{name:/Cadastrar cliente/}).count()).toBe(0);
       const clientsGeometry=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(clientsGeometry.doc).toBeLessThanOrEqual(clientsGeometry.width+1);
@@ -64,16 +64,17 @@ for(const width of [390,768,1440]) {
       await page.screenshot({path:info.outputPath("new-clients-"+width+".png"),fullPage:true});
 
       await nav(page,"Campanhas",width);
-      await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
-      await page.getByRole("button",{name:/Reativar clientes/}).click();
-      await page.getByRole("button",{name:"Continuar"}).click();
-      await expect(page.getByRole("heading",{name:"Qual benefício você gostaria de oferecer?"})).toBeVisible();
+      await page.getByRole("button",{name:"Nova campanha"}).click();
+      await expect(page.getByRole("heading",{name:"Qual é o objetivo?"})).toBeVisible();
+      await page.getByRole("button",{name:/Trazer de volta/}).click();
+      await page.getByRole("button",{name:"Próximo"}).click();
+      await expect(page.getByRole("heading",{name:"Quanto de bônus?"})).toBeVisible();
       await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("20");
       await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("100");
-      await page.getByRole("button",{name:"Revisar campanha"}).click();
-      await expect(page.getByRole("heading",{name:"Sua campanha, antes de publicar"})).toBeVisible();
+      await page.getByRole("button",{name:"Próximo"}).click();
+      await expect(page.getByRole("heading",{name:"Revise antes de salvar"})).toBeVisible();
       await expect(page.getByText("2.000 pontos",{exact:false})).toBeVisible();
-      await expect(page.getByText("A campanha não envia e-mail",{exact:false})).toBeVisible();
+      await expect(page.getByText("Envio de mensagens e crédito de pontos ligam",{exact:false})).toBeVisible();
       const geom=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(geom.doc).toBeLessThanOrEqual(geom.width+1);
       await page.evaluate(()=>window.scrollTo(0,0));
@@ -87,7 +88,7 @@ test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",
   await page.goto("/app/visao-geral");
   await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
   await page.getByRole("button",{name:/Recompensas publicadas/}).click();
-  await expect(page.getByRole("navigation",{name:"Áreas do programa"}).getByRole("button",{name:"Recompensas"})).toHaveAttribute("aria-pressed","true");
+  await expect(page.getByRole("tab",{name:"2. Como usar"})).toHaveAttribute("aria-selected","true");
 });
 
 
@@ -132,13 +133,13 @@ for(const width of [390,1440]){
   }));
   await page.goto("/app/visao-geral");
   await nav(page,"Clientes",width);
-  await expect(page.getByRole("heading",{name:"Pessoas no clube"})).toBeVisible();
-  const cards=page.locator(".vf-clients-mobile-list");
-  const table=page.locator(".xp-table-wrap");
+  await expect(page.getByRole("heading",{name:"Quem faz parte do clube"})).toBeVisible();
+  const cards=page.locator(".vf-clients-cards");
+  const table=page.locator(".vf-clients-table");
   if(width===390){
    await expect(cards).toBeVisible();
    await expect(table).toBeHidden();
-   await expect(cards.locator(".vf-clients-mobile-card")).toHaveCount(1);
+   await expect(cards.locator("li")).toHaveCount(1);
   }else{
    await expect(cards).toBeHidden();
    await expect(table).toBeVisible();
@@ -158,8 +159,8 @@ for(const width of [390,1440]){
   }));
   await page.goto("/app/visao-geral");
   await nav(page,"Resultados",width);
-  await expect(page.getByRole("heading",{name:"Seu clube em números que fazem sentido."})).toBeVisible();
-  await expect(page.locator(".vf-results-stats article")).toHaveCount(3);
+  await expect(page.getByRole("heading",{name:"O que o clube trouxe"})).toBeVisible();
+  await expect(page.locator(".vf-res-kpi")).toHaveCount(3);
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
  });

@@ -90,28 +90,37 @@ async function goSettings(page:Page,width:number){
   await expect(page.getByRole("navigation",{name:"Seções das configurações"})).toBeVisible();
 }
 
+const section=(page:Page,name:RegExp)=>page.getByRole("navigation",{name:"Seções das configurações"}).getByRole("button",{name}).click();
+
 for(const width of [390,768,1440]){
   test("Lojista vê preferências, não diagnósticos técnicos em "+width+"px",async ({page})=>{
     await page.setViewportSize({width,height:880});
     await setup(page);
     await goSettings(page,width);
-    await expect(page.getByRole("heading",{name:"Aparência do programa"})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Conexão com a loja"})).toBeVisible();
+    const main=page.locator(".portal-content");
+    let text="";
+    await expect(page.getByRole("heading",{name:"Aparência do clube"})).toBeVisible();
+    await expect(page.getByLabel("Nome do programa")).toHaveValue("Clube Exemplo");
+    await expect(page.getByText("CLUBE EXEMPLO",{exact:true})).toBeVisible();
     await expect(page.getByRole("heading",{name:"Regras do clube"})).toHaveCount(0);
-    await expect(page.getByRole("heading",{name:"Página do clube"})).toBeVisible();
-    await expect(page.getByRole("link",{name:"Abrir página do cliente"}))
-      .toHaveAttribute("href","/clube/loja-exemplo");
-    await expect(page.getByRole("button",{name:/Gerenciar regulamento e convites/}))
-      .toBeVisible();
-    await expect(page.getByRole("heading",{name:"Privacidade dos participantes"})).toBeVisible();
-    await expect(page.getByText("Solicitações em análise")).toBeVisible();
-    await expect(page.getByText("Pedido de acesso aos dados")).toBeVisible();
-    await expect(page.getByText("Clube Exemplo",{exact:true})).toBeVisible();
+    text+=await main.innerText();
+    await section(page,/Canais de venda/);
+    await expect(page.getByRole("heading",{name:"Canais de venda"})).toBeVisible();
     await expect(page.getByText("Nuvemshop",{exact:true})).toBeVisible();
     await expect(page.getByText("Autorização registrada",{exact:true})).toBeVisible();
     await expect(page.getByText("Conectada",{exact:true})).toHaveCount(0);
-    const main=page.locator(".portal-content");
-    const text=await main.innerText();
+    text+=await main.innerText();
+    await section(page,/Página do clube/);
+    await expect(page.getByRole("heading",{name:"Página do clube"})).toBeVisible();
+    await expect(page.getByRole("link",{name:"Abrir página do cliente"}))
+      .toHaveAttribute("href","/clube/loja-exemplo");
+    await expect(page.getByRole("button",{name:/Gerenciar regulamento e convites/})).toBeVisible();
+    text+=await main.innerText();
+    await section(page,/Regulamento e privacidade/);
+    await expect(page.getByRole("heading",{name:"Regulamento e privacidade"})).toBeVisible();
+    await expect(page.getByText("Pedidos de clientes")).toBeVisible();
+    await expect(page.getByText("Pedido de acesso aos dados")).toBeVisible();
+    text+=await main.innerText();
     for(const forbidden of [
       "read_customers","SMTP2GO","OAuth","token instalado",
       "PRIVATE-123","Identificador da loja","Variável de ambiente",
@@ -136,9 +145,9 @@ test("Proprietário salva nome do clube, sem acionar mudanças na Nuvemshop",asy
   });
   await goSettings(page,1440);
   await page.getByPlaceholder("Clube Loja Exemplo").fill("Clube Minha Loja");
-  await page.getByRole("button",{name:"Salvar alterações"}).click();
-  await expect(page.getByText("Alterações salvas.",{exact:false})).toBeVisible();
-  await expect(page.getByText("Clube Minha Loja",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Salvar aparência"}).click();
+  await expect(page.getByText("Aparência salva.",{exact:false})).toBeVisible();
+  await expect(page.getByText("CLUBE MINHA LOJA",{exact:true})).toBeVisible();
   expect(patchCount).toBe(1);
 });
 
@@ -146,7 +155,7 @@ test("Analista consulta aparência mas não vê ação de salvar",async ({page})
   await setup(page,"analyst");
   await goSettings(page,1440);
   await expect(page.getByText("Um administrador da loja pode alterá-las.",{exact:false})).toBeVisible();
-  await expect(page.getByRole("button",{name:"Salvar alterações"})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Salvar aparência"})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Atualizar conexão"})).toHaveCount(0);
 });
 
@@ -180,6 +189,7 @@ test("Relatório de dados exige download e confirmação explícita, sem segredo
     });
   });
   await goSettings(page,1440);
+  await section(page,/Regulamento e privacidade/);
   await expect(page.getByRole("button",{name:"Confirmar que recebi"})).toHaveCount(0);
   const downloadPromise=page.waitForEvent("download");
   await page.getByRole("button",{name:"Baixar relatório"}).click();
@@ -212,6 +222,7 @@ test("Verificação de acesso reutiliza catálogo somente leitura e é explícit
     })});
   });
   await goSettings(page,1440);
+  await section(page,/Canais de venda/);
   await expect(page.getByText("A autorização salva ainda não comprova acesso atual.",{exact:false})).toBeVisible();
   await page.getByRole("button",{name:"Verificar acesso à Nuvemshop"}).click();
   await expect(page.getByText("Acesso verificado agora.",{exact:false})).toBeVisible();
@@ -229,6 +240,7 @@ test("Falha do GET não é apresentada como conexão válida",async ({page})=>{
     route=>route.fulfill({status:502,contentType:"application/json",
       body:JSON.stringify({detail:"Não foi possível verificar o pedido."})}));
   await goSettings(page,390);
+  await section(page,/Canais de venda/);
   await page.getByRole("button",{name:"Verificar acesso à Nuvemshop"}).click();
   await expect(page.getByText("Acesso não verificado.",{exact:false})).toBeVisible();
   await expect(page.getByText("Não foi possível verificar o acesso.",{exact:false})).toBeVisible();
@@ -238,5 +250,6 @@ test("Falha do GET não é apresentada como conexão válida",async ({page})=>{
 test("Analista não pode solicitar verificação de conexão no painel",async ({page})=>{
   await setup(page,"analyst");
   await goSettings(page,1440);
+  await section(page,/Canais de venda/);
   await expect(page.getByRole("button",{name:"Verificar acesso à Nuvemshop"})).toHaveCount(0);
 });
