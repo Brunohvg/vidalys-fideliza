@@ -4,6 +4,7 @@ import EnrollmentManagement from "./EnrollmentManagement";
 import PointRuleDraftEditor from "./PointRuleDraftEditor";
 import RewardDraftEditor from "./RewardDraftEditor";
 import LoyaltyTrialPanel from "./LoyaltyTrialPanel";
+import ClubSummaryCard from "./ClubSummaryCard";
 import {merchantApi,type NuvemshopConnectionStatus,type Store} from "./api";
 import "./program-hub.css";
 
@@ -51,6 +52,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
   :connection?.connected?"Permissão de pedidos pendente":"Pedidos ainda não conectados";
 
  return <div className="vf-program-page">
+  <ClubSummaryCard tenantId={tenantId} role={role} refreshKey={ruleRefresh+":"+rewardsRefresh}/>
   <div className="vf-program-toolbar">
    <nav className="vf-program-sections" aria-label="Áreas do programa">
     {areas.map(({key,label,hint,Icon})=><button key={key} type="button"
