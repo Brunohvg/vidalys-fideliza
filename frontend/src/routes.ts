@@ -25,9 +25,22 @@ const pathToScreen = new Map<string, MerchantScreen>(
   Object.entries(merchantPaths).map(([name, path]) => [path, name as MerchantScreen])
 );
 
+const CLIENT_PAGE = /^\/app\/clientes\/([0-9a-f-]{36})$/i;
+
+/** Página própria do cliente no painel: /app/clientes/<id>. Abre em outra aba com Ctrl/⌘. */
+export function clientIdFromPath(pathname: string): string | null {
+  const match = CLIENT_PAGE.exec(pathname.replace(/\/+$/, ""));
+  return match ? match[1].toLowerCase() : null;
+}
+
+export function clientPath(id: string): string {
+  return merchantPaths.clients + "/" + encodeURIComponent(id);
+}
+
 export function merchantScreenForPath(pathname: string): MerchantScreen | null {
   const clean = pathname.replace(/\/+$/, "") || "/";
   if (clean === "/app") return "overview";
+  if (CLIENT_PAGE.test(clean)) return "clients";
   return pathToScreen.get(clean) ?? null;
 }
 

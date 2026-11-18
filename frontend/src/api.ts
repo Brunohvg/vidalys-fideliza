@@ -354,6 +354,12 @@ export type PointRuleDraftResult = PointRuleDraft & {
   example_for_100_reais:number;points_credited:false;
 };
 
+export type ParticipantDetail = {
+  participant:ProgramParticipant;
+  profile:{email_verified:boolean;marketing_opt_in:boolean;birth_day:number|null;birth_month:number|null;terms_version:string};
+  sales:{id:string;channel:string;reference:string;amount_cents:number;at:string|null;state:string;order_status:string}[];
+  offers:MemberOffer[];
+};
 export type ProgramParticipant = {
   id: string;
   phone_last4?: string|null;
@@ -606,6 +612,10 @@ export const merchantApi = {
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/",data),
   findParticipantByPhone: (tenantId:string,phone:string)=>postJson<{match:PhoneMatch|null}>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/by-phone/",{phone}),
+  participantDetail: (tenantId:string,participantId:string)=>getJson<ParticipantDetail>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/"+encodeURIComponent(participantId)+"/"),
+  setParticipantStatus: (tenantId:string,participantId:string,status:"active"|"paused")=>postJson<ParticipantDetail>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/"+encodeURIComponent(participantId)+"/status/",{status}),
   setParticipantPhone: (tenantId:string,participantId:string,phone:string)=>postJson<{participant:PhoneMatch}>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/"+encodeURIComponent(participantId)+"/phone/",
     {phone,customer_informed:true}),

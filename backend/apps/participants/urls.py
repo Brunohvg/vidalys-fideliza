@@ -5,6 +5,7 @@ from .member_portal_views import (
 )
 from .member_profile_views import ClubIconView, ClubManifestView, MemberExportView, MemberProfileView
 from .views import ParticipantListView
+from .detail_views import ParticipantDetailView, ParticipantStatusView
 from .phone_views import ParticipantPhoneLookupView, ParticipantPhoneView
 from .customer_link_preview import CustomerLinkPreviewView
 from .customer_link_approval import CustomerLinkApproveView
@@ -40,6 +41,10 @@ urlpatterns = [
          name="tenant-participants"),
     path("tenants/<uuid:tenant_id>/participants/by-phone/", ParticipantPhoneLookupView.as_view(),
          name="tenant-participant-by-phone"),
+    path("tenants/<uuid:tenant_id>/participants/<uuid:participant_id>/", ParticipantDetailView.as_view(),
+         name="tenant-participant-detail"),
+    path("tenants/<uuid:tenant_id>/participants/<uuid:participant_id>/status/", ParticipantStatusView.as_view(),
+         name="tenant-participant-status"),
     path("tenants/<uuid:tenant_id>/participants/<uuid:participant_id>/phone/", ParticipantPhoneView.as_view(),
          name="tenant-participant-phone"),
     path("tenants/<uuid:tenant_id>/program-terms/", ProgramTermsView.as_view(),

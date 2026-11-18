@@ -9,7 +9,7 @@ import MerchantAccess from "./MerchantAccess";
 import CampaignGuide from "./CampaignGuide";
 import ParticipantsBoard from "./ParticipantsBoard";
 import ProgramHub, { type ProgramArea } from "./ProgramHub";
-import SalesWorkspace from "./SalesWorkspace";
+import SalesWorkspace, {type SaleClient} from "./SalesWorkspace";
 import StoreSettings, { type SettingsSection } from "./StoreSettings";
 import ActionCenter, { initialsOf as initials } from "./ActionCenter";
 import ResultsOverview from "./ResultsOverview";
@@ -61,6 +61,7 @@ function Wordmark() {
 export default function Portal() {
   const [programArea, setProgramArea] = useState<ProgramArea>("earning");
   const [clientQuery, setClientQuery] = useState("");
+  const [saleClient, setSaleClient] = useState<SaleClient | null>(null);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("aparencia");
   const [searchDraft, setSearchDraft] = useState("");
   const [session, setSession] = useState<SessionInfo | null>(null);
@@ -226,8 +227,11 @@ export default function Portal() {
   const navigate = (next: Screen, area?: ProgramArea) => {
     setProgramArea(area ?? "earning");
     if (next !== "settings") setSettingsSection("aparencia");
+    if (next !== "sales") setSaleClient(null);
     if (window.location.pathname !== merchantPaths[next]) {
       window.history.pushState(null, "", merchantPaths[next]);
+      // Avisa telas que leem a URL (ex.: página do cliente) que o endereço mudou.
+      window.dispatchEvent(new Event("fideliza:route"));
     }
     setPage(next);
     setDrawer(false);
@@ -339,8 +343,10 @@ export default function Portal() {
             {page==="overview" && <ActionCenter tenantId={tenant.id} role={tenant.role} platform={tenant.platform} userName={session.user.display_name} key={tenant.id}
               onNavigate={(destination, area)=>{ if (area === "channels") { setSettingsSection("canais"); navigate("settings"); } else navigate(destination, area); }}/>}
             {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} platform={tenant.platform} initialArea={programArea} onViewClients={()=>navigate("clients")} onViewSales={()=>navigate("sales")} onOpenSettings={()=>navigate("settings")} key={tenant.id+":"+programArea}/>}
-            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} canManage={tenant.role==="owner"||tenant.role==="admin"} initialSearch={clientQuery} onOpenProgram={()=>navigate("program", "participants")} key={tenant.id+":"+clientQuery}/>}
-            {page==="sales" && <SalesWorkspace tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
+            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} initialSearch={clientQuery}
+              onOpenProgram={()=>navigate("program", "participants")} onOpenSales={()=>navigate("sales")}
+              onRegisterSale={client=>{setSaleClient(client);navigate("sales");}} key={tenant.id+":"+clientQuery}/>}
+            {page==="sales" && <SalesWorkspace tenantId={tenant.id} role={tenant.role} initialClient={saleClient} key={tenant.id+":"+(saleClient?.id||"")}/>}
             {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role} userName={session.user.display_name} userEmail={session.user.username} initialSection={settingsSection}
               onGoToProgram={()=>navigate("program")} onOpenTool={tool=>navigate(tool)} key={tenant.id}/>}
             {page==="results" && <ResultsOverview tenantId={tenant.id}

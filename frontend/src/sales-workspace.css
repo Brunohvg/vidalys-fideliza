@@ -80,9 +80,6 @@
 .vf-sale-value.is-hint{font-size:15px;font-weight:600;color:var(--vf-muted);padding:10px 0}
 .vf-sale-bottom-tabs{margin-top:4px}
 /* Pedidos da loja: o cartão já tem título; o bloco interno mostra só o botão de atualizar */
-.vf-sale-online .vf-online-feed{padding:0;border-bottom:0}
-.vf-sale-online .vf-online-feed-head>div{display:none}
-.vf-sale-online .vf-online-feed-head{justify-content:flex-end}
 .vf-sale-review-box{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .vf-sale-pending .vf-row{padding:10px 0}
 .vf-sale-review{display:flex;flex-direction:column;gap:10px;padding:14px;margin:4px 0 10px;border-radius:14px;background:var(--vf-surface);border:1px solid var(--vf-border)}

@@ -38,7 +38,13 @@ class RecentOrdersPreviewView(APIView):
                 or installed.store_id!=str(tenant.external_store_id)
                 or not has_order_access(installed.scope,preview_enabled=True)):
             return answer({"detail":"Autorize a leitura de pedidos nesta loja."},409)
+        # Protege a API da loja (1 consulta a cada 20 s), mas quem abre a aba de
+        # novo recebe a última lista em vez de um erro. A lista não tem PII.
+        cached_key=f"fideliza:recent-orders:last:{tenant.pk}"
         if not cache.add(f"fideliza:recent-orders:{tenant.pk}",1,timeout=20):
+            cached=cache.get(cached_key)
+            if cached:
+                return answer({**cached,"cached":True})
             return answer({"detail":"Consulta recente. Aguarde para atualizar."},429)
         try:
             token=decrypt_token(installed.token_ciphertext,cfg.token_keys)
@@ -68,13 +74,15 @@ class RecentOrdersPreviewView(APIView):
                     item,order_id=order_id,
                     participant_verified=bool(cid and cid in linked),
                 ))
-            return answer({
+            payload={
                 "mode":"read_only","source":"nuvemshop_live_read_only",
                 "items":items,"page":1,"page_size":10,
                 "points_credited":False,"coupons_created":False,
                 "read_only":True,
                 "note":"Consulta da primeira página da loja; pagamento não comprova captura financeira.",
-            })
+            }
+            cache.set(cached_key,payload,timeout=120)
+            return answer({**payload,"cached":False})
         except OAuthConfigurationError:
             return answer({"detail":"Credencial da loja indisponível."},503)
         except (ValueError,OrderReadError):

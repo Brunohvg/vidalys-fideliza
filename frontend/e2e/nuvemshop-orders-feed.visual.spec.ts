@@ -97,6 +97,6 @@ test("Sem read_orders, painel avisa e não inventa ausência de vendas",async({p
  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
  await page.getByRole("tab",{name:"Pedidos da Nuvemshop"}).click();
  const feed=page.getByRole("region",{name:"Pedidos recentes da Nuvemshop"});
- await expect(feed).toContainText("precisa de read_orders");
+ await expect(feed).toContainText("ainda não autorizou a leitura de pedidos");
  await expect(feed.getByText("Nenhum pedido retornado")).toHaveCount(0);
 });

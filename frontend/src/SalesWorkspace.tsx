@@ -51,7 +51,8 @@ const stateChip:Record<ManualSaleRecord["state"],[string,string]>={
 const TONES=["tone-1","tone-2","tone-3","tone-4","tone-5"];
 const QUICK=[5000,10000,20000];
 
-export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Store["role"]}){
+export type SaleClient={id:string;display_name:string;detail:string};
+export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:string;role:Store["role"];initialClient?:SaleClient|null}){
  const canEdit=role==="owner"||role==="admin";
  const [items,setItems]=useState<ManualSaleRecord[]>([]);
  const [loading,setLoading]=useState(true);
@@ -68,7 +69,7 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
  const [people,setPeople]=useState<ProgramParticipant[]>([]);
  const [peopleError,setPeopleError]=useState(false);
  type Person={id:string;display_name:string;detail:string};
- const [chosen,setChosen]=useState<Person|null|undefined>(undefined); // undefined = não escolhido; null = fora do clube
+ const [chosen,setChosen]=useState<Person|null|undefined>(initialClient??undefined); // undefined = não escolhido; null = fora do clube
  const [mode,setMode]=useState<"phone"|"name">("phone");
  const [phone,setPhone]=useState("");
  const [phoneState,setPhoneState]=useState<"idle"|"looking"|"error">("idle");
