@@ -20,6 +20,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.tenants.club_address import canonical_slug
 from apps.tenants.models import Tenant
 from apps.tenants.branding_models import TenantBranding
 from apps.tenants.settings_views import _display
@@ -47,7 +48,7 @@ class PublicStoreProgramView(APIView):
     def get(self, request, slug):
         if not settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED:
             return secure(Response({"detail": "Adesão pública indisponível."}, status=404))
-        tenant = get_object_or_404(Tenant, slug=slug, status=Tenant.Status.ACTIVE)
+        tenant = get_object_or_404(Tenant, slug=canonical_slug(slug), status=Tenant.Status.ACTIVE)
         terms = active_terms_for(tenant)
         if not is_ready(terms):
             return secure(Response({"detail": "Adesão pública ainda não disponível."}, status=404))
@@ -93,7 +94,7 @@ class PublicStoreJoinView(APIView):
         except ValidationError:
             return secure(Response({"detail": "Informe um e-mail válido."}, status=400))
         tenant = get_object_or_404(
-            Tenant.objects.select_for_update(), slug=slug, status=Tenant.Status.ACTIVE
+            Tenant.objects.select_for_update(), slug=canonical_slug(slug), status=Tenant.Status.ACTIVE
         )
         terms = active_terms_for(tenant)
         raw_phone = request.data.get("phone", "")

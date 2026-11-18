@@ -34,7 +34,7 @@ export default function EnrollmentManagement({
   const [copied,setCopied]=useState(false);
   const canEdit=role==="owner"||role==="admin";
   const publicReady=signupEnabled&&tenantStatus==="active"&&Boolean(terms?.privacy_notice?.trim().length&&terms.privacy_notice.trim().length>=120)&&!formOpen;
-  const publicUrl=window.location.origin+"/participar/"+encodeURIComponent(storeSlug);
+  const publicUrl=window.location.origin+"/clube/"+encodeURIComponent(storeSlug);
 
   useEffect(()=>{
     if(!canEdit){setLoading(false);return;}

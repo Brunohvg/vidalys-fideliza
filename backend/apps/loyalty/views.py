@@ -15,6 +15,7 @@ from apps.participants.member_portal_views import (
     _authorized_submission, _participant,
 )
 from apps.participants.models import ProgramParticipant
+from apps.tenants.club_address import canonical_slug
 from apps.tenants.models import Tenant, TenantMembership
 
 from .services import (
@@ -115,7 +116,7 @@ class ClubVoucherIssueView(APIView):
     def post(self, request, slug):
         if not settings.FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED:
             return _reply({"detail": "Resgate ainda não está disponível."}, 409)
-        tenant = get_object_or_404(Tenant, slug=slug, status=Tenant.Status.ACTIVE)
+        tenant = get_object_or_404(Tenant, slug=canonical_slug(slug), status=Tenant.Status.ACTIVE)
         submission = _authorized_submission(request, tenant)
         if not submission:
             return _reply({"detail": "Faça login para consultar seu clube."}, 401)
@@ -178,7 +179,7 @@ class ClubVoucherCouponStatusView(APIView):
     http_method_names = ["get", "options"]
 
     def get(self, request, slug, voucher_id):
-        tenant = get_object_or_404(Tenant, slug=slug, status=Tenant.Status.ACTIVE)
+        tenant = get_object_or_404(Tenant, slug=canonical_slug(slug), status=Tenant.Status.ACTIVE)
         submission = _authorized_submission(request, tenant)
         if submission is None:
             return _reply({"detail": "Autenticação obrigatória."}, 401)

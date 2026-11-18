@@ -13,6 +13,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.tenants.club_address import canonical_slug
 from apps.tenants.models import Tenant
 from .email_proof import consume_challenge, enqueue_confirmation, email_links_enabled, digest
 from .customer_link_auto import auto_link_after_verified_email
@@ -50,7 +51,7 @@ class PublicWithdrawalRequestView(APIView):
             validate_email(email)
         except ValidationError:
             return secure(Response({"detail": "Informe um e-mail válido."}, status=400))
-        tenant = get_object_or_404(Tenant, slug=slug)
+        tenant = get_object_or_404(Tenant, slug=canonical_slug(slug))
         # Limite também por destinatário/loja, para não servir de ferramenta de spam.
         from hashlib import sha256
         digest = sha256((settings.SECRET_KEY + str(tenant.pk) + email).encode()).hexdigest()

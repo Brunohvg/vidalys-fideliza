@@ -60,6 +60,7 @@ def main():
         ("sales", "0006_counter_identity_link"),
         ("sales", "0007_counter_phone_digest"),
         ("participants", "0008_participant_phone"),
+        ("tenants", "0005_tenant_slug_alias"),
         ("loyalty", "0002_voucher_reward_origin"),
         ("loyalty", "0003_voucher_redemption_evidence"),
         ("points", "0002_immutable_postgres_ledger"),

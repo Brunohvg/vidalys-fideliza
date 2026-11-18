@@ -6,7 +6,7 @@ export type MerchantScreen =
   | "overview" | "clients" | "program" | "campaign" | "sales" | "settings"
   | "results" | "margin" | "costs" | "catalog";
 
-export type ClubSection = "rewards" | "history" | "rules";
+export type ClubSection = "home" | "rewards" | "history" | "rules";
 
 export const merchantPaths: Record<MerchantScreen, string> = {
   overview: "/app/visao-geral",
@@ -44,14 +44,25 @@ export function clubSlugFromPath(pathname: string): string | null {
   return match ? match[1].toLowerCase() : null;
 }
 
+const clubSegments: Record<Exclude<ClubSection, "home">, string> = {
+  rewards: "recompensas", history: "historico", rules: "regras",
+};
+
 export function clubSectionForPath(pathname: string): ClubSection {
   const segment = pathname.replace(/\/+$/, "").split("/").at(-1);
-  return segment === "historico" ? "history" : segment === "regras" ? "rules" : "rewards";
+  return segment === "recompensas" ? "rewards" : segment === "historico" ? "history"
+    : segment === "regras" ? "rules" : "home";
 }
 
 export function clubSectionPath(slug: string, section: ClubSection): string {
   const base = "/clube/" + encodeURIComponent(slug);
-  return section === "rewards" ? base : base + (section === "history" ? "/historico" : "/regras");
+  return section === "home" ? base : base + "/" + clubSegments[section];
+}
+
+/** O link antigo de adesão (/participar/<loja>) agora abre o próprio clube. */
+export function legacyJoinRedirect(pathname: string): string | null {
+  const match = /^\/participar\/([a-z0-9-]+)\/?$/i.exec(pathname);
+  return match ? "/clube/" + match[1].toLowerCase() + "#participar" : null;
 }
 
 export type EntryRoute =

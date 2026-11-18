@@ -253,3 +253,22 @@ test("Analista não pode solicitar verificação de conexão no painel",async ({
   await section(page,/Canais de venda/);
   await expect(page.getByRole("button",{name:"Verificar acesso à Nuvemshop"})).toHaveCount(0);
 });
+
+test("Proprietário troca o endereço do clube por um nome curto",async ({page})=>{
+  await setup(page);
+  let sent:unknown=null;
+  await page.route("**/api/v1/tenants/**/settings/address/",route=>{
+    sent=route.request().postDataJSON();
+    return route.fulfill({contentType:"application/json",body:JSON.stringify({slug:"jardim",updated:true})});
+  });
+  await page.setViewportSize({width:390,height:844});
+  await page.goto("/app/configuracoes");
+  await section(page,/Página do clube/);
+  const field=page.getByRole("textbox",{name:"Endereço do Meu Clube"});
+  await field.fill("Jardim Ação");
+  await page.getByRole("button",{name:"Salvar endereço"}).click();
+  await expect(page.getByText("Endereço salvo. O link antigo continua abrindo o seu clube.")).toBeVisible();
+  expect(sent).toEqual({slug:"jardim-acao"});
+  await expect(page.getByRole("link",{name:"Abrir página do cliente"})).toHaveAttribute("href","/clube/jardim");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+});

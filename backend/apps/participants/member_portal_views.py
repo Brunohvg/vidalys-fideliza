@@ -23,11 +23,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.delivery_tracking import enqueue_email
-from apps.sales.models import DiscountRewardDraft
+from apps.sales.models import DiscountRewardDraft, PointRuleDraft
 from apps.points.models import PointWallet, PointLot, PointEntry, PointEvent
 from apps.loyalty.models import LoyaltyGrant, LoyaltyRule, LoyaltyEngagement
 from apps.wallets.models import CashbackWallet, CashbackEntry
 from apps.core.models import EmailDispatch
+from apps.tenants.club_address import canonical_slug
 from apps.tenants.branding_models import TenantBranding
 from apps.tenants.models import Tenant
 from apps.tenants.settings_views import _display
@@ -51,7 +52,7 @@ PERMITTED = (
 
 
 def _tenant(slug):
-    return get_object_or_404(Tenant, slug=slug, status=Tenant.Status.ACTIVE)
+    return get_object_or_404(Tenant, slug=canonical_slug(slug), status=Tenant.Status.ACTIVE)
 
 
 def _generic():
@@ -281,6 +282,17 @@ def _published_catalog(tenant, *, points_balance=None, live=False):
     ]
 
 
+def _earning_rule(tenant):
+    """Regra divulgada pela loja (a mesma da tela "Como ganhar"). Não concede pontos."""
+    rule = PointRuleDraft.objects.filter(tenant=tenant).first()
+    if not rule or not rule.points or not rule.per_cents:
+        return None
+    return {
+        "points": rule.points, "per_cents": rule.per_cents,
+        "hold_days": rule.hold_days, "validity_days": rule.validity_days,
+    }
+
+
 class MemberClubPublicView(APIView):
     permission_classes = [AllowAny]
     http_method_names = ["get", "head", "options"]
@@ -303,6 +315,7 @@ class MemberClubPublicView(APIView):
             "rewards_enabled": live,
             "redemption_enabled": live,
             "published_rewards": _published_catalog(tenant),
+            "earning": _earning_rule(tenant),
         }))
 
 
@@ -438,6 +451,7 @@ class MemberClubMeView(APIView):
         return secure(Response({
             "store_name": tenant.name,
             "display_name": submission.name,
+            "phone_last4": (participant.phone_last4 if participant else "") or submission.phone_last4,
             "status": "active" if active else (
                 "paused" if participant else "awaiting_link"
             ),

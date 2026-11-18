@@ -1,218 +1,178 @@
-import {expect,test} from "@playwright/test";
+import {expect,test,type Page} from "@playwright/test";
 
+/* Meu Clube — página única do cliente (/clube/<loja>) pelo protótipo aprovado.
+   Visitante participa ou entra por link; cliente vê saldo, trocas, extrato e regras.
+   Nunca mostra saldo inventado: sem dado verificado aparece "—". */
+
+const terms={id:"bbb432db-fabf-45f8-96af-997d26f75316",version:"v1",
+  title:"Regulamento do Clube Jardim",
+  body:"Compras pagas poderão gerar pontos após ativação do programa.",
+  privacy_notice:"Somente dados necessários para adesão.",approved_at:"2026-11-13T12:00:00Z"};
+const reward={id:"7d31d188-68ca-4c0f-b4ae-76225b3b1e41",title:"R$ 5 de desconto no próximo pedido",
+  points_cost:200,discount_cents:500,min_order_cents:3000,redemption_unit:"points",
+  status:"locked",points_missing:null,redemption_enabled:false};
 const info={
   store_name:"Loja Jardim",store_slug:"loja-jardim",
-  branding:{program_name:"Clube Jardim",primary_color:"#087F79",
-    accent_color:"#37D5BB",support_email:"loja@example.invalid"},
-  terms:{id:"bbb432db-fabf-45f8-96af-997d26f75316",version:"v1",
-    title:"Regulamento do Clube Jardim",
-    body:"Compras pagas poderão gerar pontos após ativação do programa.",
-    privacy_notice:"Somente dados necessários para adesão.",approved_at:"2026-11-13T12:00:00Z"},
-  signup_available:true,points_enabled:false,rewards_enabled:false,redemption_enabled:false,
+  branding:{program_name:"Clube Jardim",primary_color:"#0B4FA8",
+    accent_color:"#FF8A3D",support_email:"loja@example.invalid"},
+  terms,signup_available:true,points_enabled:false,rewards_enabled:false,redemption_enabled:false,
+  published_rewards:[reward],earning:{points:2,per_cents:100,hold_days:7,validity_days:365},
+};
+const member={
+  store_name:"Loja Jardim",display_name:"Cliente QA",phone_last4:"8888",
+  status:"active",joined_at:"2026-11-13T12:30:00Z",terms,
+  points_balance:null,points_pending:null,points_expiring:null,points_status:"not_active",
+  available_rewards:[reward],transactions:[],redemption_enabled:false,orders_verified:false,note:"",
 };
 
+async function mockClub(page:Page,opts:{club?:object;me?:object;loggedIn?:boolean}={}){
+  await page.context().addCookies([{name:"csrftoken",value:"csrf-member-only",url:"http://127.0.0.1:4173"}]);
+  await page.route("**/api/v1/auth/session/",r=>r.fulfill({contentType:"application/json",
+    body:JSON.stringify({authenticated:false,user:null,tenants:[]})}));
+  let logged=Boolean(opts.loggedIn);
+  await page.route("**/api/v1/public/clubs/*/",r=>r.fulfill({contentType:"application/json",
+    body:JSON.stringify(opts.club??info)}));
+  await page.route("**/api/v1/public/clubs/*/me/",r=>r.fulfill({status:logged?200:401,contentType:"application/json",
+    body:JSON.stringify(logged?(opts.me??member):{detail:"Faça login"})}));
+  await page.route("**/api/v1/public/clubs/*/access/confirm/",r=>{logged=true;
+    return r.fulfill({contentType:"application/json",body:JSON.stringify({authenticated:true})});});
+  await page.route("**/api/v1/public/clubs/*/access/request/",r=>r.fulfill({status:202,contentType:"application/json",
+    body:JSON.stringify({status:"accepted"})}));
+  await page.route("**/api/v1/public/clubs/*/logout/",r=>{logged=false;
+    return r.fulfill({contentType:"application/json",body:JSON.stringify({authenticated:false})});});
+}
+const noOverflow=async(page:Page)=>expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+
 for(const width of [320,390,768,1440]){
-  test("Meu Clube possui login separado e não inventa pontos em "+width+"px",async ({page},testInfo)=>{
+  test("Visitante entende a regra, participa e entra pelo link em "+width+"px",async({page},testInfo)=>{
     await page.setViewportSize({width,height:900});
-    await page.context().addCookies([{
-      name:"csrftoken",value:"csrf-member-only",url:"http://127.0.0.1:4173",
-    }]);
-    await page.route("**/api/v1/auth/session/",route=>route.fulfill({
-      contentType:"application/json",body:JSON.stringify({
-        authenticated:false,user:null,tenants:[],
-      }),
-    }));
-    let entered=false;
-    await page.route("**/api/v1/public/clubs/loja-jardim/",route=>route.fulfill({
-      contentType:"application/json",body:JSON.stringify(info),
-    }));
-    await page.route("**/api/v1/public/clubs/loja-jardim/me/",route=>route.fulfill({
-      status:entered?200:401,contentType:"application/json",
-      body:entered?JSON.stringify({
-        store_name:"Loja Jardim",display_name:"Cliente QA",
-        status:"active",joined_at:"2026-11-13T12:30:00Z",
-        terms:info.terms,points_balance:null,points_pending:null,
-        points_status:"not_active",available_rewards:[],transactions:[],
-        redemption_enabled:false,orders_verified:false,note:"Sem pontos liberados",
-      }):JSON.stringify({detail:"Faça login"}),
-    }));
-    await page.route("**/api/v1/public/clubs/loja-jardim/access/confirm/",route=>{
-      entered=true;
-      return route.fulfill({contentType:"application/json",
-        body:JSON.stringify({authenticated:true})});
-    });
+    await mockClub(page);
+    let joined:Record<string,unknown>|null=null;
+    await page.route("**/api/v1/public/programs/loja-jardim/join/",r=>{joined=r.request().postDataJSON();
+      return r.fulfill({status:202,contentType:"application/json",body:JSON.stringify({status:"pending_verification",
+        participant_created:false,cashback_enabled:false,terms_version:"v1",message:"ok"})});});
     await page.goto("/clube/loja-jardim");
-    await expect(page.getByRole("heading",{name:/Mais motivos para voltar/})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Bem-vindo de volta"})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Ganhe 2% de volta em toda compra."})).toBeVisible();
+    await expect(page.getByText("A cada R$ 1,00 em compras, você ganha 2 pontos.",{exact:false})).toBeVisible();
+    await expect(page.getByText("Com 200 pontos",{exact:false})).toBeVisible();
+    await expect(page.getByText("os pontos começam a contar quando ela ativar",{exact:false})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"O que dá para trocar"})).toBeVisible();
+    await expect(page.locator(".clb-hero")).toHaveCSS("background-image",/linear-gradient/);
+    await noOverflow(page);
     await page.screenshot({path:testInfo.outputPath("club-guest-"+width+".png"),fullPage:true});
-    await expect(page.getByRole("link",{name:"Quero participar"})).toBeVisible();
-    await expect(page.getByText("Como funciona",{exact:true})).toBeVisible().catch(()=>{});
+
+    const submit=page.getByRole("button",{name:"Entrar no clube"});
+    await expect(submit).toBeDisabled();
+    await page.getByRole("textbox",{name:"Seu nome"}).fill("Cliente Interessada");
+    await page.getByRole("textbox",{name:"E-mail"}).fill("cliente@example.invalid");
+    await page.getByRole("textbox",{name:/Celular/}).fill("(31) 99999-8888");
+    await page.getByRole("checkbox",{name:/Li e aceito o regulamento/}).check();
+    await expect(page.getByRole("checkbox",{name:/ofertas da loja/})).not.toBeChecked();
+    await submit.click();
+    await expect(page.getByRole("heading",{name:"Confira seu e-mail"})).toBeVisible();
+    expect(joined).toMatchObject({name:"Cliente Interessada",email:"cliente@example.invalid",
+      phone:"(31) 99999-8888",terms_version:"v1",accepted_terms:true,marketing_opt_in:false});
+
     await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
     await expect(page.getByRole("heading",{name:"Confirme seu acesso"})).toBeVisible();
     await page.getByRole("button",{name:"Confirmar e entrar"}).click();
-    await expect(page.getByRole("heading",{name:"Olá, Cliente!"})).toBeVisible();
-    await expect(page.getByText("O clube ainda não liberou a pontuação.",{exact:false})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Recompensas em preparação"})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Como funcionará seu clube"})).toBeVisible();
-    await expect(page.getByText("Nenhum saldo foi atribuído.",{exact:false})).toBeVisible();
-    await expect(page.getByText("Em preparação",{exact:true})).toBeVisible();
+    await expect(page.getByText("Olá, Cliente")).toBeVisible();
+    const wallet=page.getByRole("region",{name:"Seu saldo"});
+    await expect(wallet).toContainText("—");
+    await expect(wallet).toContainText("A loja ainda não ativou a pontuação");
+    await noOverflow(page);
     await page.screenshot({path:testInfo.outputPath("club-member-"+width+".png"),fullPage:true});
-    await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Histórico"}).click();
-    await expect(page.getByRole("heading",{name:"Histórico de pontos"})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toHaveCount(0);
-    await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Regras"}).click();
-    await expect(page.getByRole("heading",{name:"Regras e privacidade"})).toBeVisible();
-    await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Recompensas"}).click();
-    await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
-    await page.getByText("Como vou usar meus pontos no site?").click();
-    await expect(page.getByText("Esse resgate ainda não está disponível.",{exact:false}))
-      .toBeVisible();
-    await expect(page.getByRole("button",{name:/Resgatar/})).toHaveCount(0);
-    await expect(page).toHaveURL("http://127.0.0.1:4173/clube/loja-jardim");
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   });
 }
 
-
-for(const width of [320,390]){
- test("Participante vê catálogo publicado mas não consegue resgatar em "+width+"px",async({page})=>{
-  await page.setViewportSize({width,height:840});
-  await page.context().addCookies([{
-   name:"csrftoken",value:"csrf-member-only",url:"http://127.0.0.1:4173",
-  }]);
-  await page.route("**/api/v1/auth/session/",route=>route.fulfill({
-   contentType:"application/json",body:JSON.stringify({
-    authenticated:false,user:null,tenants:[],
-   }),
-  }));
-  await page.route("**/api/v1/public/clubs/loja-jardim/",route=>route.fulfill({
-   contentType:"application/json",body:JSON.stringify(info),
-  }));
-  let logged=false;
-  await page.route("**/api/v1/public/clubs/loja-jardim/me/",route=>route.fulfill({
-   status:logged?200:401,contentType:"application/json",body:JSON.stringify(logged?{
-    store_name:"Loja Jardim",display_name:"Cliente QA",
-    status:"active",joined_at:"2026-11-13T12:30:00Z",
-    terms:info.terms,points_balance:null,points_pending:null,
-    points_status:"not_active",redemption_enabled:false,orders_verified:false,
-    available_rewards:[{
-     id:"7d31d188-68ca-4c0f-b4ae-76225b3b1e41",
-     title:"R$ 5 de desconto no próximo pedido",points_cost:200,
-     discount_cents:500,min_order_cents:3000,status:"locked",
-     points_missing:null,redemption_enabled:false,
-    }],transactions:[],note:"Benefícios para consulta",
-   }:{detail:"Faça login"}),
-  }));
-  await page.route("**/api/v1/public/clubs/loja-jardim/access/confirm/",route=>{
-   logged=true;return route.fulfill({contentType:"application/json",
-    body:JSON.stringify({authenticated:true})});
-  });
-  await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
-  await page.getByRole("button",{name:"Confirmar e entrar"}).click();
-  await expect(page.getByRole("heading",{name:"Olá, Cliente!"})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"R$ 5 de desconto no próximo pedido"})).toBeVisible();
-  await expect(page.getByText("Publicado para consulta · Resgate em preparação")).toBeVisible();
-  await expect(page.getByText("O clube ainda não liberou a pontuação.",{exact:false})).toBeVisible();
-  await expect(page.getByRole("button",{name:/Resgatar|Gerar cupom/})).toHaveCount(0);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
-   .toBeLessThanOrEqual(1);
- });
-}
-
-
-test("Meu Clube exibe extrato interno real sem prometer resgate em 390px",async({page})=>{
- await page.setViewportSize({width:390,height:830});
- await page.context().addCookies([{
-  name:"csrftoken",value:"csrf-member-only",url:"http://127.0.0.1:4173",
- }]);
- await page.route("**/api/v1/auth/session/",r=>r.fulfill({
-  contentType:"application/json",body:JSON.stringify({
-   authenticated:false,user:null,tenants:[],
-  }),
- }));
- await page.route("**/api/v1/public/clubs/loja-jardim/",r=>r.fulfill({
-  contentType:"application/json",body:JSON.stringify(info),
- }));
- let logged=false;
- await page.route("**/api/v1/public/clubs/loja-jardim/me/",r=>r.fulfill({
-  status:logged?200:401,contentType:"application/json",body:JSON.stringify(
-   logged?{
-    store_name:"Loja Jardim",display_name:"Cliente QA",
-    status:"active",joined_at:"2026-11-13T12:30:00Z",
-    terms:info.terms,
-    points_balance:100,points_pending:50,points_expiring:100,
-    points_status:"ledger_only",redemption_enabled:false,
-    orders_verified:false,available_rewards:[],
-    transactions:[
-     {id:"1",kind:"release",points_delta:0,created_at:"2026-11-14T01:20:00Z",
-      description:"Pontos liberados da carência"},
-     {id:"2",kind:"accrue",points_delta:50,created_at:"2026-11-14T01:10:00Z",
-      description:"Compra registrada"},
-    ],note:"Saldo interno não liquidável",
-   }:{detail:"Faça login"}),
- }));
- await page.route("**/api/v1/public/clubs/loja-jardim/access/confirm/",r=>{
-  logged=true;
-  return r.fulfill({contentType:"application/json",
-   body:JSON.stringify({authenticated:true})});
- });
- await page.goto("/clube/loja-jardim#acesso="+"A".repeat(43));
- await page.getByRole("button",{name:"Confirmar e entrar"}).click();
- const wallet=page.getByRole("region",{name:"Resumo da minha carteira"});
- await expect(wallet).toContainText("Pontos internos, sem resgate");
- await expect(wallet).toContainText("Saldo em conferência");
- await expect(wallet).toContainText("100");
- await expect(wallet).toContainText("50");
- await expect(wallet).toContainText("não podem ser trocados por descontos");
- await expect(page.getByRole("progressbar",{name:"Progresso para próxima recompensa"})).toHaveCount(0);
- await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Histórico"}).click();
- await expect(page.getByText("Compra registrada")).toBeVisible();
- await expect(page.getByText("Pontos liberados da carência")).toBeVisible();
- await expect(page.getByRole("button",{name:/Resgatar/})).toHaveCount(0);
- expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
-  .toBeLessThanOrEqual(1);
+test("Quem já participa pede o link de acesso sem revelar se o e-mail existe",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await mockClub(page);
+  await page.goto("/clube/loja-jardim");
+  await page.getByRole("button",{name:"Entrar",exact:true}).click();
+  await page.getByRole("textbox",{name:"Seu e-mail"}).fill("cliente@example.invalid");
+  await page.getByRole("button",{name:"Enviar link de acesso"}).click();
+  await expect(page.getByText("Se este e-mail participa do clube",{exact:false})).toBeVisible();
 });
 
+test("Link antigo de adesão abre o clube no formulário",async({page})=>{
+  await mockClub(page);
+  await page.goto("/participar/loja-jardim");
+  await expect(page).toHaveURL(/\/clube\/loja-jardim#participar$/);
+  await expect(page.getByRole("heading",{name:"Quero participar"})).toBeVisible();
+});
 
-for(const width of [320,390]){
- test("Visitante conhece recompensas publicadas antes de aderir em "+width+"px",async({page},testInfo)=>{
-  await page.setViewportSize({width,height:900});
-  await page.route("**/api/v1/auth/session/",r=>r.fulfill({
-   contentType:"application/json",body:JSON.stringify({
-    authenticated:false,user:null,tenants:[],
-   }),
-  }));
-  await page.route("**/api/v1/public/clubs/loja-jardim/",r=>r.fulfill({
-   contentType:"application/json",body:JSON.stringify({
-    ...info,published_rewards:[{
-     id:"ed19e6bd-cf28-4915-9ec3-d1a157c2bd55",
-     title:"R$ 5 no próximo pedido",points_cost:200,discount_cents:500,
-     min_order_cents:3000,status:"locked",points_missing:null,
-     redemption_enabled:false,
-    }],
-   }),
-  }));
-  await page.route("**/api/v1/public/clubs/loja-jardim/me/",r=>r.fulfill({
-   status:401,contentType:"application/json",body:JSON.stringify({detail:"Sem acesso"}),
-  }));
-  await page.goto("/clube/loja-jardim");
-  await expect(page.getByRole("heading",{name:/Mais motivos para voltar/})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Recompensas que fazem voltar"})).toBeVisible();
-  const perks=page.getByRole("region",{name:"Recompensas apresentadas pela loja"});
-  await expect(perks.locator(".member-club-benefit-card")).toHaveCount(1);
-  await expect(perks.locator(".member-club-benefit-amount")).toContainText("R$");
-  await expect(page.locator(".member-club-hero-guest")).toHaveCSS("background-image",/linear-gradient/);
-  await expect(perks).toContainText("R$ 5 no próximo pedido");
-  await expect(perks).toContainText("200 pontos previstos");
-  await expect(perks).toContainText("R$ 30,00");
-  await expect(perks).toContainText("Em preparação");
-  await expect(page.getByRole("link",{name:"Quero participar"}))
-   .toHaveAttribute("href","/participar/loja-jardim");
-  await expect(page.getByRole("heading",{name:"Bem-vindo de volta"})).toBeVisible();
-  await expect(page.getByRole("button",{name:/Resgatar|Gerar cupom/})).toHaveCount(0);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
-   .toBeLessThanOrEqual(1);
-  await page.screenshot({path:testInfo.outputPath("new-club-guest-"+width+".png"),fullPage:true});
- });
+test("Endereço antigo mostra o endereço novo da loja",async({page})=>{
+  await mockClub(page);
+  await page.goto("/clube/loja-jardim-3f9a2b1c4d5e");
+  await expect(page).toHaveURL(/\/clube\/loja-jardim$/);
+  await expect(page.getByRole("heading",{name:"Ganhe 2% de volta em toda compra."})).toBeVisible();
+});
+
+for(const width of [390,1440]){
+  test("Cliente com saldo vê troca, extrato, regras e mostra no caixa em "+width+"px",async({page},testInfo)=>{
+    await page.setViewportSize({width,height:900});
+    const ready={...reward,id:"a1",title:"R$ 5 de desconto",status:"available",redemption_enabled:true};
+    const far={...reward,id:"a2",title:"R$ 15 de desconto",points_cost:1500,discount_cents:1500,min_order_cents:0};
+    await mockClub(page,{loggedIn:true,me:{...member,points_balance:1240,points_pending:180,points_expiring:120,
+      points_status:"verified",redemption_enabled:true,available_rewards:[ready,far],
+      transactions:[{id:"t1",kind:"accrue",points_delta:128,created_at:"2026-11-14T10:00:00Z",description:"Compra na loja"},
+        {id:"t2",kind:"redeem",points_delta:-500,created_at:"2026-11-02T10:00:00Z",description:"Troca: R$ 5 de desconto"}]}});
+    let issued=false;
+    await page.route("**/api/v1/public/clubs/loja-jardim/vouchers/issue/",r=>{issued=true;
+      return r.fulfill({contentType:"application/json",body:JSON.stringify({code:"ANA-5K2Q",voucher_id:"v1",
+        discount_cents:500,expires_at:"2026-12-18T00:00:00Z",external_coupon_created:false})});});
+    await page.goto("/clube/loja-jardim");
+    const wallet=page.getByRole("region",{name:"Seu saldo"});
+    await expect(wallet).toContainText("1.240");
+    await expect(wallet).toContainText("R$ 12,40");
+    await expect(page.getByText("120 pontos vencem em breve")).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Próxima troca"})).toBeVisible();
+    await expect(page.getByText("faltam 260 pontos")).toBeVisible();
+    await page.getByRole("button",{name:"Mostrar no caixa"}).click();
+    const sheet=page.getByRole("dialog",{name:"Mostre ao vendedor"});
+    await expect(sheet).toContainText("Celular final 8888");
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await noOverflow(page);
+    await page.screenshot({path:testInfo.outputPath("club-home-"+width+".png"),fullPage:true});
+
+    const tabs=page.getByRole("navigation",{name:"Seções do clube"});
+    await tabs.getByRole("button",{name:"Trocar"}).click();
+    await expect(page).toHaveURL(/\/clube\/loja-jardim\/recompensas$/);
+    await expect(page.getByText("faltam 260")).toBeVisible();
+    await page.getByRole("main").getByRole("button",{name:"Trocar",exact:true}).click();
+    await expect(page.getByText("ANA-5K2Q")).toBeVisible();
+    expect(issued).toBe(true);
+    await tabs.getByRole("button",{name:"Extrato"}).click();
+    await expect(page).toHaveURL(/\/historico$/);
+    await expect(page.getByText("Compra na loja")).toBeVisible();
+    await expect(page.getByText("+128")).toBeVisible();
+    await tabs.getByRole("button",{name:"Regras"}).click();
+    await expect(page.getByText("Pontos liberam em 7 dias.")).toBeVisible();
+    await expect(page.getByText("Valem 365 dias.")).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/historico$/);
+    await noOverflow(page);
+  });
 }
+
+test("Trocas fechadas não oferecem botão e o saldo em conferência é avisado",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await mockClub(page,{loggedIn:true,me:{...member,points_balance:100,points_status:"ledger_only"}});
+  await page.goto("/clube/loja-jardim/recompensas");
+  await expect(page.getByText("Trocas ainda não abertas")).toBeVisible();
+  await expect(page.getByRole("main").getByRole("button",{name:"Trocar",exact:true})).toHaveCount(0);
+  await expect(page.getByText("faltam 100")).toBeVisible();
+  await page.getByRole("navigation",{name:"Seções do clube"}).getByRole("button",{name:"Início"}).click();
+  await expect(page.getByText("Saldo em conferência",{exact:false})).toBeVisible();
+});
+
+test("Cliente sai do clube pelo menu da conta",async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await mockClub(page,{loggedIn:true});
+  await page.goto("/clube/loja-jardim");
+  await page.getByRole("button",{name:"Minha conta"}).click();
+  await page.getByRole("menuitem",{name:"Sair do clube"}).click();
+  await expect(page.getByRole("heading",{name:"Quero participar"})).toBeVisible();
+});

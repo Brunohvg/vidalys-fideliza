@@ -13,6 +13,9 @@ import "./store-settings.css";
    Regulamento e privacidade, Ferramentas avançadas. Nada aqui muda preços,
    estoque ou pedidos da loja; status sem resposta da API fica "não verificado". */
 
+const cleanAddress=(raw:string)=>raw.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
+ .replace(/[^a-z0-9-]+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,40);
+
 export type SettingsSection="aparencia"|"canais"|"pagina"|"equipe"|"privacidade"|"ferramentas";
 type Props={
  tenantId:string;role:Store["role"];
@@ -112,6 +115,22 @@ export default function StoreSettings({tenantId,role,userName,userEmail,initialS
   return()=>{current=false};
  },[tenantId,editable]);
 
+ const [address,setAddress]=useState("");
+ const [savingAddress,setSavingAddress]=useState(false);
+ useEffect(()=>{if(settings)setAddress(settings.tenant_slug);},[settings?.tenant_slug]);
+ const saveAddress=async(event:FormEvent)=>{
+  event.preventDefault();
+  if(!settings||!editable||savingAddress)return;
+  const wanted=cleanAddress(address);
+  if(wanted===settings.tenant_slug){setNotice("Nada mudou: o endereço já é este.");return;}
+  setSavingAddress(true);setError("");setNotice("");
+  try{
+   const result=await merchantApi.setClubAddress(tenantId,wanted);
+   setSettings({...settings,tenant_slug:result.slug});setAddress(result.slug);
+   setNotice("Endereço salvo. O link antigo continua abrindo o seu clube.");
+  }catch(e){setError(friendlyError(e,"Não foi possível salvar o endereço. Tente outro."));}
+  finally{setSavingAddress(false);}
+ };
  const pick=(next:SettingsSection)=>{setSection(next);setError("");setNotice("");};
  const update=(key:keyof TenantBranding,value:string)=>setBrand(old=>old?{...old,[key]:value}:old);
  const save=async(event:FormEvent)=>{
@@ -312,7 +331,17 @@ export default function StoreSettings({tenantId,role,userName,userEmail,initialS
     {section==="pagina"&&<section className="vf-card ss-section" aria-labelledby="ss-domains-title">
      <div className="vf-card-head"><div><h2 id="ss-domains-title" className="vf-h2">Página do clube</h2>
       <span className="vf-muted vf-small">O endereço onde o cliente entra, confere saldo e troca pontos.</span></div></div>
-     <label className="vf-field">Endereço do Meu Clube<input readOnly value={clubUrl} onFocus={e=>e.currentTarget.select()}/></label>
+     <form className="ss-address" onSubmit={e=>void saveAddress(e)}>
+      <label className="vf-field" htmlFor="ss-address">Endereço do Meu Clube</label>
+      <div className="ss-address-row">
+       <span className="ss-address-prefix" aria-hidden="true">{window.location.host}/clube/</span>
+       <input id="ss-address" value={address} maxLength={40} readOnly={!editable} autoComplete="off" spellCheck={false}
+        aria-describedby="ss-address-help" onChange={e=>setAddress(e.target.value.toLowerCase())}/>
+       {editable&&<button type="submit" className="vf-btn is-primary" disabled={savingAddress||cleanAddress(address)===settings.tenant_slug||cleanAddress(address).length<3}>
+        {savingAddress?"Salvando…":"Salvar endereço"}</button>}
+      </div>
+      <span id="ss-address-help" className="vf-muted vf-small">Curto e fácil de falar no caixa, por exemplo o nome da loja. Use letras, números e hífen. Links antigos continuam funcionando.</span>
+     </form>
      <div className="vf-pills">
       <button type="button" className="vf-btn" onClick={()=>void copyLink()}><Copy size={16}/>{copied?"Link copiado":"Copiar link"}</button>
       <a className="vf-btn" href={"/clube/"+encodeURIComponent(settings.tenant_slug)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> Abrir página do cliente</a>

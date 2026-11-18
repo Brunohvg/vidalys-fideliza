@@ -8,7 +8,7 @@ import MemberClub from "./MemberClub";
 import EmailAction from "./EmailAction";
 import WithdrawalRequest from "./WithdrawalRequest";
 import MarketingSite from "./MarketingSite";
-import {entryRoute} from "./routes";
+import {entryRoute, legacyJoinRedirect} from "./routes";
 import "./brand-tokens.css";
 import "./styles.css";
 import "./portal.css";
@@ -23,8 +23,10 @@ import "./merchant-access.css";
 import "./enrollment-experience.css";
 import "./demo-experience.css";
 
+const moved = legacyJoinRedirect(window.location.pathname);
+if (moved) window.location.replace(moved);
 const entry = entryRoute(window.location.pathname);
-const content = (() => {
+const content = moved ? null : (() => {
   switch (entry) {
     case "email-action": return <EmailAction />;
     case "withdrawal": return <WithdrawalRequest />;

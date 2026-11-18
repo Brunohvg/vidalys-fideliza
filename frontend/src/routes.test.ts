@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {
-  clubSectionForPath, clubSectionPath, clubSlugFromPath,
+  clubSectionForPath, clubSectionPath, clubSlugFromPath, legacyJoinRedirect,
   entryRoute, merchantPaths, merchantScreenForPath,
 } from "./routes";
 
@@ -36,6 +36,10 @@ describe("rotas públicas e privadas", () => {
     expect(clubSectionForPath("/clube/loja-jardim/historico")).toBe("history");
     expect(clubSectionForPath("/clube/loja-jardim/regras")).toBe("rules");
     expect(clubSectionPath("loja-jardim", "rules")).toBe("/clube/loja-jardim/regras");
-    expect(clubSectionPath("loja-jardim", "rewards")).toBe("/clube/loja-jardim");
+    expect(clubSectionPath("loja-jardim", "home")).toBe("/clube/loja-jardim");
+    expect(clubSectionPath("loja-jardim", "rewards")).toBe("/clube/loja-jardim/recompensas");
+    expect(clubSectionForPath("/clube/loja-jardim")).toBe("home");
+    expect(legacyJoinRedirect("/participar/loja-jardim")).toBe("/clube/loja-jardim#participar");
+    expect(legacyJoinRedirect("/participar")).toBeNull();
   });
 });

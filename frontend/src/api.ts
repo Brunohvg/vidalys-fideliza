@@ -635,6 +635,9 @@ export const merchantApi = {
       "PATCH","/api/v1/tenants/"+encodeURIComponent(tenantId)+"/settings/",
       {...input, expected_version:expectedVersion}
     ),
+  setClubAddress: (tenantId:string, slug:string) =>
+    postJson<{slug:string;updated:boolean}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/settings/address/",{slug}),
   getSession: () => getJson<SessionInfo>("/api/v1/auth/session/"),
   listParticipants: (tenantId: string, opts?: {
     q?: string; status?: "active" | "paused" | "all"; offset?: number
@@ -768,6 +771,7 @@ export type MemberClubPublic = {
   terms:ProgramTerms|null;
   signup_available:boolean;points_enabled:boolean;rewards_enabled:boolean;redemption_enabled:boolean;
   published_rewards?:MemberClubReward[];
+  earning?:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;
 };
 export type MemberClubReward = {
   id:string;title:string;points_cost:number;discount_cents:number;
@@ -775,7 +779,7 @@ export type MemberClubReward = {
   points_missing:number|null;redemption_enabled:boolean;
 };
 export type MemberClubPrivate = {
-  store_name:string;display_name:string;
+  store_name:string;display_name:string;phone_last4?:string;
   status:"active"|"paused"|"awaiting_link";joined_at:string|null;
   terms:ProgramTerms;
   points_balance:number|null;points_pending:number|null;points_expiring:number|null;

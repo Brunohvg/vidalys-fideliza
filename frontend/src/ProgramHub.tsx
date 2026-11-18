@@ -152,7 +152,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,initial
   finally{setBusy(false);}
  };
  const clubUrl=window.location.origin+"/clube/"+encodeURIComponent(storeSlug);
- const joinUrl=window.location.origin+"/participar/"+encodeURIComponent(storeSlug);
+ const joinUrl=window.location.origin+"/clube/"+encodeURIComponent(storeSlug);
  const copy=async()=>{try{await navigator.clipboard.writeText(joinUrl);setCopied(true);window.setTimeout(()=>setCopied(false),2000);}
   catch{setError("Não foi possível copiar. Selecione o endereço e copie manualmente.");}};
  const spendFor=(points:number)=>rule?Math.ceil(points*rule.per_cents/rule.points):null;

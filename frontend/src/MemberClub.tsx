@@ -1,382 +1,498 @@
-import {useEffect, useState, type CSSProperties, type FormEvent} from "react";
-import {ArrowRight, BadgeCheck, BookOpen, CheckCircle2, Clock3, Gift, LockKeyhole, Mail, ShieldCheck, TicketPercent, ShoppingBag, LogOut} from "lucide-react";
-import {ApiError, publicEnrollmentApi, type MemberClubPublic, type MemberClubPrivate} from "./api";
+import {useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode} from "react";
+import {ArrowRight, BookOpen, CheckCircle2, CircleHelp, Clock3, Gift, House, ListOrdered, LockKeyhole,
+  LogOut, Mail, ScanLine, ShieldCheck, Sparkles, Store, TicketPercent, TriangleAlert, UserRound, X} from "lucide-react";
+import {ApiError, publicEnrollmentApi, type MemberClubPrivate, type MemberClubPublic, type MemberClubReward} from "./api";
 import {readableForeground} from "./brand-contrast";
-import {clubSectionForPath, clubSectionPath, clubSlugFromPath} from "./routes";
-import {MemberMissions, MemberRedeemAction, MemberVipCard, MemberWalletOverview} from "./MemberOverview";
+import {clubSectionForPath, clubSectionPath, clubSlugFromPath, type ClubSection} from "./routes";
+import {MemberMissions, MemberVipCard} from "./MemberOverview";
 import "./member-club.css";
 
-const slug = clubSlugFromPath(window.location.pathname) || "";
-const money=(cents:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(cents/100);
+/* Meu Clube — página do cliente, pelo protótipo aprovado (MeuClube + Entrar).
+   Um único endereço: /clube/<loja>. Quem não entrou vê como funciona, participa
+   ou recebe o link de acesso; quem entrou vê saldo, trocas, extrato e regras.
+   Usa o nome e as cores salvos pela loja. Nunca mostra saldo ou prazo inventado:
+   sem dado verificado, aparece "—" e o motivo. */
+
+const urlSlug = clubSlugFromPath(window.location.pathname) || "";
+const money = (cents:number) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(cents/100);
+const pts = (value:number) => value.toLocaleString("pt-BR");
+const shortMoney = (cents:number) => "R$ "+(cents%100===0?String(cents/100):(cents/100).toFixed(2).replace(".",","));
+const initials = (name:string) => name.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase() || "C";
+const validHex = (value:string|undefined, fallback:string) => value && /^#[0-9A-Fa-f]{6}$/.test(value) ? value : fallback;
+const percent = (value:number) => new Intl.NumberFormat("pt-BR",{maximumFractionDigits:1}).format(value)+"%";
+
+type Earning = NonNullable<MemberClubPublic["earning"]>;
+type Mode = "join" | "login";
+
+function earningHeadline(e:Earning|null|undefined){
+  if(!e) return "Junte pontos e troque por descontos.";
+  return "Ganhe "+percent(e.points/e.per_cents*100)+" de volta em toda compra.";
+}
+function earningSentence(e:Earning){
+  return "A cada "+money(e.per_cents)+" em compras, você ganha "+pts(e.points)+(e.points===1?" ponto":" pontos")+". Cada ponto vale R$ 0,01.";
+}
+function spendFor(e:Earning|null|undefined, points:number){
+  if(!e||points<=0) return null;
+  return Math.ceil(points*e.per_cents/e.points);
+}
 
 export default function MemberClub(){
-  const [token,setToken] = useState(()=>
-    new URLSearchParams(window.location.hash.replace(/^#/,"")).get("acesso") || "");
+  const [slug,setSlug] = useState(urlSlug);
+  const [token,setToken] = useState(()=>new URLSearchParams(window.location.hash.replace(/^#/,"")).get("acesso")||"");
   const [club,setClub] = useState<MemberClubPublic|null>(null);
   const [me,setMe] = useState<MemberClubPrivate|null>(null);
   const [loading,setLoading] = useState(true);
   const [ready,setReady] = useState(false);
-  const [email,setEmail] = useState("");
-  const [busy,setBusy] = useState(false);
-  const [sent,setSent] = useState(false);
   const [error,setError] = useState("");
-  const [section,setSection] = useState<"rewards"|"history"|"rules">(
-    () => clubSectionForPath(window.location.pathname)
-  );
+  const [section,setSection] = useState<ClubSection>(()=>clubSectionForPath(window.location.pathname));
+
   useEffect(()=>{
     const restore = () => setSection(clubSectionForPath(window.location.pathname));
-    window.addEventListener("popstate",restore);
-    return ()=>window.removeEventListener("popstate",restore);
-  },[]);
-  const openSection = (next:"rewards"|"history"|"rules") => {
-    setSection(next);
-    const url=clubSectionPath(slug,next);
-    if(window.location.pathname !== url)window.history.pushState(null,"",url);
-  };
-
-  useEffect(()=>{
-    // Links recebidos no mesmo navegador também precisam ser reconhecidos,
-    // inclusive quando o SPA já está aberto nesta rota.
-    const readIncomingLink = () => {
-      const next = new URLSearchParams(window.location.hash.replace(/^#/,""))
-        .get("acesso") || "";
-      if(next){
-        setMe(null);
-        setSent(false);
-        setError("");
-        setToken(next);
-      }
+    const readLink = () => {
+      const next = new URLSearchParams(window.location.hash.replace(/^#/,"")).get("acesso")||"";
+      if(next){setMe(null);setError("");setToken(next);}
     };
-    window.addEventListener("hashchange", readIncomingLink);
-    return ()=>window.removeEventListener("hashchange", readIncomingLink);
+    window.addEventListener("popstate",restore);
+    window.addEventListener("hashchange",readLink);
+    return ()=>{window.removeEventListener("popstate",restore);window.removeEventListener("hashchange",readLink);};
   },[]);
 
   useEffect(()=>{
-    if(token)window.history.replaceState(null,"",window.location.pathname);
-    let mounted=true;
-    Promise.all([
-      publicEnrollmentApi.club(slug),
-      publicEnrollmentApi.prepareCsrf(),
-    ]).then(async ([info])=>{
-      if(!mounted)return;
+    if(token) window.history.replaceState(null,"",window.location.pathname);
+    let mounted = true;
+    Promise.all([publicEnrollmentApi.club(slug), publicEnrollmentApi.prepareCsrf()]).then(async ([info])=>{
+      if(!mounted) return;
+      // Endereço antigo: a loja trocou o link. Mostra o endereço atual na barra.
+      if(info.store_slug && info.store_slug!==slug){
+        const path = window.location.pathname.replace("/clube/"+slug,"/clube/"+info.store_slug);
+        window.history.replaceState(null,"",path+window.location.hash);
+        setSlug(info.store_slug);
+      }
       setClub(info);setReady(true);
       if(!token){
-        try {
-          const account=await publicEnrollmentApi.clubMe(slug);
-          if(mounted)setMe(account);
-        } catch(e) {
+        try{
+          const account = await publicEnrollmentApi.clubMe(info.store_slug||slug);
+          if(mounted) setMe(account);
+        }catch(e){
           if(mounted && (!(e instanceof ApiError) || (e.status!==401 && e.status!==403)))
             setError("Não foi possível consultar seu acesso. Tente novamente.");
         }
       }
-    }).catch(()=>{
-      if(mounted)setError("Não foi possível carregar o clube. Verifique a conexão.");
-    }).finally(()=>{if(mounted)setLoading(false)});
+    }).catch(()=>{if(mounted) setError("Não foi possível carregar o clube. Confira o endereço e a conexão.");})
+      .finally(()=>{if(mounted) setLoading(false);});
     return ()=>{mounted=false};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   },[token]);
 
-  const requestAccess=async(e:FormEvent)=>{
-    e.preventDefault();if(busy||!ready)return;
-    setBusy(true);setError("");
-    try{
-      await publicEnrollmentApi.clubRequestAccess(slug,email.trim());
-      setEmail("");setSent(true);
-    }catch(cause){
-      setError(cause instanceof ApiError?cause.message:"Falha ao solicitar seu acesso.");
-    }finally{setBusy(false)}
+  const openSection = (next:ClubSection) => {
+    setSection(next);
+    const url = clubSectionPath(slug,next);
+    if(window.location.pathname!==url) window.history.pushState(null,"",url);
+    window.scrollTo({top:0});
+  };
+  const logout = async () => {
+    setError("");
+    try{await publicEnrollmentApi.clubLogout(slug);setMe(null);openSection("home");}
+    catch{setError("Não foi possível sair agora. Tente novamente.");}
   };
 
-  const confirm=async()=>{
-    if(!ready||busy||!token)return;
+  const brand = validHex(club?.branding.primary_color,"#6A3DF0");
+  const accent = validHex(club?.branding.accent_color,"#FFC857");
+  const brandInk = readableForeground(brand);
+  const style = {
+    "--clb-brand":brand, "--clb-brand-ink":brandInk,
+    "--clb-brand-end":brandInk==="#FFFFFF"?"color-mix(in srgb, "+brand+" 58%, #24113F)":"color-mix(in srgb, "+brand+" 72%, #FFFFFF)",
+    "--clb-accent":accent, "--clb-accent-ink":readableForeground(accent),
+  } as CSSProperties;
+  const program = club?.branding.program_name || (club ? "Clube "+club.store_name : "Meu Clube");
+  const support = club?.branding.support_email || "";
+
+  return <div className={"clb-shell"+(me?" is-member":"")} style={style}>
+    <header className="clb-top">
+      <span className="clb-store-tile" aria-hidden="true">{initials(club?.store_name||"")}</span>
+      <div className="clb-top-text">
+        <strong>{program}</strong>
+        <span>{me?"Olá, "+(me.display_name.split(" ")[0]||"cliente"):club?club.store_name:"Carregando…"}</span>
+      </div>
+      {me&&<AccountMenu me={me} onLogout={()=>void logout()}/>}
+    </header>
+
+    <main className="clb-main" id="conteudo">
+      {loading&&<div className="clb-card clb-state" role="status"><span className="clb-spinner" aria-hidden="true"/>Carregando o clube…</div>}
+      {error&&<div className="clb-alert is-danger" role="alert"><TriangleAlert size={20} aria-hidden="true"/><span>{error}</span></div>}
+      {!loading&&club&&!me&&<Guest slug={slug} club={club} token={token} ready={ready}
+        onEntered={account=>{setToken("");setMe(account);openSection("home");}}/>}
+      {!loading&&club&&me&&<Member slug={slug} club={club} me={me} section={section} onOpen={openSection}/>}
+      {!loading&&!club&&!error&&<div className="clb-card clb-state" role="alert">Clube não encontrado. Confira o endereço com a loja.</div>}
+      {support&&<p className="clb-support">Dúvidas sobre o clube? <a href={"mailto:"+support}>Fale com a loja</a></p>}
+      <p className="clb-footer"><LockKeyhole size={13} aria-hidden="true"/> Clube com tecnologia Vidalys Fideliza</p>
+    </main>
+
+    {me&&<nav className="clb-tabs" aria-label="Seções do clube">
+      {([["home","Início",House],["rewards","Trocar",Gift],["history","Extrato",ListOrdered],["rules","Regras",CircleHelp]] as const)
+        .map(([key,label,Icon])=><button key={key} type="button" className={"clb-tab"+(section===key?" is-on":"")}
+          aria-current={section===key?"page":undefined} onClick={()=>openSection(key)}>
+          <Icon size={22} aria-hidden="true"/>{label}</button>)}
+    </nav>}
+  </div>;
+}
+
+/* ---------- Cliente que ainda não entrou ---------- */
+
+function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPublic;token:string;ready:boolean;
+  onEntered:(me:MemberClubPrivate)=>void}){
+  const initialMode:Mode = window.location.hash.includes("entrar") || !club.signup_available ? "login" : "join";
+  const [mode,setMode] = useState<Mode>(initialMode);
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState("");
+  const [joined,setJoined] = useState(false);
+  const [sent,setSent] = useState(false);
+  const [name,setName] = useState("");
+  const [email,setEmail] = useState("");
+  const [phone,setPhone] = useState("");
+  const [accepted,setAccepted] = useState(false);
+  const [marketing,setMarketing] = useState(false);
+  const [loginEmail,setLoginEmail] = useState("");
+  const formRef = useRef<HTMLDivElement>(null);
+  const earning = club.earning;
+  const rewards = club.published_rewards||[];
+  const cheapest = rewards.filter(r=>r.points_cost>0).sort((a,b)=>a.points_cost-b.points_cost)[0];
+
+  useEffect(()=>{
+    if(window.location.hash.includes("participar")||window.location.hash.includes("entrar"))
+      formRef.current?.scrollIntoView({block:"start"});
+  },[]);
+
+  const join = async (event:FormEvent) => {
+    event.preventDefault();
+    if(!club.terms||!accepted||busy||!ready) return;
+    setBusy(true);setError("");
+    try{
+      await publicEnrollmentApi.joinStore(slug,{name:name.trim(),email:email.trim(),terms_version:club.terms.version,
+        accepted_terms:true,marketing_opt_in:marketing,...(phone.trim()?{phone:phone.trim()}:{})});
+      setJoined(true);
+    }catch(cause){setError(cause instanceof ApiError?cause.message:"Não foi possível registrar sua participação. Tente novamente.");}
+    finally{setBusy(false);}
+  };
+  const requestAccess = async (event:FormEvent) => {
+    event.preventDefault();
+    if(busy||!ready) return;
+    setBusy(true);setError("");
+    try{await publicEnrollmentApi.clubRequestAccess(slug,loginEmail.trim());setSent(true);}
+    catch(cause){setError(cause instanceof ApiError?cause.message:"Não foi possível enviar o link. Tente novamente.");}
+    finally{setBusy(false);}
+  };
+  const confirm = async () => {
+    if(!ready||busy||!token) return;
     setBusy(true);setError("");
     try{
       await publicEnrollmentApi.clubConfirmAccess(slug,token);
-      const account=await publicEnrollmentApi.clubMe(slug);
-      setMe(account);
-    }catch(cause){
-      setError(cause instanceof ApiError?cause.message:"Este link não pôde ser confirmado.");
-    }finally{setBusy(false)}
+      onEntered(await publicEnrollmentApi.clubMe(slug));
+    }catch(cause){setError(cause instanceof ApiError?cause.message:"Este link não pôde ser confirmado. Peça um novo.");}
+    finally{setBusy(false);}
   };
 
-  const logout=async()=>{
-    setBusy(true);setError("");
-    try{
-      await publicEnrollmentApi.clubLogout(slug);
-      setMe(null);setSent(false);
-    }catch{setError("Não foi possível encerrar o acesso.");}
-    finally{setBusy(false)}
-  };
+  return <div className="clb-stack">
+    <section className="clb-hero" aria-labelledby="clb-hero-title">
+      <span className="clb-eyebrow">{club.branding.program_name||("Clube "+club.store_name)}</span>
+      <h1 id="clb-hero-title">{earningHeadline(earning)}</h1>
+      <p>Na loja ou no site, é só se identificar. Sem cartão, sem app e sem anuidade.</p>
+      {!club.points_enabled&&<span className="clb-hero-note"><Clock3 size={15} aria-hidden="true"/>
+        A loja está preparando o clube: os pontos começam a contar quando ela ativar.</span>}
+    </section>
 
-  const color=club?.branding.primary_color || "#6A3DF0";
-  const accent=club?.branding.accent_color || "#FF8A3D";
-  // A marca Vidalys estrutura o clube. As cores da loja ficam em detalhes configuráveis.
-  const heroStyle={background:"linear-gradient(125deg,#3B1E82 0%,#542CCB 68%,#6A3DF0 100%)",color:"#FFFFFF"};
-  const clubStyle={
-    "--mc-primary":color,
-    "--mc-primary-text":readableForeground(color),
-    "--mc-secondary":accent,
-    "--mc-secondary-text":readableForeground(accent),
-  } as CSSProperties;
-  const program=club?.branding.program_name || (club ? "Clube "+club.store_name : "Meu Clube");
-  const firstName=me?.display_name.split(" ")[0] || "participante";
-  const state=me?.status==="active"?"Participando":me?.status==="paused"?"Pausado":"Aguardando ativação";
-  const pointsReady=me?.points_status==="verified"&&typeof me.points_balance==="number";
-  const ledgerOnly=me?.points_status==="ledger_only"&&typeof me.points_balance==="number";
-  const hasLedger=pointsReady||ledgerOnly;
-  const availablePoints=hasLedger&&me?me.points_balance:null;
-  const publishedRewards=me?.available_rewards || [];
-  const guestRewards=club?.published_rewards || [];
-  const nextReward=publishedRewards
-    .filter(item=>item.status!=="paused"&&item.status!=="sold_out"&&item.points_cost>0)
+    <div ref={formRef} className="clb-anchor"/>
+    {token?<section className="clb-card clb-center" aria-labelledby="clb-confirm-title">
+      <span className="clb-badge"><LockKeyhole size={26} aria-hidden="true"/></span>
+      <h2 id="clb-confirm-title">Confirme seu acesso</h2>
+      <p>Este link é pessoal, vale uma vez e expira em 15 minutos.</p>
+      {error&&<p className="clb-error" role="alert">{error}</p>}
+      <button type="button" className="clb-btn is-primary is-wide" disabled={!ready||busy} onClick={()=>void confirm()}>
+        {busy?"Confirmando…":"Confirmar e entrar"} <ArrowRight size={18} aria-hidden="true"/></button>
+    </section>
+    :joined?<Done title="Confira seu e-mail" icon={<Mail size={30} aria-hidden="true"/>}
+      text={"Enviamos um link para "+(email.trim()||"o seu e-mail")+". Toque nele para confirmar sua participação. Confira também o spam."}
+      action={<button type="button" className="clb-btn is-wide" onClick={()=>{setJoined(false);setMode("login");}}>Já confirmei, quero entrar</button>}/>
+    :sent?<Done title="Confira seu e-mail" icon={<Mail size={30} aria-hidden="true"/>}
+      text="Se este e-mail participa do clube, você vai receber um link de acesso. Ele vale por 15 minutos."
+      action={<button type="button" className="clb-btn is-wide" onClick={()=>setSent(false)}>Usar outro e-mail</button>}/>
+    :mode==="join"&&club.signup_available&&club.terms?<>
+      <form className="clb-card clb-form" aria-labelledby="clb-join-title" onSubmit={e=>void join(e)}>
+        <h2 id="clb-join-title">Quero participar</h2>
+        <label className="clb-field">Seu nome
+          <input autoComplete="name" required minLength={3} maxLength={140} value={name}
+            onChange={e=>setName(e.target.value)} placeholder="Como podemos te chamar"/></label>
+        <label className="clb-field">E-mail
+          <input type="email" autoComplete="email" required maxLength={254} value={email}
+            onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com"/></label>
+        <label className="clb-field">Celular (opcional)
+          <input type="tel" inputMode="tel" autoComplete="tel" maxLength={20} value={phone}
+            onChange={e=>setPhone(e.target.value)} placeholder="(31) 9 9999-9999"/>
+          <small>Na loja física, basta dizer o número no caixa.</small></label>
+        <label className="clb-check"><input type="checkbox" required checked={accepted} onChange={e=>setAccepted(e.target.checked)}/>
+          <span>Li e aceito o regulamento e o aviso de privacidade do clube.</span></label>
+        <details className="clb-details"><summary>Ler regulamento · versão {club.terms.version}</summary><p>{club.terms.body}</p></details>
+        {club.terms.privacy_notice&&<details className="clb-details"><summary>Ler aviso de privacidade</summary><p>{club.terms.privacy_notice}</p></details>}
+        <label className="clb-check"><input type="checkbox" checked={marketing} onChange={e=>setMarketing(e.target.checked)}/>
+          <span>Quero receber ofertas da loja por e-mail (opcional).</span></label>
+        {error&&<p className="clb-error" role="alert">{error}</p>}
+        <button type="submit" className="clb-btn is-primary is-wide" disabled={!accepted||busy||!ready}>
+          {busy?"Enviando…":"Entrar no clube"} <ArrowRight size={18} aria-hidden="true"/></button>
+        <span className="clb-hint">Enviamos um link de confirmação. Sem senha para lembrar.</span>
+      </form>
+      <section className="clb-card clb-switch" aria-label="Já participa">
+        <div><strong>Já participa?</strong><span>Receba um link de acesso no seu e-mail.</span></div>
+        <button type="button" className="clb-btn" onClick={()=>{setMode("login");setError("");}}>Entrar</button>
+      </section>
+    </>
+    :<>
+      <form className="clb-card clb-form" aria-labelledby="clb-login-title" onSubmit={e=>void requestAccess(e)}>
+        <h2 id="clb-login-title">Entrar no Meu Clube</h2>
+        <p className="clb-lead">Informe o e-mail que você usou para participar. Enviamos um link seguro, sem senha.</p>
+        <label className="clb-field">Seu e-mail
+          <input id="clb-login-email" type="email" autoComplete="email" required maxLength={254} value={loginEmail}
+            onChange={e=>setLoginEmail(e.target.value)} placeholder="voce@email.com"/></label>
+        {error&&<p className="clb-error" role="alert">{error}</p>}
+        <button type="submit" className="clb-btn is-primary is-wide" disabled={busy||!ready}>
+          {busy?"Enviando…":"Enviar link de acesso"} <ArrowRight size={18} aria-hidden="true"/></button>
+      </form>
+      {club.signup_available&&club.terms?<section className="clb-card clb-switch" aria-label="Ainda não participa">
+        <div><strong>Ainda não participa?</strong><span>É grátis e leva menos de um minuto.</span></div>
+        <button type="button" className="clb-btn" onClick={()=>{setMode("join");setError("");}}>Participar</button>
+      </section>:<p className="clb-hint">As inscrições pelo site ainda não foram abertas pela loja. Peça no caixa.</p>}
+    </>}
+
+    <section className="clb-card" aria-labelledby="clb-how-title">
+      <h2 id="clb-how-title">Como funciona</h2>
+      <ol className="clb-steps">
+        <li><span>1</span><p>{earning?<><strong>{earningSentence(earning)}</strong></>:<><strong>Compre na loja ou no site.</strong> Cada compra paga soma pontos.</>}</p></li>
+        <li><span>2</span><p>{cheapest?<>Com <strong>{pts(cheapest.points_cost)} pontos</strong> você troca por {money(cheapest.discount_cents)} de desconto.</>
+          :<>Troque os pontos por descontos <strong>assim que a loja publicar as recompensas.</strong></>}</p></li>
+        <li><span>3</span><p>{earning&&earning.hold_days>0?<>Os pontos entram depois de <strong>{earning.hold_days} dias</strong>, o prazo de troca da compra.</>
+          :<>Os pontos entram depois que a loja confere a compra.</>}{earning&&earning.validity_days>0?<> Valem por <strong>{earning.validity_days} dias</strong>.</>:null}</p></li>
+      </ol>
+    </section>
+
+    {rewards.length>0&&<section className="clb-card" aria-labelledby="clb-catalog-title">
+      <h2 id="clb-catalog-title">O que dá para trocar</h2>
+      <ul className="clb-list">{rewards.slice(0,6).map(r=><li key={r.id} className="clb-reward">
+        <span className="clb-reward-ico">{shortMoney(r.discount_cents)}</span>
+        <div><strong>{r.title}</strong><span>{pts(r.points_cost)} pontos{r.min_order_cents>0?" · compra mínima "+money(r.min_order_cents):""}</span></div>
+      </li>)}</ul>
+    </section>}
+  </div>;
+}
+
+function Done({title,text,icon,action}:{title:string;text:string;icon:ReactNode;action:ReactNode}){
+  return <section className="clb-card clb-center" role="status">
+    <span className="clb-badge is-ok">{icon}</span>
+    <h2>{title}</h2><p>{text}</p>{action}
+  </section>;
+}
+
+/* ---------- Cliente que entrou ---------- */
+
+function AccountMenu({me,onLogout}:{me:MemberClubPrivate;onLogout:()=>void}){
+  const [open,setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    if(!open) return;
+    const close = (e:MouseEvent|KeyboardEvent) => {
+      if(e instanceof KeyboardEvent ? e.key==="Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown",close);document.addEventListener("keydown",close);
+    return ()=>{document.removeEventListener("mousedown",close);document.removeEventListener("keydown",close);};
+  },[open]);
+  return <div className="clb-account" ref={ref}>
+    <button type="button" className="clb-icon-btn" aria-label="Minha conta" aria-expanded={open} onClick={()=>setOpen(!open)}>
+      <UserRound size={20} aria-hidden="true"/></button>
+    {open&&<div className="clb-menu" role="menu">
+      <div className="clb-menu-head"><strong>{me.display_name}</strong>
+        <span>{me.phone_last4?"Celular final "+me.phone_last4:"Sem celular cadastrado"}</span></div>
+      <button type="button" role="menuitem" onClick={onLogout}><LogOut size={17} aria-hidden="true"/> Sair do clube</button>
+    </div>}
+  </div>;
+}
+
+function Member({slug,club,me,section,onOpen}:{slug:string;club:MemberClubPublic;me:MemberClubPrivate;
+  section:ClubSection;onOpen:(s:ClubSection)=>void}){
+  const [showCounter,setShowCounter] = useState(false);
+  const verified = me.points_status==="verified" && typeof me.points_balance==="number";
+  const balance = typeof me.points_balance==="number" ? me.points_balance : null;
+  const rewards = me.available_rewards||[];
+  const ready = rewards.filter(r=>me.redemption_enabled&&r.redemption_enabled&&r.status==="available"&&r.redemption_unit==="points");
+  const next = rewards.filter(r=>r.status!=="paused"&&r.status!=="sold_out"&&r.points_cost>0&&(balance===null||r.points_cost>balance))
     .sort((a,b)=>a.points_cost-b.points_cost)[0];
-  const nextProgress=pointsReady&&availablePoints!==null&&nextReward
-    ?Math.min(100,Math.round(availablePoints/nextReward.points_cost*100)):null;
+  const earning = club.earning;
 
-  return <div className="member-club-shell loyalty-club" style={clubStyle}>
-    <header className="member-club-top">
-      <div className="member-club-mark">
-        <img src="/brand-mark.svg" alt="" width={42} height={42}/>
-      </div>
-      <div className="member-club-brand">
-        <strong>{program}</strong><small>Benefícios para voltar sempre</small>
-      </div>
-      {me&&<button className="member-club-logout" type="button" disabled={busy} onClick={()=>void logout()}>
-        <LogOut size={16} aria-hidden="true"/><span className="member-club-logout-desktop">Sair do clube</span>
-        <span className="member-club-logout-mobile">Sair</span>
-      </button>}
-    </header>
-    <main className="member-club-main">
-      {loading&&<div className="member-club-panel" role="status">Carregando o clube…</div>}
-      {error&&<div className="member-club-error" role="alert">{error}</div>}
-      {!loading&&club&&!me&&<div className="member-club-guest">
-        <section className="member-club-hero member-club-hero-guest"
-          style={heroStyle}>
-          <div className="member-club-hero-decoration" aria-hidden="true"><img src="/loyalty-gift.svg" alt="" width={240} height={240}/></div>
-          <span className="member-club-eyebrow"><Gift size={16}/> UM CLUBE FEITO PARA VOCÊ</span>
-          <h1>Mais motivos para voltar. <em>Mais vantagens para descobrir.</em></h1>
-          <p>Entre para o clube de {club.store_name}, acompanhe as novidades e conheça as recompensas que a loja preparou para você.</p>
-          <div className="member-club-highlights" aria-label="Vantagens de participar">
-            <span><CheckCircle2 size={17}/> Adesão gratuita</span>
-            <span><Gift size={17}/> Recompensas para conhecer</span>
-            <span><LockKeyhole size={17}/> Acesso por e-mail</span>
-          </div>
-          <div className="member-club-hero-actions">
-            {club.signup_available&&<a className="member-club-hero-join"
-              href={"/participar/"+encodeURIComponent(slug)}>
-              Quero participar <ArrowRight size={17}/>
-            </a>}
-            <a href="#entrar-no-clube" className="member-club-hero-signin">Já sou participante</a>
-          </div>
-          <span className="member-club-hero-note"><ShieldCheck size={16}/>
-            A adesão depende do seu consentimento. Pontos e resgates estão em preparação.
-          </span>
-        </section>
-        <section className="member-club-panel member-club-entry" id="entrar-no-clube"
-          aria-label="Entrar no clube">
-          {token?<div className="member-club-access">
-            <LockKeyhole size={26}/>
-            <h2>Confirme seu acesso</h2>
-            <p>Este link pessoal é de uso único e expira em 15 minutos.</p>
-            <button type="button" className="member-club-button" disabled={!ready||busy}
-              onClick={()=>void confirm()}>{busy?"Confirmando…":"Confirmar e entrar"} <ArrowRight size={17}/></button>
-          </div>:sent?<div className="member-club-access" role="status">
-            <Mail size={29}/><h2>Confira seu e-mail</h2>
-            <p>Se existir uma adesão com e-mail confirmado, enviaremos um link de acesso privado. Confira também a caixa de spam.</p>
-            <button type="button" className="member-club-light" onClick={()=>setSent(false)}>Usar outro e-mail</button>
-          </div>:<>
-            <span className="member-club-kicker"><LockKeyhole size={16}/> ACESSO DO PARTICIPANTE</span>
-            <h2>Bem-vindo de volta</h2>
-            <p>Já participa? Informe o e-mail cadastrado e receba um link seguro. Sem senha e sem complicação.</p>
-            <form onSubmit={requestAccess} className="member-club-login">
-              <label htmlFor="member-club-email">Seu e-mail</label>
-              <input id="member-club-email" type="email" required autoComplete="email"
-                maxLength={254} value={email} onChange={e=>setEmail(e.target.value)}
-                placeholder="voce@exemplo.com"/>
-              <button className="member-club-button" type="submit" disabled={!ready||busy}>
-                {busy?"Solicitando…":"Enviar link de acesso"} <ArrowRight size={17}/>
-              </button>
-            </form>
-            {club.signup_available&&<p className="member-club-join">Ainda não faz parte do clube?
-              <a href={"/participar/"+encodeURIComponent(slug)}> Participar agora</a>
-            </p>}
-          </>}
-        </section>
-      </div>}
-      {!loading&&club&&!me&&<section className="member-club-guest-benefits"
-        aria-label="Recompensas apresentadas pela loja">
-        <div className="member-club-guest-benefits-head">
-          <div><span className="member-club-kicker"><TicketPercent size={16}/> BENEFÍCIOS DO CLUBE</span>
-            <h2>Recompensas que fazem voltar</h2>
-            <p>Conheça os benefícios que {club.store_name} está preparando para quem faz parte do clube.</p>
-          </div>
-          {club.signup_available&&<a href={"/participar/"+encodeURIComponent(slug)}>
-            Fazer parte do clube <ArrowRight size={16}/></a>}
-        </div>
-        {guestRewards.length>0?
-          <div className="member-club-guest-perks">
-            {guestRewards.slice(0,6).map(reward=><article key={reward.id} className="member-club-benefit-card">
-              <span className="member-club-guest-perk-icon"><TicketPercent size={24}/></span>
-              <div className="member-club-benefit-copy">
-                <span className="member-club-benefit-eyebrow">BENEFÍCIO PUBLICADO</span>
-                <h3>{reward.title}</h3>
-                <strong className="member-club-benefit-amount">{money(reward.discount_cents)}</strong>
-                <p>{reward.points_cost.toLocaleString("pt-BR")} pontos previstos
-                  {reward.min_order_cents>0?" · Compra mínima "+money(reward.min_order_cents):""}
-                </p>
-              </div>
-              <span className="member-club-guest-perk-status"><LockKeyhole size={14}/> Em preparação</span>
-            </article>)}
-          </div>:
-          <div className="member-club-guest-perks-empty">
-            <Gift size={25}/><div><strong>As recompensas estão sendo preparadas</strong>
-              <p>Quando a loja publicar benefícios, eles aparecerão aqui automaticamente.</p>
-            </div>
-          </div>}
-        <p className="member-club-guest-honest">
-          O catálogo apresenta benefícios planejados. Compras ainda não geram pontos
-          e não é possível usar descontos até a ativação do programa.
-        </p>
+  return <>
+    {section==="home"&&<div className="clb-stack">
+      <section className="clb-wallet" aria-label="Seu saldo">
+        <span className="clb-eyebrow">SEU SALDO</span>
+        <strong className="clb-big">{balance!==null?pts(balance):"—"}</strong>
+        {balance!==null?<span className="clb-wallet-line">pontos = <b>{money(balance)}</b> em descontos</span>
+          :<span className="clb-wallet-line">{me.status==="active"?"A loja ainda não ativou a pontuação. Seu saldo aparece aqui quando começar."
+            :"Seu cadastro está sendo conferido pela loja."}</span>}
+        {typeof me.points_pending==="number"&&me.points_pending>0&&<span className="clb-wallet-sub">+{pts(me.points_pending)} pontos pendentes, aguardando o prazo da compra</span>}
+        {me.points_status==="ledger_only"&&<span className="clb-wallet-sub">Saldo em conferência: ainda não pode ser trocado.</span>}
+        <button type="button" className="clb-btn is-light" onClick={()=>setShowCounter(true)}><ScanLine size={18} aria-hidden="true"/> Mostrar no caixa</button>
+      </section>
+
+      {typeof me.points_expiring==="number"&&me.points_expiring>0&&<div className="clb-alert is-warn" role="status">
+        <Clock3 size={20} aria-hidden="true"/><div><strong>{pts(me.points_expiring)} pontos vencem em breve</strong>
+          <span>Troque antes de perder. Veja as opções em Trocar.</span></div></div>}
+      {me.status!=="active"&&<div className="clb-alert is-info" role="status"><Store size={20} aria-hidden="true"/>
+        <div><strong>{me.status==="paused"?"Participação pausada":"Cadastro aguardando a loja"}</strong>
+          <span>{me.status==="paused"?"Fale com a loja para retomar.":"Assim que a loja confirmar seu cadastro, suas compras passam a contar."}</span></div></div>}
+
+      {next&&<section className="clb-card" aria-labelledby="clb-next-title">
+        <div className="clb-card-head"><h2 id="clb-next-title">Próxima troca</h2>
+          {balance!==null&&<span>faltam {pts(next.points_cost-balance)} pontos</span>}</div>
+        <div className="clb-reward is-flat"><span className="clb-reward-ico is-gold">{shortMoney(next.discount_cents)}</span>
+          <div><strong>{money(next.discount_cents)} de desconto</strong>
+            <span>{pts(next.points_cost)} pontos{spendFor(earning,next.points_cost)?" · cerca de "+money(spendFor(earning,next.points_cost) as number)+" em compras":""}</span></div></div>
+        {balance!==null&&<div className="clb-bar" role="progressbar" aria-label="Progresso até a próxima troca"
+          aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100,Math.round(balance/next.points_cost*100))}>
+          <span style={{width:Math.min(100,Math.round(balance/next.points_cost*100))+"%"}}/></div>}
       </section>}
-      {!loading&&me&&<div className="member-club-account">
-        <section className="member-club-hero member-club-hero-account"
-          style={heroStyle}>
-          <span className="member-club-eyebrow"><BadgeCheck size={15}/> MEU CLUBE</span>
-          <h1>Olá, {firstName}!</h1>
-          <span className="member-club-hero-note"><CheckCircle2 size={15}/> {state}</span>
-          <p className="member-club-hero-subtitle">Suas conquistas e benefícios em um só lugar.</p>
-        </section>
-        {(me.vip_level||me.vip_next_level)&&<MemberVipCard me={me}/>}
-        <MemberWalletOverview me={me} pointsReady={pointsReady} ledgerOnly={ledgerOnly}/>
-        <MemberRedeemAction slug={slug} me={me} reward={nextReward ?? null}/>
-        {(me.missions||[]).length>0&&<MemberMissions me={me}/>}
-        <nav className="member-club-sections" aria-label="Seu clube">
-          <button type="button" aria-pressed={section==="rewards"}
-            aria-controls="member-rewards-panel"
-            className={section==="rewards"?"selected":""}
-            onClick={()=>openSection("rewards")}>
-            <Gift size={17}/><span>Recompensas</span>
-          </button>
-          <button type="button" aria-pressed={section==="history"}
-            aria-controls="member-history-panel"
-            className={section==="history"?"selected":""}
-            onClick={()=>openSection("history")}>
-            <Clock3 size={17}/><span>Histórico</span>
-          </button>
-          <button type="button" aria-pressed={section==="rules"}
-            aria-controls="member-rules-panel"
-            className={section==="rules"?"selected":""}
-            onClick={()=>openSection("rules")}>
-            <BookOpen size={17}/><span>Regras</span>
-          </button>
-        </nav>
-        {section==="rewards"&&<section id="member-rewards-panel" className="member-club-panel member-club-rewards"
-          aria-labelledby="member-rewards-title">
-          <span className="member-club-kicker"><TicketPercent size={16}/> SEUS BENEFÍCIOS</span>
-          <h2 id="member-rewards-title">Recompensas do clube</h2>
-          <p className="member-club-section-lead">Veja os benefícios divulgados pela loja. Pontos e resgates serão liberados após a ativação do programa.</p>
-          {nextReward&&nextProgress!==null&&<div className="member-club-next">
-            <div className="member-club-next-heading">
-              <span>Seu próximo benefício</span>
-              <strong>{money(nextReward.discount_cents)} de desconto</strong>
-            </div>
-            <div className="member-club-progress" role="progressbar"
-              aria-label="Progresso para próxima recompensa" aria-valuemin={0}
-              aria-valuemax={nextReward.points_cost}
-              aria-valuenow={Math.min(availablePoints??0,nextReward.points_cost)}>
-              <span style={{width:nextProgress+"%"}}/>
-            </div>
-            <small>{availablePoints!==null&&availablePoints>=nextReward.points_cost
-              ?"Você já tem pontos suficientes. Aguarde a liberação do resgate."
-              :"Faltam "+Math.max(0,nextReward.points_cost-(availablePoints??0)).toLocaleString("pt-BR")+" pontos."}</small>
-          </div>}
-          {publishedRewards.length===0?<div className="member-club-rewards-empty">
-            <span><Gift size={24}/></span>
-            <div><h3>Recompensas em preparação</h3>
-              <p>A loja ainda não publicou recompensas. Quando divulgar novos benefícios, você poderá consultá-los aqui.</p>
-            </div>
-          </div>:<div className="member-club-rewards-grid">
-            {publishedRewards.map(reward=><article className="member-club-reward" key={reward.id}>
-              <span className="member-club-reward-symbol"><TicketPercent size={21}/></span>
-              <h3>{reward.title}</h3>
-              <strong>{money(reward.discount_cents)} de desconto</strong>
-              <p>{reward.points_cost.toLocaleString("pt-BR")} pontos
-                <span className="member-club-reward-min"> · Pedido mínimo {money(reward.min_order_cents)}</span>
-              </p>
-              <div className="member-club-reward-state">
-                {reward.status==="paused"?"Temporariamente indisponível":
-                  reward.status==="sold_out"?"Esgotada":
-                  !reward.redemption_enabled?"Publicado para consulta · Resgate em preparação":
-                  !pointsReady?"Aguardando ativação":
-                  availablePoints!==null&&availablePoints<reward.points_cost
-                    ?"Faltam "+(reward.points_cost-availablePoints).toLocaleString("pt-BR")+" pontos":
-                  "Resgate em preparação"}
-              </div>
-            </article>)}
-          </div>}
-          <div className="member-club-explainer" aria-label="Como funciona a pontuação">
-            <h3>Como funcionará seu clube</h3>
-            <ol className="member-club-journey">
-              <li><span className="member-club-journey-icon"><ShoppingBag size={18}/></span>
-                <div><strong>Compre na loja</strong><small>Após a ativação, compras elegíveis e pagas serão verificadas.</small></div>
-              </li>
-              <li><span className="member-club-journey-icon"><Clock3 size={18}/></span>
-                <div><strong>Acompanhe os pontos</strong><small>Quando liberados, os pontos e suas movimentações aparecerão aqui.</small></div>
-              </li>
-              <li><span className="member-club-journey-icon"><TicketPercent size={18}/></span>
-                <div><strong>Troque por um desconto</strong><small>Quando o resgate estiver ativo, o benefício será usado na próxima compra.</small></div>
-              </li>
-            </ol>
-          </div>
-          <details className="member-club-more">
-            <summary><ShoppingBag size={16}/> Como vou usar meus pontos no site?</summary>
-            <div className="member-club-more-body">
-              <p>Depois da ativação, você poderá trocar pontos por um desconto na próxima compra. O cupom individual será utilizado no checkout da loja.</p>
-              <p>Esse resgate ainda não está disponível. Nenhum cupom foi criado nem ponto consumido.</p>
-            </div>
-          </details>
-        </section>}
-        {section==="history"&&<section id="member-history-panel" className="member-club-panel member-club-history"
-          aria-labelledby="member-history-title">
-          <span className="member-club-kicker"><Clock3 size={16}/> MOVIMENTAÇÕES</span>
-          <h2 id="member-history-title">Histórico de pontos</h2>
-          {me.transactions.length?<ul className="member-club-movements">
-            {me.transactions.map(item=><li key={item.id}>
-              <div><strong>{item.description}</strong>
-                <small>{new Date(item.created_at).toLocaleString("pt-BR")}</small></div>
-              <strong>{item.points_delta>0?"+":""}{item.points_delta.toLocaleString("pt-BR")} pts</strong>
-            </li>)}
-          </ul>:<div className="member-club-simple-empty">
-            <Clock3 size={24}/>
-            <p>Ainda não há movimentações. Compras pagas e pontos liberados aparecerão aqui.</p>
-          </div>}
-        </section>}
-        {section==="rules"&&<section id="member-rules-panel" className="member-club-panel member-club-rules"
-          aria-labelledby="member-rules-title">
-          <span className="member-club-kicker"><ShieldCheck size={16}/> SEUS DADOS</span>
-          <h2 id="member-rules-title">Regras e privacidade</h2>
-          <p>Confira o regulamento aceito durante sua adesão. A pontuação e o resgate só funcionarão após a ativação pela loja.</p>
-          <p className="member-club-terms-version">Você aceitou {me.terms.title} · versão {me.terms.version}.</p>
-          <details className="member-club-terms"><summary>Ler regulamento completo</summary>
-            <p>{me.terms.body}</p>
-          </details>
-          {me.terms.privacy_notice&&<details className="member-club-terms">
-            <summary>Meu aviso de privacidade</summary>
-            <p>{me.terms.privacy_notice}</p>
-          </details>}
-        </section>}
-      </div>}
-      {!loading&&club&&!me&&<section className="member-club-panel member-club-info">
-        <span className="member-club-kicker"><BookOpen size={16}/> COMO FUNCIONA</span>
-        <h2>Simples para participar</h2>
-        <div className="member-club-steps"><div><strong>01 · Participe</strong><p>Leia e aceite o regulamento. Confirme seu e-mail uma única vez.</p></div>
-          <div><strong>02 · Acumule</strong><p>Após a ativação, as compras elegíveis poderão gerar pontos.</p></div>
-          <div><strong>03 · Aproveite</strong><p>Quando disponível, troque pontos por benefícios e acompanhe o histórico.</p></div></div>
-        {club.terms&&<details className="member-club-terms"><summary>Conhecer o regulamento</summary><p>{club.terms.body}</p></details>}
+
+      {ready.length>0&&<section className="clb-card" aria-labelledby="clb-now-title">
+        <h2 id="clb-now-title">Você já pode trocar</h2>
+        <ul className="clb-list">{ready.slice(0,3).map(r=><li key={r.id} className="clb-reward">
+          <span className="clb-reward-ico">{shortMoney(r.discount_cents)}</span>
+          <div><strong>{money(r.discount_cents)} de desconto</strong><span>{pts(r.points_cost)} pontos</span></div>
+          <button type="button" className="clb-btn is-primary is-small" onClick={()=>onOpen("rewards")}>Trocar</button></li>)}</ul>
       </section>}
-      {club?.branding.support_email&&<p className="member-club-support">Dúvidas sobre o clube?
-        <a href={"mailto:"+club.branding.support_email}> Fale com a loja</a>
-      </p>}
-    </main>
-    <footer className="member-club-footer"><LockKeyhole size={13}/> Vidalys Fideliza · Clube independente da plataforma de vendas</footer>
+
+      {rewards.length===0&&<section className="clb-card clb-empty"><Gift size={24} aria-hidden="true"/>
+        <div><strong>Recompensas a caminho</strong><span>Quando a loja publicar as trocas, elas aparecem aqui.</span></div></section>}
+
+      {(me.vip_level||me.vip_next_level)&&<MemberVipCard me={me}/>}
+      {(me.missions||[]).length>0&&<MemberMissions me={me}/>}
+
+      <button type="button" className="clb-card clb-link-card" onClick={()=>onOpen("rules")}>
+        <span className="clb-reward-ico is-soft"><BookOpen size={22} aria-hidden="true"/></span>
+        <div><strong>Como funciona o clube</strong><span>{earning?earningSentence(earning):"Veja as regras e o regulamento."}</span></div>
+        <ArrowRight size={18} aria-hidden="true"/></button>
+    </div>}
+
+    {section==="rewards"&&<Redeem slug={slug} me={me} balance={balance} verified={verified}/>}
+    {section==="history"&&<History me={me}/>}
+    {section==="rules"&&<Rules slug={slug} club={club} me={me}/>}
+
+    {showCounter&&<CounterSheet me={me} onClose={()=>setShowCounter(false)}/>}
+  </>;
+}
+
+function CounterSheet({me,onClose}:{me:MemberClubPrivate;onClose:()=>void}){
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(()=>{
+    closeRef.current?.focus();
+    const esc = (e:KeyboardEvent) => {if(e.key==="Escape") onClose();};
+    document.addEventListener("keydown",esc);
+    return ()=>document.removeEventListener("keydown",esc);
+  },[onClose]);
+  return <div className="clb-sheet" onMouseDown={e=>{if(e.target===e.currentTarget) onClose();}}>
+    <div className="clb-sheet-body" role="dialog" aria-modal="true" aria-labelledby="clb-counter-title">
+      <span className="clb-sheet-grip" aria-hidden="true"/>
+      <h2 id="clb-counter-title">Mostre ao vendedor</h2>
+      <div className="clb-counter-id">
+        <span className="clb-store-tile is-big" aria-hidden="true">{initials(me.display_name)}</span>
+        <strong>{me.display_name}</strong>
+        <span>{me.phone_last4?"Celular final "+me.phone_last4:"Diga seu nome e e-mail no caixa"}</span>
+      </div>
+      <p>{me.phone_last4?"Diga seu celular no caixa. O vendedor encontra seu cadastro e registra a compra no clube."
+        :"O vendedor procura seu cadastro pelo nome. Para ser mais rápido, informe seu celular na próxima compra."}</p>
+      <button ref={closeRef} type="button" className="clb-btn is-wide" onClick={onClose}><X size={18} aria-hidden="true"/> Fechar</button>
+    </div>
+  </div>;
+}
+
+function rewardState(r:MemberClubReward, me:MemberClubPrivate, balance:number|null){
+  if(r.status==="paused") return "Pausada";
+  if(r.status==="sold_out") return "Esgotada";
+  if(me.redemption_enabled&&r.redemption_enabled&&r.status==="available"&&r.redemption_unit==="points") return null;
+  if(balance!==null&&balance<r.points_cost) return "faltam "+pts(r.points_cost-balance);
+  return "Em breve";
+}
+
+type Voucher = {code:string;discount_cents:number;expires_at:string;external_coupon_created:boolean};
+
+function Redeem({slug,me,balance,verified}:{slug:string;me:MemberClubPrivate;balance:number|null;verified:boolean}){
+  const [busy,setBusy] = useState("");
+  const [issued,setIssued] = useState<Voucher|null>(null);
+  const [error,setError] = useState("");
+  const rewards = me.available_rewards||[];
+  const redeem = async (r:MemberClubReward) => {
+    if(busy) return;
+    setBusy(r.id);setError("");setIssued(null);
+    try{setIssued(await publicEnrollmentApi.clubIssueVoucher(slug,r.id));}
+    catch(cause){setError(cause instanceof ApiError?cause.message:"Não foi possível trocar agora. Confira o saldo e tente de novo.");}
+    finally{setBusy("");}
+  };
+  return <div className="clb-stack">
+    <div className="clb-page-head"><h1>Trocar pontos</h1>
+      <span>{balance!==null?"Você tem "+pts(balance)+" pontos ("+money(balance)+").":"Seu saldo aparece quando a loja ativar a pontuação."}</span></div>
+    {!me.redemption_enabled&&<div className="clb-alert is-info" role="status"><LockKeyhole size={20} aria-hidden="true"/>
+      <div><strong>Trocas ainda não abertas</strong><span>{verified?"A loja ainda não liberou o resgate.":"Você já pode conhecer as recompensas. A troca abre quando a loja ativar o clube."}</span></div></div>}
+    {issued&&<section className="clb-card clb-center is-ok" role="status">
+      <span className="clb-badge is-ok"><CheckCircle2 size={28} aria-hidden="true"/></span>
+      <h2>Cupom pronto: <code>{issued.code}</code></h2>
+      <p>{issued.external_coupon_created?"Use no site da loja ou mostre no caixa. ":"Mostre este código no caixa. "}
+        Vale {money(issued.discount_cents)} até {new Date(issued.expires_at).toLocaleDateString("pt-BR")}, uma vez.</p>
+    </section>}
+    {error&&<div className="clb-alert is-danger" role="alert"><TriangleAlert size={20} aria-hidden="true"/><span>{error}</span></div>}
+    {rewards.length===0?<section className="clb-card clb-empty"><Gift size={24} aria-hidden="true"/>
+      <div><strong>Nenhuma recompensa publicada</strong><span>Quando a loja publicar as trocas, elas aparecem aqui.</span></div></section>
+    :<ul className="clb-list is-cards">{rewards.map(r=>{
+      const state = rewardState(r,me,balance);
+      return <li key={r.id} className={"clb-reward is-card"+(state?" is-locked":"")}>
+        <span className="clb-reward-ico">{shortMoney(r.discount_cents)}</span>
+        <div><strong>{r.title}</strong><span>{pts(r.points_cost)} pontos{r.min_order_cents>0?" · compra mínima "+money(r.min_order_cents):""}</span></div>
+        {state?<span className="clb-chip">{state}</span>
+          :<button type="button" className="clb-btn is-primary is-small" disabled={Boolean(busy)} onClick={()=>void redeem(r)}>
+            {busy===r.id?"Trocando…":"Trocar"}</button>}
+      </li>;})}</ul>}
+  </div>;
+}
+
+function History({me}:{me:MemberClubPrivate}){
+  return <div className="clb-stack">
+    <div className="clb-page-head"><h1>Extrato</h1><span>Cada ponto, de onde veio e quando entrou.</span></div>
+    {me.transactions.length?<section className="clb-card is-flush"><ul className="clb-rows">
+      {me.transactions.map(t=><li key={t.id}>
+        <span className={"clb-row-ico "+(t.points_delta<0?"is-out":"is-in")} aria-hidden="true">{t.points_delta<0?<TicketPercent size={18}/>:<Sparkles size={18}/>}</span>
+        <div><strong>{t.description}</strong><span>{new Date(t.created_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"})}</span></div>
+        <b className={t.points_delta<0?"is-out":"is-in"}>{t.points_delta>0?"+":t.points_delta<0?"−":""}{pts(Math.abs(t.points_delta))}</b>
+      </li>)}</ul></section>
+    :<section className="clb-card clb-empty"><ListOrdered size={24} aria-hidden="true"/>
+      <div><strong>Nenhuma movimentação ainda</strong><span>Suas compras e trocas aparecem aqui assim que a loja registrar.</span></div></section>}
+  </div>;
+}
+
+function Rules({slug,club,me}:{slug:string;club:MemberClubPublic;me:MemberClubPrivate}){
+  const e = club.earning;
+  const rewards = club.published_rewards||me.available_rewards||[];
+  const cheapest = rewards.filter(r=>r.points_cost>0).sort((a,b)=>a.points_cost-b.points_cost)[0];
+  const items:ReactNode[] = [];
+  if(e){
+    items.push(<><strong>Ganhe {percent(e.points/e.per_cents*100)} de volta.</strong> {earningSentence(e)}</>);
+    items.push(e.hold_days>0?<><strong>Pontos liberam em {e.hold_days} dias.</strong> É o prazo de troca. Compra cancelada não gera pontos.</>
+      :<><strong>Pontos entram após a conferência.</strong> Compra cancelada não gera pontos.</>);
+    if(e.validity_days>0) items.push(<><strong>Valem {e.validity_days} dias.</strong> Depois disso, os pontos não usados expiram.</>);
+  }else items.push(<><strong>Compre e junte pontos.</strong> A loja ainda está definindo quantos pontos cada compra gera.</>);
+  items.push(cheapest?<><strong>Troque a partir de {pts(cheapest.points_cost)} pontos.</strong> No site ou no caixa da loja.</>
+    :<><strong>Trocas em breve.</strong> As recompensas aparecem em Trocar quando a loja publicar.</>);
+  return <div className="clb-stack">
+    <div className="clb-page-head"><h1>Como funciona</h1>
+      <span className={"clb-chip "+(club.points_enabled?"is-ok":"is-gold")}>{club.points_enabled?"Clube ativo":"Clube em preparação"}</span></div>
+    <section className="clb-card"><ol className="clb-steps">{items.map((item,i)=><li key={i}><span>{i+1}</span><p>{item}</p></li>)}</ol></section>
+    <section className="clb-card" aria-labelledby="clb-terms-title">
+      <h2 id="clb-terms-title">Regulamento e privacidade</h2>
+      <p className="clb-lead">Você aceitou {me.terms.title}, versão {me.terms.version}.</p>
+      <details className="clb-details"><summary>Ler o regulamento completo</summary><p>{me.terms.body}</p></details>
+      {me.terms.privacy_notice&&<details className="clb-details"><summary>Ler o aviso de privacidade</summary><p>{me.terms.privacy_notice}</p></details>}
+      <a className="clb-text-link" href={"/retirar/"+encodeURIComponent(slug)}><ShieldCheck size={16} aria-hidden="true"/> Quero sair do clube</a>
+    </section>
   </div>;
 }
