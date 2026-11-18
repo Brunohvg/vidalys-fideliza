@@ -5,7 +5,6 @@ from .public_coupon_eligibility import PublicCouponEligibilityView, IssueCheckou
 from .recent_order_views import RecentOrdersPreviewView
 from .order_event_inspection import OrderEventInspectionView
 from .order_webhooks import OrderEventsView, order_webhook
-from .app_webhooks import app_webhook
 from .privacy_webhooks import privacy_webhook
 from .privacy_views import PrivacyRequestsView
 from .privacy_report_views import PrivacyReportDownloadView, PrivacyReportConfirmView
@@ -41,8 +40,6 @@ urlpatterns = [
          name="nuvemshop-order-webhook"),
     path("tenants/<uuid:tenant_id>/nuvemshop/orders/events/",
          OrderEventsView.as_view(), name="nuvemshop-order-events"),
-    path("webhooks/app/<slug:kind>/", app_webhook,
-         name="nuvemshop-app-webhook"),
     path("webhooks/privacy/<slug:kind>/", privacy_webhook,
          name="nuvemshop-privacy-webhook"),
     path("tenants/<uuid:tenant_id>/privacy/requests/",

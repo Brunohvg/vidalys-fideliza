@@ -193,7 +193,6 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     cfg = config()
     installed = NuvemshopInstallation.objects.filter(
         tenant=tenant, store_id=event.store_id, client_id=cfg.client_id,
-        uninstalled_at__isnull=True,
     ).first()
     if not installed or not has_order_access(installed.scope, preview_enabled=True):
         raise RecheckBlocked("Escopo read_orders ausente")

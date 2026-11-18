@@ -11,9 +11,6 @@ class OrderWebhookEvent(models.Model):
     class Topic(models.TextChoices):
         PAID = "order/paid", "Pagamento reportado"
         UPDATED = "order/updated", "Pedido alterado"
-        # Somente gatilhos de releitura; nunca estornam nada sozinhos.
-        CANCELLED = "order/cancelled", "Pedido cancelado"
-        VOIDED = "order/voided", "Pagamento anulado"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey(
