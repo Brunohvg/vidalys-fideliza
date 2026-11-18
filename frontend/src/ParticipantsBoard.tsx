@@ -20,7 +20,7 @@ const movements:Record<CashbackWalletView["events"][number]["kind"],string>={
  accrual:"Crédito pendente",release:"Liberação interna",reserve:"Reserva interna",cancel_reservation:"Reserva cancelada",
  redeem:"Resgate registrado",expire:"Crédito expirado",reverse_pending:"Estorno pendente",reverse_available:"Estorno de saldo liberado"};
 
-export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch=""}:{tenantId:string;onOpenProgram:()=>void;initialSearch?:string}){
+export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch="",canManage=false}:{tenantId:string;onOpenProgram:()=>void;initialSearch?:string;canManage?:boolean}){
  const [data,setData]=useState<ParticipantDirectoryResponse|null>(null);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState("");
@@ -32,6 +32,11 @@ export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch=
  const [profile,setProfile]=useState<ProgramParticipant|null>(null);
  const [wallet,setWallet]=useState<CashbackWalletView|null>(null);
  const [walletState,setWalletState]=useState<"idle"|"loading"|"error">("idle");
+ const [phoneOpen,setPhoneOpen]=useState(false);
+ const [phoneValue,setPhoneValue]=useState("");
+ const [phoneOk,setPhoneOk]=useState(false);
+ const [phoneBusy,setPhoneBusy]=useState(false);
+ const [phoneMsg,setPhoneMsg]=useState("");
 
  useEffect(()=>{
   let active=true;setLoading(true);setError("");
@@ -42,7 +47,16 @@ export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch=
  useEffect(()=>{setProfile(null);},[tenantId]);
 
  const submit=(e:FormEvent)=>{e.preventDefault();setOffset(0);setSearch(text.trim());};
- const openProfile=(p:ProgramParticipant)=>{setProfile(p);setWallet(null);setWalletState("idle");};
+ const openProfile=(p:ProgramParticipant)=>{setProfile(p);setWallet(null);setWalletState("idle");setPhoneOpen(false);setPhoneMsg("");};
+ const savePhone=async()=>{
+  if(!profile||phoneBusy)return;setPhoneBusy(true);setPhoneMsg("");
+  try{
+   const r=await merchantApi.setParticipantPhone(tenantId,profile.id,phoneValue.trim());
+   setProfile({...profile,phone_last4:r.participant.phone_last4});
+   setPhoneOpen(false);setPhoneOk(false);setPhoneMsg("✓ Celular salvo. Só os 4 últimos dígitos ficam visíveis.");setVersion(v=>v+1);
+  }catch(e){setPhoneMsg(e instanceof ApiError?e.message:"Não foi possível salvar o celular.");}
+  finally{setPhoneBusy(false);}
+ };
  const openWallet=async(p:ProgramParticipant)=>{
   setWalletState("loading");
   try{setWallet(await merchantApi.participantWallet(tenantId,p.id));setWalletState("idle");}catch{setWalletState("error");}
@@ -126,6 +140,22 @@ export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch=
     <div className="vf-kpi"><span className="vf-kpi-label">Última atividade</span><strong className="vf-kpi-val vf-client-date">{day(profile.last_program_activity_at||profile.last_manual_sale_at)}</strong>
      <span className="vf-muted vf-small">{profile.nuvemshop_customer_linked?"Cliente da loja online vinculado":"Sem vínculo com a loja online"}</span></div>
    </div>
+   <div className="vf-client-phone">
+    <div className="vf-row-main"><strong>Celular</strong>
+     <span>{profile.phone_last4?`Final ${profile.phone_last4}. No caixa, basta digitar o número para achar o cliente.`
+      :"Sem celular. Cadastre para achar o cliente no caixa pelo número."}</span></div>
+    {canManage&&!phoneOpen&&<button type="button" className="vf-btn is-small" onClick={()=>{setPhoneOpen(true);setPhoneValue("");setPhoneMsg("");}}>
+     {profile.phone_last4?"Trocar celular":"Cadastrar celular"}</button>}
+   </div>
+   {phoneOpen&&<form className="vf-client-phone-form" onSubmit={e=>{e.preventDefault();void savePhone();}}>
+    <label className="vf-field is-compact">Celular com DDD<input type="tel" inputMode="tel" maxLength={20} placeholder="(31) 99999-9999"
+     value={phoneValue} onChange={e=>setPhoneValue(e.target.value)}/></label>
+    <label className="vf-client-phone-check"><input type="checkbox" checked={phoneOk} onChange={e=>setPhoneOk(e.target.checked)}/>
+     O próprio cliente me informou este número</label>
+    <div className="vf-pills"><button type="button" className="vf-btn is-small" onClick={()=>setPhoneOpen(false)}>Cancelar</button>
+     <button type="submit" className="vf-btn is-small is-primary" disabled={phoneBusy||!phoneOk||!phoneValue.trim()}>{phoneBusy?"Salvando…":"Salvar celular"}</button></div>
+   </form>}
+   {phoneMsg&&<div className={"vf-toast"+(phoneMsg.startsWith("✓")?"":" is-error")} role="status">{phoneMsg.replace(/^✓ /,"")}</div>}
    <p className="vf-note">Participando desde {day(profile.joined_at)} · aceite pelo {profile.consent_channel==="customer_portal"?"portal do participante":"formulário da loja"}.</p>
    {profile.balance_status==="ledger_only"&&profile.cashback_balance_cents!==null&&<details className="vf-sale-more vf-wallet-technical">
     <summary>Registros internos de teste</summary>

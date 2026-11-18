@@ -67,6 +67,9 @@
 .vf-sale-people button:hover{background:var(--vf-canvas)}
 .vf-sale-people-empty{padding:12px 14px;font-size:13.5px;font-weight:600;color:var(--vf-muted)}
 .vf-sale-outside{align-self:flex-start;font-size:13.5px}
+.vf-sale-client-alt{display:flex;flex-wrap:wrap;gap:4px 16px}
+.vf-sale-client-alt .vf-btn.is-link{font-size:13.5px}
+.vf-sale-chosen.is-outside{border-color:color-mix(in srgb,var(--vf-gold) 70%,transparent);background:var(--vf-reward-soft)}
 .vf-sale-chosen{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1px solid var(--vf-primary);background:var(--vf-info-soft)}
 .vf-sale-more{border-radius:14px;border:1px solid var(--vf-border);padding:0 14px}
 .vf-sale-more[open]{padding-bottom:14px;display:flex;flex-direction:column;gap:12px}
@@ -74,6 +77,12 @@
 .vf-sale-side{gap:14px}
 .vf-sale-points{font-size:44px;letter-spacing:-.04em;line-height:1;color:var(--vf-purple-950);font-variant-numeric:tabular-nums}
 .vf-sale-value{font-size:17px;font-weight:700;color:var(--vf-purple-900)}
+.vf-sale-value.is-hint{font-size:15px;font-weight:600;color:var(--vf-muted);padding:10px 0}
+.vf-sale-bottom-tabs{margin-top:4px}
+/* Pedidos da loja: o cartão já tem título; o bloco interno mostra só o botão de atualizar */
+.vf-sale-online .vf-online-feed{padding:0;border-bottom:0}
+.vf-sale-online .vf-online-feed-head>div{display:none}
+.vf-sale-online .vf-online-feed-head{justify-content:flex-end}
 .vf-sale-review-box{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .vf-sale-pending .vf-row{padding:10px 0}
 .vf-sale-review{display:flex;flex-direction:column;gap:10px;padding:14px;margin:4px 0 10px;border-radius:14px;background:var(--vf-surface);border:1px solid var(--vf-border)}

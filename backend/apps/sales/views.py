@@ -35,8 +35,30 @@ def staff_member(user, tenant_id):
     return membership
 
 
-def present_sale(sale, *, viewer_id=None):
+def suggested_participants(sales):
+    """Vendas sem cliente cujo celular agora pertence a um participante ativo."""
+    digests = {s.counter_phone_digest for s in sales
+               if s.state == SaleRecord.State.AWAITING_MEMBER and s.counter_phone_digest}
+    if not digests:
+        return {}
+    tenant_ids = {s.tenant_id for s in sales}
+    found = ProgramParticipant.objects.filter(
+        tenant_id__in=tenant_ids, phone_digest__in=digests,
+        status=ProgramParticipant.Status.ACTIVE,
+    )
+    return {(p.tenant_id, p.phone_digest): p for p in found}
+
+
+def present_sale(sale, *, viewer_id=None, suggestions=None):
+    hint = None
+    if (suggestions and sale.state == SaleRecord.State.AWAITING_MEMBER
+            and sale.counter_phone_digest):
+        match = suggestions.get((sale.tenant_id, sale.counter_phone_digest))
+        if match:
+            hint = {"id": str(match.id), "display_name": match.display_name,
+                    "phone_last4": match.phone_last4 or None}
     return {
+        "suggested_participant": hint,
         "id": str(sale.id),
         "channel": sale.channel, "reference": sale.external_reference,
         "participant_id": str(sale.participant_id) if sale.participant_id else None,
@@ -65,12 +87,13 @@ class ManualSalesView(APIView):
         member = staff_member(request.user, tenant_id)
         if not member:
             return safe_reply({"detail": "Acesso restrito à administração."}, 403)
-        records = SaleRecord.objects.filter(
+        records = list(SaleRecord.objects.filter(
             tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
-        ).select_related("participant")[:30]
+        ).select_related("participant")[:30])
+        hints = suggested_participants(records)
         return safe_reply({
             "mode": "manual_review_only", "points_credited": False,
-            "items": [present_sale(item, viewer_id=request.user.pk) for item in records],
+            "items": [present_sale(item, viewer_id=request.user.pk, suggestions=hints) for item in records],
         })
 
     @transaction.atomic
@@ -83,8 +106,17 @@ class ManualSalesView(APIView):
         data = request.data
         expected = {"reference", "eligible_amount_cents", "participant_id",
                     "reported_paid_at", "evidence_reference"}
-        if not isinstance(data, dict) or set(data) != expected:
+        if not isinstance(data, dict) or set(data) not in (expected, expected | {"customer_phone"}):
             return safe_reply({"detail": "Informe referência, valor, participante, data e comprovante."}, 400)
+        # Celular de quem ainda não participa: guarda só o HMAC para vincular depois.
+        phone_digest = ""
+        raw_phone = data.get("customer_phone", "")
+        if raw_phone not in ("", None):
+            from apps.participants.phone import phone_fields
+            try:
+                phone_digest, _last4 = phone_fields(tenant_id=tenant_id, raw=raw_phone)
+            except ValueError as exc:
+                return safe_reply({"detail": str(exc)}, 400)
         ref, amount, participant_id, raw_paid, evidence = (
             data["reference"], data["eligible_amount_cents"], data["participant_id"],
             data["reported_paid_at"], data["evidence_reference"],
@@ -159,6 +191,11 @@ class ManualSalesView(APIView):
             )
         except IngestionConflict:
             return safe_reply({"detail": "Evento incompatível com uma venda já registrada."}, 409)
+        sale = outcome.sale
+        if (phone_digest and not outcome.duplicate and sale.participant_id is None
+                and sale.state == SaleRecord.State.AWAITING_MEMBER and not sale.counter_phone_digest):
+            sale.counter_phone_digest = phone_digest
+            sale.save(update_fields=["counter_phone_digest"])
         return safe_reply({
             "already_recorded": outcome.duplicate,
             "sale": present_sale(outcome.sale, viewer_id=request.user.pk),

@@ -58,6 +58,8 @@ def main():
         ("channels", "0001_initial"),
         ("sales", "0005_reward_redemption_terms"),
         ("sales", "0006_counter_identity_link"),
+        ("sales", "0007_counter_phone_digest"),
+        ("participants", "0008_participant_phone"),
         ("loyalty", "0002_voucher_reward_origin"),
         ("loyalty", "0003_voucher_redemption_evidence"),
         ("points", "0002_immutable_postgres_ledger"),

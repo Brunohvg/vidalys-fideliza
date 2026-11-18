@@ -74,9 +74,8 @@ class PublicStoreJoinView(APIView):
             return secure(Response({"detail": "Adesão pública indisponível."}, status=404))
         if _limit_public(request):
             return secure(Response({"detail": "Muitas tentativas. Tente novamente mais tarde."}, status=429))
-        if not valid_object(
-            request, ("name", "email", "accepted_terms", "marketing_opt_in", "terms_version")
-        ):
+        base_fields = ("name", "email", "accepted_terms", "marketing_opt_in", "terms_version")
+        if not (valid_object(request, base_fields) or valid_object(request, base_fields + ("phone",))):
             return secure(Response({"detail": "Preencha somente os campos de adesão."}, status=400))
         name = request.data["name"]
         email = request.data["email"]
@@ -97,6 +96,14 @@ class PublicStoreJoinView(APIView):
             Tenant.objects.select_for_update(), slug=slug, status=Tenant.Status.ACTIVE
         )
         terms = active_terms_for(tenant)
+        raw_phone = request.data.get("phone", "")
+        phone_digest, phone_last4 = "", ""
+        if raw_phone not in ("", None):
+            from .phone import phone_fields
+            try:
+                phone_digest, phone_last4 = phone_fields(tenant_id=tenant.pk, raw=raw_phone)
+            except ValueError as exc:
+                return secure(Response({"detail": str(exc)}, status=400))
         if not is_ready(terms):
             return secure(Response({"detail": "Adesão pública ainda não disponível."}, status=404))
         if version != terms.version:
@@ -135,6 +142,7 @@ class PublicStoreJoinView(APIView):
                 name=name.strip(), email=email, accepted_at=now,
                 marketing_opt_in=request.data["marketing_opt_in"],
                 terms_digest=hashlib.sha256(consent_text).hexdigest(),
+                phone_digest=phone_digest, phone_last4=phone_last4,
             )
             if email_links_enabled():
                 enqueue_confirmation(receipt, EnrollmentEmailChallenge.Purpose.VERIFY)

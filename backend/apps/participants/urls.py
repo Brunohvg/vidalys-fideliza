@@ -4,6 +4,7 @@ from .member_portal_views import (
     MemberClubConfirmAccessView, MemberClubMeView, MemberClubLogoutView,
 )
 from .views import ParticipantListView
+from .phone_views import ParticipantPhoneLookupView, ParticipantPhoneView
 from .customer_link_preview import CustomerLinkPreviewView
 from .customer_link_approval import CustomerLinkApproveView
 from .email_views import PublicEmailActionView, PublicWithdrawalRequestView
@@ -26,6 +27,10 @@ urlpatterns = [
          MemberClubLogoutView.as_view(), name="member-club-logout"),
     path("tenants/<uuid:tenant_id>/participants/", ParticipantListView.as_view(),
          name="tenant-participants"),
+    path("tenants/<uuid:tenant_id>/participants/by-phone/", ParticipantPhoneLookupView.as_view(),
+         name="tenant-participant-by-phone"),
+    path("tenants/<uuid:tenant_id>/participants/<uuid:participant_id>/phone/", ParticipantPhoneView.as_view(),
+         name="tenant-participant-phone"),
     path("tenants/<uuid:tenant_id>/program-terms/", ProgramTermsView.as_view(),
          name="tenant-program-terms"),
     path("tenants/<uuid:tenant_id>/enrollment-invitations/", InvitationView.as_view(),

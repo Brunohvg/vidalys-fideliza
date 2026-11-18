@@ -339,7 +339,7 @@ export default function Portal() {
             {page==="overview" && <ActionCenter tenantId={tenant.id} role={tenant.role} platform={tenant.platform} userName={session.user.display_name} key={tenant.id}
               onNavigate={(destination, area)=>{ if (area === "channels") { setSettingsSection("canais"); navigate("settings"); } else navigate(destination, area); }}/>}
             {page==="program" && <ProgramHub tenantId={tenant.id} role={tenant.role} storeSlug={tenant.slug} tenantStatus={tenant.status} platform={tenant.platform} initialArea={programArea} onViewClients={()=>navigate("clients")} onViewSales={()=>navigate("sales")} onOpenSettings={()=>navigate("settings")} key={tenant.id+":"+programArea}/>}
-            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} initialSearch={clientQuery} onOpenProgram={()=>navigate("program", "participants")} key={tenant.id+":"+clientQuery}/>}
+            {page==="clients" && <ParticipantsBoard tenantId={tenant.id} canManage={tenant.role==="owner"||tenant.role==="admin"} initialSearch={clientQuery} onOpenProgram={()=>navigate("program", "participants")} key={tenant.id+":"+clientQuery}/>}
             {page==="sales" && <SalesWorkspace tenantId={tenant.id} role={tenant.role} key={tenant.id}/>}
             {page==="settings" && <StoreSettings tenantId={tenant.id} role={tenant.role} userName={session.user.display_name} userEmail={session.user.username} initialSection={settingsSection}
               onGoToProgram={()=>navigate("program")} onOpenTool={tool=>navigate(tool)} key={tenant.id}/>}

@@ -100,6 +100,8 @@ for(const width of [390,1440]){
     await expect(page.getByRole("button",{name:"A compra foi em outra data?"})).toHaveAttribute("aria-expanded","false");
     await page.getByLabel("Valor da compra (R$)").fill("100,00");
     await page.getByLabel("Número do cupom ou recibo").fill("0042");
+    await page.getByRole("button",{name:"Buscar pelo nome"}).click();
+    await page.locator("#vf-sale-client").fill("Cliente");
     await page.getByRole("list",{name:"Participantes encontrados"}).getByRole("button",{name:/Cliente Confirmado/}).click();
     await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
     await expect(page.getByText("Venda registrada. Os pontos ficam pendentes até a conferência.",{
@@ -254,7 +256,9 @@ for(const width of [320,390]){
   await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-  await page.getByRole("list",{name:"Participantes encontrados"}).getByRole("button",{name:/Cliente Confirmado/}).click();
+  await page.getByRole("button",{name:"Buscar pelo nome"}).click();
+    await page.locator("#vf-sale-client").fill("Cliente");
+    await page.getByRole("list",{name:"Participantes encontrados"}).getByRole("button",{name:/Cliente Confirmado/}).click();
   await page.getByLabel("Valor da compra (R$)").fill("45,90");
   await page.getByLabel("Número do cupom ou recibo").fill("0098");
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
@@ -276,3 +280,55 @@ for(const width of [320,390]){
    .toBeLessThanOrEqual(1);
  });
 }
+
+test("Celular encontra o cliente do clube e registra a venda para ele",async ({page})=>{
+  await mock(page);
+  const lookups:string[]=[];
+  let captured:Record<string,unknown>|null=null;
+  await page.route("**/api/v1/tenants/**/participants/by-phone/",route=>{
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().headers()["x-csrftoken"]).toBe("sales-csrf-synthetic-qa");
+    lookups.push(route.request().postDataJSON().phone);
+    return route.fulfill({contentType:"application/json",body:JSON.stringify({
+      match:{id:member.id,display_name:"Cliente Confirmado",phone_last4:"8888",status:"active"}})});
+  });
+  await page.route("**/api/v1/tenants/**/sales/manual/",async route=>{
+    if(route.request().method()!=="POST")return route.fallback();
+    captured=route.request().postDataJSON();
+    return route.fallback();
+  });
+  await page.goto("/app/visao-geral");
+  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+  await page.locator("#vf-sale-phone").fill("31999998888");
+  await expect(page.locator("#vf-sale-phone")).toHaveCount(0);
+  await expect(page.getByText("Celular final 8888")).toBeVisible();
+  expect(lookups.at(-1)).toBe("(31) 99999-8888");
+  await page.getByLabel("Valor da compra (R$)").fill("100,00");
+  await page.getByLabel("Número do cupom ou recibo").fill("0042");
+  await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
+  await expect(page.getByText("Venda registrada. Os pontos ficam pendentes até a conferência.")).toBeVisible();
+  expect(captured).toMatchObject({participant_id:member.id,reference:"CUPOM-0042"});
+  expect(captured).not.toHaveProperty("customer_phone");
+});
+
+test("Celular fora do clube guarda a venda com o número para vincular depois",async ({page})=>{
+  await mock(page);
+  let captured:Record<string,unknown>|null=null;
+  await page.route("**/api/v1/tenants/**/participants/by-phone/",route=>route.fulfill({
+    contentType:"application/json",body:JSON.stringify({match:null})}));
+  await page.route("**/api/v1/tenants/**/sales/manual/",async route=>{
+    if(route.request().method()!=="POST")return route.fallback();
+    captured=route.request().postDataJSON();
+    return route.fulfill({status:201,contentType:"application/json",body:JSON.stringify({
+      already_recorded:false,sale:{state:"awaiting_member"}})});
+  });
+  await page.goto("/app/visao-geral");
+  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
+  await page.locator("#vf-sale-phone").fill("(31) 98888-7777");
+  await expect(page.getByText("Celular ainda não está no clube")).toBeVisible();
+  await page.getByLabel("Valor da compra (R$)").fill("59,90");
+  await page.getByLabel("Número do cupom ou recibo").fill("0071");
+  await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
+  await expect(page.getByText("Venda guardada com o celular do cliente.",{exact:false})).toBeVisible();
+  expect(captured).toMatchObject({participant_id:null,customer_phone:"(31) 98888-7777",reference:"CUPOM-0071"});
+});

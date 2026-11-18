@@ -309,12 +309,15 @@ export type ManualSaleRecord = {
   created_at:string;reviewed_at:string|null;submitted_by_me:boolean;
   reviewed_by_me:boolean;review_mode:"self_review"|"another_operator"|null;
   review_note:string|null;
+  suggested_participant?:{id:string;display_name:string;phone_last4:string|null}|null;
   points_credited:false;cashback_credited:false;
 };
 export type ManualSaleInput = {
   reference:string;eligible_amount_cents:number;
   participant_id:string|null;reported_paid_at:string;evidence_reference:string;
+  customer_phone?:string;
 };
+export type PhoneMatch={id:string;display_name:string;phone_last4:string|null;status:string};
 export type ManualSaleList = {
   mode:"manual_review_only";points_credited:false;items:ManualSaleRecord[];
 };
@@ -336,6 +339,7 @@ export type PointRuleDraftResult = PointRuleDraft & {
 
 export type ProgramParticipant = {
   id: string;
+  phone_last4?: string|null;
   customer_reference: string;
   nuvemshop_customer_linked:boolean;
   manual_sales_count:number;
@@ -577,6 +581,11 @@ export const merchantApi = {
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"),
   createManualSale: (tenantId:string,data:ManualSaleInput)=>postJson<ManualSaleResult>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/",data),
+  findParticipantByPhone: (tenantId:string,phone:string)=>postJson<{match:PhoneMatch|null}>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/by-phone/",{phone}),
+  setParticipantPhone: (tenantId:string,participantId:string,phone:string)=>postJson<{participant:PhoneMatch}>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/"+encodeURIComponent(participantId)+"/phone/",
+    {phone,customer_informed:true}),
   linkManualSale: (tenantId:string,saleId:string,participantId:string)=>
     postJson<{sale:ManualSaleRecord;identity_status:string;payment_verified:false;points_credited:false}>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+
@@ -813,7 +822,7 @@ export const publicEnrollmentApi = {
     getJson<PublicStoreProgram>("/api/v1/public/programs/"+encodeURIComponent(slug)+"/"),
   joinStore: (slug:string,data:{
     name:string;email:string;terms_version:string;
-    accepted_terms:boolean;marketing_opt_in:boolean;
+    accepted_terms:boolean;marketing_opt_in:boolean;phone?:string;
   }) => postJson<PublicStoreJoinResult>(
     "/api/v1/public/programs/"+encodeURIComponent(slug)+"/join/",data),
   prepareCsrf: () => merchantApi.getSession(),

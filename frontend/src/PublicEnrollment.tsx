@@ -25,6 +25,7 @@ export default function PublicEnrollment(){
   const [error,setError]=useState("");
   const [name,setName]=useState("");
   const [email,setEmail]=useState("");
+  const [phone,setPhone]=useState("");
   const [accepted,setAccepted]=useState(false);
   const [marketing,setMarketing]=useState(false);
 
@@ -58,7 +59,8 @@ export default function PublicEnrollment(){
       };
       const receipt=storeSlug
         ?await publicEnrollmentApi.joinStore(storeSlug,{
-          ...values,terms_version:preview.terms.version
+          ...values,terms_version:preview.terms.version,
+          ...(phone.trim()?{phone:phone.trim()}:{})
         })
         :await publicEnrollmentApi.accept({token,...values});
       setResult(receipt);setPreview(null);
@@ -140,6 +142,11 @@ export default function PublicEnrollment(){
               <input autoComplete="email" required type="email" maxLength={254} value={email}
                 onChange={e=>setEmail(e.target.value)} placeholder="voce@exemplo.com"/>
             </label>
+            {storeSlug&&<label>Seu celular (opcional)
+              <input autoComplete="tel" type="tel" inputMode="tel" maxLength={20} value={phone}
+                onChange={e=>setPhone(e.target.value)} placeholder="(31) 99999-9999"/>
+              <small>Na loja física, basta dizer o número no caixa para somar pontos.</small>
+            </label>}
           </div>
           <div className="public-enroll-policies">
             <details className="public-enroll-terms">

@@ -25,6 +25,9 @@ class ProgramParticipant(models.Model):
     external_customer_id = models.CharField(max_length=64, blank=True, null=True)
     display_name = models.CharField(max_length=140, blank=True, default="")
     contact_email = models.EmailField(blank=True, default="")
+    # Celular: só HMAC por loja + 4 últimos dígitos (ver phone.py). Não é contato comprovado.
+    phone_digest = models.CharField(max_length=64, blank=True, default="")
+    phone_last4 = models.CharField(max_length=4, blank=True, default="")
     consent_at = models.DateTimeField()
     consent_channel = models.CharField(max_length=32, choices=ConsentChannel.choices)
     terms_version = models.CharField(max_length=40)
@@ -39,7 +42,12 @@ class ProgramParticipant(models.Model):
             models.UniqueConstraint(
                 fields=["tenant", "external_customer_id"],
                 name="loyalty_tenant_customer_unique",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["tenant", "phone_digest"],
+                condition=~models.Q(phone_digest=""),
+                name="participant_phone_once",
+            ),
         ]
         indexes = [
             models.Index(fields=["tenant", "status", "joined_at"], name="loyalty_tenant_member_idx"),

@@ -44,6 +44,8 @@ class SaleRecord(models.Model):
     )
     source_order_key = models.CharField(max_length=64, blank=True, default="")
     reported_contact_digest = models.CharField(max_length=64, blank=True, default="")
+    # Celular informado no balcão para venda sem cliente (HMAC por loja). Não é prova.
+    counter_phone_digest = models.CharField(max_length=64, blank=True, default="")
     customer_profile = models.ForeignKey(
         "customers.CustomerProfile", on_delete=models.PROTECT,
         null=True, blank=True, related_name="channel_sales",

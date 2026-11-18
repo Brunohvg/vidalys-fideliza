@@ -149,11 +149,13 @@ def consume_challenge(token: str, purpose: str):
         if member_ids:
             ProgramParticipant.objects.select_for_update().filter(
                 pk__in=member_ids, tenant_id=submission.tenant_id,
-            ).update(status=ProgramParticipant.Status.WITHDRAWN)
+            ).update(status=ProgramParticipant.Status.WITHDRAWN, phone_digest="", phone_last4="")
         submission.withdrawn_at = now
         submission.status = EnrollmentSubmission.Status.WITHDRAWN
         submission.marketing_opt_in = False
-        submission.save(update_fields=["withdrawn_at", "status", "marketing_opt_in"])
+        submission.phone_digest, submission.phone_last4 = "", ""
+        submission.save(update_fields=["withdrawn_at", "status", "marketing_opt_in",
+                                       "phone_digest", "phone_last4"])
         EnrollmentEmailChallenge.objects.filter(
             submission=submission, consumed_at__isnull=True,
         ).update(consumed_at=now)

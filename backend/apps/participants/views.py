@@ -109,6 +109,7 @@ class ParticipantListView(APIView):
                 ),
                 "display_name": item.display_name,
                 "contact_email": item.contact_email,
+                "phone_last4": item.phone_last4 or None,
                 "status": item.status,
                 "consented_at": item.consent_at.isoformat(),
                 "joined_at": item.joined_at.isoformat(),

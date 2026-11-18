@@ -52,6 +52,8 @@ def activate_standalone_after_email(token: str) -> bool:
     submission.participant = participant
     submission.status = EnrollmentSubmission.Status.MEMBER
     submission.save(update_fields=["participant", "status"])
+    from .phone import copy_submission_phone
+    copy_submission_phone(submission, participant)
     attach_verified_contact(
         tenant_id=tenant.pk, participant_id=participant.pk,
         email=submission.email, proof_method="email_otp",

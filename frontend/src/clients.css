@@ -23,6 +23,10 @@
 .vf-clients-pages>div{display:flex;align-items:center;gap:8px}
 .vf-client-profile{animation:vf-ui-rise .3s ease both}
 .vf-client-date{font-size:22px}
+.vf-client-phone{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px;border-radius:14px;background:var(--vf-canvas)}
+.vf-client-phone-form{display:flex;flex-direction:column;gap:10px;max-width:420px}
+.vf-client-phone-check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;font-weight:700;color:var(--vf-purple-900)}
+.vf-client-phone-check input{width:20px;height:20px;accent-color:var(--vf-primary)}
 
 @media(max-width:760px){
  .vf-clients-table{display:none}

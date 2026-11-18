@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState,type FormEvent} from "react";
-import {Check,CheckCircle2,Clock3,RefreshCw,Search,ShoppingBag,UserRound,X} from "lucide-react";
+import {Check,CheckCircle2,Clock3,Link2,RefreshCw,Search,Smartphone,UserRound,X} from "lucide-react";
 import {ApiError,merchantApi,type ManualSaleRecord,type PointRuleDraft,
  type ProgramParticipant,type Store} from "./api";
 import {pointValueText,summarizeClub} from "./club-summary";
@@ -27,6 +27,15 @@ export const receiptReference=(raw:string):string|null=>{
  const value=raw.normalize("NFKC").trim().toUpperCase().replace(/\s+/g,"-");
  const reference=/^\d{1,72}$/.test(value)?"CUPOM-"+value:value;
  return /^[A-Z0-9][A-Z0-9._/-]{3,79}$/.test(reference)?reference:null;
+};
+export const phoneDigits=(raw:string)=>raw.replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"");
+const formatPhone=(raw:string)=>{
+ if(raw.trim().startsWith("+"))return raw.slice(0,20);
+ const d=raw.replace(/\D/g,"").slice(0,11);
+ if(d.length<=2)return d.length?"("+d:"";
+ if(d.length<=6)return `(${d.slice(0,2)}) ${d.slice(2)}`;
+ if(d.length<=10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+ return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
 };
 const when=(iso:string)=>{
  const d=new Date(iso);if(Number.isNaN(d.getTime()))return "";
@@ -58,11 +67,18 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
  const [query,setQuery]=useState("");
  const [people,setPeople]=useState<ProgramParticipant[]>([]);
  const [peopleError,setPeopleError]=useState(false);
- const [chosen,setChosen]=useState<ProgramParticipant|null|undefined>(undefined); // undefined = não escolhido; null = fora do clube
+ type Person={id:string;display_name:string;detail:string};
+ const [chosen,setChosen]=useState<Person|null|undefined>(undefined); // undefined = não escolhido; null = fora do clube
+ const [mode,setMode]=useState<"phone"|"name">("phone");
+ const [phone,setPhone]=useState("");
+ const [phoneState,setPhoneState]=useState<"idle"|"looking"|"error">("idle");
+ const [phoneError,setPhoneError]=useState("");
+ const resetClient=()=>{setChosen(undefined);setPhone("");setQuery("");setPhoneState("idle");};
  const [busy,setBusy]=useState(false);
  const [formError,setFormError]=useState("");
  const [toast,setToast]=useState("");
 
+ const [bottom,setBottom]=useState<"history"|"online">("history");
  const [reviewing,setReviewing]=useState<string|null>(null);
  const [reviewWhere,setReviewWhere]=useState<"side"|"list">("side");
  const [note,setNote]=useState("");
@@ -104,6 +120,21 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
   return()=>{active=false;window.clearTimeout(timer)};
  },[tenantId,query,canEdit]);
 
+ useEffect(()=>{
+  if(!canEdit||mode!=="phone"||chosen!==undefined)return;
+  const digits=phoneDigits(phone);
+  if(digits.length<10){setPhoneState("idle");return;}
+  let active=true;setPhoneState("looking");
+  const timer=window.setTimeout(()=>{
+   merchantApi.findParticipantByPhone(tenantId,phone).then(r=>{
+    if(!active)return;setPhoneState("idle");
+    setChosen(r.match?{id:r.match.id,display_name:r.match.display_name,
+     detail:"Celular final "+(r.match.phone_last4??digits.slice(-4))}:null);
+   }).catch(e=>{if(active){setPhoneState("error");setPhoneError(e instanceof ApiError?e.message:"Não foi possível consultar o celular.");}});
+  },350);
+  return()=>{active=false;window.clearTimeout(timer)};
+ },[tenantId,phone,mode,chosen,canEdit]);
+
  const cents=centsFromText(amount);
  const preview=useMemo(()=>{
   if(!rule||cents===null)return null;
@@ -127,12 +158,15 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
   if(Number.isNaN(time.getTime())){setFormError("Informe uma data de venda válida.");return;}
   setBusy(true);
   try{
+   const keepPhone=!chosen&&mode==="phone"&&phoneDigits(phone).length>=10;
    const result=await merchantApi.createManualSale(tenantId,{reference,eligible_amount_cents:cents,
-    participant_id:chosen?chosen.id:null,reported_paid_at:time.toISOString(),evidence_reference:reference});
+    participant_id:chosen?chosen.id:null,reported_paid_at:time.toISOString(),evidence_reference:reference,
+    ...(keepPhone?{customer_phone:phone}:{})});
    setToast(result.already_recorded?"Este cupom já estava registrado. Nada foi duplicado."
     :chosen?"Venda registrada. Os pontos ficam pendentes até a conferência."
+    :keepPhone?"Venda guardada com o celular do cliente. Vincule quando ele entrar no clube."
     :"Venda registrada sem cliente. Ela não gera pontos até alguém do clube ser vinculado.");
-   setAmount("");setReceipt("");setChosen(undefined);setQuery("");setCustomTime(false);setPaidAt(localNow());
+   setAmount("");setReceipt("");resetClient();setCustomTime(false);setPaidAt(localNow());
    setVersion(v=>v+1);
   }catch(e){setFormError(e instanceof ApiError?e.message:"Não foi possível registrar a venda.");}
   finally{setBusy(false);}
@@ -149,10 +183,10 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
   }catch(e){setReviewError(e instanceof ApiError?e.message:"Não foi possível concluir a conferência.");}
   finally{setBusy(false);}
  };
- const link=async(sale:ManualSaleRecord)=>{
-  if(busy||!linkTarget)return;setBusy(true);setReviewError("");setReviewMsg("");
+ const link=async(sale:ManualSaleRecord,target=linkTarget)=>{
+  if(busy||!target)return;setBusy(true);setReviewError("");setReviewMsg("");
   try{
-   await merchantApi.linkManualSale(tenantId,sale.id,linkTarget);
+   await merchantApi.linkManualSale(tenantId,sale.id,target);
    setReviewMsg("Cliente vinculado à venda. Agora ela pode ser conferida.");
    setLinking(null);setLinkTarget("");setVersion(v=>v+1);
   }catch(e){setReviewError(e instanceof ApiError?e.message:"É preciso um participante com contato confirmado para vincular.");}
@@ -179,31 +213,50 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
   {canEdit?<div className="vf-grid2">
    <form className="vf-card vf-sale-form" onSubmit={submit} noValidate aria-label="Registrar venda no balcão">
     <div className="vf-field">
-     <span id="vf-sale-client-label">Cliente</span>
+     <span id="vf-sale-client-label">{mode==="phone"?"Celular do cliente":"Cliente"}</span>
      {chosen?<div className="vf-sale-chosen">
        <span className="vf-avatar tone-1" aria-hidden="true">{initialsOf(chosen.display_name)}</span>
-       <div className="vf-row-main"><strong>{chosen.display_name}</strong><span>{chosen.contact_email}</span></div>
-       <button type="button" className="vf-btn is-small" onClick={()=>setChosen(undefined)}>Trocar</button>
+       <div className="vf-row-main"><strong>{chosen.display_name}</strong><span>{chosen.detail}</span></div>
+       <button type="button" className="vf-btn is-small" onClick={resetClient}>Trocar</button>
       </div>
-     :chosen===null?<div className="vf-sale-chosen">
+     :chosen===null?<div className="vf-sale-chosen is-outside">
        <span className="vf-ico tone-gold" aria-hidden="true"><UserRound size={18}/></span>
-       <div className="vf-row-main"><strong>Cliente ainda não participa</strong><span>A venda fica registrada sem pontos.</span></div>
-       <button type="button" className="vf-btn is-small" onClick={()=>setChosen(undefined)}>Trocar</button>
+       <div className="vf-row-main"><strong>{phoneDigits(phone).length>=10&&mode==="phone"?"Celular ainda não está no clube":"Cliente ainda não participa"}</strong>
+        <span>{phoneDigits(phone).length>=10&&mode==="phone"
+         ?"A venda fica guardada com este celular. Quando a pessoa entrar no clube com o mesmo número, é só vincular."
+         :"A venda fica registrada sem pontos."}</span></div>
+       <button type="button" className="vf-btn is-small" onClick={resetClient}>Trocar</button>
       </div>
+     :mode==="phone"?<>
+       <div className="vf-sale-search">
+        <Smartphone size={18} aria-hidden="true"/>
+        <input id="vf-sale-phone" type="tel" inputMode="tel" aria-labelledby="vf-sale-client-label" autoComplete="off" maxLength={20}
+         placeholder="(31) 99999-9999" value={phone} onChange={e=>setPhone(formatPhone(e.target.value))}/>
+       </div>
+       <small role="status">{phoneState==="looking"?"Procurando no clube…":phoneState==="error"?phoneError
+        :"Digite o celular com DDD. O sistema encontra o cliente sozinho."}</small>
+       <div className="vf-sale-client-alt">
+        <button type="button" className="vf-btn is-link" onClick={()=>{setMode("name");setFormError("");}}>Buscar pelo nome</button>
+        <button type="button" className="vf-btn is-link vf-sale-outside" onClick={()=>{setChosen(null);setPhone("");setFormError("");}}>Cliente ainda não participa do clube</button>
+       </div>
+      </>
      :<>
        <div className="vf-sale-search">
         <Search size={18} aria-hidden="true"/>
         <input id="vf-sale-client" type="search" aria-labelledby="vf-sale-client-label" autoComplete="off" maxLength={80}
          placeholder="Buscar por nome ou e-mail" value={query} onChange={e=>setQuery(e.target.value)}/>
        </div>
-       <ul className="vf-sale-people" aria-label="Participantes encontrados">
-        {people.slice(0,5).map((p,i)=><li key={p.id}><button type="button" onClick={()=>{setChosen(p);setFormError("");}}>
+       {query.trim()?<ul className="vf-sale-people" aria-label="Participantes encontrados">
+        {people.slice(0,5).map((p,i)=><li key={p.id}><button type="button" onClick={()=>{setChosen({id:p.id,display_name:p.display_name,detail:p.contact_email});setFormError("");}}>
          <span className={"vf-avatar "+TONES[i%5]} aria-hidden="true">{initialsOf(p.display_name)}</span>
          <span className="vf-row-main"><strong>{p.display_name}</strong><span>{p.contact_email}</span></span></button></li>)}
-        {!peopleError&&people.length===0&&<li className="vf-sale-people-empty">{query?"Ninguém encontrado com essa busca.":"Ainda não há participantes ativos."}</li>}
+        {!peopleError&&people.length===0&&<li className="vf-sale-people-empty">Ninguém encontrado com essa busca.</li>}
         {peopleError&&<li className="vf-sale-people-empty">Não foi possível carregar os participantes.</li>}
-       </ul>
-       <button type="button" className="vf-btn is-link vf-sale-outside" onClick={()=>{setChosen(null);setFormError("");}}>Cliente ainda não participa do clube</button>
+       </ul>:<small>Digite parte do nome ou do e-mail do cliente.</small>}
+       <div className="vf-sale-client-alt">
+        <button type="button" className="vf-btn is-link" onClick={()=>{setMode("phone");setQuery("");setFormError("");}}>Usar o celular</button>
+        <button type="button" className="vf-btn is-link vf-sale-outside" onClick={()=>{setChosen(null);setFormError("");}}>Cliente ainda não participa do clube</button>
+       </div>
       </>}
     </div>
 
@@ -235,10 +288,9 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
 
    <section className="vf-card is-soft vf-sale-side" aria-labelledby="vf-sale-gain">
     <span id="vf-sale-gain" className="vf-eyebrow">O cliente vai receber</span>
-    <strong className="vf-sale-points">{preview?`${preview.points.toLocaleString("pt-BR")} ponto${preview.points===1?"":"s"}`:"—"}</strong>
-    <span className="vf-sale-value">{!rule?"Defina a regra de pontos em Meu clube para ver a prévia."
-     :preview===null?"Digite o valor para ver os pontos."
-     :preview.value?`= ${preview.value} em desconto`:pointValue===null?"Valor em reais aparece quando houver recompensa publicada.":""}</span>
+    {preview?<><strong className="vf-sale-points">{`${preview.points.toLocaleString("pt-BR")} ponto${preview.points===1?"":"s"}`}</strong>
+     {preview.value&&<span className="vf-sale-value">= {preview.value} em desconto</span>}</>
+     :<span className="vf-sale-value is-hint">{!rule?"Defina a regra de pontos em Meu clube para ver a prévia.":"Digite o valor da compra para ver os pontos."}</span>}
     {rule&&<span className="vf-muted vf-small">{holdText} Se a compra for cancelada, os pontos saem antes do uso.{pointValue!==null?` Cada ponto vale ${pointValueText(pointValue)}.`:""}</span>}
 
     <div className="vf-sale-review-box">
@@ -261,15 +313,17 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
   :<section className="vf-card"><h2 className="vf-h2">Registro disponível para administradores</h2>
    <p className="vf-lead">Esta conta acompanha as vendas, mas não registra nem confere.</p></section>}
 
-  <section className="vf-card" aria-labelledby="vf-sales-online-title">
+  <div className="vf-tabs vf-sale-bottom-tabs" role="tablist" aria-label="Histórico e loja online">
+   <button type="button" role="tab" aria-selected={bottom==="history"} className={"vf-tab"+(bottom==="history"?" is-on":"")} onClick={()=>setBottom("history")}>Histórico do balcão</button>
+   <button type="button" role="tab" aria-selected={bottom==="online"} className={"vf-tab"+(bottom==="online"?" is-on":"")} onClick={()=>setBottom("online")}>Pedidos da Nuvemshop</button>
+  </div>
+  {bottom==="online"&&<section className="vf-card vf-sale-online" aria-labelledby="vf-sales-online-title">
    <div className="vf-card-head"><div><h2 id="vf-sales-online-title" className="vf-h2">Pedidos da Nuvemshop</h2>
-    <span className="vf-muted vf-small">Compras do site não precisam ser registradas aqui. Esta lista só lê a loja.</span></div>
-    <span className="vf-ico tone-purple" aria-hidden="true"><ShoppingBag size={20}/></span></div>
+    <span className="vf-muted vf-small">Compras do site não precisam ser registradas aqui. Esta lista só lê a loja.</span></div></div>
    <NuvemshopOrdersFeed tenantId={tenantId}/>
    <details className="vf-sale-more"><summary>Consultar um pedido pelo número ou link</summary><PaidOrderCheck tenantId={tenantId}/></details>
-  </section>
-
-  <section className="vf-card" aria-labelledby="vf-sale-history-title">
+  </section>}
+  {bottom==="history"&&<section className="vf-card" aria-labelledby="vf-sale-history-title">
    <div className="vf-card-head"><div><h2 id="vf-sale-history-title" className="vf-h2">Vendas do balcão</h2>
     <span className="vf-muted vf-small">{pending.length?`${pending.length} aguardando conferência.`:"Histórico das vendas registradas na loja física."}</span></div>
     <button type="button" className="vf-btn is-small" onClick={()=>setVersion(v=>v+1)}><RefreshCw size={16}/> Atualizar</button></div>
@@ -282,7 +336,10 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
         <span>{sale.reference} · {when(sale.reported_paid_at)}</span></div>
        <strong className="vf-num">{money(sale.eligible_amount_cents)}</strong>
        <span className={"vf-chip vf-sale-state "+chip}>{label}</span>
-       {canEdit&&sale.state==="awaiting_member"&&linking!==sale.id&&<button type="button" className="vf-btn is-small" onClick={()=>{setLinking(sale.id);setLinkTarget("");}}>Vincular cliente</button>}
+       {canEdit&&sale.state==="awaiting_member"&&sale.suggested_participant&&linking!==sale.id&&
+        <button type="button" className="vf-btn is-small is-primary" disabled={busy} onClick={()=>void link(sale,sale.suggested_participant!.id)}>
+         <Link2 size={15}/> Vincular a {sale.suggested_participant.display_name}</button>}
+       {canEdit&&sale.state==="awaiting_member"&&!sale.suggested_participant&&linking!==sale.id&&<button type="button" className="vf-btn is-small" onClick={()=>{setLinking(sale.id);setLinkTarget("");}}>Vincular cliente</button>}
        {canEdit&&sale.state==="awaiting_review"&&!(reviewing===sale.id&&reviewWhere==="list")&&<button type="button" className="vf-btn is-small" onClick={()=>{setReviewing(sale.id);setReviewWhere("list");setNote("");setReviewMsg("");}}>Conferir venda</button>}
       </div>
       {reviewing===sale.id&&reviewWhere==="list"&&reviewPanel(sale)}
@@ -298,6 +355,6 @@ export default function SalesWorkspace({tenantId,role}:{tenantId:string;role:Sto
        </div>
       </div>}
      </li>;})}</ul>}
-  </section>
+  </section>}
  </section>;
 }
