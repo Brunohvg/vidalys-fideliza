@@ -32,7 +32,15 @@ Meu clube → 1. Como ganhar → cartão "No balcão" → seção **No site (Nuv
 - Pedido pago com o código → resgate (`REDEEM`), cupom "usado".
 - Uso no **caixa** → o cupom do site é apagado na Nuvemshop e o crédito volta para ser usado ali.
 - Vencido → apagado e reserva devolvida.
-- Falha ao criar na Nuvemshop → reserva devolvida, cupom "falhou", nova tentativa na próxima hora.
+- Resultado incerto ao criar (timeout, resposta perdida, worker reiniciado) → cupom **Confirmando**:
+  a reserva **continua**, o código não aparece para a cliente e o caixa não consegue liberar o saldo.
+  A rotina horária confere pelo código exato na Nuvemshop (`reconcile_coupon`):
+  existe → disponível; a Nuvemshop confirma que não existe **e** já passaram 10 min → falhou e a
+  reserva volta; resposta inconclusiva → continua Confirmando (nunca libera por dúvida).
+- Pedido pago com o código de um cupom em Confirmando → resgate normal. Com o código de um cupom já
+  liberado (corrida com o caixa) → o saldo ainda disponível é debitado e a falta fica na auditoria.
+- Clique duplo / duas abas: devolve o mesmo cupom, sem segunda reserva.
+- Cada cupom guarda uma trilha curta (`audit`): reservado, criação incerta, conferido, usado, cancelado.
 - O e-mail "seu crédito liberou" inclui o código e o botão "Comprar com meu cupom".
 
 **Opções do lojista**: ganhar no site, resgate por cupom, somar com outras promoções (padrão
@@ -45,8 +53,10 @@ desligado), pausar novos cupons (cupons já gerados continuam valendo).
 3. Permissão **Cupons** (`write_coupons`) habilitada no app do Portal de Parceiros e a loja
    reautorizada (Configurações → Canais → Atualizar conexão).
 4. `FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED=1` (API e `nuvemshop-sync`).
-5. Serviços `beat` e `nuvemshop-sync` rodando. Migração `sales.0012_online_redemption`.
+5. Serviços `beat` e `nuvemshop-sync` rodando. Migrações `sales.0012_online_redemption` e `sales.0013_coupon_uncertain`.
 
 ## Limites conhecidos / próxima fase
+- **Titularidade**: a API de cupons da Nuvemshop não vincula cupom a cliente. Quem tiver o código
+  consegue usar uma vez. Mitigação: código aleatório de 8 caracteres, uso 1, compra mínima e validade.
 - Pedido cancelado **depois** de usar o cupom: o resgate não é desfeito automaticamente.
 - Fase 2: aplicar o saldo sozinho no carrinho via API de Descontos (sem digitar código).

@@ -138,7 +138,8 @@ function SiteSection({site,gift,owner,busy,onToggle}:{site:Site;gift:boolean;own
  return <div className="ss-site" role="group" aria-labelledby="ss-site-title">
   <div className="ss-site-head"><span className="vf-ico tone-purple" aria-hidden="true"><ShoppingBag size={18}/></span>
    <div><strong id="ss-site-title">No site (Nuvemshop)</strong>
-    <span>{site.coupons_ready?`${site.coupons_active} cupons ativos · ${site.coupons_used} usados no site`:"Complete os itens abaixo para ligar o site."}</span></div></div>
+    <span>{site.coupons_ready?`${site.coupons_active} cupons ativos · ${site.coupons_used} usados no site`+
+     (site.coupons_pending?` · ${site.coupons_pending} em confirmação com a Nuvemshop (o saldo fica guardado)`:""):"Complete os itens abaixo para ligar o site."}</span></div></div>
   <ul className="ss-pilot-checks" aria-label="Situação do site">{checks.map(([ok,title,fix])=><li key={title} className={ok?"is-ok":"is-todo"}>
    {ok?<Check size={15}/>:<TriangleAlert size={15}/>}<span>{title}{ok?"":<small> — {fix}</small>}</span></li>)}</ul>
   <ul className="ss-switches">{toggles.map(([key,on,title,hint,ready])=><li key={key}>

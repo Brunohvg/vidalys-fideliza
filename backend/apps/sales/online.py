@@ -9,15 +9,24 @@ validade. O saldo fica RESERVADO no ledger enquanto o cupom existe:
 - pedido pago com o código  -> resgate (REDEEM);
 - uso no caixa, vencimento ou troca -> cupom apagado na Nuvemshop e reserva devolvida.
 
+Resultado incerto (timeout, resposta perdida, worker reiniciado): o cupom fica "Confirmando"
+e a reserva CONTINUA. Só a conferência pelo código na Nuvemshop decide: existe -> disponível;
+a Nuvemshop confirma que não existe (depois da carência) -> falhou e a reserva volta.
+Pedido pago com o código de um cupom já liberado (corrida com o caixa) ainda vira resgate.
+
 Chamadas à Nuvemshop precisam do token OAuth: rodam na API ou no worker isolado
 (fila "nuvemshop"), nunca no worker de e-mail.
 """
 import hashlib
 import logging
 import re
+import json
 import secrets
 from datetime import timedelta
 from decimal import Decimal
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request
 
 from django.conf import settings
 from django.db import transaction
@@ -38,11 +47,26 @@ logger = logging.getLogger(__name__)
 
 ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sem 0/O/1/I para ditar no caixa
 REWARD_COUPON_DAYS = 30
-ACTIVE = (OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED)
+# Estados que SEGURAM a reserva no ledger.
+ACTIVE = (OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED, OnlineCoupon.State.UNCERTAIN)
+PENDING = (OnlineCoupon.State.ISSUING, OnlineCoupon.State.UNCERTAIN)
+RELEASED = (OnlineCoupon.State.CANCELLED, OnlineCoupon.State.EXPIRED, OnlineCoupon.State.FAILED)
+# Antes disso, "não encontrado" pode ser só atraso da Nuvemshop: não libera a reserva.
+CONFIRM_GRACE = timedelta(minutes=10)
 
 
 class CouponUnavailable(ValueError):
     pass
+
+
+class CouponPending(CouponUnavailable):
+    """O resultado na Nuvemshop ainda não foi confirmado; nada foi liberado."""
+
+
+def _audit(coupon, event, **extra):
+    entry = {"at": timezone.now().isoformat(timespec="seconds"), "event": event}
+    entry.update({k: str(v)[:60] for k, v in extra.items()})
+    coupon.audit = [*(coupon.audit or []), entry][-30:]
 
 
 # ---------- Prontidão ----------
@@ -111,16 +135,65 @@ def _create_remote(coupon, opener=None):
                         path="coupons", payload=remote_payload(coupon), opener=opener)
     if not isinstance(remote, dict) or safe_id(remote.get("id")) is None or remote.get("code") != coupon.code:
         raise CouponRemoteError("Cupom criado com dados divergentes")
-    url = ""
+    return str(remote["id"]), _apply_url(coupon, opener=opener)
+
+
+def _apply_url(coupon, opener=None):
+    """Link que já aplica o cupom na loja. Opcional: falha aqui nunca muda o estado do cupom."""
+    from apps.nuvemshop.coupon_client import _transport
     try:
+        store_id, token, agent = _remote(coupon.tenant)
         store = _transport(store_id=store_id, token=token, agent=agent, method="GET",
                            path="store?fields=url_with_protocol", opener=opener)
-        base = store.get("url_with_protocol") if isinstance(store, dict) else ""
-        if isinstance(base, str) and base.startswith("https://") and len(base) < 200:
-            url = base.rstrip("/") + "/discount/" + coupon.code
-    except CouponRemoteError:
-        url = ""
-    return str(remote["id"]), url
+    except Exception:
+        return ""
+    base = store.get("url_with_protocol") if isinstance(store, dict) else ""
+    if isinstance(base, str) and base.startswith("https://") and len(base) < 200:
+        return base.rstrip("/") + "/discount/" + coupon.code
+    return ""
+
+
+def _find_remote(coupon, opener=None):
+    """Procura o cupom pelo código EXATO na Nuvemshop.
+
+    Devolve o ID remoto, None quando a Nuvemshop responde que não há cupom com esse código,
+    ou levanta exceção quando a resposta é inconclusiva (rede, 5xx, formato estranho).
+    """
+    from apps.catalog.client import API_ROOT
+    from apps.nuvemshop.coupon_client import CouponRemoteError, NoRedirect
+    from apps.nuvemshop.order_readonly import safe_id
+    from urllib.request import build_opener
+    store_id, token, agent = _remote(coupon.tenant)
+    sid = safe_id(store_id)
+    if not sid:
+        raise CouponRemoteError("Instalação inválida")
+    query = urlencode({"q": coupon.code, "per_page": 50})
+    request = Request(f"{API_ROOT}/{sid}/coupons?{query}", method="GET", headers={
+        "Authorization": "Bearer " + token, "User-Agent": agent, "Accept": "application/json"})
+    try:
+        with (opener or build_opener(NoRedirect())).open(request, timeout=8) as response:
+            if response.status != 200:
+                raise CouponRemoteError("Status inesperado na conferência")
+            data = response.read(262145)
+            if len(data) > 262144:
+                raise CouponRemoteError("Resposta grande demais")
+            found = json.loads(data, parse_float=str)
+    except HTTPError as exc:
+        # A Nuvemshop responde 404 "Last page is 0" para lista vazia; outro 404 é inconclusivo.
+        body = exc.read(2048) if exc.code == 404 else b""
+        if exc.code == 404 and b"Last page is 0" in body:
+            return None
+        raise CouponRemoteError("Conferência inconclusiva") from None
+    except (URLError, TimeoutError, OSError, ValueError, UnicodeError):
+        raise CouponRemoteError("Conferência inconclusiva") from None
+    if not isinstance(found, list):
+        raise CouponRemoteError("Lista remota inesperada")
+    matches = [x for x in found if isinstance(x, dict) and x.get("code") == coupon.code]
+    if not matches:
+        return None
+    if len(matches) != 1 or safe_id(matches[0].get("id")) is None:
+        raise CouponRemoteError("Código remoto não único")
+    return str(matches[0]["id"])
 
 
 def _delete_remote(coupon, opener=None):
@@ -141,7 +214,7 @@ def _delete_remote(coupon, opener=None):
 
 # ---------- Reserva no ledger ----------
 
-def _reserve(coupon, wallet, amount):
+def _reserve(coupon, wallet, amount, key=None):
     remaining, allocations = amount, []
     for lot in _live_lots(wallet):
         if remaining == 0:
@@ -150,7 +223,7 @@ def _reserve(coupon, wallet, amount):
         if take <= 0:
             continue
         transition_points(lot_id=lot.pk, kind=PointEvent.Kind.RESERVE, amount=take,
-                          idempotency_key=f"coupon-reserve:{coupon.pk}")
+                          idempotency_key=key or f"coupon-reserve:{coupon.pk}")
         allocations.append({"lot": str(lot.pk), "amount": take})
         remaining -= take
     if remaining:
@@ -183,6 +256,17 @@ def issue_coupon(participant, *, reward_id=None, opener=None):
         raise CouponUnavailable("Ainda não há saldo para gerar cupom.")
     with transaction.atomic():
         ProgramParticipant.objects.select_for_update().get(pk=participant.pk)
+        # Clique duplo / duas abas: devolve o cupom que já segura o saldo, sem reservar de novo.
+        if gift and reward_id is None:
+            existing = active_coupon(participant, OnlineCoupon.Source.GIFTBACK)
+        else:
+            existing = (OnlineCoupon.objects.filter(participant=participant, reward_id=reward_id, state__in=ACTIVE)
+                        .order_by("-created_at").first() if reward_id else None)
+        if existing is not None:
+            if existing.state != OnlineCoupon.State.ISSUED:
+                raise CouponPending("Estamos confirmando seu cupom com a loja. Seu saldo continua guardado; "
+                                    "volte em alguns minutos.")
+            return existing
         release_due(wallet)
         _, totals = wallet_balances(participant)
         if gift:
@@ -215,40 +299,94 @@ def issue_coupon(participant, *, reward_id=None, opener=None):
             expires_at=expires,
         )
         coupon.allocations = _reserve(coupon, wallet, amount)
-        coupon.save(update_fields=["allocations"])
+        _audit(coupon, "reserved", amount=amount)
+        coupon.save(update_fields=["allocations", "audit"])
     try:
         remote_id, url = _create_remote(coupon, opener=opener)
     except Exception:
+        # Timeout ou resposta perdida NÃO provam que o cupom não existe: a reserva fica.
         with transaction.atomic():
+            coupon = OnlineCoupon.objects.select_for_update().get(pk=coupon.pk)
+            if coupon.state == OnlineCoupon.State.ISSUING:
+                coupon.state = OnlineCoupon.State.UNCERTAIN
+                _audit(coupon, "create_uncertain")
+                coupon.save(update_fields=["state", "audit"])
+        logger.warning("online_coupon create_uncertain tenant=%s", tenant.pk)
+        raise CouponPending("Estamos confirmando seu cupom com a loja. Seu saldo continua guardado; "
+                            "volte em alguns minutos.")
+    with transaction.atomic():
+        coupon = OnlineCoupon.objects.select_for_update().get(pk=coupon.pk)
+        if coupon.state in PENDING:
+            coupon.remote_id, coupon.apply_url, coupon.state = remote_id, url, OnlineCoupon.State.ISSUED
+            _audit(coupon, "issued")
+            coupon.save(update_fields=["remote_id", "apply_url", "state", "audit"])
+    return coupon
+
+
+def reconcile_coupon(coupon, *, opener=None):
+    """Confere na Nuvemshop um cupom com criação incerta. Só libera a reserva com prova de ausência."""
+    now = timezone.now()
+    with transaction.atomic():
+        coupon = OnlineCoupon.objects.select_for_update().get(pk=coupon.pk)
+        if coupon.state not in PENDING:
+            return coupon
+        if coupon.state == OnlineCoupon.State.ISSUING and coupon.created_at > now - CONFIRM_GRACE:
+            return coupon                                     # criação ainda em andamento
+        try:
+            remote_id = _find_remote(coupon, opener=opener)
+        except Exception:
+            coupon.state = OnlineCoupon.State.UNCERTAIN
+            _audit(coupon, "check_inconclusive")
+            coupon.save(update_fields=["state", "audit"])
+            return coupon
+        if remote_id:
+            coupon.remote_id, coupon.state = remote_id, OnlineCoupon.State.ISSUED
+            coupon.apply_url = coupon.apply_url or _apply_url(coupon, opener=opener)
+            _audit(coupon, "confirmed_on_store")
+            coupon.save(update_fields=["remote_id", "state", "apply_url", "audit"])
+        elif coupon.created_at <= now - CONFIRM_GRACE:
             _release_reserve(coupon, redeem=False)
-            coupon.state = OnlineCoupon.State.FAILED
-            coupon.settled_at = timezone.now()
-            coupon.save(update_fields=["state", "settled_at"])
-        logger.warning("online_coupon create_failed tenant=%s", tenant.pk)
-        raise CouponUnavailable("A Nuvemshop não confirmou o cupom agora. Tente de novo em alguns minutos.")
-    coupon.remote_id, coupon.apply_url, coupon.state = remote_id, url, OnlineCoupon.State.ISSUED
-    coupon.save(update_fields=["remote_id", "apply_url", "state"])
+            coupon.state, coupon.settled_at = OnlineCoupon.State.FAILED, now
+            _audit(coupon, "confirmed_absent")
+            coupon.save(update_fields=["state", "settled_at", "audit"])
+        else:
+            coupon.state = OnlineCoupon.State.UNCERTAIN
+            _audit(coupon, "absent_waiting")
+            coupon.save(update_fields=["state", "audit"])
     return coupon
 
 
 def revoke_coupon(coupon, *, state=OnlineCoupon.State.CANCELLED, opener=None):
-    """Apaga na Nuvemshop e devolve a reserva. Falha remota mantém tudo como está."""
+    """Apaga na Nuvemshop e devolve a reserva. Qualquer dúvida mantém tudo como está."""
+    now = timezone.now()
     with transaction.atomic():
         coupon = OnlineCoupon.objects.select_for_update().get(pk=coupon.pk)
         if coupon.state not in ACTIVE:
             return coupon
+        if coupon.state in PENDING:
+            # Sem ID remoto: só dá para cancelar sabendo se o cupom existe na loja.
+            if coupon.created_at > now - CONFIRM_GRACE and coupon.state == OnlineCoupon.State.ISSUING:
+                raise CouponPending("O cupom do site ainda está sendo criado.")
+            remote_id = _find_remote(coupon, opener=opener)        # inconclusivo -> exceção, nada muda
+            if remote_id:
+                coupon.remote_id = remote_id
+            elif coupon.created_at > now - CONFIRM_GRACE:
+                raise CouponPending("O cupom do site ainda está sendo confirmado.")
         _delete_remote(coupon, opener=opener)
         _release_reserve(coupon, redeem=False)
-        coupon.state, coupon.settled_at = state, timezone.now()
-        coupon.save(update_fields=["state", "settled_at"])
+        coupon.state, coupon.settled_at = state, now
+        _audit(coupon, "revoked", reason=state)
+        coupon.save(update_fields=["state", "settled_at", "remote_id", "audit"])
     return coupon
 
 
 def present_coupon(coupon):
     if coupon is None:
         return None
-    return {"code": coupon.code, "discount_cents": coupon.discount_cents, "min_order_cents": coupon.min_order_cents,
-            "expires_at": coupon.expires_at.isoformat(), "apply_url": coupon.apply_url, "source": coupon.source,
+    ready = coupon.state == OnlineCoupon.State.ISSUED     # código só aparece depois de confirmado na loja
+    return {"code": coupon.code if ready else "", "discount_cents": coupon.discount_cents,
+            "min_order_cents": coupon.min_order_cents, "expires_at": coupon.expires_at.isoformat(),
+            "apply_url": coupon.apply_url if ready else "", "source": coupon.source,
             "title": coupon.reward.title if coupon.reward_id else "Crédito de giftback", "state": coupon.state}
 
 
@@ -288,10 +426,18 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
     with transaction.atomic():
         if paid:
             for coupon in OnlineCoupon.objects.select_for_update().filter(
-                    tenant=tenant, code__in=_order_codes(order), state=OnlineCoupon.State.ISSUED):
-                _release_reserve(coupon, redeem=True, order_id=order_id)
+                    tenant=tenant, code__in=_order_codes(order), used_order_id=""):
+                if coupon.state in ACTIVE:                       # inclui "Confirmando": a reserva existe
+                    _release_reserve(coupon, redeem=True, order_id=order_id)
+                    _audit(coupon, "used_on_site", order=order_id)
+                elif coupon.state in RELEASED:                   # corrida: liberado, mas usado no site
+                    shortfall = _late_redeem(coupon, order_id)
+                    _audit(coupon, "used_after_release", order=order_id, shortfall=shortfall)
+                    logger.warning("online_coupon used_after_release tenant=%s shortfall=%s", tenant.pk, shortfall)
+                else:
+                    continue
                 coupon.state, coupon.used_order_id, coupon.settled_at = OnlineCoupon.State.USED, str(order_id), timezone.now()
-                coupon.save(update_fields=["state", "used_order_id", "settled_at"])
+                coupon.save(update_fields=["state", "used_order_id", "settled_at", "audit"])
                 result.append("coupon_used")
         participant = _participant_for(tenant, order, profile)
         ref = f"site:{order_id}"
@@ -308,6 +454,31 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
                                   amount=balances["available"], idempotency_key=f"site-reverse-a:{order_id}")
             result.append("reversed")
     return ",".join(result) or "nothing"
+
+
+def _late_redeem(coupon, order_id):
+    """Cupom usado no site depois que a reserva voltou ao saldo: debita o que ainda houver.
+
+    Devolve o que faltou (já gasto no caixa, por exemplo) para ficar registrado na auditoria.
+    """
+    wallet = PointWallet.objects.filter(participant=coupon.participant, tenant=coupon.tenant).first()
+    if wallet is None:
+        return coupon.points
+    release_due(wallet)
+    remaining = coupon.points
+    for lot in _live_lots(wallet):
+        if remaining == 0:
+            break
+        take = min(lot_balances(lot)["available"], remaining)
+        if take <= 0:
+            continue
+        transition_points(lot_id=lot.pk, kind=PointEvent.Kind.RESERVE, amount=take,
+                          idempotency_key=f"coupon-late-reserve:{coupon.pk}")
+        transition_points(lot_id=lot.pk, kind=PointEvent.Kind.REDEEM, amount=take,
+                          idempotency_key=f"coupon-late-redeem:{coupon.pk}",
+                          external_receipt=f"site:{order_id}:{coupon.code}")
+        remaining -= take
+    return remaining
 
 
 def _grant_site(tenant, participant, total_cents, ref, order_id):
@@ -338,8 +509,19 @@ def _grant_site(tenant, participant, total_cents, ref, order_id):
 
 def refresh_tenant(tenant, opener=None):
     """Vence cupons, recria o cupom de giftback quando o crédito muda e gera para quem não tem."""
-    out = {"expired": 0, "issued": 0, "replaced": 0}
+    out = {"expired": 0, "issued": 0, "replaced": 0, "confirmed": 0, "released": 0, "pending": 0}
     now = timezone.now()
+    # 1) Criações incertas ou interrompidas (worker reiniciado): conferir antes de tudo.
+    stale = OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.UNCERTAIN) | \
+        OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.ISSUING, created_at__lte=now - CONFIRM_GRACE)
+    for coupon in stale:
+        try:
+            state = reconcile_coupon(coupon, opener=opener).state
+        except Exception:
+            state = OnlineCoupon.State.UNCERTAIN
+            logger.warning("online_coupon reconcile_failed tenant=%s", tenant.pk)
+        key = {"issued": "confirmed", "failed": "released"}.get(state, "pending")
+        out[key] += 1
     for coupon in OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.ISSUED, expires_at__lte=now):
         try:
             revoke_coupon(coupon, state=OnlineCoupon.State.EXPIRED, opener=opener)
@@ -353,7 +535,7 @@ def refresh_tenant(tenant, opener=None):
         release_due(wallet)
         _, totals = wallet_balances(wallet.participant)
         current = active_coupon(wallet.participant, OnlineCoupon.Source.GIFTBACK)
-        if totals["available"] <= 0:
+        if totals["available"] <= 0 or (current is not None and current.state in PENDING):
             continue
         try:
             if current is not None:   # crédito novo liberou: um cupom só, sempre com o total
@@ -371,6 +553,9 @@ def free_for_counter(participant):
     for coupon in OnlineCoupon.objects.filter(participant=participant, state__in=ACTIVE):
         try:
             revoke_coupon(coupon)
+        except CouponPending:
+            raise PilotBlocked("O cupom do site desta cliente ainda está sendo confirmado. Tente em alguns minutos "
+                               "ou registre a venda sem usar o crédito.")
         except Exception:
             raise PilotBlocked("Não foi possível cancelar o cupom do site agora. Tente de novo em instantes.")
 

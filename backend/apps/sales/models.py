@@ -366,6 +366,7 @@ class OnlineCoupon(models.Model):
         CANCELLED = "cancelled", "Cancelado"
         EXPIRED = "expired", "Vencido"
         FAILED = "failed", "Falhou"
+        UNCERTAIN = "uncertain", "Confirmando"
 
     class Source(models.TextChoices):
         GIFTBACK = "giftback", "Crédito de giftback"
@@ -387,6 +388,8 @@ class OnlineCoupon(models.Model):
     allocations = models.JSONField(default=list)
     state = models.CharField(max_length=10, choices=State.choices, default=State.ISSUING)
     used_order_id = models.CharField(max_length=40, blank=True, default="")
+    # Trilha curta do que aconteceu com o cupom (criação incerta, conferência, uso tardio...). Sem PII.
+    audit = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     settled_at = models.DateTimeField(null=True, blank=True)
 

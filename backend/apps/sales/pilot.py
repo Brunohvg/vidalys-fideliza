@@ -114,6 +114,8 @@ def _site_state(tenant, pilot):
         "coupon_combines": pilot.coupon_combines if pilot else False,
         "coupons_paused": pilot.coupons_paused if pilot else False,
         "coupons_active": OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.ISSUED).count(),
+        "coupons_pending": OnlineCoupon.objects.filter(tenant=tenant, state__in=(
+            OnlineCoupon.State.ISSUING, OnlineCoupon.State.UNCERTAIN)).count(),
         "coupons_used": OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.USED).count(),
     }
 
@@ -220,7 +222,8 @@ def counter_wallet(participant, *, amount_cents=0):
         rewards, goal = [], None
     from .models import OnlineCoupon
     in_coupon = OnlineCoupon.objects.filter(participant=participant, source=OnlineCoupon.Source.GIFTBACK,
-                                            state__in=(OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED))
+                                            state__in=(OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED,
+                   OnlineCoupon.State.UNCERTAIN))
     coupon_cents = sum(c.points for c in in_coupon)
     # Vencimento mais próximo do que a cliente pode usar (disponível ou no cupom do site).
     next_expiry = None
@@ -283,7 +286,8 @@ def reserve_credit(*, sale, participant, operator):
     release_due(wallet)
     _, totals = wallet_balances(participant)
     in_coupon = sum(c.points for c in OnlineCoupon.objects.filter(
-        participant=participant, state__in=(OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED)))
+        participant=participant, state__in=(OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED,
+                   OnlineCoupon.State.UNCERTAIN)))
     prospective = totals["available"] + in_coupon
     if prospective <= 0:
         raise PilotBlocked("A cliente não tem crédito liberado agora.")

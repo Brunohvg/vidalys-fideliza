@@ -285,6 +285,7 @@
 .clb-ticket-empty>div{display:flex;flex-direction:column;gap:4px;min-width:0}
 .clb-ticket-empty strong{font-size:16px;color:var(--vf-purple-950)}
 .clb-ticket-empty span{font-size:14px;line-height:1.5;color:var(--vf-muted)}
+.clb-ticket-pending{grid-template-columns:auto minmax(0,1fr);border:1px dashed var(--vf-border)}
 .clb-ticket-error{grid-column:1/-1;display:flex;gap:6px;align-items:center;font-size:13px;font-weight:700;color:var(--vf-danger)}
 .clb-note{margin:12px 0 0;font-size:13.5px;line-height:1.5;color:var(--vf-muted)}
 @media(max-width:560px){.clb-ticket-empty{grid-template-columns:auto minmax(0,1fr)}.clb-ticket-empty>.clb-btn{grid-column:1/-1;justify-self:stretch}}

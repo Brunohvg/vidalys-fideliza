@@ -481,7 +481,8 @@ function Redeem({slug,me,balance,verified,onChange}:{slug:string;me:MemberClubPr
     if(siteBusy) return;
     setSiteBusy(r.id);setError("");
     try{await publicEnrollmentApi.clubCreateCoupon(slug,r.id);onChange(await publicEnrollmentApi.clubMe(slug));}
-    catch(cause){setError(cause instanceof ApiError?cause.message:"Não foi possível gerar o cupom agora.");}
+    catch(cause){setError(cause instanceof ApiError?cause.message:"Não foi possível gerar o cupom agora.");
+     publicEnrollmentApi.clubMe(slug).then(onChange).catch(()=>undefined);}
     finally{setSiteBusy("");}
   };
   const [busy,setBusy] = useState("");
@@ -509,7 +510,7 @@ function Redeem({slug,me,balance,verified,onChange}:{slug:string;me:MemberClubPr
         Vale {money(issued.discount_cents)} até {new Date(issued.expires_at).toLocaleDateString("pt-BR")}, uma vez.</p>
     </section>}
     {error&&<div className="clb-alert is-danger" role="alert"><TriangleAlert size={20} aria-hidden="true"/><span>{error}</span></div>}
-    {siteCoupons.map(c=><CouponTicket key={c.code} coupon={c}/>)}
+    {siteCoupons.map(c=><CouponTicket key={c.code||c.title+c.expires_at} coupon={c}/>)}
     {rewards.length===0?<section className="clb-card clb-empty"><Gift size={24} aria-hidden="true"/>
       <div><strong>Nenhuma recompensa publicada</strong><span>Quando a loja publicar as trocas, elas aparecem aqui.</span></div></section>
     :<ul className="clb-list is-cards">{rewards.map(r=>{

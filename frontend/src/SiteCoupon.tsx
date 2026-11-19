@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {Check,Copy,ShoppingBag,Ticket,TriangleAlert} from "lucide-react";
+import {Check,Clock,Copy,ShoppingBag,Ticket,TriangleAlert} from "lucide-react";
 import {ApiError,publicEnrollmentApi,type MemberClubPrivate,type SiteCoupon as Coupon} from "./api";
 
 /* Meu Clube: o cupom único da cliente para usar no site da loja.
@@ -10,6 +10,13 @@ const day=(iso:string)=>new Date(iso).toLocaleDateString("pt-BR",{day:"2-digit",
 
 export function CouponTicket({coupon}:{coupon:Coupon}){
  const [copied,setCopied]=useState(false);
+ /* Criação ainda sem confirmação da loja: sem código (pode não existir) e com o saldo guardado. */
+ if(coupon.state!=="issued")return <section className="clb-card clb-ticket-empty clb-ticket-pending" role="status"
+  aria-label={"Cupom em confirmação: "+coupon.title}>
+  <span className="clb-badge"><Clock size={22} aria-hidden="true"/></span>
+  <div><strong>Confirmando seu cupom de {money(coupon.discount_cents)}</strong>
+   <span>A loja ainda não confirmou o cupom. Seu saldo está guardado e o código aparece aqui em alguns minutos.</span></div>
+ </section>;
  const copy=async()=>{try{await navigator.clipboard.writeText(coupon.code);setCopied(true);window.setTimeout(()=>setCopied(false),2000);}catch{/* seleção manual */}};
  return <section className="clb-ticket" aria-label={"Cupom para o site: "+coupon.title}>
   <div className="clb-ticket-top">
@@ -38,7 +45,8 @@ export default function SiteCouponArea({slug,me,balance,gift,onChange}:{slug:str
  const create=async()=>{
   if(busy)return;setBusy(true);setError("");
   try{await publicEnrollmentApi.clubCreateCoupon(slug);onChange(await publicEnrollmentApi.clubMe(slug));}
-  catch(e){setError(e instanceof ApiError?e.message:"Não foi possível gerar o cupom agora.");}
+  catch(e){setError(e instanceof ApiError?e.message:"Não foi possível gerar o cupom agora.");
+   publicEnrollmentApi.clubMe(slug).then(onChange).catch(()=>undefined);}
   finally{setBusy(false);}
  };
  if(gift&&credit)return <CouponTicket coupon={credit}/>;

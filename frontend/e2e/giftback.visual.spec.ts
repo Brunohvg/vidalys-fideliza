@@ -209,6 +209,25 @@ test("Sem cupom ainda: cliente gera o cupom do crédito com um toque",async({pag
   expect(posted).toEqual({});
 });
 
+test("Nuvemshop não confirmou: cliente vê \"confirmando\", sem código, e o saldo guardado",async({page},info)=>{
+  await page.setViewportSize({width:390,height:844});
+  const m=await member(page,{points_balance:1577,site:{coupons_enabled:true,coupons:[]}});
+  const pending={...siteCoupon,code:"",apply_url:"",state:"uncertain"};
+  await page.route("**/api/v1/public/clubs/*/coupons/",r=>{
+    m.set({points_balance:0,site:{coupons_enabled:true,coupons:[pending]}});
+    return r.fulfill(json({detail:"Estamos confirmando seu cupom com a loja. Seu saldo continua guardado; volte em alguns minutos."},409));});
+  await page.goto("/clube/loja-gift");
+  await page.getByRole("button",{name:"Gerar cupom"}).click();
+  const card=page.getByRole("status",{name:/Cupom em confirmação/});
+  await expect(card).toContainText("Confirmando seu cupom de R$ 15,77");
+  await expect(card).toContainText("Seu saldo está guardado");
+  await expect(page.getByRole("button",{name:/Copiar cupom/})).toHaveCount(0);
+  await expect(page.getByRole("link",{name:"Comprar com o cupom"})).toHaveCount(0);
+  await expect(page.getByText("R$ 15,77",{exact:true}).first()).toBeVisible();          // saldo continua aparecendo
+  await noOverflow(page);
+  await card.screenshot({path:info.outputPath("cupom-confirmando-390.png")});
+});
+
 test("Pontos: recompensa vira cupom para o site",async({page})=>{
   const reward={id:"r10",title:"Vale R$ 10",points_cost:1000,discount_cents:1000,min_order_cents:5000,status:"available",
     redemption_unit:"points",redemption_enabled:false};
