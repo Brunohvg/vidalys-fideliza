@@ -41,8 +41,16 @@ class Command(BaseCommand):
         if not opts["apply"]:
             self.stdout.write("Nada foi alterado. Rode de novo com --apply para ativar.")
             return
+        from apps.sales.online import queue_credit_since_join
         results = Counter()
         for pk in ids:
-            results[activate_verified_submission(pk)] += 1
+            outcome = activate_verified_submission(pk)
+            results[outcome] += 1
+            if outcome in ("created", "joined_existing"):
+                member = EnrollmentSubmission.objects.filter(pk=pk).values_list("participant_id", flat=True).first()
+                if member:
+                    queue_credit_since_join(member)     # compras no site depois da adesão ganham crédito
         for key, count in sorted(results.items()):
             self.stdout.write(f"  {count} {LABELS.get(key, key)}")
+        if results.get("created") or results.get("joined_existing"):
+            self.stdout.write("Compras no site feitas depois da adesão (até 30 dias) serão conferidas em seguida.")

@@ -65,6 +65,12 @@ class SaleRecord(models.Model):
     )
     review_note = models.CharField(max_length=240, blank=True, default="")
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    # Venda apagada pela loja (lançamento errado, teste...): some das listas e dos resultados;
+    # o que ela gerou ou usou de saldo é desfeito no ledger, que nunca apaga nada.
+    removed_at = models.DateTimeField(null=True, blank=True)
+    removed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+                                   related_name="+")
+    removed_reason = models.CharField(max_length=240, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

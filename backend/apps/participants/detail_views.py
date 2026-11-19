@@ -39,7 +39,7 @@ def _detail(participant):
     tenant_id = participant.tenant_id
     row = participant_rows(tenant_id, [participant])[0]
     enrollment = getattr(participant, "local_enrollment", None)
-    sales = (SaleRecord.objects.filter(tenant_id=tenant_id, participant=participant)
+    sales = (SaleRecord.objects.filter(tenant_id=tenant_id, participant=participant, removed_at__isnull=True)
              .annotate(at=Coalesce("reported_paid_at", "created_at")).order_by("-at")[:25])
     return {
         "participant": row,

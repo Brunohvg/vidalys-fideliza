@@ -67,6 +67,10 @@ class RecentOrdersPreviewView(APIView):
                 tenant=tenant,status=ProgramParticipant.Status.ACTIVE,
                 external_customer_id__in=ids,
             ).values_list("external_customer_id",flat=True)) if ids else set()
+            from apps.points.models import PointLot
+            granted=dict(PointLot.objects.filter(
+                tenant=tenant,source_reference__in=[f"site:{safe_id(i.get('id'))}" for i in source if safe_id(i.get("id"))],
+            ).values_list("source_reference","points_issued"))
             items=[]
             for item in source:
                 order_id=safe_id(item.get("id"))
@@ -74,10 +78,15 @@ class RecentOrdersPreviewView(APIView):
                     raise OrderReadError("Pedido sem ID válido")
                 customer=item.get("customer")
                 cid=safe_id(customer.get("id")) if isinstance(customer,dict) else None
-                items.append(summarize_order(
+                summary=summarize_order(
                     item,order_id=order_id,
                     participant_verified=bool(cid and cid in linked),
-                ))
+                )
+                # Quanto o clube já concedeu por este pedido (pontos, ou centavos no giftback).
+                summary["club_units"]=granted.get(f"site:{order_id}",0)
+                if summary["club_units"]:
+                    summary["participant_verified"]=True
+                items.append(summary)
             payload={
                 "mode":"read_only","source":"nuvemshop_live_read_only",
                 "items":items,"page":1,"page_size":10,

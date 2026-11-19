@@ -1,6 +1,6 @@
 import {useEffect,useState} from "react";
 import {formatPhone} from "./phone-mask";
-import {ArrowLeft,Cake,CheckCircle2,Copy,ExternalLink,Gift,Mail,Pause,Phone,Play,Receipt,ShoppingBag,Sparkles,Store as StoreIcon,X} from "lucide-react";
+import {ArrowLeft,Cake,CheckCircle2,Copy,ExternalLink,Gift,Mail,Pause,Phone,Play,Receipt,ShoppingBag,Sparkles,Store as StoreIcon,Trash2,X} from "lucide-react";
 import {ApiError,merchantApi,type ParticipantDetail,type Store} from "./api";
 import {initialsOf} from "./ActionCenter";
 import type {SaleClient} from "./SalesWorkspace";
@@ -38,6 +38,8 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
  const [phoneValue,setPhoneValue]=useState("");
  const [phoneOk,setPhoneOk]=useState(false);
  const [version,setVersion]=useState(0);
+ const [removeOpen,setRemoveOpen]=useState(false);
+ const [removeReason,setRemoveReason]=useState("");
 
  useEffect(()=>{
   let active=true;setLoading(true);setError("");
@@ -73,6 +75,11 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
    setPhoneOpen(false);setPhoneOk(false);setPhoneValue("");setNotice("Celular salvo. Só os 4 últimos dígitos ficam visíveis.");setVersion(v=>v+1);}
   catch(e){setError(e instanceof ApiError?e.message:"Não foi possível salvar o celular.");}
   finally{setBusy(false);}
+ };
+ const removeClient=async()=>{
+  setBusy(true);setNotice("");setError("");
+  try{await merchantApi.removeParticipant(tenantId,p.id,removeReason.trim());onBack();}
+  catch(e){setError(e instanceof ApiError?e.message:"Não foi possível remover agora.");setBusy(false);}
  };
  const copyLink=async()=>{
   try{await navigator.clipboard.writeText(clubUrl);setNotice(gift?"Link do clube copiado. Envie para o cliente acompanhar o crédito.":"Link do clube copiado. Envie para o cliente acompanhar os pontos.");}
@@ -168,7 +175,16 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
        <button type="button" className="vf-btn is-small" onClick={()=>setConfirmPause(false)}>Cancelar</button>
        <button type="button" className="vf-btn is-small is-danger" disabled={busy} onClick={()=>void setStatus("paused")}>Confirmar pausa</button></div>
      :<button type="button" className="vf-btn is-small" onClick={()=>setConfirmPause(true)}><Pause size={15}/> Pausar participação</button>}
-     <p className="vf-muted vf-small">Sair do clube e apagar dados é pedido pelo próprio cliente, no Meu Clube.</p>
+     {!removeOpen?<button type="button" className="vf-btn is-small is-link vf-client-remove" onClick={()=>setRemoveOpen(true)}>
+      <Trash2 size={15}/> Remover do clube</button>
+     :<div className="vf-client-confirm is-danger" role="group" aria-label="Confirmar remoção">
+      <span className="vf-small"><strong>Remover {p.display_name||"esta cliente"}?</strong> O saldo dela é zerado, o cupom do site é cancelado
+       e nome, e-mail e celular são apagados. As vendas continuam nos números da loja como “Cliente removido”. Não dá para desfazer.</span>
+      <label className="vf-field is-compact">Motivo (opcional)<input maxLength={240} value={removeReason} onChange={e=>setRemoveReason(e.target.value)}
+       placeholder="Ex.: pedido da cliente, cadastro duplicado"/></label>
+      <div className="vf-pills"><button type="button" className="vf-btn is-small" onClick={()=>setRemoveOpen(false)}>Cancelar</button>
+       <button type="button" className="vf-btn is-small is-danger" disabled={busy} onClick={()=>void removeClient()}>{busy?"Removendo…":"Remover definitivamente"}</button></div>
+     </div>}
      <a className="vf-btn is-small is-link" href={clubUrl} target="_blank" rel="noreferrer"><ExternalLink size={15}/> Abrir a página do clube</a>
     </section>}
    </aside>

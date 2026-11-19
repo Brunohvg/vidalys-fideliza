@@ -520,7 +520,7 @@ export type PaidOrderInspection = {
   reported_customer_paid_cents:number|null;
   reported_payment_differs_from_total:boolean|null;
   reported_paid_amount_is_not_psp_proof:true;
-  participant_verified:boolean;
+  participant_verified:boolean;club_units?:number;
   review_status:"blocked_cancelled"|"blocked_refund"|"blocked_chargeback"|"not_paid"|
     "payment_date_missing"|"customer_not_verified"|
     "manual_payment_review"|"reported_paid_amount_review"|
@@ -666,6 +666,13 @@ export const merchantApi = {
   confirmManualSales: (tenantId:string,ids:string[])=>
     postJson<{confirmed:string[];skipped:string[];points:number}>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/confirm-batch/",{ids}),
+  removeManualSale: (tenantId:string,saleId:string,reason:string)=>postJson<{removed:true;returned?:number;reversed?:number}>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+encodeURIComponent(saleId)+"/remove/",{reason}),
+  createParticipant: (tenantId:string,data:{name:string;email:string;phone?:string;authorized:boolean})=>
+    postJson<ParticipantDetail&{email_confirmation:"sent"|"confirmed"}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/new/",data),
+  removeParticipant: (tenantId:string,participantId:string,reason:string)=>postJson<{removed:true;reversed:number}>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/participants/"+encodeURIComponent(participantId)+"/remove/",{confirm:true,reason}),
   undoManualSale: (tenantId:string,saleId:string)=>postJson<{sale:ManualSaleRecord}>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+encodeURIComponent(saleId)+"/undo/",{}),
   counterWallet: (tenantId:string,participantId:string)=>getJson<CounterWallet>(

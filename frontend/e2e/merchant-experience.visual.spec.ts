@@ -45,7 +45,7 @@ for(const width of [390,768,1440]) {
 
       await nav(page,"Clientes",width);
       await expect(page.getByRole("heading",{name:"Quem faz parte do clube",exact:true})).toBeVisible();
-      const enrollmentAction=page.getByRole("button",{name:"Gerenciar adesões"});
+      const enrollmentAction=page.getByRole("button",{name:"Cadastrar cliente"});
       await expect(enrollmentAction).toBeVisible();
       const appearance=await enrollmentAction.evaluate(el=>{
         const css=getComputedStyle(el);
@@ -56,7 +56,7 @@ for(const width of [390,768,1440]) {
       expect(appearance.height).toBeGreaterThanOrEqual(44);
       await expect(page.getByText("Seu clube começa com o primeiro cliente")).toBeVisible();
       await expect(page.getByText("Só entra quem aceita o regulamento.",{exact:false})).toBeVisible();
-      expect(await page.getByRole("button",{name:/Cadastrar cliente/}).count()).toBe(0);
+      await expect(page.getByRole("button",{name:"Convite e adesões"})).toBeVisible();   // convite continua a um toque
       const clientsGeometry=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(clientsGeometry.doc).toBeLessThanOrEqual(clientsGeometry.width+1);
       await page.evaluate(()=>window.scrollTo(0,0));

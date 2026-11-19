@@ -13,17 +13,30 @@ from .enrollment_models import EnrollmentEmailChallenge, EnrollmentSubmission
 from .models import ProgramParticipant
 
 
+def club_activates_on_email(tenant_id) -> bool:
+    """Loja com o clube configurado: e-mail confirmado JÁ É participação ativa, sem aprovação
+    nem vínculo com a Nuvemshop (que vira complemento). Sem clube, vale a flag antiga."""
+    from apps.sales.models import CounterPilot
+    return (getattr(settings, "FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED", False)
+            or CounterPilot.objects.filter(tenant_id=tenant_id).exists())
+
+
 @transaction.atomic
 def activate_standalone_after_email(token: str) -> bool:
-    if not getattr(settings, "FIDELIZA_STANDALONE_MEMBERSHIP_ENABLED", False):
-        return False
     challenge = EnrollmentEmailChallenge.objects.filter(
         token_digest=digest(token), purpose=EnrollmentEmailChallenge.Purpose.VERIFY,
         consumed_at__isnull=False,
-    ).values("submission_id").first()
-    if not challenge:
+    ).values("submission_id", "submission__tenant_id").first()
+    if not challenge or not club_activates_on_email(challenge["submission__tenant_id"]):
         return False
-    return activate_verified_submission(challenge["submission_id"]) == "created"
+    outcome = activate_verified_submission(challenge["submission_id"])
+    # Participação ativa com e-mail confirmado: pedidos do site feitos depois da adesão contam.
+    member = EnrollmentSubmission.objects.filter(pk=challenge["submission_id"]).values_list(
+        "participant_id", flat=True).first()
+    if member:
+        from apps.sales.online import queue_credit_since_join
+        queue_credit_since_join(member)
+    return outcome in ("created", "joined_existing")
 
 
 @transaction.atomic

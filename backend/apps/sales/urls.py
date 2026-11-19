@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import (ManualSalesView, ManualSaleReviewView, ManualSaleLinkView, PointRuleDraftView,
+from .views import (ManualSalesView, ManualSaleReviewView, ManualSaleLinkView, PointRuleDraftView, ManualSaleRemoveView,
                     ManualSaleBatchConfirmView, ManualSaleUndoView, CounterWalletView, CounterPilotView,
                     ProgramModeView, ClubResultsView)
 from .benefit_draft_views import DiscountRewardDraftsView, DiscountRewardDraftDetailView, DiscountRewardPublicationView, PointCampaignDraftsView, PointCampaignDraftDetailView, PointCampaignAudienceView, PointCampaignPublishView
@@ -22,6 +22,8 @@ urlpatterns = [
          ManualSaleBatchConfirmView.as_view(), name="manual-sale-confirm-batch"),
     path("tenants/<uuid:tenant_id>/sales/manual/<uuid:sale_id>/undo/",
          ManualSaleUndoView.as_view(), name="manual-sale-undo"),
+    path("tenants/<uuid:tenant_id>/sales/manual/<uuid:sale_id>/remove/",
+         ManualSaleRemoveView.as_view(), name="manual-sale-remove"),
     path("tenants/<uuid:tenant_id>/sales/counter/participants/<uuid:participant_id>/wallet/",
          CounterWalletView.as_view(), name="counter-wallet"),
     path("tenants/<uuid:tenant_id>/loyalty/results/",

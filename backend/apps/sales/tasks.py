@@ -121,3 +121,18 @@ def send_credit_notice(self, participant_id: str, kind: str, amount: int, expire
         return "sent"
     except Exception as exc:
         retry_or_fail(self, event_id, exc)
+
+
+@shared_task(name="sales.credit_since_join", queue="nuvemshop", ignore_result=True,
+             bind=True, max_retries=3, default_retry_delay=300)
+def credit_since_join_task(self, participant_id: str):
+    """Crédito retroativo desde a adesão (precisa do token OAuth: fila isolada)."""
+    from apps.participants.models import ProgramParticipant
+    from .online import credit_since_join
+    participant = ProgramParticipant.objects.select_related("tenant").filter(pk=participant_id).first()
+    if participant is None:
+        return None
+    try:
+        return credit_since_join(participant)
+    except Exception:
+        raise self.retry(exc=RuntimeError("credit_since_join_retry")) from None

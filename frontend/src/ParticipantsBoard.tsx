@@ -3,6 +3,7 @@ import {ChevronLeft,ChevronRight,RefreshCw,Search,UserPlus} from "lucide-react";
 import {ApiError,merchantApi,type ParticipantDirectoryResponse,type ProgramParticipant,type Store} from "./api";
 import {initialsOf} from "./ActionCenter";
 import ClientPage from "./ClientPage";
+import ClientCreate from "./ClientCreate";
 import {clientIdFromPath,clientPath,merchantPaths} from "./routes";
 import type {SaleClient} from "./SalesWorkspace";
 import "./vf-ui.css";
@@ -43,6 +44,8 @@ export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch=
  const [status,setStatus]=useState<"all"|"active"|"paused">("all");
  const [offset,setOffset]=useState(0);
  const [version,setVersion]=useState(0);
+ const [creating,setCreating]=useState(false);
+ const canManage=role==="owner"||role==="admin";
 
  useEffect(()=>{
   if(clientId)return; // Na página do cliente a lista não é carregada.
@@ -74,8 +77,12 @@ export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch=
     <button type="submit" className="vf-btn is-small">Buscar</button>
    </form>
    <button type="button" className="vf-btn is-small" disabled={loading} onClick={()=>setVersion(v=>v+1)}><RefreshCw size={16}/> Atualizar</button>
-   <button type="button" className="vf-btn is-small is-primary" onClick={onOpenProgram}><UserPlus size={16}/> Gerenciar adesões</button>
+   {canManage&&<button type="button" className="vf-btn is-small is-primary" onClick={()=>setCreating(v=>!v)} aria-expanded={creating}>
+    <UserPlus size={16}/> Cadastrar cliente</button>}
+   <button type="button" className="vf-btn is-small" onClick={onOpenProgram}>Convite e adesões</button>
   </div>
+  {creating&&<ClientCreate tenantId={tenantId} onClose={()=>setCreating(false)}
+   onCreated={id=>{setCreating(false);window.history.pushState(null,"",clientPath(id));setClientId(id);window.scrollTo({top:0});}}/>}
   {error&&<div className="vf-toast is-error" role="alert">{error} <button type="button" className="vf-btn is-small" onClick={()=>setVersion(v=>v+1)}>Tentar novamente</button></div>}
 
   <div className="vf-card is-flush">

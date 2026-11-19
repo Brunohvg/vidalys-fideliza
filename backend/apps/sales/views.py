@@ -112,7 +112,7 @@ class ManualSalesView(APIView):
         from .pilot import average_ticket, mode_payload, pilot_enabled
         from .policy import channels
         records = list(SaleRecord.objects.filter(
-            tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
+            tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER, removed_at__isnull=True,
         ).select_related("participant", "submitted_by", "counter_redemption__reward")[:60])
         hints = suggested_participants(records)
         pilot = pilot_enabled(tenant_id)
@@ -404,6 +404,30 @@ class ManualSaleUndoView(APIView):
         sale.save(update_fields=["state", "reviewed_by", "reviewed_at", "review_note"])
         settle_redemption(sale, approve=False)
         return safe_reply({"sale": present_sale(sale, viewer_id=request.user.pk, pilot=True)})
+
+
+class ManualSaleRemoveView(APIView):
+    """Apaga uma venda lançada à mão, por qualquer motivo, desfazendo o saldo que ela mexeu.
+
+    Some das listas e dos resultados; fica registrada (quem, quando, motivo) para auditoria.
+    Só proprietário e administrador.
+    """
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["post", "options"]
+
+    def post(self, request, tenant_id, sale_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        data = request.data
+        reason = data.get("reason") if isinstance(data, dict) else None
+        if not isinstance(data, dict) or set(data) != {"reason"} or not isinstance(reason, str) \
+                or not 3 <= len(reason.strip()) <= 240:
+            return safe_reply({"detail": "Diga em poucas palavras por que a venda será apagada."}, 400)
+        sale = get_object_or_404(SaleRecord, pk=sale_id, tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER)
+        from apps.participants.removal import remove_counter_sale
+        sale, summary = remove_counter_sale(sale, actor=request.user, reason=reason.strip())
+        return safe_reply({"removed": True, **summary})
 
 
 class CounterWalletView(APIView):

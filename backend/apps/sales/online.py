@@ -414,7 +414,20 @@ def present_coupon(coupon):
 
 # ---------- Pedido do site (chamado pela reconsulta do webhook) ----------
 
+def _order_customer_id(order):
+    from apps.nuvemshop.order_readonly import safe_id
+    customer = order.get("customer") if isinstance(order.get("customer"), dict) else {}
+    return safe_id(customer.get("id"))
+
+
 def _participant_for(tenant, order, profile):
+    # 1) Cliente da Nuvemshop já reconhecido antes (vale mesmo se ela usar outro e-mail no checkout).
+    cid = _order_customer_id(order)
+    if cid:
+        known = list(ProgramParticipant.objects.filter(
+            tenant=tenant, external_customer_id=cid, status=ProgramParticipant.Status.ACTIVE)[:2])
+        if len(known) == 1:
+            return known[0]
     if profile is not None and getattr(profile, "participant_id", None):
         p = ProgramParticipant.objects.filter(pk=profile.participant_id, tenant=tenant,
                                               status=ProgramParticipant.Status.ACTIVE).first()
@@ -430,6 +443,17 @@ def _participant_for(tenant, order, profile):
         tenant=tenant, email__iexact=emails.pop(), email_verified_at__isnull=False, withdrawn_at__isnull=True,
         participant__status=ProgramParticipant.Status.ACTIVE).select_related("participant")[:2])
     return match[0].participant if len(match) == 1 else None
+
+
+def _remember_customer(tenant, participant, order):
+    """Guarda o cliente da Nuvemshop de quem já foi reconhecida pelo e-mail confirmado no clube."""
+    cid = _order_customer_id(order)
+    if not cid or participant.external_customer_id:
+        return
+    if ProgramParticipant.objects.filter(tenant=tenant, external_customer_id=cid).exists():
+        return                                     # já pertence a outra participação: não mexe
+    ProgramParticipant.objects.filter(pk=participant.pk, external_customer_id__isnull=True).update(
+        external_customer_id=cid)
 
 
 def club_buyer(tenant, order, participant):
@@ -501,6 +525,8 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None, 
                 and can_operate(tenant, "site_earn")):
             buyer, why = club_buyer(tenant, order, participant)
             result.append(_grant_site(tenant, buyer, total_cents, ref, order_id) if buyer else why)
+            if buyer:
+                _remember_customer(tenant, buyer, order)
         if status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED):
             # Pedido desfeito depois de usar o cupom: o crédito usado volta para a cliente (uma vez).
             for coupon in OnlineCoupon.objects.select_for_update().filter(
@@ -659,3 +685,67 @@ def refresh_all():
     tenants = Tenant.objects.filter(pk__in=CounterPilot.objects.values("tenant_id"),
                                     status=Tenant.Status.ACTIVE, platform="nuvemshop")
     return {str(t.pk): refresh_tenant(t) for t in tenants}
+
+
+# ---------- Crédito retroativo desde a adesão ----------
+
+RETRO_DAYS = 30
+RETRO_MAX_ORDERS = 200
+
+
+def credit_since_join(participant, *, opener=None):
+    """Ao ativar a participação: pedidos pagos do site feitos DEPOIS da adesão (até 30 dias)
+    que ainda não geraram saldo passam pela mesma concessão do clube. Sem duplicar (um lote
+    por pedido) e só se o pedido for dela pela regra de identidade do clube. Fila "nuvemshop"."""
+    from collections import Counter
+    from django.utils.dateparse import parse_datetime
+    from apps.nuvemshop.order_readonly import INTEGRATION_FIELDS, read_order, summarize_order
+    from apps.nuvemshop.order_recheck_service import _order_status
+    from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
+    from .policy import can_operate
+    tenant = participant.tenant
+    out = Counter()
+    if (tenant.platform != "nuvemshop" or participant.status != ProgramParticipant.Status.ACTIVE
+            or not can_operate(tenant, "site_earn")):
+        return {"skipped": 1}
+    joined = max(participant.consent_at, participant.joined_at)
+    since = max(joined, timezone.now() - timedelta(days=RETRO_DAYS))
+    order_ids = list(OrderWebhookEvent.objects.filter(tenant=tenant, received_at__gte=since)
+                     .values_list("order_id", flat=True).distinct()[:RETRO_MAX_ORDERS])
+    if not order_ids:
+        return {}
+    store_id, token, agent = _remote(tenant)
+    for order_id in order_ids:
+        if PointLot.objects.filter(tenant=tenant, source_reference=f"site:{order_id}").exists():
+            out["already"] += 1
+            continue
+        try:
+            order = read_order(store_id=store_id, order_id=order_id, access_token=token, user_agent=agent,
+                               fields=INTEGRATION_FIELDS, opener=opener)
+            summary = summarize_order(order, order_id=order_id)
+        except Exception:
+            out["unreadable"] += 1
+            continue
+        paid_at = parse_datetime(order.get("paid_at") or "") if isinstance(order.get("paid_at"), str) else None
+        if summary["payment_status"] != "paid" or paid_at is None or paid_at < joined:
+            out["not_eligible"] += 1                 # não pago, ou pago antes de entrar no clube
+            continue
+        if _participant_for(tenant, order, None) != participant:
+            out["other_buyer"] += 1
+            continue
+        result = handle_order(tenant=tenant, order=order, order_id=order_id, status=_order_status(summary),
+                              total_cents=summary["reported_total_cents"])
+        out["granted" if "granted" in result else "nothing"] += 1
+    logger.info("credit_since_join tenant=%s result=%s", tenant.pk, dict(out))
+    return dict(out)
+
+
+def queue_credit_since_join(participant_id):
+    """Agenda depois do commit; falha de fila não atrapalha a ativação."""
+    def enqueue():
+        try:
+            from .tasks import credit_since_join_task
+            credit_since_join_task.delay(str(participant_id))
+        except Exception:
+            logger.warning("credit_since_join enqueue_failed")
+    transaction.on_commit(enqueue)

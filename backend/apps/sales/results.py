@@ -25,7 +25,9 @@ def _sum(qs, field):
 def club_results(tenant, *, days=30):
     now = timezone.now()
     since = now - timedelta(days=days)
-    lots = PointLot.objects.filter(tenant=tenant, rule_version__startswith=RULE_PREFIX)
+    removed = SaleRecord.objects.filter(tenant=tenant, removed_at__isnull=False).values_list("pk", flat=True)
+    lots = PointLot.objects.filter(tenant=tenant, rule_version__startswith=RULE_PREFIX).exclude(
+        source_reference__in=[f"counter:{pk}" for pk in removed])
     period = lots.filter(created_at__gte=since).exclude(rule_version=RESTORE_RULE)   # devolução não é compra
 
     revenue = _sum(period, "eligible_amount_cents")
@@ -75,7 +77,8 @@ def club_results(tenant, *, days=30):
         cursor = (cursor + timedelta(days=32)).replace(day=1)
 
     counter_sales = SaleRecord.objects.filter(tenant=tenant, channel=SaleRecord.Channel.COUNTER,
-                                              created_at__gte=since).exclude(state=SaleRecord.State.REJECTED)
+                                              created_at__gte=since, removed_at__isnull=True,
+                                              ).exclude(state=SaleRecord.State.REJECTED)
     with_member = counter_sales.filter(participant__isnull=False)
     return {
         "days": days, "program": mode_payload(tenant.pk),

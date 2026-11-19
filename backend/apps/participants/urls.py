@@ -6,6 +6,7 @@ from .member_portal_views import (
 from .member_profile_views import ClubIconView, ClubManifestView, MemberExportView, MemberCouponView, MemberProfileView
 from .views import ParticipantListView
 from .detail_views import ParticipantDetailView, ParticipantStatusView
+from .manage_views import ParticipantCreateView, ParticipantRemoveView
 from .phone_views import ParticipantPhoneLookupView, ParticipantPhoneView
 from .customer_link_preview import CustomerLinkPreviewView
 from .customer_link_approval import CustomerLinkApproveView
@@ -41,6 +42,10 @@ urlpatterns = [
          ClubIconView.as_view(), name="member-club-icon"),
     path("tenants/<uuid:tenant_id>/participants/", ParticipantListView.as_view(),
          name="tenant-participants"),
+    path("tenants/<uuid:tenant_id>/participants/new/", ParticipantCreateView.as_view(),
+         name="tenant-participant-create"),
+    path("tenants/<uuid:tenant_id>/participants/<uuid:participant_id>/remove/", ParticipantRemoveView.as_view(),
+         name="tenant-participant-remove"),
     path("tenants/<uuid:tenant_id>/participants/by-phone/", ParticipantPhoneLookupView.as_view(),
          name="tenant-participant-by-phone"),
     path("tenants/<uuid:tenant_id>/participants/<uuid:participant_id>/", ParticipantDetailView.as_view(),

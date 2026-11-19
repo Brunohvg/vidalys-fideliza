@@ -247,11 +247,13 @@ export default function Portal() {
   const canReview = tenant ? tenant.role === "owner" || tenant.role === "admin" : false;
   /* Contador real de vendas aguardando conferência: alimenta o selo de Vendas e o sino. */
   const [pendingSales, setPendingSales] = useState(0);
+  const [counterOn, setCounterOn] = useState(true);
   useEffect(() => {
     let active = true; setPendingSales(0);
     if (!tenantKey || !canReview) return;
     merchantApi.listManualSales(tenantKey)
-      .then(list => { if (active) setPendingSales(list.channels?.counter === false ? 0
+      .then(list => { if (!active) return; setCounterOn(list.channels?.counter !== false);
+        setPendingSales(list.channels?.counter === false ? 0
         : list.items.filter(item => item.state === "awaiting_review").length); })
       .catch(() => { if (active) setPendingSales(0); });
     return () => { active = false; };
@@ -323,7 +325,7 @@ export default function Portal() {
           {tenant && (tenant.role==="owner"||tenant.role==="admin") && <button type="button" className="portal-bell" onClick={()=>navigate("sales")}
             aria-label={pendingSales ? `Avisos: ${pendingSales} venda${pendingSales===1?"":"s"} para conferir` : "Avisos: nada pendente"}>
             <Bell size={20}/>{pendingSales ? <span className="portal-bell-dot" aria-hidden="true"/> : null}</button>}
-          {tenant && page!=="sales" && (tenant.role==="owner"||tenant.role==="admin") && <button type="button" className="portal-top-cta" onClick={()=>navigate("sales")}><Plus size={17}/> Registrar venda</button>}
+          {tenant && page!=="sales" && counterOn && (tenant.role==="owner"||tenant.role==="admin") && <button type="button" className="portal-top-cta" onClick={()=>navigate("sales")}><Plus size={17}/> Registrar venda</button>}
         </div>
       </header>
       <main className="portal-content">

@@ -17,6 +17,7 @@ class ProgramParticipant(models.Model):
     class ConsentChannel(models.TextChoices):
         CUSTOMER_PORTAL = "customer_portal", "Portal do participante"
         STOREFRONT_OPT_IN = "storefront_opt_in", "Aceite na vitrine"
+        MERCHANT_ASSISTED = "merchant_assisted", "Cadastro pela loja com autorização da cliente"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE,

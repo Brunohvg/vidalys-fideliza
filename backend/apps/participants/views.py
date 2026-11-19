@@ -95,7 +95,7 @@ def participant_rows(tenant_id, page):
     # valores são informados no caixa, NÃO receita confirmada pelo PSP.
     manual_summary = {}
     sales_rows = (SaleRecord.objects.filter(
-        tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
+        tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER, removed_at__isnull=True,
         participant_id__in=participant_ids,
     ).values("participant_id").annotate(
         manual_sales_count=Count("id"),

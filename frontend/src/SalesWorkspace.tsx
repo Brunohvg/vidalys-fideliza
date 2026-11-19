@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState,type FormEvent} from "react";
-import {Check,CheckCircle2,Clock3,Gift,Link2,RefreshCw,Search,ShoppingBag,Smartphone,Star,Store as StoreIcon,
+import {Check,CheckCircle2,Clock3,Gift,Link2,RefreshCw,Search,ShoppingBag,Smartphone,Star,Store as StoreIcon,Trash2,
  TriangleAlert,Undo2,UserRound,X} from "lucide-react";
 import {ApiError,merchantApi,type CounterWallet,type ProgramInfo,type ManualSaleRecord,type PaidOrderInspection,type PointRuleDraft,
  type ProgramParticipant,type Store} from "./api";
@@ -54,7 +54,7 @@ const COUNTER_STATE:Record<ManualSaleRecord["state"],[string,string]>={
 export type SaleClient={id:string;display_name:string;detail:string};
 type Tab="counter"|"review"|"orders";
 type Shared={tenantId:string;items:ManualSaleRecord[];loading:boolean;listError:string;pilot:boolean;avgTicket:number;program:ProgramInfo;
- rule:PointRuleDraft|null;pointValue:number|null;reload:()=>void};
+ rule:PointRuleDraft|null;pointValue:number|null;reload:()=>void;canEdit:boolean};
 
 export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:string;role:Store["role"];initialClient?:SaleClient|null}){
  const canEdit=role==="owner"||role==="admin";
@@ -93,7 +93,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
  },[tenantId,canEdit]);
 
  const pending=items.filter(i=>i.state==="awaiting_review"||i.state==="awaiting_member").length;
- const shared:Shared={tenantId,items,loading,listError,pilot,avgTicket,program,rule,pointValue,reload:()=>setVersion(v=>v+1)};
+ const shared:Shared={tenantId,items,loading,listError,pilot,avgTicket,program,rule,pointValue,reload:()=>setVersion(v=>v+1),canEdit};
  /* Loja só no site: Balcão e Conferir somem (o clube ganha pelos pedidos pagos, sem conferência). */
  const TABS:[Tab,string][]=canEdit&&counterOn?[["counter","Balcão"],["review","Conferir"],["orders","Pedidos"]]:[["orders","Pedidos"]];
  useEffect(()=>{if(!counterOn&&tab!=="orders")setTab("orders");},[counterOn,tab]);
@@ -546,7 +546,7 @@ function Review({shared}:{shared:Shared}){
 /* ---------------- Pedidos ---------------- */
 
 type Row={key:string;channel:"counter"|"site";title:string;sub:string;cents:number;points:string;status:[string,string];
- dim:boolean;club:boolean;at:number;search:string;initials:string|null};
+ dim:boolean;club:boolean;at:number;search:string;initials:string|null;saleId?:string};
 const SITE_STATUS=(o:PaidOrderInspection):[string,string]=>{
  if(o.review_status==="blocked_cancelled")return ["Cancelado","is-danger"];
  if(o.review_status==="blocked_refund"||o.review_status==="blocked_chargeback")return ["Estornado","is-danger"];
@@ -555,8 +555,21 @@ const SITE_STATUS=(o:PaidOrderInspection):[string,string]=>{
 };
 
 function Orders({shared}:{shared:Shared}){
- const {tenantId,items,loading,listError,program,reload}=shared;
+ const {tenantId,items,loading,listError,program,reload,canEdit}=shared;
  const isGift=program.mode==="giftback";
+ /* Apagar venda lançada à mão: pede o motivo e desfaz o saldo que ela mexeu (servidor). */
+ const [removing,setRemoving]=useState<string|null>(null);
+ const [removeReason,setRemoveReason]=useState("");
+ const [removeBusy,setRemoveBusy]=useState(false);
+ const [removeMsg,setRemoveMsg]=useState<[string,boolean]|null>(null);
+ const removeSale=async(saleId:string)=>{
+  if(removeBusy)return;setRemoveBusy(true);setRemoveMsg(null);
+  try{const r=await merchantApi.removeManualSale(tenantId,saleId,removeReason.trim());
+   const parts=[r.returned?`${gain(r.returned,isGift)} devolvido à cliente`:"",r.reversed?`${gain(r.reversed,isGift)} estornado`:""].filter(Boolean);
+   setRemoveMsg(["Venda apagada."+(parts.length?" "+parts.join(" · ")+".":""),true]);setRemoving(null);setRemoveReason("");reload();}
+  catch(e){setRemoveMsg([e instanceof ApiError?e.message:"Não foi possível apagar agora.",false]);}
+  finally{setRemoveBusy(false);}
+ };
  const noneLabel=isGift?"sem crédito":"sem pontos";
  const [site,setSite]=useState<PaidOrderInspection[]>([]);
  const [siteState,setSiteState]=useState<"loading"|"ok"|"off">("loading");
@@ -585,11 +598,12 @@ function Orders({shared}:{shared:Shared}){
     sub:when(s.reported_paid_at||s.created_at)+(s.redemption?` · ${s.redemption.title}`:"")+" · "+receiptLabel(s.evidence_reference),
     cents:s.eligible_amount_cents-discount,points:s.participant_id&&typeof p==="number"&&p>0&&s.state!=="rejected"?(s.points_issued?"+":"≈ +")+gain(p,isGift):noneLabel,
     status:COUNTER_STATE[s.state],dim:s.state==="rejected",club:Boolean(s.participant_id),
-    at:new Date(s.reported_paid_at||s.created_at).getTime(),initials:s.participant_name,
+    at:new Date(s.reported_paid_at||s.created_at).getTime(),initials:s.participant_name,saleId:s.id,
     search:[s.participant_name,s.reference].join(" ").toLowerCase()};});
   const online:Row[]=site.map(o=>{const st=SITE_STATUS(o);return {key:"s"+o.order_id,channel:"site",
    title:(o.order_number?"#"+o.order_number:"Pedido "+o.order_id)+(o.participant_verified?" · cliente do clube":" · fora do clube"),
-   sub:o.paid_at?when(o.paid_at):"sem data de pagamento",cents:o.reported_total_cents,points:noneLabel,status:st,
+   sub:o.paid_at?when(o.paid_at):"sem data de pagamento",cents:o.reported_total_cents,
+   points:o.club_units?"+"+gain(o.club_units,isGift):noneLabel,status:st,
    dim:st[1]==="is-danger",club:o.participant_verified,at:o.paid_at?new Date(o.paid_at).getTime():0,initials:null,
    search:[o.order_number,o.order_id].join(" ").toLowerCase()};});
   return [...counter,...online].sort((a,b)=>b.at-a.at);
@@ -617,6 +631,7 @@ function Orders({shared}:{shared:Shared}){
   </div>
   {listError&&<div className="vf-toast is-error" role="alert">{listError}</div>}
   {siteState==="off"&&siteMsg&&<div className="vf-toast is-info" role="status">{siteMsg}</div>}
+  {removeMsg&&<div className={"vf-toast"+(removeMsg[1]?"":" is-error")} role={removeMsg[1]?"status":"alert"}>{removeMsg[0]}</div>}
   {loading&&siteState==="loading"?<p className="vf-muted" role="status">Carregando pedidos…</p>
   :shown.length===0?<div className="vs-empty"><ShoppingBag size={24} aria-hidden="true"/><strong>Nenhum pedido encontrado</strong>
     <span>{rows.length?"Mude a busca ou os filtros.":"As vendas do balcão e do site aparecem aqui."}</span></div>
@@ -627,6 +642,16 @@ function Orders({shared}:{shared:Shared}){
     <span className="vs-channel">{r.channel==="counter"?<><StoreIcon size={14} aria-hidden="true"/> Balcão</>:<><ShoppingBag size={14} aria-hidden="true"/> Site</>}</span>
     <div className="vs-val"><strong>{money(r.cents)}</strong><small className={r.points===noneLabel?"is-none":""}>{r.points}</small></div>
     <span className={"vf-chip "+r.status[1]}>{r.status[0]}</span>
+    {canEdit&&r.saleId&&removing!==r.saleId&&<button type="button" className="vf-btn is-small is-link vs-remove"
+     aria-label={"Apagar venda de "+r.title} onClick={()=>{setRemoving(r.saleId!);setRemoveReason("");setRemoveMsg(null);}}><Trash2 size={15}/></button>}
+    {removing===r.saleId&&<div className="vs-remove-box" role="group" aria-label="Apagar venda">
+     <span className="vf-small">Apagar esta venda? Some da lista e dos resultados. O que ela gerou de saldo é estornado e o crédito usado nela volta para a cliente.</span>
+     <label className="vf-field is-compact">Motivo<input maxLength={240} value={removeReason} onChange={e=>setRemoveReason(e.target.value)}
+      placeholder="Ex.: lançada em dobro, valor errado, teste"/></label>
+     <div className="vf-pills"><button type="button" className="vf-btn is-small" onClick={()=>setRemoving(null)}>Cancelar</button>
+      <button type="button" className="vf-btn is-small is-danger" disabled={removeBusy||removeReason.trim().length<3}
+       onClick={()=>void removeSale(r.saleId!)}>{removeBusy?"Apagando…":"Apagar venda"}</button></div>
+    </div>}
    </li>)}</ul>}
   <details className="vf-sale-more"><summary>Consultar um pedido pelo número ou link</summary><PaidOrderCheck tenantId={tenantId}/></details>
  </section>;
