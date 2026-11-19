@@ -125,3 +125,21 @@ class OperationPolicyTests(StoreFixture, TestCase):
                                eligible_amount_cents=100, points=3, rule_version="pilot-vg1",
                                paid_at=timezone.now(), unlock_at=timezone.now(),
                                expires_at=timezone.now() + timedelta(days=30), verification_digest="a" * 64)
+
+    def test_readiness_report_is_read_only_and_shows_store_without_pii(self):
+        out = StringIO()
+        call_command("club_readiness", "--tenant", self.tenant.slug, "--skip-workers", stdout=out)
+        text = out.getvalue()
+        self.assertIn("Banco com todas as migrações aplicadas", text)
+        self.assertIn("Rotina agendada: sales.online_coupon_refresh", text)
+        self.assertIn("Loja loja-online", text)
+        self.assertIn("modo teste", text)
+        self.assertIn("Tetos em vigor: R$ 50,00 por compra · R$ 500,00 no total", text)
+        self.assertIn("Resultado: OK", text)
+        self.assertNotIn("ana@example.invalid", text)
+        self.assertNotIn("Ana", text)
+        ProgramTerms.objects.filter(tenant=self.tenant).update(active=False)
+        self.operate("test")
+        CounterPilot.objects.filter(tenant=self.tenant).update(operation_mode="commercial", commercial_at=timezone.now())
+        with self.assertRaises(SystemExit):                                 # comercial com bloqueio = falha
+            call_command("club_readiness", "--tenant", self.tenant.slug, "--skip-workers", stdout=StringIO())
