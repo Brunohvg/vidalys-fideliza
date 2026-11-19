@@ -1,0 +1,65 @@
+{
+  "_aviso": "DADOS FICTÍCIOS gerados por harness/dump_fixtures.py",
+  "ledger_active": false,
+  "store": {
+    "name": "Ateliê Aurora (exemplo)",
+    "club_url": "https://exemplo.invalid/clube/aurora"
+  },
+  "rule": {
+    "headline": "Cada R$ 1,00 em compras vale 1 ponto.",
+    "sentences": [
+      "Cada R$ 1,00 em compras vale 1 ponto.",
+      "Centavos que não completam a faixa não somam: uma compra de R$ 9,99 gera 9 pontos.",
+      "Os pontos ficam pendentes por 7 dias depois da compra confirmada (prazo de trocas e devoluções) e então são liberados.",
+      "Depois de liberados, valem por 180 dias, e cada nova compra renova o prazo de todos os seus pontos (até 365 dias contados da liberação).",
+      "Avisamos você 30, 7 e 1 dias antes de qualquer ponto vencer.",
+      "Exemplo: uma compra de R$ 100,00 gera 100 pontos."
+    ]
+  },
+  "balance": null,
+  "expiring": null,
+  "goal": null,
+  "rewards": [
+    {
+      "id": "cupom-20",
+      "title": "R$ 20 de desconto",
+      "points_cost": 400,
+      "perceived_value_cents": 2000,
+      "state": "em_preparacao",
+      "missing_points": null
+    },
+    {
+      "id": "kit-washi",
+      "title": "Kit de fitas washi",
+      "points_cost": 500,
+      "perceived_value_cents": 4500,
+      "state": "em_preparacao",
+      "missing_points": null
+    },
+    {
+      "id": "frete",
+      "title": "Frete grátis",
+      "points_cost": 600,
+      "perceived_value_cents": 2500,
+      "state": "em_preparacao",
+      "missing_points": null
+    },
+    {
+      "id": "oficina",
+      "title": "Vaga na oficina de bordado",
+      "points_cost": 1500,
+      "perceived_value_cents": 12000,
+      "state": "em_preparacao",
+      "missing_points": null
+    },
+    {
+      "id": "caneta",
+      "title": "Caneta brush edição limitada",
+      "points_cost": 300,
+      "perceived_value_cents": 1800,
+      "state": "indisponivel",
+      "missing_points": null
+    }
+  ],
+  "milestones": []
+}

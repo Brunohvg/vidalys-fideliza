@@ -97,6 +97,8 @@ def link_verified_submission(
     submission.status=EnrollmentSubmission.Status.LINKED
     submission.participant=participant
     submission.save(update_fields=["status", "participant"])
+    from .phone import copy_submission_phone
+    copy_submission_phone(submission, participant)
     # Fluxo existente já conferiu e-mail, tenant, OAuth e identidade exata.
     attach_verified_contact(
         tenant_id=tenant.pk, participant_id=participant.pk,

@@ -15,12 +15,12 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
-from django.utils.text import slugify
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_POST
 
+from apps.tenants.club_address import first_free_address
 from apps.tenants.models import Tenant, TenantMembership
 from .merchant_auth import (
     CHALLENGE_LIFETIME, account_for_email, canonical_email, email_claimed,
@@ -157,8 +157,7 @@ def confirm_registration(request):
             )
             tenant = Tenant.objects.create(
                 name=pending.store_name,
-                slug=(slugify(pending.store_name)[:35] or "loja") + "-" +
-                     uuid.uuid4().hex[:12],
+                slug=first_free_address(pending.store_name),
                 platform="independent", status=Tenant.Status.ACTIVE,
                 external_store_id=None,
             )

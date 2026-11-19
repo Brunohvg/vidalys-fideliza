@@ -24,10 +24,8 @@ async function mockAuthenticated(page: Page) {
 
 async function enterMargin(page: Page, width: number) {
   await page.goto("/app/visao-geral");
-  await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
-  if (width <= 1020) await page.getByRole("button", { name: "Abrir menu" }).click();
-  await page.locator(".portal-advanced-menu > summary").click();
-  await page.locator("#portal-sidebar").getByRole("button", { name: "Custo dos benefícios" }).click();
+  await expect(page.getByRole("heading", { name: "Seu clube hoje" })).toBeVisible();
+  await page.goto("/app/ferramentas/margem");
   if (width <= 1020) {
     await expect.poll(async () => page.locator(".portal-side").evaluate(
       node => node.getBoundingClientRect().right
@@ -129,8 +127,8 @@ test("login e logout respeitam sessão e CSRF de frontend", async ({ page }) => 
   await page.getByLabel("E-mail").fill("pilot@example.invalid");
   await page.getByLabel("Senha",{exact:true}).fill("example-only");
   await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("heading", { name: "O próximo passo da sua loja." })).toBeVisible();
-  await expect(page.getByText("Bibelô — ambiente piloto").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Seu clube hoje" })).toBeVisible();
+  await expect(page.getByLabel("Loja selecionada").locator("option:checked")).toHaveText("Bibelô — ambiente piloto");
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect(page.getByRole("heading", { name: "Bem-vindo de volta." })).toBeVisible();
 });
@@ -219,7 +217,7 @@ test("confirmação de e-mail apaga token da URL e entra na loja",async ({page})
   await page.goto("/confirmar-conta#token=synthetic-token-only");
   await expect(page).toHaveURL(/\/confirmar-conta$/);
   await page.getByRole("button",{name:"Confirmar e acessar"}).click();
-  await expect(page.getByText("Loja criada pelo lojista").first()).toBeVisible();
+  await expect(page.getByLabel("Loja selecionada").locator("option:checked")).toHaveText("Loja criada pelo lojista");
 });
 
 test("link de nova conta vence o painel antigo sem mesclar sessões", async ({page}) => {
@@ -257,7 +255,7 @@ test("link de nova conta vence o painel antigo sem mesclar sessões", async ({pa
   await expect(page).toHaveURL(/\/confirmar-conta$/);
   expect(confirmCalls).toBe(0);
   await page.getByRole("button",{name:"Confirmar e acessar"}).click();
-  await expect(page.getByText("Nova empresa confirmada").first()).toBeVisible();
+  await expect(page.getByLabel("Loja selecionada").locator("option:checked")).toHaveText("Nova empresa confirmada");
   await expect(page.getByText("Bibelô — ambiente piloto")).toHaveCount(0);
   await expect(page).toHaveURL("/app/visao-geral");
   expect(confirmCalls).toBe(1);

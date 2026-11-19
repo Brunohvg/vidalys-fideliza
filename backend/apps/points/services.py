@@ -33,9 +33,25 @@ MOVEMENTS = {
 }
 
 
-def _enabled():
-    if not getattr(settings, "FIDELIZA_POINTS_WRITES_ENABLED", False):
-        raise PermissionError("Pontos bloqueados: motor de pagamentos ainda não homologado.")
+# Movimentos que só baixam ou devolvem saldo já emitido: nunca criam exposição nova.
+SETTLEMENT_KINDS = frozenset({
+    PointEvent.Kind.REDEEM, PointEvent.Kind.CANCEL_RESERVE, PointEvent.Kind.REVERSE_PENDING,
+    PointEvent.Kind.REVERSE_AVAILABLE, PointEvent.Kind.EXPIRE_PENDING, PointEvent.Kind.EXPIRE_AVAILABLE,
+    "restore",   # devolver crédito usado num pedido que foi cancelado: dívida com a cliente, não crédito novo
+})
+
+
+def _enabled(tenant_id=None, kind=None):
+    """Loja com clube (CounterPilot): decide SEMPRE a política central (apps/sales/policy.py),
+    mesmo com a flag global ligada. Sem clube: só a flag global do motor antigo."""
+    from apps.sales.policy import has_club, ledger_write_allowed
+    if tenant_id is not None and has_club(tenant_id):
+        if ledger_write_allowed(tenant_id, settles=kind in SETTLEMENT_KINDS):
+            return
+        raise PermissionError("Clube pausado ou fora dos requisitos desta loja.")
+    if getattr(settings, "FIDELIZA_POINTS_WRITES_ENABLED", False):
+        return
+    raise PermissionError("Pontos bloqueados: motor de pagamentos ainda não homologado.")
 
 
 def _number(value, maximum):
@@ -100,9 +116,9 @@ def _post(lot, kind, amount, key, *, external_receipt=""):
 @transaction.atomic
 def create_pending_lot(*, participant, channel, source_reference,
                        eligible_amount_cents, points, rule_version,
-                       paid_at, unlock_at, expires_at, verification_digest):
+                       paid_at, unlock_at, expires_at, verification_digest, restore=False):
     """Domínio interno; digest fornecido não é prova independente de pagamento."""
-    _enabled()
+    _enabled(getattr(participant, "tenant_id", None), "restore" if restore else None)
     if (not isinstance(participant, ProgramParticipant)
             or participant.pk is None
             or participant.status != ProgramParticipant.Status.ACTIVE):
@@ -162,10 +178,10 @@ def create_pending_lot(*, participant, channel, source_reference,
 @transaction.atomic
 def transition_points(*, lot_id, kind, amount, idempotency_key, external_receipt=""):
     """Transição interna transacional; somente futuro adaptador autorizado."""
-    _enabled()
     lot = PointLot.objects.select_for_update().select_related(
         "wallet__participant","tenant",
     ).get(pk=lot_id)
+    _enabled(lot.tenant_id, kind)
     # Bloquear leitura/escrita entre tenants depende do adaptador; esta função
     # NÃO deve ser exposta como endpoint do usuário final.
     now = timezone.now()

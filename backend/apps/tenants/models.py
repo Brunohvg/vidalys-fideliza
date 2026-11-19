@@ -60,3 +60,10 @@ class TenantLoyaltyActivationAudit(models.Model):
     approved_sha = models.CharField(max_length=40)
     ticket = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class TenantSlugAlias(models.Model):
+    """Endereço antigo do clube: links já enviados continuam abrindo a mesma loja."""
+    slug = models.SlugField(primary_key=True)
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="slug_aliases")
+    created_at = models.DateTimeField(auto_now_add=True)

@@ -6,7 +6,7 @@ export type MerchantScreen =
   | "overview" | "clients" | "program" | "campaign" | "sales" | "settings"
   | "results" | "margin" | "costs" | "catalog";
 
-export type ClubSection = "rewards" | "history" | "rules";
+export type ClubSection = "home" | "rewards" | "history" | "rules" | "profile";
 
 export const merchantPaths: Record<MerchantScreen, string> = {
   overview: "/app/visao-geral",
@@ -25,9 +25,22 @@ const pathToScreen = new Map<string, MerchantScreen>(
   Object.entries(merchantPaths).map(([name, path]) => [path, name as MerchantScreen])
 );
 
+const CLIENT_PAGE = /^\/app\/clientes\/([0-9a-f-]{36})$/i;
+
+/** Página própria do cliente no painel: /app/clientes/<id>. Abre em outra aba com Ctrl/⌘. */
+export function clientIdFromPath(pathname: string): string | null {
+  const match = CLIENT_PAGE.exec(pathname.replace(/\/+$/, ""));
+  return match ? match[1].toLowerCase() : null;
+}
+
+export function clientPath(id: string): string {
+  return merchantPaths.clients + "/" + encodeURIComponent(id);
+}
+
 export function merchantScreenForPath(pathname: string): MerchantScreen | null {
   const clean = pathname.replace(/\/+$/, "") || "/";
   if (clean === "/app") return "overview";
+  if (CLIENT_PAGE.test(clean)) return "clients";
   return pathToScreen.get(clean) ?? null;
 }
 
@@ -40,18 +53,29 @@ export const merchantAuthPaths = [
 ] as const;
 
 export function clubSlugFromPath(pathname: string): string | null {
-  const match = /^\/clube\/([a-z0-9-]+)(?:\/(recompensas|historico|regras))?\/?$/i.exec(pathname);
+  const match = /^\/clube\/([a-z0-9-]+)(?:\/(recompensas|historico|regras|perfil))?\/?$/i.exec(pathname);
   return match ? match[1].toLowerCase() : null;
 }
 
+const clubSegments: Record<Exclude<ClubSection, "home">, string> = {
+  rewards: "recompensas", history: "historico", rules: "regras", profile: "perfil",
+};
+
 export function clubSectionForPath(pathname: string): ClubSection {
   const segment = pathname.replace(/\/+$/, "").split("/").at(-1);
-  return segment === "historico" ? "history" : segment === "regras" ? "rules" : "rewards";
+  return segment === "recompensas" ? "rewards" : segment === "historico" ? "history"
+    : segment === "regras" ? "rules" : segment === "perfil" ? "profile" : "home";
 }
 
 export function clubSectionPath(slug: string, section: ClubSection): string {
   const base = "/clube/" + encodeURIComponent(slug);
-  return section === "rewards" ? base : base + (section === "history" ? "/historico" : "/regras");
+  return section === "home" ? base : base + "/" + clubSegments[section];
+}
+
+/** O link antigo de adesão (/participar/<loja>) agora abre o próprio clube. */
+export function legacyJoinRedirect(pathname: string): string | null {
+  const match = /^\/participar\/([a-z0-9-]+)\/?$/i.exec(pathname);
+  return match ? "/clube/" + match[1].toLowerCase() + "#participar" : null;
 }
 
 export type EntryRoute =

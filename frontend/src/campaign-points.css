@@ -1,50 +1,101 @@
+/* VIDALYS FIDELIZA — Campanhas (arquivo completo e consolidado).
+   Assistente de 4 passos: modelo com público real, regra com painel de custo
+   ao vivo, período com prévia do cartão no Meu Clube e revisão. A lista mostra
+   status, público, custo máximo e o resultado contra o grupo de comparação.
+   Só tokens de brand-tokens.css. */
 
-.vf-campaign-new{display:grid;gap:17px;max-width:990px;margin:0 auto}
-.vf-campaign-hero{background:linear-gradient(115deg,#24113F,#3B1E82);padding:28px;border-radius:19px;color:#fff;display:grid;gap:11px;justify-items:start}
-.vf-campaign-hero .portal-eyebrow{color:#DCCFF4}.vf-campaign-hero h2{font:800 clamp(22px,2.7vw,30px)/1.2 Manrope,Inter,sans-serif;letter-spacing:-.03em;margin:0}
-.vf-campaign-hero p{margin:0;font-size:13px;line-height:1.65;color:#DCCFF4;max-width:650px}
-.vf-campaign-steps{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.vf-campaign-steps>span{background:#F8F6FF;color:#665D7A;border:1px solid #F0E9FF;border-radius:99px;padding:9px 13px;font-size:11px;font-weight:800}
-.vf-campaign-steps>span.current{background:#F0E9FF;color:#3B1E82;border-color:#BAA5E7}
-.vf-campaign-new .vf-benefit-panel>h3{font:800 20px Manrope,Inter,sans-serif;color:#24113F;margin:0}
-.vf-campaign-new .vf-benefit-panel>p{margin:0;font-size:13px;line-height:1.6;color:#665D7A}
-.vf-campaign-goals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-.vf-campaign-goals button{display:grid;justify-items:start;align-content:start;text-align:left;gap:10px;border:1px solid #DCCFF4;background:#fff;border-radius:14px;padding:20px;color:#3B1E82;min-height:154px;cursor:pointer}
-.vf-campaign-goals button svg{color:#3B1E82}.vf-campaign-goals button strong{font-size:13px}.vf-campaign-goals button small{font-size:11px;line-height:1.5;color:#665D7A}
-.vf-campaign-goals button.selected{background:#F8F6FF;border-color:#513595;box-shadow:0 0 0 1px #513595}
-.vf-campaign-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
-.vf-campaign-actions button{border:0;background:#6A3DF0;border-radius:10px;color:#fff;font-weight:850;font-size:12px;padding:12px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px}
-.vf-campaign-actions button.secondary{border:1px solid #DCCFF4;color:#3B1E82;background:#fff}
-.vf-campaign-actions button:disabled{opacity:.5;cursor:not-allowed}
-.vf-campaign-recap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
-.vf-campaign-recap>div{display:grid;gap:6px;background:#F8F6FF;border:1px solid #F0E9FF;padding:15px;border-radius:12px}
-.vf-campaign-recap span{color:#665D7A;font-size:11px}.vf-campaign-recap strong{color:#3B1E82;font-size:16px}
-.vf-campaign-warning{display:flex;align-items:flex-start;gap:9px;padding:14px;border:1px solid #e9e1c2;border-radius:12px;background:#fffaf0;color:#6b6146;font-size:12px;line-height:1.6;margin:0}
-.vf-campaign-warning svg{flex:none}
-.vf-campaign-bottom-note{display:flex;align-items:flex-start;gap:9px;color:#665D7A;font-size:12px;line-height:1.6}
-.vf-campaign-bottom-note svg{flex:none}
-.vf-campaign-new button:focus-visible{outline:3px solid #FF8A3D;outline-offset:2px}
-@media(max-width:700px){.vf-campaign-goals,.vf-campaign-recap{grid-template-columns:1fr}.vf-campaign-hero{padding:23px}.vf-campaign-goals button{min-height:auto}.vf-campaign-actions{display:grid}.vf-campaign-actions button{width:100%;justify-content:center}}
+.vf-campaign-new{min-width:0}
+.vf-camp-wizard{gap:18px;animation:vf-ui-rise .3s ease both}
+.vf-camp-step{display:flex;flex-direction:column;gap:12px;min-width:0}
+.vf-camp-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.vf-camp-custom input{width:110px;min-height:48px;padding:0 12px;border-radius:14px;border:1px dashed var(--vf-border);background:var(--vf-surface);
+ font:800 16px var(--vf-font);color:var(--vf-purple-900)}
+.vf-camp-custom input:focus{outline:3px solid var(--vf-lavender);border-color:var(--vf-primary)}
 
-/* Densidade desktop: menos rolagem sem reduzir legibilidade ou zoom do navegador. */
-@media(min-width:1021px){
-  .vf-campaign-new{max-width:1120px;gap:12px}
-  .vf-campaign-hero{padding:20px 24px;border-radius:14px;gap:6px}
-  .vf-campaign-hero h2{font-size:clamp(21px,2vw,26px)}
-  .vf-campaign-hero p{font-size:13px;line-height:1.45}
-  .vf-campaign-steps>span{padding:7px 11px}
-  .vf-campaign-new .vf-benefit-panel{padding:18px 20px;gap:14px;border-radius:14px}
-  .vf-campaign-new .vf-benefit-panel>h3{font-size:18px}
-  .vf-campaign-goals{gap:9px}
-  .vf-campaign-goals button{min-height:112px;padding:14px 16px;gap:7px}
-  .vf-campaign-goals button small{font-size:12px;line-height:1.4}
-  .vf-campaign-actions{margin-top:0}
-  .vf-campaign-new .vf-benefit-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-  .vf-campaign-new .vf-benefit-card{padding:14px;gap:6px}
-  .vf-campaign-new .vf-benefit-card p{font-size:12px}
+/* Passo 1: galeria de modelos */
+.vf-camp-templates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.vf-camp-template{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-height:150px;padding:16px;border-radius:18px;
+ border:1px solid var(--vf-border);background:var(--vf-surface);font:inherit;text-align:left;color:var(--vf-purple-950);cursor:pointer;
+ transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.vf-camp-template:hover{transform:translateY(-2px);border-color:var(--vf-primary);box-shadow:var(--vf-glow)}
+.vf-camp-template.is-on{border-color:var(--vf-primary);box-shadow:0 0 0 3px var(--vf-lavender)}
+.vf-camp-template strong{font-size:15.5px;margin-top:4px}
+.vf-camp-template>span:not(.vf-ico):not(.vf-camp-count){font-size:13px;line-height:1.45;color:var(--vf-muted)}
+.vf-camp-count{margin-top:auto;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--vf-info-soft);
+ font-size:12.5px;font-weight:800;color:var(--vf-purple-900)}
+
+/* Passos 2 a 4: formulário + painel lateral */
+.vf-camp-split{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+.vf-camp-picked{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:var(--vf-canvas)}
+.vf-camp-picked>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vf-camp-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.vf-camp-dates input,.vf-camp-step .vf-field input{min-height:48px;font-size:16px}
+.vf-camp-text{border:1px solid var(--vf-border);border-radius:14px;padding:0 14px;background:var(--vf-canvas)}
+.vf-camp-text summary{min-height:48px;display:flex;align-items:center;font-size:14px;font-weight:800;color:var(--vf-purple-900);cursor:pointer}
+.vf-camp-text[open]{padding-bottom:14px}
+.vf-camp-text .vf-field+.vf-field{margin-top:10px}
+
+.vf-camp-panel,.vf-camp-phone{position:sticky;top:96px;display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:20px;
+ background:var(--vf-canvas);border:1px solid var(--vf-border);min-width:0}
+.vf-camp-panel-big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.vf-camp-panel-big strong{font-size:40px;font-weight:800;letter-spacing:-.04em;color:var(--vf-purple-950);font-variant-numeric:tabular-nums}
+.vf-camp-panel-big span{font-size:14px;font-weight:700;color:var(--vf-muted)}
+.vf-camp-panel-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vf-camp-panel-list li{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;color:var(--vf-muted)}
+.vf-camp-panel-list b{color:var(--vf-purple-950);font-variant-numeric:tabular-nums}
+.vf-camp-cost{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:16px;background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
+.vf-camp-cost span{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.vf-camp-cost strong{font-size:26px;font-weight:800;letter-spacing:-.03em}
+.vf-camp-cost small{font-size:12.5px}
+.vf-camp-hint{margin:0;font-size:13px;line-height:1.5;color:var(--vf-purple-900);padding:10px 12px;border-radius:12px;background:var(--vf-info-soft)}
+
+/* Prévia do cartão no Meu Clube */
+.vf-camp-phone-screen{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:22px;background:var(--vf-surface);
+ border:1px solid var(--vf-border);box-shadow:var(--vf-glow)}
+.vf-camp-phone-label{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--vf-primary)}
+.vf-camp-offer{display:flex;gap:12px;padding:14px;border-radius:16px;background:linear-gradient(135deg,var(--vf-info-soft),var(--vf-reward-soft))}
+.vf-camp-offer>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.vf-camp-offer strong{font-size:15px;color:var(--vf-purple-950)}
+.vf-camp-offer>div>span{font-size:13px;line-height:1.45;color:var(--vf-ink-soft)}
+.vf-camp-offer em{display:inline-flex;align-items:center;gap:5px;font-style:normal;font-size:12px;font-weight:800;color:var(--vf-reward-ink)}
+.vf-camp-offer-ico{width:40px;height:40px;min-width:40px;border-radius:12px;display:grid;place-items:center;background:var(--vf-surface);color:var(--vf-primary)}
+.vf-camp-phone-note{font-size:12px;color:var(--vf-muted)}
+
+/* Revisão */
+.vf-camp-review{display:flex;flex-direction:column;gap:12px;min-width:0}
+.vf-camp-facts{margin:0;display:flex;flex-direction:column;border:1px solid var(--vf-border);border-radius:16px;overflow:hidden}
+.vf-camp-facts>div{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;font-size:14.5px}
+.vf-camp-facts>div+div{border-top:1px solid var(--vf-info-soft)}
+.vf-camp-facts dt{color:var(--vf-muted);font-weight:700}
+.vf-camp-facts dd{margin:0;text-align:right;color:var(--vf-purple-950);font-weight:700}
+
+/* Lista */
+.vf-camp-list-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vf-camp-card{gap:14px}
+.vf-camp-card-head{display:flex;align-items:center;gap:12px}
+.vf-camp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.vf-camp-metrics>div{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;background:var(--vf-canvas)}
+.vf-camp-metrics span{font-size:12px;font-weight:700;color:var(--vf-muted)}
+.vf-camp-metrics strong{font-size:16px;color:var(--vf-purple-950);font-variant-numeric:tabular-nums}
+.vf-camp-result{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border-radius:16px;border:1px dashed var(--vf-border)}
+.vf-camp-result>div{display:flex;flex-direction:column;gap:2px}
+.vf-camp-result span{font-size:12px;font-weight:700;color:var(--vf-muted)}
+.vf-camp-result strong{font-size:22px;color:var(--vf-purple-950)}
+.vf-camp-result small{font-size:12px;color:var(--vf-muted)}
+.vf-camp-result p{grid-column:1/-1;margin:0}
+.vf-camp-confirm{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px;border-radius:12px;background:var(--vf-canvas)}
+
+@media(max-width:1100px){
+ .vf-camp-templates{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .vf-camp-split{grid-template-columns:minmax(0,1fr)}
+ .vf-camp-panel,.vf-camp-phone{position:static}
 }
-@media(min-width:701px) and (max-width:1020px){
-  .vf-campaign-goals button{min-height:125px;padding:14px;gap:8px}
+@media(max-width:760px){
+ .vf-camp-templates{grid-template-columns:minmax(0,1fr)}
+ .vf-camp-template{min-height:0}
+ .vf-camp-card-head{flex-wrap:wrap}
+ .vf-camp-dates{grid-template-columns:minmax(0,1fr)}
+ .vf-camp-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .vf-camp-actions .vf-btn{flex:1 1 auto}
 }
-
-.vf-campaign-locked{display:inline-flex;align-items:center;gap:6px;font-size:11px;line-height:1.5;color:#6f8179;background:#F8F6FF;padding:9px 11px;border-radius:10px}
+@media(prefers-reduced-motion:reduce){.vf-camp-wizard{animation:none}.vf-camp-template{transition:none}}

@@ -20,6 +20,9 @@ class LegacySchemaUpgradeSmokeTests(TransactionTestCase):
             # em vez de usar um model histórico contra schema novo.
             ("tenants", "0003_unconnected_merchant_tenants"),
             ("sales", "0003_reward_publication"),
+            # O celular (participants 0008) é coluna NOT NULL com padrão "":
+            # voltar antes dela, para o model histórico bater com o banco.
+            ("participants", "0007_standalone_participant"),
             ("customers", None),
             ("channels", None),
             ("loyalty", None),

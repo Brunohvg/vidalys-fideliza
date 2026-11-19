@@ -44,6 +44,8 @@ class SaleRecord(models.Model):
     )
     source_order_key = models.CharField(max_length=64, blank=True, default="")
     reported_contact_digest = models.CharField(max_length=64, blank=True, default="")
+    # Celular informado no balcão para venda sem cliente (HMAC por loja). Não é prova.
+    counter_phone_digest = models.CharField(max_length=64, blank=True, default="")
     customer_profile = models.ForeignKey(
         "customers.CustomerProfile", on_delete=models.PROTECT,
         null=True, blank=True, related_name="channel_sales",
@@ -63,6 +65,12 @@ class SaleRecord(models.Model):
     )
     review_note = models.CharField(max_length=240, blank=True, default="")
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    # Venda apagada pela loja (lançamento errado, teste...): some das listas e dos resultados;
+    # o que ela gerou ou usou de saldo é desfeito no ledger, que nunca apaga nada.
+    removed_at = models.DateTimeField(null=True, blank=True)
+    removed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+                                   related_name="+")
+    removed_reason = models.CharField(max_length=240, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -180,17 +188,31 @@ class DiscountRewardDraft(models.Model):
 
 
 class PointCampaignDraft(models.Model):
-    """Ação de marketing em pontos, sem publicação nem disparo."""
+    """Campanha de pontos bônus. Publicar só mostra a oferta no Meu Clube:
+    nunca credita pontos nem envia mensagens enquanto a carteira estiver travada."""
     class Goal(models.TextChoices):
         SECOND = "second_purchase", "Segunda compra"
         REACTIVATION = "reactivation", "Recuperar clientes"
         RECURRENCE = "recurrence", "Estimular recorrência"
+        NEAR_REWARD = "near_reward", "Quase lá"
+        MULTIPLIER = "multiplier", "Pontos em dobro"
+        BIRTHDAY = "birthday", "Aniversário"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="point_campaign_drafts")
     goal = models.CharField(max_length=24, choices=Goal.choices)
     bonus_points = models.PositiveIntegerField()
     max_customers = models.PositiveIntegerField()
+    title = models.CharField(max_length=80, blank=True, default="")
+    message = models.CharField(max_length=180, blank=True, default="")
+    starts_on = models.DateField(null=True, blank=True)
+    ends_on = models.DateField(null=True, blank=True)
+    window_days = models.PositiveSmallIntegerField(default=30)
+    inactive_days = models.PositiveSmallIntegerField(default=60)
+    near_points = models.PositiveIntegerField(default=100)
+    multiplier = models.PositiveSmallIntegerField(default=2)
+    holdout_percent = models.PositiveSmallIntegerField(default=10)
+    published_at = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
         related_name="point_campaign_drafts",
@@ -202,6 +224,7 @@ class PointCampaignDraft(models.Model):
         constraints = [
             models.CheckConstraint(condition=Q(bonus_points__gt=0), name="point_campaign_bonus_positive"),
             models.CheckConstraint(condition=Q(max_customers__gt=0), name="point_campaign_max_customers_positive"),
+            models.CheckConstraint(condition=Q(holdout_percent__lte=50), name="point_campaign_holdout_max"),
         ]
 
 
@@ -230,3 +253,165 @@ class SaleManualLinkAudit(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Auditoria de vínculo não pode ser removida.")
+
+
+class CounterPilot(models.Model):
+    """Clube de pontos/giftback de UMA loja: o lojista liga, pausa e define os tetos aqui.
+
+    O modo de operação (teste ou comercial) só muda pelo comando `set_store_operation`
+    (superusuário). Regras e limites de cada modo: apps/sales/policy.py.
+    """
+    class OperationMode(models.TextChoices):
+        TEST = "test", "Teste"
+        COMMERCIAL = "commercial", "Comercial"
+
+    tenant = models.OneToOneField("tenants.Tenant", on_delete=models.PROTECT, related_name="counter_pilot")
+    active = models.BooleanField(default=False)
+    operation_mode = models.CharField(max_length=12, choices=OperationMode.choices, default=OperationMode.TEST)
+    commercial_at = models.DateTimeField(null=True, blank=True)
+    commercial_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                      related_name="+")
+    per_sale_cap_points = models.PositiveIntegerField(default=1500)
+    budget_points = models.PositiveIntegerField(default=50000)
+    # Canais do clube. Lojas Nuvemshop começam só no site; balcão é ligado à parte.
+    counter_enabled = models.BooleanField(default=False)
+    # Site (Nuvemshop): ganhar em pedido pago e resgatar por cupom único.
+    online_earning = models.BooleanField(default=True)
+    online_coupons = models.BooleanField(default=True)
+    coupon_combines = models.BooleanField(default=False)
+    coupons_paused = models.BooleanField(default=False)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    paused_at = models.DateTimeField(null=True, blank=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="counter_pilots")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(per_sale_cap_points__gt=0), name="counter_pilot_cap_positive"),
+            models.CheckConstraint(condition=Q(budget_points__gt=0), name="counter_pilot_budget_positive"),
+        ]
+
+
+class CounterRedemption(models.Model):
+    """Vale usado no balcão. Pontos ficam reservados até a conferência:
+    confirmar consome, recusar ou desfazer devolve ao saldo."""
+    class State(models.TextChoices):
+        RESERVED = "reserved", "Reservado"
+        REDEEMED = "redeemed", "Usado"
+        CANCELLED = "cancelled", "Devolvido"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    sale = models.OneToOneField(SaleRecord, on_delete=models.PROTECT, related_name="counter_redemption")
+    participant = models.ForeignKey("participants.ProgramParticipant", on_delete=models.PROTECT)
+    # Vazio no modo giftback: o "vale" é o próprio crédito em reais.
+    reward = models.ForeignKey(DiscountRewardDraft, on_delete=models.PROTECT, null=True, blank=True)
+    points = models.PositiveIntegerField()
+    discount_cents = models.PositiveIntegerField()
+    # [{"lot": "<uuid>", "amount": 123}] — de onde os pontos foram reservados.
+    allocations = models.JSONField(default=list)
+    state = models.CharField(max_length=10, choices=State.choices, default=State.RESERVED)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="counter_redemptions")
+    created_at = models.DateTimeField(auto_now_add=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(points__gt=0), name="counter_redemption_points_positive"),
+            models.CheckConstraint(condition=Q(discount_cents__gt=0), name="counter_redemption_discount_positive"),
+        ]
+
+
+class ProgramMode(models.Model):
+    """Como o clube devolve valor ao cliente: pontos com recompensas OU giftback em reais.
+
+    Um modo por loja. No giftback, cada compra conferida vira crédito em centavos
+    (1 unidade do ledger de pontos = R$ 0,01), com teto, validade curta e pedido mínimo
+    para usar. Trocar de modo não apaga saldos já emitidos.
+    """
+    class Mode(models.TextChoices):
+        POINTS = "points", "Pontos"
+        GIFTBACK = "giftback", "Giftback"
+
+    tenant = models.OneToOneField("tenants.Tenant", on_delete=models.PROTECT, related_name="program_mode")
+    mode = models.CharField(max_length=10, choices=Mode.choices, default=Mode.POINTS)
+    giftback_bps = models.PositiveIntegerField(default=1000)          # 10%
+    giftback_cap_cents = models.PositiveIntegerField(default=2000)    # R$ 20 por compra
+    giftback_min_order_cents = models.PositiveIntegerField(default=8000)  # usar em compra de R$ 80+
+    giftback_validity_days = models.PositiveSmallIntegerField(default=30)
+    giftback_hold_days = models.PositiveSmallIntegerField(default=7)
+    version = models.PositiveIntegerField(default=1)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="program_modes")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(giftback_bps__gte=100) & Q(giftback_bps__lte=3000), name="program_mode_bps_range"),
+            models.CheckConstraint(condition=Q(giftback_cap_cents__gt=0), name="program_mode_cap_positive"),
+            models.CheckConstraint(condition=Q(giftback_validity_days__gte=7), name="program_mode_validity_min"),
+        ]
+
+
+class CreditNotice(models.Model):
+    """Um aviso por lote e por tipo: impede e-mail repetido de "liberou" ou "vence em breve"."""
+    class Kind(models.TextChoices):
+        RELEASED = "released", "Liberado"
+        EXPIRING = "expiring", "Vencendo"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
+    lot = models.ForeignKey("points.PointLot", on_delete=models.CASCADE, related_name="notices")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    emailed = models.BooleanField(default=False)  # False: sem consentimento/e-mail confirmado
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["lot", "kind"], name="credit_notice_once_per_lot")]
+
+
+class OnlineCoupon(models.Model):
+    """Cupom único da cliente na Nuvemshop (uso máximo 1, pedido mínimo, validade).
+
+    O saldo fica RESERVADO no ledger enquanto o cupom existe: usado no site vira
+    resgate; cancelado, vencido ou trocado pelo uso no caixa devolve a reserva.
+    """
+    class State(models.TextChoices):
+        ISSUING = "issuing", "Criando"
+        ISSUED = "issued", "Disponível"
+        USED = "used", "Usado"
+        CANCELLED = "cancelled", "Cancelado"
+        EXPIRED = "expired", "Vencido"
+        FAILED = "failed", "Falhou"
+        UNCERTAIN = "uncertain", "Confirmando"
+
+    class Source(models.TextChoices):
+        GIFTBACK = "giftback", "Crédito de giftback"
+        REWARD = "reward", "Recompensa de pontos"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    participant = models.ForeignKey("participants.ProgramParticipant", on_delete=models.PROTECT, related_name="online_coupons")
+    source = models.CharField(max_length=10, choices=Source.choices)
+    reward = models.ForeignKey(DiscountRewardDraft, on_delete=models.PROTECT, null=True, blank=True)
+    code = models.CharField(max_length=40, unique=True)
+    remote_id = models.CharField(max_length=40, blank=True, default="")
+    apply_url = models.URLField(max_length=300, blank=True, default="")
+    points = models.PositiveIntegerField()
+    discount_cents = models.PositiveIntegerField()
+    min_order_cents = models.PositiveIntegerField(default=0)
+    combines = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    allocations = models.JSONField(default=list)
+    state = models.CharField(max_length=10, choices=State.choices, default=State.ISSUING)
+    used_order_id = models.CharField(max_length=40, blank=True, default="")
+    # Trilha curta do que aconteceu com o cupom (criação incerta, conferência, uso tardio...). Sem PII.
+    audit = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["tenant", "state", "expires_at"], name="online_coupon_state_idx")]
+        constraints = [
+            models.CheckConstraint(condition=Q(points__gt=0), name="online_coupon_points_positive"),
+            models.CheckConstraint(condition=Q(discount_cents__gt=0), name="online_coupon_discount_positive"),
+        ]

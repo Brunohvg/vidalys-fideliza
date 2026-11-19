@@ -1,4 +1,6 @@
-FROM node:22-alpine AS build
+# Build em Debian (glibc): no Alpine (musl) as threads têm pilha pequena e o
+# parser nativo do Rollup falha com "Code is nested too deeply".
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --no-audit --no-fund

@@ -60,7 +60,8 @@ def sanitize_store_privacy(receipt_id: str) -> str:
             submission__tenant=tenant, consumed_at__isnull=True,
         ).update(consumed_at=now)
         submissions = EnrollmentSubmission.objects.filter(tenant=tenant).update(
-            name="", email="", marketing_opt_in=False,
+            name="", email="", marketing_opt_in=False, phone_digest="", phone_last4="",
+            birth_day=None, birth_month=None,
             status=EnrollmentSubmission.Status.WITHDRAWN,
             withdrawn_at=now,
         )
@@ -86,6 +87,8 @@ def sanitize_store_privacy(receipt_id: str) -> str:
             participant.external_customer_id = new_ref
             participant.display_name = ""
             participant.contact_email = ""
+            participant.phone_digest = ""
+            participant.phone_last4 = ""
             participant.status = ProgramParticipant.Status.WITHDRAWN
             participant.last_program_activity_at = None
             batch.append(participant)
@@ -93,14 +96,14 @@ def sanitize_store_privacy(receipt_id: str) -> str:
             if len(batch) >= 200:
                 ProgramParticipant.objects.bulk_update(
                     batch, ["external_customer_id","display_name",
-                            "contact_email","status","last_program_activity_at"],
+                            "contact_email","phone_digest","phone_last4","status","last_program_activity_at"],
                     batch_size=200,
                 )
                 batch.clear()
         if batch:
             ProgramParticipant.objects.bulk_update(
                 batch, ["external_customer_id","display_name",
-                        "contact_email","status","last_program_activity_at"],
+                        "contact_email","phone_digest","phone_last4","status","last_program_activity_at"],
                 batch_size=200,
             )
 

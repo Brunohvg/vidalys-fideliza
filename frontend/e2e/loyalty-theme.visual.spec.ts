@@ -31,7 +31,7 @@ for (const width of [390,768,1440]){
       await page.setViewportSize({width,height:width===390?844:900});
       await mockShop(page);
       await page.goto("/app/visao-geral");
-      await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"O que fazer agora"})).toBeVisible();
       const palette=await page.evaluate(()=>{
         const root=getComputedStyle(document.documentElement);
         const cta=document.querySelector(".portal-primary");
@@ -41,7 +41,7 @@ for (const width of [390,768,1440]){
           gold:root.getPropertyValue("--vf-reward").trim(),
           navy:root.getPropertyValue("--vf-ink").trim(),
           overflow:document.documentElement.scrollWidth-innerWidth,
-          displayFont:getComputedStyle(document.querySelector(".loyalty-dashboard-intro h2")!).fontFamily,
+          displayFont:getComputedStyle(document.querySelector(".loyalty-checklist-head h2")!).fontFamily,
           mainArea:document.querySelector(".portal-main")?.getBoundingClientRect().left
         };
       });
@@ -58,18 +58,18 @@ for (const width of [390,768,1440]){
       });
 
       if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  if(!(await page.locator(".portal-advanced-menu").evaluate(el=>(el as HTMLDetailsElement).open)))
-    await page.locator(".portal-advanced-menu > summary").click();
       await page.locator(".portal-nav").getByRole("button",{name:/^Campanhas/}).click();
-      await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
-      await page.getByRole("button",{name:"Continuar"}).click();
+      await page.getByRole("button",{name:"Nova campanha"}).click();
+      await expect(page.getByRole("heading",{name:"Qual é o objetivo?"})).toBeVisible();
+      await page.getByRole("button",{name:/Segunda compra/}).click();
       await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("20");
       await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("50");
-      await page.getByRole("button",{name:"Revisar campanha"}).click();
-      await expect(page.getByRole("heading",{name:"Sua campanha, antes de publicar"})).toBeVisible();
-      await expect(page.getByText("1.000 pontos",{exact:false})).toBeVisible();
+      await page.getByRole("button",{name:"Próximo"}).click();
+      await page.getByRole("button",{name:"Próximo"}).click();
+      await expect(page.getByRole("heading",{name:"Revise antes de publicar"})).toBeVisible();
+      await expect(page.getByText("20 pontos extras por pessoa",{exact:false})).toBeVisible();
       await expect(page.getByText("Isso não é um valor em reais",{exact:false})).toHaveCount(0);
-      await expect(page.getByText("A campanha não envia e-mail",{exact:false})).toBeVisible();
+      await expect(page.getByText("Nenhum ponto é creditado e nada é enviado",{exact:false})).toBeVisible();
       const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
       expect(overflow).toBeLessThanOrEqual(1);
       await page.evaluate(()=>scrollTo(0,0));

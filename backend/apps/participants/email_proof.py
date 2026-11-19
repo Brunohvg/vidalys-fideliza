@@ -37,6 +37,13 @@ def make_token(challenge_id, purpose: str) -> str:
     return base64.urlsafe_b64encode(signature).decode("ascii").rstrip("=")
 
 
+def make_code(challenge_id) -> str:
+    """Código de 6 dígitos do mesmo desafio: derivado por HMAC, nunca guardado."""
+    message = f"fideliza:email-proof:v1:{challenge_id}:member-code".encode("ascii")
+    signature = hmac.new(settings.SECRET_KEY.encode("utf-8"), message, hashlib.sha256).digest()
+    return str(int.from_bytes(signature[:8], "big") % 1_000_000).zfill(6)
+
+
 def email_links_enabled() -> bool:
     """API só precisa do domínio canônico, não da senha SMTP do worker."""
     if not settings.FIDELIZA_EMAIL_DELIVERY_ENABLED:
@@ -149,11 +156,15 @@ def consume_challenge(token: str, purpose: str):
         if member_ids:
             ProgramParticipant.objects.select_for_update().filter(
                 pk__in=member_ids, tenant_id=submission.tenant_id,
-            ).update(status=ProgramParticipant.Status.WITHDRAWN)
+            ).update(status=ProgramParticipant.Status.WITHDRAWN, phone_digest="", phone_last4="")
         submission.withdrawn_at = now
         submission.status = EnrollmentSubmission.Status.WITHDRAWN
         submission.marketing_opt_in = False
-        submission.save(update_fields=["withdrawn_at", "status", "marketing_opt_in"])
+        submission.phone_digest, submission.phone_last4 = "", ""
+        submission.birth_day = submission.birth_month = None
+        submission.save(update_fields=["withdrawn_at", "status", "marketing_opt_in",
+                                       "phone_digest", "phone_last4",
+                                       "birth_day", "birth_month"])
         EnrollmentEmailChallenge.objects.filter(
             submission=submission, consumed_at__isnull=True,
         ).update(consumed_at=now)

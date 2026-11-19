@@ -144,7 +144,8 @@ def _revoke_customer(tenant, customer_id, payload):
         submission_count = EnrollmentSubmission.objects.filter(
             tenant=tenant, pk__in=ids,
         ).update(
-            name="", email="", marketing_opt_in=False,
+            name="", email="", marketing_opt_in=False, phone_digest="", phone_last4="",
+            birth_day=None, birth_month=None,
             status=EnrollmentSubmission.Status.WITHDRAWN,
             withdrawn_at=now,
         )
@@ -157,7 +158,7 @@ def _revoke_customer(tenant, customer_id, payload):
             tenant=tenant, pk__in=set(participant_ids)
         ).update(
             external_customer_id=pseudonym,
-            display_name="", contact_email="",
+            display_name="", contact_email="", phone_digest="", phone_last4="",
             status=ProgramParticipant.Status.WITHDRAWN,
             last_program_activity_at=None,
         )

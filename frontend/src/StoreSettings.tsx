@@ -1,454 +1,415 @@
 import {useEffect,useRef,useState,type FormEvent} from "react";
-import {
-  ArrowRight,Check,CheckCircle2,Globe2,HeartHandshake,
-  LockKeyhole,Mail,Palette,RefreshCw,Save,Settings2,ShieldCheck,TriangleAlert,ShoppingBag,FileText,Download
-} from "lucide-react";
-import {
-  ApiError,merchantApi,type NuvemshopConnectionStatus,
-  type Store,type TenantBranding,type TenantPreferences,type PrivacyRequestsSummary,
-} from "./api";
+import {Check,CircleHelp,Copy,Download,ExternalLink,FileText,LockKeyhole,Mail,MessageCircle,Monitor,
+ RefreshCw,ShieldCheck,ShoppingBag,TriangleAlert,X} from "lucide-react";
+import {ApiError,merchantApi,type NuvemshopConnectionStatus,type ProgramTermsStatus,
+ type Store,type TenantBranding,type TenantPreferences,type PrivacyRequestsSummary} from "./api";
 import {readableForeground} from "./brand-contrast";
+import {initialsOf} from "./ActionCenter";
+import "./vf-ui.css";
 import "./store-settings.css";
 
+/* Configurações — réplica do protótipo aprovado: menu de seções à esquerda e uma
+   seção por vez. Aparência, Canais de venda, Página do clube, Equipe e acessos,
+   Regulamento e privacidade, Ferramentas avançadas. Nada aqui muda preços,
+   estoque ou pedidos da loja; status sem resposta da API fica "não verificado". */
+
+const cleanAddress=(raw:string)=>raw.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
+ .replace(/[^a-z0-9-]+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"").slice(0,40);
+
+export type SettingsSection="aparencia"|"canais"|"pagina"|"equipe"|"privacidade"|"ferramentas";
 type Props={
-  tenantId:string;role:Store["role"];
-  onGoToProgram:()=>void;
+ tenantId:string;role:Store["role"];
+ userName?:string;userEmail?:string;
+ initialSection?:SettingsSection;
+ onGoToProgram:()=>void;
+ onOpenTool?:(tool:"margin"|"costs"|"catalog")=>void;
 };
-function Status({ready,label}:{ready:boolean;label:string}){
-  return <span className={"ss-state "+(ready?"is-ready":"is-pending")}>
-    {ready?<CheckCircle2 size={14}/>:<LockKeyhole size={14}/>}
-    {label}
-  </span>;
+type Diag={key:string;label:string;state:"ok"|"todo"|"unknown"};
+
+const SECTIONS:{key:SettingsSection;label:string;hint:string}[]=[
+ {key:"aparencia",label:"Aparência",hint:"Nome, cores e prévia"},
+ {key:"canais",label:"Canais de venda",hint:"Nuvemshop, balcão e WhatsApp"},
+ {key:"pagina",label:"Página do clube",hint:"Link e cadastro"},
+ {key:"equipe",label:"Equipe e acessos",hint:"Quem faz o quê"},
+ {key:"privacidade",label:"Regulamento e privacidade",hint:"Regras e LGPD"},
+ {key:"ferramentas",label:"Ferramentas avançadas",hint:"Margem e catálogo"},
+];
+const SWATCHES=[["Roxo Vidalys","#6A3DF0"],["Azul","#1F4FA8"],["Verde","#167A56"],["Vinho","#AD334B"],["Grafite","#24113F"]];
+const roleLabel:Record<Store["role"],string>={owner:"Proprietário",admin:"Gerente",analyst:"Consulta"};
+
+function since(iso:string|null|undefined){
+ if(!iso)return null;const d=new Date(iso);
+ return Number.isNaN(d.getTime())?null:d.toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
 }
-function friendlyError(error:unknown,defaultMessage:string){
-  // Esconder detalhes técnicos de falhas de integração do painel do lojista.
-  if(error instanceof ApiError){
-    if(error.status===409)return "Essas informações mudaram. Atualize a página antes de tentar novamente.";
-    if(error.status===403)return "Seu usuário não tem autorização para realizar esta ação.";
-    if(error.status===429)return "Já houve uma tentativa recente. Tente novamente em alguns instantes.";
-    if(error.status===503)return "Conexão temporariamente indisponível. Tente novamente mais tarde.";
+function nuvemshopChecks(status:NuvemshopConnectionStatus|null,live:"idle"|"running"|"verified"|"failed"):Diag[]{
+ const known=status!==null;
+ const f=(v:boolean|undefined):Diag["state"]=>v===undefined||!known?"unknown":v?"ok":"todo";
+ const inbox=status?.order_verification?.signed_event_inbox_enabled;
+ return [
+  {key:"app",label:"App preparado",state:f(status?.configured)},
+  {key:"store",label:"Loja autorizada",state:status?.uninstalled_at?"todo":f(status?.connected)},
+  {key:"products",label:"Leitura de produtos",state:f(status?.connection_check?.catalog_scope_granted)},
+  {key:"orders",label:"Leitura de pedidos",state:f(status?.order_verification?.order_scope_granted)},
+  {key:"customers",label:"Leitura de clientes",state:f(status?.customer_matching?.customer_scope_granted)},
+  {key:"events",label:"Avisos de pedidos",state:!known||!inbox?"unknown":status?.last_order_event_at?"ok":"todo"},
+  {key:"live",label:"Acesso conferido agora",state:live==="verified"?"ok":live==="failed"?"todo":"unknown"},
+ ];
+}
+function friendlyError(error:unknown,fallback:string){
+ if(error instanceof ApiError){
+  if(error.status===409&&error.message.includes("recusou"))return error.message;
+  if(error.status===409)return "Essas informações mudaram. Atualize a página antes de tentar novamente.";
+  if(error.status===403)return "Seu usuário não tem autorização para realizar esta ação.";
+  if(error.status===429)return "Já houve uma tentativa recente. Tente novamente em alguns instantes.";
+  if(error.status===503)return "Conexão temporariamente indisponível. Tente novamente mais tarde.";
+ }
+ return fallback;
+}
+
+export default function StoreSettings({tenantId,role,userName,userEmail,initialSection,onGoToProgram,onOpenTool}:Props){
+ const editable=role==="owner"||role==="admin";
+ const [section,setSection]=useState<SettingsSection>(initialSection??"aparencia");
+ const [settings,setSettings]=useState<TenantPreferences|null>(null);
+ const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
+ const [terms,setTerms]=useState<ProgramTermsStatus|null>(null);
+ const [privacy,setPrivacy]=useState<PrivacyRequestsSummary|null>(null);
+ const [brand,setBrand]=useState<TenantBranding|null>(null);
+ const [loading,setLoading]=useState(true);
+ const [saving,setSaving]=useState(false);
+ const [connecting,setConnecting]=useState(false);
+ const [liveCheck,setLiveCheck]=useState<"idle"|"running"|"verified"|"failed">("idle");
+ const [reportBusy,setReportBusy]=useState<string|null>(null);
+ const [reportDownloads,setReportDownloads]=useState<Record<string,{digest:string;complete:boolean}>>({});
+ const [copied,setCopied]=useState(false);
+ const checkSequence=useRef(0);
+ const [error,setError]=useState("");
+ const [notice,setNotice]=useState("");
+ const dirty=Boolean(settings&&brand&&JSON.stringify(brand)!==JSON.stringify(settings.branding));
+
+ useEffect(()=>{
+  let current=true;checkSequence.current++;
+  setLiveCheck("idle");setLoading(true);setSettings(null);setIntegration(null);setPrivacy(null);setTerms(null);
+  setReportDownloads({});setBrand(null);setError("");setNotice("");
+  Promise.all([
+   merchantApi.getTenantSettings(tenantId),
+   merchantApi.nuvemshopStatus(tenantId).catch(()=>null),
+   editable?merchantApi.getTenantPrivacyRequests(tenantId).catch(()=>null):Promise.resolve(null),
+   editable?merchantApi.currentProgramTerms(tenantId).catch(()=>null):Promise.resolve(null),
+  ]).then(([prefs,link,requests,currentTerms])=>{
+   if(!current)return;
+   setSettings(prefs);setBrand(prefs.branding);setIntegration(link);setPrivacy(requests);setTerms(currentTerms);
+   const query=new URLSearchParams(window.location.search);
+   const result=query.get("nuvemshop");
+   if(result==="connected"||result==="failed"||result==="scopes"){
+    setSection("canais");
+    const sourceTenant=query.get("nuvemshop_tenant");
+    query.delete("nuvemshop");query.delete("nuvemshop_tenant");
+    const rest=query.toString();
+    window.history.replaceState(null,"",window.location.pathname+(rest?"?"+rest:"")+window.location.hash);
+    if(sourceTenant&&sourceTenant!==tenantId)setError("A autorização retornou para outra loja. Confira a loja selecionada.");
+    else if(result==="scopes")setError("A Nuvemshop autorizou, mas o app não tem permissão para ler produtos, pedidos ou clientes. Ajuste as permissões no Portal de Parceiros e clique em Atualizar conexão de novo.");
+    else if(result==="failed")setError("A autorização não foi concluída. Tente novamente.");
+    else if(link?.connected)setNotice("Autorização registrada. Verifique o acesso à Nuvemshop antes de usar o catálogo.");
+    else setError("A autorização retornou, mas a conexão não foi confirmada. Atualize a página.");
+   }
+  }).catch(()=>{if(current)setError("Não foi possível carregar as configurações da loja.");})
+   .finally(()=>{if(current)setLoading(false);});
+  return()=>{current=false};
+ },[tenantId,editable]);
+
+ const [address,setAddress]=useState("");
+ const [savingAddress,setSavingAddress]=useState(false);
+ useEffect(()=>{if(settings)setAddress(settings.tenant_slug);},[settings?.tenant_slug]);
+ const saveAddress=async(event:FormEvent)=>{
+  event.preventDefault();
+  if(!settings||!editable||savingAddress)return;
+  const wanted=cleanAddress(address);
+  if(wanted===settings.tenant_slug){setNotice("Nada mudou: o endereço já é este.");return;}
+  setSavingAddress(true);setError("");setNotice("");
+  try{
+   const result=await merchantApi.setClubAddress(tenantId,wanted);
+   setSettings({...settings,tenant_slug:result.slug});setAddress(result.slug);
+   setNotice("Endereço salvo. O link antigo continua abrindo o seu clube.");
+  }catch(e){setError(friendlyError(e,"Não foi possível salvar o endereço. Tente outro."));}
+  finally{setSavingAddress(false);}
+ };
+ const pick=(next:SettingsSection)=>{setSection(next);setError("");setNotice("");};
+ const update=(key:keyof TenantBranding,value:string)=>setBrand(old=>old?{...old,[key]:value}:old);
+ const save=async(event:FormEvent)=>{
+  event.preventDefault();
+  if(!settings||!brand||!editable||!dirty||saving)return;
+  setSaving(true);setError("");setNotice("");
+  try{
+   const result=await merchantApi.saveTenantBranding(tenantId,settings.version,brand);
+   setSettings({...settings,branding:result.branding,version:result.version});setBrand(result.branding);
+   setNotice(result.updated?"Aparência salva. O Meu Clube já usa o novo nome e as cores.":"Nada mudou: a aparência já estava assim.");
+  }catch(e){setError(friendlyError(e,"Não foi possível salvar. Confira os campos e tente novamente."));}
+  finally{setSaving(false);}
+ };
+ const reconnect=async()=>{
+  if(!editable||connecting)return;
+  setConnecting(true);setError("");setNotice("");
+  try{
+   const result=await merchantApi.beginNuvemshopOAuth(tenantId);
+   const url=new URL(result.authorize_url);
+   if(url.protocol!=="https:"||url.hostname!=="www.tiendanube.com"||!/^\/apps\/[0-9]+\/authorize$/.test(url.pathname))
+    throw new Error("Endereço de autorização não reconhecido.");
+   window.location.assign(url.toString());
+  }catch(e){setError(friendlyError(e,"Não foi possível abrir a autorização da sua loja."));setConnecting(false);}
+ };
+ const verifyReadAccess=async()=>{
+  if(!editable||!integration?.connected||settings?.tenant_status!=="active"||
+   integration.connection_check?.catalog_scope_granted===false||liveCheck==="running")return;
+  const sequence=++checkSequence.current;
+  setLiveCheck("running");setError("");setNotice("");
+  try{
+   const preview=await merchantApi.previewLiveNuvemshop(tenantId,1);
+   if(preview.source!=="nuvemshop_live_read_only"||preview.writes_performed!==0)throw new Error("Resposta inesperada");
+   if(sequence!==checkSequence.current)return;
+   setLiveCheck("verified");
+   setNotice("Acesso de leitura confirmado agora. A Nuvemshop respondeu sem alterar produtos.");
+  }catch(e){
+   if(sequence!==checkSequence.current)return;
+   setLiveCheck("failed");
+   setError(friendlyError(e,"Não foi possível verificar o acesso. Confira a autorização da loja e tente novamente."));
   }
-  return defaultMessage;
-}
+ };
+ const downloadReport=async(requestId:string)=>{
+  if(reportBusy)return;setReportBusy(requestId);setError("");setNotice("");
+  try{
+   const file=await merchantApi.downloadPrivacyReport(tenantId,requestId);
+   if(!/^[0-9a-f]{64}$/.test(file.digest))throw new Error("Relatório sem comprovante válido.");
+   const local=URL.createObjectURL(file.blob);const a=document.createElement("a");
+   a.href=local;a.download="relatorio-fideliza-"+requestId+".json";document.body.appendChild(a);a.click();a.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(local),1000);
+   setReportDownloads(old=>({...old,[requestId]:{digest:file.digest,complete:file.complete}}));
+   setNotice(file.complete?"O arquivo foi preparado. Confira o conteúdo antes de confirmar o recebimento."
+    :"O relatório parcial foi preparado. A Vidalys precisa revisar os dados antes de encerrar o pedido.");
+  }catch(e){setError(friendlyError(e,"Não foi possível preparar o relatório. Tente novamente."));}
+  finally{setReportBusy(null);}
+ };
+ const confirmReport=async(requestId:string)=>{
+  const item=reportDownloads[requestId];if(!item?.complete||reportBusy)return;
+  setReportBusy(requestId);setError("");setNotice("");
+  try{
+   const result=await merchantApi.confirmPrivacyReport(tenantId,requestId,item.digest);
+   setPrivacy(old=>old?{...old,pending_total:Math.max(0,old.pending_total-1),access_requests:Math.max(0,old.access_requests-1),
+    items:old.items.filter(e=>e.id!==requestId)}:old);
+   setReportDownloads(old=>{const n={...old};delete n[requestId];return n;});
+   setNotice(result.message);
+  }catch(e){setError(friendlyError(e,"Não foi possível confirmar. Baixe novamente o relatório se os dados mudaram."));}
+  finally{setReportBusy(null);}
+ };
 
-export default function StoreSettings({tenantId,role,onGoToProgram}:Props){
-  const [settings,setSettings]=useState<TenantPreferences|null>(null);
-  const [integration,setIntegration]=useState<NuvemshopConnectionStatus|null>(null);
-  const [privacy,setPrivacy]=useState<PrivacyRequestsSummary|null>(null);
-  const [reportBusy,setReportBusy]=useState<string|null>(null);
-  const [reportDownloads,setReportDownloads]=useState<Record<string,{digest:string;complete:boolean}>>({});
-  const [brand,setBrand]=useState<TenantBranding|null>(null);
-  const [loading,setLoading]=useState(true);
-  const [saving,setSaving]=useState(false);
-  const [connecting,setConnecting]=useState(false);
-  // Resultado temporario: nunca confundir teste pontual com prova persistida.
-  const [liveCheck,setLiveCheck]=useState<"idle"|"running"|"verified"|"failed">("idle");
-  const checkSequence=useRef(0);
-  const [error,setError]=useState("");
-  const [notice,setNotice]=useState("");
-  const editable=role==="owner"||role==="admin";
-  const dirty=Boolean(settings&&brand&&JSON.stringify(brand)!==JSON.stringify(settings.branding));
+ const head=<div className="vf-head"><div><span className="vf-eyebrow">Configurações</span><h1 id="ss-title" className="vf-h1">Sua loja, do seu jeito</h1></div></div>;
+ if(loading)return <section className="vf-screen ss-root" aria-labelledby="ss-title">{head}
+  <p className="vf-muted" role="status"><RefreshCw size={18} className="portal-spin"/> Carregando suas configurações…</p></section>;
+ if(!settings||!brand)return <section className="vf-screen ss-root" aria-labelledby="ss-title">{head}
+  <div className="vf-toast is-error" role="alert">{error||"As configurações não estão disponíveis no momento."}</div></section>;
 
-  useEffect(()=>{
-    let current=true;
-    checkSequence.current++;
-    setLiveCheck("idle");
-    setLoading(true);setSettings(null);setIntegration(null);setPrivacy(null);
-    setReportDownloads({});
-    setBrand(null);setError("");setNotice("");
-    Promise.all([
-      merchantApi.getTenantSettings(tenantId),
-      merchantApi.nuvemshopStatus(tenantId).catch(()=>null),
-      editable?merchantApi.getTenantPrivacyRequests(tenantId).catch(()=>null):Promise.resolve(null)
-    ]).then(([prefs,link,requests])=>{
-      if(!current)return;
-      setSettings(prefs);setBrand(prefs.branding);setIntegration(link);
-      setPrivacy(requests);
-      // O callback da loja retorna aqui, não à consulta do catálogo.
-      // Nunca confiar apenas no parâmetro da URL para afirmar conexão.
-      const query=new URLSearchParams(window.location.search);
-      const result=query.get("nuvemshop");
-      if(result==="connected"||result==="failed"){
-        const sourceTenant=query.get("nuvemshop_tenant");
-        query.delete("nuvemshop");query.delete("nuvemshop_tenant");
-        const remaining=query.toString();
-        window.history.replaceState(null,"",window.location.pathname+
-          (remaining?"?"+remaining:"")+window.location.hash);
-        if(sourceTenant && sourceTenant!==tenantId){
-          setError("A autorização retornou para outra loja. Confira a loja selecionada.");
-        }else if(result==="failed"){
-          setError("A autorização não foi concluída. Tente novamente em Configurações.");
-        }else if(link?.connected){
-          setNotice("Autorização registrada. Verifique o acesso à Nuvemshop antes de usar o catálogo.");
-        }else{
-          setError("A autorização retornou, mas a conexão não foi confirmada. Atualize a página.");
-        }
-      }
-    }).catch(()=>{
-      if(current)setError("Não foi possível carregar as configurações da loja.");
-    }).finally(()=>{if(current)setLoading(false)});
-    return ()=>{current=false};
-  },[tenantId]);
+ const connected=Boolean(integration?.connected);
+ const programName=brand.program_name||("Clube "+settings.tenant_name);
+ const programColor=/^#[0-9A-Fa-f]{6}$/.test(brand.primary_color)?brand.primary_color:"#6A3DF0";
+ const accent=/^#[0-9A-Fa-f]{6}$/.test(brand.accent_color)?brand.accent_color:"#FFC857";
+ const clubUrl=window.location.origin+"/clube/"+encodeURIComponent(settings.tenant_slug);
+ const checks=nuvemshopChecks(integration,liveCheck);
+ const step=integration?.connection_check?.next_step;
+ const nuvemshopText=liveCheck==="verified"?"Consulta real concluída agora, sem alterar a loja."
+  :step==="activate_tenant"?"Sua loja precisa estar ativa para usar a integração."
+  :step==="configure_app"?"O aplicativo ainda precisa ser configurado pela equipe Vidalys."
+  :step==="reinstall_app"?`O aplicativo foi desinstalado${since(integration?.uninstalled_at)?" em "+since(integration?.uninstalled_at):""}. Reinstale para voltar a ler pedidos e produtos.`
+  :step==="authorize_store"?"Autorize a conexão da sua loja pela Nuvemshop para começar."
+  :step==="grant_read_products_and_reinstall"?"Falta permissão para ler produtos. Ajuste no Portal de Parceiros e reinstale o app."
+  :step==="verify_catalog_with_live_get"?"Autorização registrada. Use \"Verificar acesso à Nuvemshop\" para confirmar."
+  :!integration?.configured?"A conexão ainda está sendo preparada pela plataforma.":connected?"Autorização registrada para esta loja.":"Loja ainda não conectada.";
+ const chipFor=(c:Diag)=>c.state==="ok"?"is-ok":c.state==="todo"?"is-gold":"is-soft";
+ const copyLink=async()=>{
+  try{await navigator.clipboard.writeText(clubUrl);setCopied(true);window.setTimeout(()=>setCopied(false),2000);}
+  catch{setError("Não foi possível copiar. Selecione o endereço e copie manualmente.");}
+ };
 
-  const update=(key:keyof TenantBranding,value:string)=>
-    setBrand(old=>old?{...old,[key]:value}:old);
-  const save=async(event:FormEvent)=>{
-    event.preventDefault();
-    if(!settings||!brand||!editable||!dirty||saving)return;
-    setSaving(true);setError("");setNotice("");
-    try{
-      const result=await merchantApi.saveTenantBranding(tenantId,settings.version,brand);
-      setSettings({...settings,branding:result.branding,version:result.version});
-      setBrand(result.branding);
-      setNotice(result.updated
-        ?"Alterações salvas. Suas cores e seu nome serão usados na página do programa quando ela estiver disponível."
-        :"Suas preferências já estão atualizadas.");
-    }catch(cause){
-      setError(friendlyError(cause,"Não foi possível salvar. Confira os campos e tente novamente."));
-    }finally{setSaving(false);}
-  };
-  const reconnect=async()=>{
-    if(!editable||connecting)return;
-    setConnecting(true);setError("");setNotice("");
-    try{
-      const result=await merchantApi.beginNuvemshopOAuth(tenantId);
-      const url=new URL(result.authorize_url);
-      if(url.protocol!=="https:"||url.hostname!=="www.tiendanube.com"||
-          !/^\/apps\/[0-9]+\/authorize$/.test(url.pathname)){
-        throw new Error("Endereço de autorização não reconhecido.");
-      }
-      window.location.assign(url.toString());
-    }catch(cause){
-      setError(friendlyError(cause,"Não foi possível atualizar a conexão com sua loja."));
-      setConnecting(false);
-    }
-  };
+ return <section className="vf-screen ss-root" aria-labelledby="ss-title">
+  {head}
+  {error&&<div className="vf-toast is-error" role="alert"><TriangleAlert size={18}/>{error}</div>}
+  {notice&&<div className="vf-toast" role="status"><Check size={18}/>{notice}</div>}
+  <div className="ss-layout">
+   <nav className="vf-card ss-menu" aria-label="Seções das configurações">
+    {SECTIONS.filter(s=>s.key!=="ferramentas"||onOpenTool).filter(s=>s.key!=="privacidade"||editable).map(s=>
+     <button key={s.key} type="button" className={"vf-tab ss-menu-item"+(section===s.key?" is-on":"")}
+      aria-current={section===s.key?"page":undefined} onClick={()=>pick(s.key)}>
+      <span>{s.label}</span><small>{s.hint}</small></button>)}
+   </nav>
+   <div className="ss-panel">
 
-  const verifyReadAccess=async()=>{
-    if(!editable||!integration?.connected||settings?.tenant_status!=="active"||
-       integration.connection_check?.catalog_scope_granted===false||
-       liveCheck==="running")return;
-    const sequence=++checkSequence.current;
-    setLiveCheck("running");setError("");setNotice("");
-    try{
-      // Reutiliza a consulta GET oficial, ja protegida por RBAC,
-      // tenant, rate-limit e token server-side. Sem endpoint duplicado.
-      const preview=await merchantApi.previewLiveNuvemshop(tenantId,1);
-      if(preview.source!=="nuvemshop_live_read_only"||
-         preview.writes_performed!==0)throw new Error("Resposta inesperada");
-      if(sequence!==checkSequence.current)return;
-      setLiveCheck("verified");
-      setNotice("Acesso de leitura confirmado nesta sessão. A Nuvemshop respondeu à consulta sem alterar produtos.");
-    }catch(cause){
-      if(sequence!==checkSequence.current)return;
-      setLiveCheck("failed");
-      setError(friendlyError(cause,
-        "Não foi possível verificar o acesso. Confira a autorização da loja e tente novamente."));
-    }
-  };
-
-  const downloadReport=async(requestId:string)=>{
-    if(reportBusy)return;
-    setReportBusy(requestId);setError("");setNotice("");
-    try{
-      const file=await merchantApi.downloadPrivacyReport(tenantId,requestId);
-      if(!/^[0-9a-f]{64}$/.test(file.digest)){
-        throw new Error("Relatório sem comprovante válido.");
-      }
-      const local=URL.createObjectURL(file.blob);
-      const link=document.createElement("a");
-      link.href=local;
-      link.download="relatorio-fideliza-"+requestId+".json";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(()=>URL.revokeObjectURL(local),1000);
-      setReportDownloads(old=>({...old,[requestId]:{
-        digest:file.digest,complete:file.complete,
-      }}));
-      setNotice(file.complete
-        ?"O arquivo foi preparado. Confira o conteúdo antes de confirmar o recebimento."
-        :"O relatório parcial foi preparado. A Vidalys precisa revisar os dados antes de encerrar o pedido.");
-    }catch(cause){
-      setError(friendlyError(cause,"Não foi possível preparar o relatório. Tente novamente."));
-    }finally{setReportBusy(null);}
-  };
-  const confirmReport=async(requestId:string)=>{
-    const item=reportDownloads[requestId];
-    if(!item?.complete||reportBusy)return;
-    setReportBusy(requestId);setError("");setNotice("");
-    try{
-      const result=await merchantApi.confirmPrivacyReport(tenantId,requestId,item.digest);
-      setPrivacy(old=>old?{...old,
-        pending_total:Math.max(0,old.pending_total-1),
-        access_requests:Math.max(0,old.access_requests-1),
-        items:old.items.filter(entry=>entry.id!==requestId),
-      }:old);
-      setReportDownloads(old=>{
-        const next={...old};
-        delete next[requestId];
-        return next;
-      });
-      setNotice(result.message);
-    }catch(cause){
-      setError(friendlyError(cause,"Não foi possível confirmar. Baixe novamente o relatório se os dados mudaram."));
-    }finally{setReportBusy(null);}
-  };
-
-  if(loading)return <section className="ss-loading" role="status">
-    <RefreshCw size={20} className="portal-spin"/> Carregando suas preferências…
-  </section>;
-  if(!settings||!brand)return <section className="ss-feedback ss-error" role="alert">
-    {error||"As configurações não estão disponíveis no momento."}
-  </section>;
-  const connected=Boolean(integration?.connected);
-  const customerReady=Boolean(integration?.customer_matching?.read_only_preview_available);
-  const connectionStep=integration?.connection_check?.next_step;
-  const connectionExplanation=liveCheck==="verified"
-    ?"Consulta real concluída nesta sessão. O acesso de leitura foi confirmado, sem alterar a loja."
-    :connectionStep==="activate_tenant"
-    ?"Sua loja precisa estar ativa para utilizar a integração."
-    :connectionStep==="configure_app"
-      ?"O aplicativo ainda precisa ser configurado pela equipe Vidalys na plataforma."
-      :connectionStep==="authorize_store"
-        ?"Autorize a conexão da sua loja pela Nuvemshop para começar."
-        :connectionStep==="grant_read_products_and_reinstall"
-          ?"Falta autorização para consultar produtos. Ajuste a permissão no Portal de Parceiros e reinstale o aplicativo nesta loja."
-          :connectionStep==="verify_catalog_with_live_get"
-            ?"A autorização está registrada. Use o botão de verificação abaixo para confirmar o acesso."
-            :!integration?.configured
-              ?"A conexão ainda está sendo preparada pela plataforma."
-              :"A instalação ainda não foi verificada.";
-  const enrollmentReady=Boolean(settings.features.public_signup_enabled&&
-    settings.tenant_status==="active");
-  const programName=brand.program_name||("Clube "+settings.tenant_name);
-  const programColor=/^#[0-9A-Fa-f]{6}$/.test(brand.primary_color)?brand.primary_color:"#087F79";
-  const accent=/^#[0-9A-Fa-f]{6}$/.test(brand.accent_color)?brand.accent_color:"#37D5BB";
-
-  return <div className="ss-root">
-    <div className="ss-intro">
-      <div className="ss-intro-icon"><Settings2 size={23}/></div>
-      <div><span className="portal-eyebrow">SUA LOJA, SUA IDENTIDADE</span>
-        <h2>Configurações</h2>
-        <p>Personalize a identidade do clube e administre os canais. Regras e convites ficam no menu Programa.</p>
+    {section==="aparencia"&&<form className="vf-card ss-section" onSubmit={save} aria-labelledby="ss-brand-title">
+     <div className="vf-card-head"><div><h2 id="ss-brand-title" className="vf-h2">Aparência do clube</h2>
+      <span className="vf-muted vf-small">O que o cliente vê no Meu Clube e nos e-mails.</span></div></div>
+     <div className="vf-grid2">
+      <label className="vf-field">Nome do programa
+       <input value={brand.program_name} maxLength={80} disabled={!editable||saving} placeholder={"Clube "+settings.tenant_name}
+        onChange={e=>update("program_name",e.target.value)}/></label>
+      <label className="vf-field">E-mail de atendimento
+       <input type="email" value={brand.support_email} maxLength={254} autoComplete="off" disabled={!editable||saving}
+        placeholder="atendimento@sualoja.com.br" onChange={e=>update("support_email",e.target.value)}/></label>
+     </div>
+     {(["primary_color","accent_color"] as const).map(key=><div key={key} className="ss-colors">
+      <span className="ss-label">{key==="primary_color"?"Cor principal":"Cor de destaque"}</span>
+      <div className="ss-swatches" role="group" aria-label={key==="primary_color"?"Cor principal":"Cor de destaque"}>
+       {(key==="primary_color"?SWATCHES:[["Dourado","#FFC857"],["Laranja","#FF8A3D"],["Lavanda","#EDE7FF"],["Verde-claro","#BFE8D3"],["Branco","#FFFFFF"]]).map(([name,hex])=>{
+        const on=brand[key].toUpperCase()===hex;
+        return <button key={hex} type="button" className={"ss-swatch"+(on?" is-on":"")} aria-label={name} aria-pressed={on}
+         disabled={!editable||saving} style={{background:hex}} onClick={()=>update(key,hex)}/>;})}
+       <label className="ss-swatch-custom">Outra cor
+        <input type="color" value={key==="primary_color"?programColor:accent} disabled={!editable||saving}
+         onChange={e=>update(key,e.target.value.toUpperCase())}/></label>
       </div>
-    </div>
-    {error&&<div className="ss-feedback ss-error" role="alert"><TriangleAlert size={17}/>{error}</div>}
-    {notice&&<div className="ss-feedback ss-success" role="status"><Check size={17}/>{notice}</div>}
-    <div className="ss-layout">
-      <section className="ss-card" aria-labelledby="ss-brand-title">
-        <div className="ss-card-heading">
-          <div className="ss-card-icon"><Palette size={21}/></div>
-          <div><h3 id="ss-brand-title">Aparência do programa</h3>
-            <p>Personalize o nome e as cores que seus clientes vão ver.</p></div>
-        </div>
-        <div className="ss-brand-layout">
-          <form className="ss-form" onSubmit={save}>
-            <label>Nome do clube de vantagens
-              <input value={brand.program_name}
-                onChange={e=>update("program_name",e.target.value)} maxLength={80}
-                disabled={!editable||saving} placeholder={"Clube "+settings.tenant_name}/>
-              <small>Exemplo: Clube Bibelô. Se deixar vazio, usamos o nome da sua loja.</small>
-            </label>
-            <div className="ss-color-grid">
-              <label>Cor principal
-                <div className="ss-color-control">
-                  <input type="color" value={programColor}
-                    disabled={!editable||saving}
-                    onChange={e=>update("primary_color",e.target.value)}/>
-                  <span>{brand.primary_color}</span>
-                </div>
-                <small>Cor dos botões e destaques principais.</small>
-              </label>
-              <label>Cor de destaque
-                <div className="ss-color-control">
-                  <input type="color" value={accent}
-                    disabled={!editable||saving}
-                    onChange={e=>update("accent_color",e.target.value)}/>
-                  <span>{brand.accent_color}</span>
-                </div>
-                <small>Usada em pequenos detalhes do programa.</small>
-              </label>
-            </div>
-            <label>E-mail para dúvidas dos participantes
-              <input value={brand.support_email}
-                onChange={e=>update("support_email",e.target.value)}
-                disabled={!editable||saving} maxLength={254}
-                type="email" autoComplete="off" placeholder="atendimento@sualoja.com.br"/>
-              <small>O contato que o cliente poderá usar para falar com sua loja.</small>
-            </label>
-            {editable&&<div className="ss-action-row">
-              <button className="portal-primary" disabled={!dirty||saving} type="submit">
-                <Save size={16}/>{saving?"Salvando…":"Salvar alterações"}
-              </button>
-            </div>}
-            {!editable&&<p className="ss-readonly">Você pode consultar estas opções. Um administrador da loja pode alterá-las.</p>}
-          </form>
-          <aside className="ss-live-card" aria-label="Prévia da página do clube">
-            <div className="ss-preview-stage" style={{
-              background:programColor,
-              color:readableForeground(programColor),
-            }}>
-              <div className="ss-preview-icon" style={{
-                background:accent,
-                color:readableForeground(accent),
-              }}><HeartHandshake size={21}/></div>
-              <span>COMO SEU CLIENTE VAI VER</span>
-              <strong>{programName}</strong>
-              <p>Uma relação que vale mais. Conheça as vantagens do seu clube.</p>
-              <div className="ss-preview-button">Conhecer meu clube <ArrowRight size={16}/></div>
-            </div>
-            <div className="ss-preview-caption"><ShieldCheck size={15}/>
-              Esta é uma prévia visual. Ela não publica seu programa.
-            </div>
-          </aside>
-        </div>
-      </section>
-      <section className="ss-card" aria-labelledby="ss-store-connection">
-        <div className="ss-card-heading">
-          <div className="ss-card-icon"><ShoppingBag size={20}/></div>
-          <div><h3 id="ss-store-connection">Conexão com a loja</h3>
-            <p>A Nuvemshop é um canal opcional. O clube também funciona com vendas de balcão.</p></div>
-        </div>
-        <div className="ss-integration">
-          <div className="ss-service-label"><span className="ss-service-icon"><ShoppingBag size={20}/></span>
-            <div><strong>Nuvemshop</strong><small>Sua loja virtual</small></div>
-          </div>
-          <Status ready={connected} label={connected?"Autorização registrada":"Não vinculada"}/>
-        </div>
-        <p className="ss-muted">{connectionExplanation}</p>
-        {connected&&<p className="ss-muted">{customerReady
-          ?"Consulta de cadastros consentidos disponível para teste, sem ativar benefícios."
-          :"A leitura de clientes permanece condicionada às permissões e à homologação."}</p>}
-        {editable&&<button type="button" className="ss-secondary" onClick={()=>void reconnect()}
-          disabled={connecting||!integration?.configured}>
-          <RefreshCw size={16}/>{connecting?"Abrindo sua loja…":connected?"Atualizar conexão":"Conectar minha loja"}
-          <ArrowRight size={15}/>
-        </button>}
-        {editable&&!integration?.configured&&<p className="ss-muted">
-          A conexão estará disponível assim que a plataforma concluir a preparação da sua loja.</p>}
-        {editable&&connected&&integration?.connection_check?.catalog_scope_granted!==false&&
-          settings.tenant_status==="active"&&<>
-            <button type="button" className="ss-secondary"
-              disabled={liveCheck==="running"} onClick={()=>void verifyReadAccess()}>
-              <ShieldCheck size={16}/>{liveCheck==="running"
-                ?"Conferindo acesso…":liveCheck==="verified"
-                  ?"Conferir acesso novamente":"Verificar acesso à Nuvemshop"}
-            </button>
-            <p className="ss-muted" role="status" aria-live="polite">
-              {liveCheck==="verified"
-                ?"Acesso verificado agora. Esta confirmação vale apenas para esta sessão."
-                :liveCheck==="failed"
-                  ?"Acesso não verificado. A autorização pode precisar ser atualizada."
-                  :liveCheck==="running"
-                    ?"Consultando a Nuvemshop sem modificar seus produtos…"
-                    :"A autorização salva ainda não comprova acesso atual. Faça uma consulta de leitura."}
-            </p>
-          </>}
+     </div>)}
+     <div className="ss-logo">
+      <span className="vf-avatar ss-logo-mark" style={{background:accent,color:readableForeground(accent)}} aria-hidden="true">{initialsOf(settings.tenant_name)}</span>
+      <div className="vf-row-main"><strong>Logo da loja</strong><span>Por enquanto o clube usa as iniciais da loja na cor de destaque.</span></div>
+      <span className="vf-chip is-soft">Envio de logo em breve</span>
+     </div>
+     <div className="ss-preview-wrap"><span className="ss-label">Prévia no celular do cliente</span>
+      <div className="ss-phone" style={{background:`linear-gradient(135deg, ${programColor}, color-mix(in srgb, ${programColor} 70%, black))`,color:readableForeground(programColor)}}>
+       <span className="ss-phone-name">{programName.toUpperCase()}</span>
+       <strong>340 pontos</strong>
+       <span>Exemplo de saldo · como o cliente vai ver</span>
+       <span className="ss-phone-btn" style={{background:accent,color:readableForeground(accent)}}>Ver recompensas</span>
+      </div>
+     </div>
+     {editable?<div className="ss-actions"><button type="submit" className="vf-btn is-primary" disabled={!dirty||saving}>{saving?"Salvando…":"Salvar aparência"}</button></div>
+      :<p className="vf-note">Você pode consultar estas opções. Um administrador da loja pode alterá-las.</p>}
+    </form>}
 
-        <div className="ss-divider"/>
-        <div className="ss-integration">
-          <div className="ss-service-label">
-            <span className="ss-service-icon"><ShieldCheck size={20}/></span>
-            <div><strong>Programa piloto de fidelidade</strong>
-              <small>Autorização por loja, independente da conexão com a Nuvemshop</small>
-            </div>
-          </div>
-          <Status ready={settings.features.loyalty_live_enabled}
-            label={settings.features.loyalty_live_enabled
-              ?"Piloto QA autorizado; benefícios ainda exigem liberação financeira"
-              :"Desativado para esta loja"}/>
-        </div>
-        <p className="ss-muted">A ativação não é feita por este painel. Exige operador autorizado,
-          comando auditado, confirmação do tenant e homologação dos pagamentos.</p>
-        <div className="ss-divider"/>
-        <div className="ss-integration">
-          <div className="ss-service-label"><span className="ss-service-icon"><Mail size={20}/></span>
-            <div><strong>Confirmação por e-mail</strong>
-              <small>Para que os participantes confirmem o cadastro com segurança</small>
-            </div>
-          </div>
-          <Status ready={settings.features.email_delivery_enabled}
-            label={settings.features.email_delivery_enabled?"Configurada":"Em preparação"}/>
-        </div>
-        <p className="ss-muted">Os e-mails confirmam a adesão e permitem o acesso privado ao Meu Clube quando habilitados.</p>
-      </section>
-      <section className="ss-card" aria-labelledby="ss-domains-title">
-        <div className="ss-card-heading">
-          <div className="ss-card-icon"><Globe2 size={20}/></div>
-          <div><h3 id="ss-domains-title">Página do clube</h3>
-            <p>Acesso do participante, separado da integração com a loja.</p></div>
-        </div>
-        <div className="ss-domain">
-          <div><small>Endereço do Meu Clube</small>
-            <strong>{window.location.origin+"/clube/"+encodeURIComponent(settings.tenant_slug)}</strong>
-            <a className="ss-secondary" href={"/clube/"+encodeURIComponent(settings.tenant_slug)}
-              target="_blank" rel="noopener noreferrer">
-              Abrir página do cliente <ArrowRight size={15}/>
-            </a>
-          </div>
-          <div><small>Cadastro público de participantes</small>
-            <strong>{enrollmentReady
-              ?"Pode ser divulgado após aprovar o regulamento no Programa."
-              :"Aguardando liberação ou ativação da loja."}</strong>
-            <button className="ss-secondary" type="button" onClick={onGoToProgram}>
-              Gerenciar regulamento e convites <ArrowRight size={15}/>
-            </button>
-          </div>
-        </div>
-        <p className="ss-muted">O Meu Clube tem página pública, mas dados pessoais exigem e-mail confirmado. A adesão requer regulamento e autorização.</p>
-      </section>
-      {editable&&<section className="ss-card" aria-labelledby="ss-privacy-title">
-        <div className="ss-card-heading">
-          <div className="ss-card-icon"><FileText size={20}/></div>
-          <div><h3 id="ss-privacy-title">Privacidade dos participantes</h3>
-            <p>Acompanhe os pedidos de acesso ou exclusão dos dados do programa.</p></div>
-        </div>
-        {privacy
-          ? <div className="ss-privacy-summary">
-              <div><strong>{privacy.pending_total}</strong><span>Solicitações em análise</span></div>
-              <div><strong>{privacy.access_requests}</strong><span>Pedidos de dados</span></div>
-              <div><strong>{privacy.deletion_requests}</strong><span>Pedidos de exclusão</span></div>
-            </div>
-          : <p className="ss-muted">Não foi possível consultar as solicitações agora.</p>}
-        {privacy?.items.length===0&&<p className="ss-muted">
-          Não há solicitações pendentes registradas para esta loja.</p>}
-        {privacy?.items.length? <ul className="ss-privacy-list">
-          {privacy.items.map(item=><li key={item.id}>
-            <div className="ss-privacy-entry">
-              <span>{item.type==="data_access"?"Pedido de acesso aos dados":"Pedido de exclusão de dados"}</span>
-              <small>{new Date(item.received_at).toLocaleDateString("pt-BR")}
-                {" · "}Em análise</small>
-              {item.type==="deletion"&&<small>{item.protection_applied
-                ?"Dados de contato protegidos. Revisão final em andamento."
-                :"Solicitação recebida. Proteção dos dados em andamento."}</small>}
-            </div>
-            {item.report_available&&<div className="ss-privacy-actions">
-              <button type="button" className="ss-secondary"
-                disabled={reportBusy!==null}
-                onClick={()=>void downloadReport(item.id)}>
-                <Download size={15}/>{reportBusy===item.id?"Preparando…":"Baixar relatório"}
-              </button>
-              {reportDownloads[item.id]?.complete&&<button type="button"
-                className="ss-secondary ss-report-confirm"
-                disabled={reportBusy!==null}
-                onClick={()=>void confirmReport(item.id)}>
-                <Check size={15}/>Confirmar que recebi
-              </button>}
-              {reportDownloads[item.id]&&!reportDownloads[item.id].complete&&
-                <small>O relatório precisa de revisão para concluir o pedido.</small>}
-            </div>}
-          </li>)}
-        </ul>:null}
-        <p className="ss-muted">
-          O cliente faz o pedido à loja. A Vidalys protege os dados mantidos no
-          Fideliza e acompanha a eliminação. A loja responde ao cliente.
-          Registros sujeitos à retenção legal exigem análise antes da conclusão.
-        </p>
-      </section>}
-    </div>
-    <div className="ss-security-note"><ShieldCheck size={18}/>
-      Alterar seu clube aqui não muda preços, estoque nem pedidos da sua loja.
-    </div>
-  </div>;
+    {section==="canais"&&<section className="vf-card ss-section" aria-labelledby="ss-store-connection">
+     <div className="vf-card-head"><div><h2 id="ss-store-connection" className="vf-h2">Canais de venda</h2>
+      <span className="vf-muted vf-small">Onde o cliente compra e ganha pontos.</span></div></div>
+     <div className="vf-row is-top ss-channel">
+      <span className="vf-ico tone-purple" aria-hidden="true"><ShoppingBag size={20}/></span>
+      <div className="vf-row-main">
+       <div className="ss-channel-title"><strong>Nuvemshop</strong>
+        <span className={"vf-chip "+(connected?(liveCheck==="verified"?"is-ok":"is-soft"):"is-gold")}>{connected?(liveCheck==="verified"?"Acesso verificado":"Autorização registrada"):"Não vinculada"}</span></div>
+       <span>{nuvemshopText}</span>
+       <ul className="ss-checks" aria-label="Diagnóstico da conexão Nuvemshop">
+        {checks.map(c=><li key={c.key} className={"vf-chip "+chipFor(c)}>
+         {c.state==="ok"?<Check size={13}/>:c.state==="todo"?<LockKeyhole size={13}/>:<CircleHelp size={13}/>}{c.label}
+         <span className="vf-sr">{c.state==="ok"?": ok":c.state==="todo"?": pendente":": não verificado"}</span></li>)}
+       </ul>
+       {editable&&<div className="ss-channel-actions">
+        <button type="button" className="vf-btn is-small is-primary" disabled={connecting||!integration?.configured} onClick={()=>void reconnect()}>
+         {connecting?"Abrindo sua loja…":connected?"Atualizar conexão":"Conectar minha loja"}</button>
+        {connected&&integration?.connection_check?.catalog_scope_granted!==false&&settings.tenant_status==="active"&&
+         <button type="button" className="vf-btn is-small" disabled={liveCheck==="running"} onClick={()=>void verifyReadAccess()}>
+          {liveCheck==="running"?"Conferindo acesso…":liveCheck==="verified"?"Conferir acesso novamente":"Verificar acesso à Nuvemshop"}</button>}
+       </div>}
+       {editable&&connected&&<span role="status" aria-live="polite">{liveCheck==="verified"?"Acesso verificado agora. Vale só para esta sessão."
+        :liveCheck==="failed"?"Acesso não verificado. A autorização pode precisar ser atualizada."
+        :liveCheck==="running"?"Consultando a Nuvemshop sem modificar seus produtos…"
+        :"A autorização salva ainda não comprova acesso atual. Faça uma consulta de leitura."}</span>}
+      </div>
+     </div>
+     <div className="vf-row is-top">
+      <span className="vf-ico tone-gold" aria-hidden="true"><Monitor size={20}/></span>
+      <div className="vf-row-main"><strong>Balcão da loja física</strong><span>Venda pelo painel em Vendas → Balcão, com conferência. Sempre disponível.</span></div>
+      <span className="vf-chip is-ok">Ativo</span>
+     </div>
+     <div className="vf-row is-top">
+      <span className="vf-ico tone-green" aria-hidden="true"><MessageCircle size={20}/></span>
+      <div className="vf-row-main"><strong>WhatsApp</strong><span>Mensagens prontas de saldo e vencimento para você enviar.</span></div>
+      <span className="vf-chip is-soft">Em breve</span>
+     </div>
+     <div className="vf-row is-top">
+      <span className="vf-ico tone-purple" aria-hidden="true"><Mail size={20}/></span>
+      <div className="vf-row-main"><strong>Confirmação por e-mail</strong><span>O cliente confirma a adesão e acessa o Meu Clube com segurança.</span></div>
+      <span className={"vf-chip "+(settings.features.email_delivery_enabled?"is-ok":"is-gold")}>{settings.features.email_delivery_enabled?"Configurada":"Em preparação"}</span>
+     </div>
+    </section>}
+
+    {section==="canais"&&<section className="vf-card ss-section" aria-labelledby="ss-pilot-link">
+     <div className="vf-row is-top">
+      <span className="vf-ico tone-rose" aria-hidden="true"><ShieldCheck size={20}/></span>
+      <div className="vf-row-main"><strong id="ss-pilot-link">Pontos e giftback no balcão</strong>
+       <span>Escolher o modo, revisar a regra e ativar no balcão ficam juntos em Meu clube → Como ganhar.</span></div>
+      <button type="button" className="vf-btn is-small" onClick={onGoToProgram}>Abrir em Meu clube</button>
+     </div>
+    </section>}
+
+    {section==="pagina"&&<section className="vf-card ss-section" aria-labelledby="ss-domains-title">
+     <div className="vf-card-head"><div><h2 id="ss-domains-title" className="vf-h2">Página do clube</h2>
+      <span className="vf-muted vf-small">O endereço onde o cliente entra, confere saldo e troca pontos.</span></div></div>
+     <form className="ss-address" onSubmit={e=>void saveAddress(e)}>
+      <label className="vf-field" htmlFor="ss-address">Endereço do Meu Clube</label>
+      <div className="ss-address-row">
+       <span className="ss-address-prefix" aria-hidden="true">{window.location.host}/clube/</span>
+       <input id="ss-address" value={address} maxLength={40} readOnly={!editable} autoComplete="off" spellCheck={false}
+        aria-describedby="ss-address-help" onChange={e=>setAddress(e.target.value.toLowerCase())}/>
+       {editable&&<button type="submit" className="vf-btn is-primary" disabled={savingAddress||cleanAddress(address)===settings.tenant_slug||cleanAddress(address).length<3}>
+        {savingAddress?"Salvando…":"Salvar endereço"}</button>}
+      </div>
+      <span id="ss-address-help" className="vf-muted vf-small">Curto e fácil de falar no caixa, por exemplo o nome da loja. Use letras, números e hífen. Links antigos continuam funcionando.</span>
+     </form>
+     <div className="vf-pills">
+      <button type="button" className="vf-btn" onClick={()=>void copyLink()}><Copy size={16}/>{copied?"Link copiado":"Copiar link"}</button>
+      <a className="vf-btn" href={"/clube/"+encodeURIComponent(settings.tenant_slug)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> Abrir página do cliente</a>
+     </div>
+     <div className="vf-row"><span className={"vf-chip "+(settings.features.public_signup_enabled?"is-ok":"is-gold")}>{settings.features.public_signup_enabled?"Ligado":"Desligado"}</span>
+      <span className="vf-row-main"><strong>Cadastro aberto ao público</strong><span>{settings.features.public_signup_enabled?"Pode ser divulgado depois de aprovar o regulamento.":"Liberação feita pela equipe Vidalys."}</span></span></div>
+     <div className="vf-row"><span className="vf-chip is-soft">Em breve</span><span className="vf-row-main"><strong>Domínio próprio</strong><span>clube.sualoja.com.br</span></span></div>
+     <div className="ss-actions"><button type="button" className="vf-btn" onClick={onGoToProgram}>Gerenciar regulamento e convites</button></div>
+    </section>}
+
+    {section==="equipe"&&<section className="vf-card ss-section" aria-labelledby="ss-team-title">
+     <div className="vf-card-head"><div><h2 id="ss-team-title" className="vf-h2">Equipe e acessos</h2>
+      <span className="vf-muted vf-small">Quem pode vender, conferir e mudar o clube.</span></div>
+      <span className="vf-chip is-soft">Convites em breve</span></div>
+     <div className="vf-row"><span className="vf-avatar tone-1" aria-hidden="true">{initialsOf(userName)}</span>
+      <div className="vf-row-main"><strong>{userName||"Você"}</strong><span>{userEmail||"Conta conectada agora"}</span></div>
+      <span className="vf-chip is-gold">{roleLabel[role]}</span></div>
+     <div className="vf-note ss-roles"><span><strong>Proprietário:</strong> tudo, incluindo integrações e equipe.</span>
+      <span><strong>Gerente:</strong> regras, recompensas, campanhas e conferência de vendas.</span>
+      <span><strong>Consulta:</strong> acompanha clientes, vendas e resultados, sem alterar.</span></div>
+    </section>}
+
+    {section==="privacidade"&&editable&&<section className="vf-card ss-section" aria-labelledby="ss-privacy-title">
+     <div className="vf-card-head"><div><h2 id="ss-privacy-title" className="vf-h2">Regulamento e privacidade</h2>
+      <span className="vf-muted vf-small">Regras claras e LGPD em dia.</span></div></div>
+     <div className="vf-row is-wrap">
+      <span className={"vf-chip "+(terms?.terms?"is-ok":"is-gold")}>{terms===null?"Não verificado":terms.terms?"Aprovado":"Pendente"}</span>
+      <span className="vf-row-main"><strong>Regulamento do clube</strong><span>{terms?.terms?`Versão ${terms.terms.version}, aprovada.`:"Aprove antes de convidar clientes."}</span></span>
+      <button type="button" className="vf-btn is-small" onClick={onGoToProgram}>{terms?.terms?"Ver regulamento":"Aprovar regulamento"}</button>
+     </div>
+     <div className="vf-row is-wrap">
+      <span className="vf-chip is-soft">{privacy?`${privacy.pending_total} pendente${privacy.pending_total===1?"":"s"}`:"Não verificado"}</span>
+      <span className="vf-row-main"><strong>Pedidos de clientes</strong><span>{privacy?`${privacy.access_requests} de acesso aos dados · ${privacy.deletion_requests} de exclusão`:"Não foi possível consultar agora."}</span></span>
+     </div>
+     {privacy?.items.length?<ul className="vf-list">{privacy.items.map(item=><li key={item.id} className="vf-row is-top is-wrap">
+      <span className="vf-ico tone-purple" aria-hidden="true"><FileText size={18}/></span>
+      <div className="vf-row-main"><strong>{item.type==="data_access"?"Pedido de acesso aos dados":"Pedido de exclusão de dados"}</strong>
+       <span>Recebido em {new Date(item.received_at).toLocaleDateString("pt-BR")} · em análise
+        {item.type==="deletion"?(item.protection_applied?" · contato já protegido":" · proteção em andamento"):""}</span>
+       {reportDownloads[item.id]&&!reportDownloads[item.id].complete&&<span>O relatório precisa de revisão para concluir o pedido.</span>}</div>
+      {item.report_available&&<div className="ss-channel-actions">
+       <button type="button" className="vf-btn is-small" disabled={reportBusy!==null} onClick={()=>void downloadReport(item.id)}>
+        <Download size={15}/>{reportBusy===item.id?"Preparando…":"Baixar relatório"}</button>
+       {reportDownloads[item.id]?.complete&&<button type="button" className="vf-btn is-small is-primary" disabled={reportBusy!==null}
+        onClick={()=>void confirmReport(item.id)}><Check size={15}/>Confirmar que recebi</button>}
+      </div>}
+     </li>)}</ul>:null}
+     <p className="vf-note"><ShieldCheck size={16}/>O cliente faz o pedido à loja. A Vidalys protege os dados mantidos no Fideliza e acompanha a eliminação; registros com retenção legal passam por análise.</p>
+    </section>}
+
+    {section==="ferramentas"&&onOpenTool&&<section className="vf-card ss-section" aria-labelledby="ss-tools-title">
+     <div className="vf-card-head"><div><h2 id="ss-tools-title" className="vf-h2">Ferramentas avançadas</h2>
+      <span className="vf-muted vf-small">Para conferir margem e catálogo. Não são necessárias no dia a dia.</span></div></div>
+     {([["margin","Custo dos benefícios","Quanto cada recompensa custa na sua margem.","Abrir custo dos benefícios"],
+       ["costs","Custos dos produtos","Custo por produto quando a loja não informa.","Abrir custos dos produtos"],
+       ["catalog","Conciliação do catálogo","Confere variantes da Nuvemshop antes de importar custos.","Abrir conciliação"]] as const).map(([tool,title,detail,action])=>
+      <div key={tool} className="vf-row is-wrap"><span className="vf-row-main"><strong>{title}</strong><span>{detail}</span></span>
+       <button type="button" className="vf-btn is-small" aria-label={action} onClick={()=>onOpenTool(tool)}>Abrir</button></div>)}
+    </section>}
+
+    {!editable&&section==="privacidade"&&<div className="vf-toast is-info"><X size={18}/>Seção disponível para administradores.</div>}
+   </div>
+  </div>
+ </section>;
 }

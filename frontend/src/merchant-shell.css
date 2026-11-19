@@ -1,53 +1,104 @@
-/* Vidalys Fideliza / Merchant shell v1 — scoped architecture.
-   Business surfaces can retain existing styles until their component migrations.
-   Navigation and application frame must not depend on theme overrides. */
-.loyalty-merchant{--loyalty-sidebar:274px;display:flex;background:#F8F9FF;color:#3B1E82;font-family:Manrope,Inter,system-ui,sans-serif}
-.loyalty-merchant .portal-side{width:var(--loyalty-sidebar);padding:26px 15px 18px;background:radial-gradient(circle at 80% 4%,#6A3DF06B,transparent 40%),linear-gradient(165deg,#3B1E82,#24113F);border-right:1px solid #6A3DF04D;color:#fff}
-.loyalty-merchant .portal-side-brand{padding:0 12px 26px;gap:7px}
-.loyalty-merchant-logo{display:block;object-fit:contain;object-position:left center;width:min(190px,100%);height:48px}
-.loyalty-merchant .portal-store{border-radius:17px;padding:13px;background:#FFFFFF12;border:1px solid #EDE7FF36;box-shadow:inset 0 1px #FFFFFF17}
-.loyalty-merchant .portal-store-mark{background:#EDE7FF22;color:#FFC857;border-radius:12px}
-.loyalty-merchant .portal-store strong{font-size:13px;color:#FFFFFF}
-.loyalty-merchant .portal-store span{color:#D9C9FF}
-.loyalty-merchant .portal-nav-caption{margin:28px 13px 11px;color:#CEBFF1;letter-spacing:.12em}
-.loyalty-merchant .portal-nav{gap:5px}
-.loyalty-merchant .portal-nav button{border-radius:12px;padding:12px 14px;min-height:46px;color:#ECE2FF;font-size:12px;font-weight:750;transition:background .18s ease,color .18s ease,transform .18s ease;box-shadow:none}
-.loyalty-merchant .portal-nav button svg{flex:none}
-.loyalty-merchant .portal-nav button:hover{background:#FFFFFF16;color:#FFFFFF}
-.loyalty-merchant .portal-nav button.is-active{background:linear-gradient(100deg,#8B43F6,#6A3DF0);color:#fff;box-shadow:0 8px 20px #18093638}
-.loyalty-merchant .portal-nav button span{margin-left:auto;background:#FFFFFF18;border-radius:6px;padding:3px 6px;color:#EDE7FF;font-size:9px}
-.loyalty-merchant .portal-advanced-menu{border-color:#FFFFFF22}
-.loyalty-merchant .portal-advanced-menu>summary{color:#DBCBF4}
-.loyalty-merchant .portal-advanced-menu>summary:hover,.loyalty-merchant .portal-advanced-menu[open]>summary{color:#FFFFFF;background:#FFFFFF15}
-.loyalty-merchant .portal-nav-secondary button{color:#E2D1FA}
-.loyalty-merchant .portal-signout{min-height:45px;background:#FFFFFF0D;border:1px solid #FFFFFF33;color:#F5EEFF;border-radius:11px}
-.loyalty-merchant .portal-signout:hover{background:#FFFFFF1A}
+/* VIDALYS FIDELIZA — Moldura do painel do lojista (arquivo completo e consolidado).
+   Segue o protótipo aprovado: menu com sete destinos, loja com avatar, pessoa logada
+   no rodapé do menu, topo com busca de cliente e "Registrar venda". O posicionamento
+   base (menu fixo e gaveta no celular) continua em portal.css. Só tokens. */
+
+.loyalty-merchant{--loyalty-sidebar:256px;display:flex;background:var(--vf-canvas);color:var(--vf-ink);font-family:var(--vf-font)}
+.portal-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ---------- Menu lateral ---------- */
+.loyalty-merchant .portal-side{width:var(--loyalty-sidebar);padding:22px 14px 16px;gap:18px;color:var(--vf-primary-contrast);border-right:0;
+  background:radial-gradient(120% 40% at 100% 0%,color-mix(in srgb,var(--vf-primary) 34%,transparent),transparent 70%),linear-gradient(170deg,var(--vf-purple-900),var(--vf-purple-950))}
+.loyalty-merchant .portal-side-brand{padding:0 8px 4px;gap:7px}
+.loyalty-merchant-logo{display:block;object-fit:contain;object-position:left center;width:min(170px,100%);height:52px}
+.loyalty-merchant .portal-store{display:flex;align-items:center;gap:10px;min-width:0;padding:10px;border-radius:14px;
+  background:color-mix(in srgb,var(--vf-surface) 8%,transparent);border:1px solid color-mix(in srgb,var(--vf-lavender) 18%,transparent)}
+.loyalty-merchant .portal-store-avatar{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:11px;
+  background:var(--vf-gold);color:var(--vf-purple-950);font-size:14px;font-weight:800;letter-spacing:.02em}
+.loyalty-merchant .portal-store-mark{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--vf-lavender) 16%,transparent);color:var(--vf-gold)}
+.loyalty-merchant .portal-store strong{font-size:14px;color:var(--vf-primary-contrast)}
+.loyalty-merchant .portal-store span{font-size:12px;color:var(--vf-lavender)}
+.loyalty-merchant .portal-store-switch{position:relative;display:grid;gap:2px;min-width:0;flex:1}
+.loyalty-merchant .portal-store-switch select{appearance:none;-webkit-appearance:none;width:100%;min-height:26px;padding:0 20px 0 0;border:0;background:transparent;
+  color:var(--vf-primary-contrast);font:inherit;font-size:14px;font-weight:800;text-overflow:ellipsis;cursor:pointer}
+.loyalty-merchant .portal-store-switch select option{color:var(--vf-ink)}
+.loyalty-merchant .portal-store-switch>svg{position:absolute;right:0;top:6px;pointer-events:none;color:var(--vf-lavender)}
+
+.loyalty-merchant .portal-nav{display:flex;flex-direction:column;gap:4px}
+.loyalty-merchant .portal-nav button{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:0 14px;border:0;border-radius:12px;
+  background:transparent;color:var(--vf-lavender);font:inherit;font-size:14.5px;font-weight:700;text-align:left;box-shadow:none;cursor:pointer;
+  transition:background-color .18s ease,color .18s ease}
+.loyalty-merchant .portal-nav button svg{flex:none;opacity:.92}
+.loyalty-merchant .portal-nav button:hover{background:color-mix(in srgb,var(--vf-surface) 10%,transparent);color:var(--vf-primary-contrast)}
+.loyalty-merchant .portal-nav button.is-active{background:var(--vf-surface);color:var(--vf-ink);box-shadow:0 8px 22px color-mix(in srgb,var(--vf-purple-950) 30%,transparent)}
+.loyalty-merchant .portal-nav button.is-active svg{color:var(--vf-primary);opacity:1}
+.loyalty-merchant .portal-nav-badge{margin-left:auto;padding:3px 8px;border-radius:999px;background:var(--vf-gold);color:var(--vf-purple-950);
+  font-size:11px;font-weight:800;line-height:1.2}
+.loyalty-merchant .portal-nav .portal-nav-badge>span{margin:0;padding:0;background:none;border-radius:0;font:inherit;color:inherit}
+
+.loyalty-merchant .portal-side-bottom{margin-top:auto;padding-top:14px;display:grid;gap:10px}
+.loyalty-merchant .portal-env-label{display:inline-flex;align-items:center;gap:8px;padding:0 12px;font-size:11.5px;font-weight:700;
+  letter-spacing:.02em;color:var(--vf-lavender)}
+.loyalty-merchant .portal-env-label span{width:7px;height:7px;border-radius:50%;background:var(--vf-orange)}
+.loyalty-merchant .portal-user{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:color-mix(in srgb,var(--vf-surface) 7%,transparent)}
+.loyalty-merchant .portal-user-avatar{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:50%;background:var(--vf-lavender);color:var(--vf-ink);font-size:14px;font-weight:800}
+.loyalty-merchant .portal-user-text{display:grid;gap:2px;min-width:0}
+.loyalty-merchant .portal-user-text strong{font-size:13.5px;color:var(--vf-primary-contrast);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.loyalty-merchant .portal-signout{display:inline-flex;align-items:center;gap:6px;justify-self:start;min-height:32px;padding:0;border:0;background:none;
+  color:var(--vf-lavender);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.loyalty-merchant .portal-signout:hover{color:var(--vf-primary-contrast);text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- Topo ---------- */
 .loyalty-merchant .portal-main{margin-left:var(--loyalty-sidebar);width:calc(100% - var(--loyalty-sidebar))}
-.loyalty-merchant .portal-top{position:sticky;top:0;z-index:15;background:#FFFFFFF2;backdrop-filter:blur(15px);border-bottom:1px solid #E4DFF2;height:72px;padding-inline:clamp(20px,3vw,42px)}
-.loyalty-merchant .portal-top-title{color:#776B8A;font-weight:700}
-.loyalty-merchant .portal-top-title strong{color:#3B1E82}
-.loyalty-merchant .portal-top-right .portal-avatar{display:grid;place-items:center;background:#EDE7FF;border:1px solid #E2D6FA;color:#3B1E82;box-shadow:0 4px 10px #3B1E820C}
-.loyalty-merchant .portal-test-label{background:#FFF7E7;border:1px solid #F2DFAD;color:#835012}
-.loyalty-merchant .portal-test-label span{background:#F2A23D}
-.loyalty-merchant .portal-content{max-width:1510px;padding:clamp(22px,3.2vw,42px)}
-.loyalty-merchant .portal-content-head{margin-bottom:23px}
-.loyalty-merchant .portal-content-head h1{font-weight:800;color:#3B1E82;letter-spacing:-.045em;line-height:1.14}
-.loyalty-merchant .portal-content-head p{color:#6B607E;max-width:70ch}
-.loyalty-merchant .portal-eyebrow{color:#6A3DF0}
-.loyalty-merchant .portal-select-wrap select{background:#fff;color:#3B1E82;border-color:#DED3F2}
-.loyalty-merchant .portal-tenant-bar>label{color:#6B607E}
-.loyalty-merchant :is(button,a,select,input,textarea):focus-visible{outline:3px solid #B193F6;outline-offset:3px}
+.loyalty-merchant .portal-top{position:sticky;top:0;z-index:15;height:auto;min-height:78px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;
+  padding:16px clamp(16px,3vw,36px);background:color-mix(in srgb,var(--vf-surface) 94%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--vf-border)}
+.loyalty-merchant .portal-top-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--vf-muted)}
+.loyalty-merchant .portal-top-title strong{color:var(--vf-purple-950);font-size:15px}
+.loyalty-merchant .portal-crumb{min-height:44px;padding:0;border:0;background:none;color:var(--vf-muted);font:inherit;font-weight:700;cursor:pointer}
+.loyalty-merchant .portal-crumb:hover{color:var(--vf-primary)}
+.loyalty-merchant .portal-search{flex:1 1 260px;display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;
+  border-radius:14px;background:var(--vf-canvas);border:1px solid var(--vf-border);color:var(--vf-muted)}
+.loyalty-merchant .portal-search:focus-within{border-color:var(--vf-primary);box-shadow:0 0 0 3px var(--vf-lavender)}
+.loyalty-merchant .portal-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--vf-ink);font:inherit;font-size:14.5px;font-weight:500;outline:none}
+.loyalty-merchant .portal-top-right{display:flex;align-items:center;gap:10px}
+.loyalty-merchant .portal-bell{position:relative;display:grid;place-items:center;width:46px;min-width:46px;height:46px;padding:0;border-radius:999px;
+  border:1px solid var(--vf-border);background:var(--vf-surface);color:var(--vf-purple-900);cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease}
+.loyalty-merchant .portal-bell:hover{transform:translateY(-1px);box-shadow:0 8px 20px color-mix(in srgb,var(--vf-purple-900) 12%,transparent)}
+.loyalty-merchant .portal-bell-dot{position:absolute;top:10px;right:11px;width:9px;height:9px;border-radius:50%;background:var(--vf-orange);border:2px solid var(--vf-surface)}
+.loyalty-merchant .portal-top-cta{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 18px;border:0;border-radius:999px;
+  background:var(--vf-primary);color:var(--vf-primary-contrast);font:inherit;font-size:14px;font-weight:800;cursor:pointer;
+  box-shadow:0 10px 24px color-mix(in srgb,var(--vf-primary) 30%,transparent);transition:transform .15s ease,background-color .15s ease}
+.loyalty-merchant .portal-top-cta:hover{background:var(--vf-primary-hover);transform:translateY(-1px)}
+
+/* ---------- Conteúdo ---------- */
+.loyalty-merchant .portal-content{max-width:1352px;padding:clamp(18px,3vw,36px) clamp(16px,3vw,36px) 48px}
+.loyalty-merchant .portal-content-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+.loyalty-merchant .portal-content-head h1{margin:0 0 4px;font:800 clamp(24px,2.4vw,32px)/1.12 var(--vf-font-display);letter-spacing:-.035em;color:var(--vf-ink)}
+.loyalty-merchant .portal-content-head p{margin:0;max-width:72ch;font-size:15px;line-height:1.55;color:var(--vf-muted)}
+.loyalty-merchant .portal-content>*{animation:vf-rise .38s cubic-bezier(.2,.7,.2,1) both}
+.loyalty-merchant :is(button,a,select,input,textarea):focus-visible{outline:3px solid var(--vf-primary);outline-offset:3px}
+@keyframes vf-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+@media(min-width:1021px){
+  .loyalty-merchant .portal-top-title:not(:has(strong)){display:none}
+}
 @media(max-width:1020px){
- .loyalty-merchant{--loyalty-sidebar:263px}
- .loyalty-merchant .portal-main{margin-left:0;width:100%}
- .loyalty-merchant .portal-side{width:var(--loyalty-sidebar)}
+  .loyalty-merchant .portal-main{margin-left:0;width:100%}
+  .loyalty-merchant .portal-side{width:var(--loyalty-sidebar)}
 }
 @media(max-width:640px){
- .loyalty-merchant .portal-top{padding-inline:14px;height:64px}
- .loyalty-merchant .portal-content{padding:19px 14px 27px}
- .loyalty-merchant .portal-content-head{align-items:flex-start}
- .loyalty-merchant .portal-content-head h1{font-size:clamp(25px,7vw,33px)}
+  .loyalty-merchant .portal-top{padding:10px 14px;gap:8px}
+  .loyalty-merchant .portal-search{order:3;flex-basis:100%;max-width:none}
+  .loyalty-merchant .portal-top-right{margin-left:auto}
+  .loyalty-merchant .portal-top-cta{min-height:44px;padding:0 14px}
+  .loyalty-merchant .portal-crumb{display:none}
+  .loyalty-merchant .portal-content{padding:18px 14px 32px}
+  .loyalty-merchant .portal-content-head{flex-direction:column;align-items:flex-start}
+  .loyalty-merchant .portal-content-head h1{font-size:clamp(23px,7vw,28px)}
 }
 @media(prefers-reduced-motion:reduce){
- .loyalty-merchant .portal-nav button{transition:none}
+  .loyalty-merchant .portal-nav button,.loyalty-merchant .portal-top-cta,.loyalty-merchant .portal-bell{transition:none}
+  .loyalty-merchant .portal-content>*{animation:none}
 }

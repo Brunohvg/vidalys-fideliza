@@ -61,6 +61,7 @@ class EmailDispatch(models.Model):
         VERIFY = "verify", "Confirmação de participante"
         WITHDRAW = "withdraw", "Retirada de participante"
         MEMBER = "member", "Acesso ao clube do consumidor"
+        NOTICE = "notice", "Aviso de saldo do clube"
 
     class State(models.TextChoices):
         QUEUED = "queued", "Aguardando publicação"

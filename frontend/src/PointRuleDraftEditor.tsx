@@ -3,6 +3,19 @@ import {Calculator, CheckCircle2, Settings2, ShieldCheck} from "lucide-react";
 import {ApiError, merchantApi, type PointRuleDraft, type Store} from "./api";
 import "./sales-workspace.css";
 
+/* Carência = dias entre a compra paga e a liberação dos pontos. Cada lojista
+   escolhe a sua; as opções prontas só facilitam a decisão. */
+const HOLD_PRESETS=[
+  {days:0,label:"Na hora",hint:"Bom para balcão, onde a troca é rara."},
+  {days:7,label:"7 dias",hint:"Cobre o direito de arrependimento das compras online."},
+  {days:30,label:"30 dias",hint:"Cobre o prazo de troca da maioria das lojas."},
+] as const;
+function holdExplanation(days:number){
+  if(!Number.isInteger(days)||days<0||days>90)return "Use um número de 0 a 90 dias.";
+  if(days===0)return "Os pontos aparecem como disponíveis logo após a compra paga. Se houver devolução, o saldo pode ficar negativo até ser ajustado.";
+  return `Os pontos ficam pendentes por ${days} dia${days===1?"":"s"} depois da compra paga. Se a compra for cancelada ou devolvida nesse prazo, os pontos são retirados antes de o cliente usar.`;
+}
+
 export default function PointRuleDraftEditor({tenantId,role,onRuleSaved}:{
   tenantId:string;role:Store["role"];onRuleSaved?:()=>void;
 }){
@@ -76,11 +89,23 @@ export default function PointRuleDraftEditor({tenantId,role,onRuleSaved}:{
             disabled={!canEdit} value={baseMoney} maxLength={12}
             onChange={e=>setBaseMoney(e.target.value)}/>
         </label>
-        <label>Carência (dias)
-          <input aria-label="Carência em dias" type="number" min={0} max={90} step={1}
-            disabled={!canEdit} value={rule.hold_days}
-            onChange={e=>setRule(v=>({...v,hold_days:e.target.valueAsNumber}))}/>
-        </label>
+        <fieldset className="vf-hold">
+          <legend>Quando os pontos ficam disponíveis?</legend>
+          <div className="vf-hold-options" role="radiogroup" aria-label="Carência dos pontos">
+            {HOLD_PRESETS.map(option=><button key={option.days} type="button" role="radio"
+              aria-checked={rule.hold_days===option.days} disabled={!canEdit}
+              className={rule.hold_days===option.days?"is-selected":""}
+              onClick={()=>setRule(v=>({...v,hold_days:option.days}))}>
+              <b>{option.label}</b><small>{option.hint}</small>
+            </button>)}
+          </div>
+          <label className="vf-hold-custom">Outro prazo (dias)
+            <input aria-label="Carência em dias" type="number" min={0} max={90} step={1}
+              disabled={!canEdit} value={Number.isNaN(rule.hold_days)?"":rule.hold_days}
+              onChange={e=>setRule(v=>({...v,hold_days:e.target.valueAsNumber}))}/>
+          </label>
+          <p className="vf-hold-explain" aria-live="polite">{holdExplanation(rule.hold_days)}</p>
+        </fieldset>
         <label>Validade após liberação (dias)
           <input aria-label="Validade em dias" type="number" min={1} max={1095} step={1}
             disabled={!canEdit} value={rule.validity_days}
@@ -88,12 +113,13 @@ export default function PointRuleDraftEditor({tenantId,role,onRuleSaved}:{
         </label>
         <div className="vf-rule-summary"><CheckCircle2 size={18}/>
           <span>Regra simulada: <strong>{rule.points} ponto(s) a cada {money}</strong> de compra elegível.
-            Saldo ficará pendente por {rule.hold_days} dia(s), se a regra for publicada no futuro.</span>
+            {rule.hold_days===0?" Pontos liberados na hora,":` Pontos liberados ${rule.hold_days} dia(s) após a compra paga,`} se a regra for publicada no futuro.</span>
         </div>
         <div className="vf-sales-form-bottom">
           <p><ShieldCheck size={14}/> {version===null?"Nenhuma regra salva.":"Versão de rascunho "+version+"."}
             {" "}Sem ativação financeira, resgates ou créditos automáticos.</p>
-          {canEdit&&<button type="submit" className="portal-primary" disabled={busy||baseCents===null}>
+          {canEdit&&<button type="submit" className="portal-primary"
+            disabled={busy||baseCents===null||!Number.isInteger(rule.hold_days)||rule.hold_days<0||rule.hold_days>90}>
             <Settings2 size={17}/>{busy?"Salvando…":"Salvar rascunho"}
           </button>}
         </div>

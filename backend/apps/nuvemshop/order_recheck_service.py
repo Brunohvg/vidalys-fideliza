@@ -4,6 +4,7 @@ A plataforma relata payment_status, mas não prova captura PSP. Nenhuma função
 aqui concede pontos, cashback ou marca LoyaltyVoucher como redeemed.
 """
 import hashlib
+import logging
 import json
 from decimal import Decimal, InvalidOperation
 
@@ -24,6 +25,58 @@ from .order_readonly import (
 from .order_webhook_models import OrderWebhookEvent
 from .scopes import has_order_access
 from .security import config, decrypt_token
+
+
+logger = logging.getLogger(__name__)
+
+
+class ClubRetry(RuntimeError):
+    """Clube do site não processou o pedido: a tarefa repete (nunca marca "checked" por cima)."""
+
+
+def _order_status(summary):
+    from apps.sales.models import SaleRecord
+    if summary["review_status"] in ("blocked_refund", "blocked_chargeback"):
+        return SaleRecord.OrderStatus.REFUNDED
+    if summary["order_status"] == "cancelled" or summary["review_status"] == "blocked_cancelled":
+        return SaleRecord.OrderStatus.CANCELLED          # inclui pagamento anulado (voided)
+    if summary["payment_status"] == "paid":
+        return SaleRecord.OrderStatus.PAID
+    return SaleRecord.OrderStatus.PENDING
+
+
+def _run_club(*, event, tenant, order, grant=False, profile=None):
+    """Clube no site em duas etapas da reconsulta:
+
+    1) grant=False, logo após conferir loja e pedido: só BAIXAS (cupom do clube usado, estorno,
+       devolução). Não depende de cadastro nem de titularidade: saldo já emitido não pode
+       ficar sem baixa por um telefone mal digitado.
+    2) grant=True, depois que identidade e titularidade passaram: concede o saldo novo.
+       Contato contraditório ou violação de titularidade param antes e nada é concedido.
+
+    Falha em qualquer etapa fica registrada (status "club_retry") e sobe para a tarefa repetir.
+    """
+    from apps.sales.models import CounterPilot
+    if not CounterPilot.objects.filter(tenant=tenant).exists():
+        return None
+    summary = summarize_order(order, order_id=event.order_id)
+    if summary["currency"] != "BRL":
+        return None
+    try:
+        from apps.sales.online import handle_order
+        with transaction.atomic():
+            result = handle_order(tenant=tenant, order=order, order_id=event.order_id,
+                                  status=_order_status(summary), total_cents=summary["reported_total_cents"],
+                                  profile=profile if grant else None, grant=grant, require_paid_at=True)
+    except Exception:
+        NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
+            "status": "club_retry", "checked_at": timezone.now()})
+        logger.warning("clube no site: pedido pendente de reprocessamento")
+        raise ClubRetry("club_pending") from None
+    if grant and "paid_at_missing" in (result or []):
+        # Pedido pago sem data de pagamento confiável: não concede sozinho, vai para conferência.
+        raise RecheckBlocked("Pedido pago sem data de pagamento: conferir antes de dar saldo.")
+    return result
 
 
 class RecheckBlocked(ValueError):
@@ -178,7 +231,7 @@ def _paid_coupon_from_order(*, event, order, sale, profile):
     return "applied_pending_independent_capture"
 
 
-def recheck_order_event(*, event_id, opener=None, pause=None):
+def recheck_order_event(*, event_id, opener=None, pause=None, reprocess=False):
     """Consulta exclusiva do serviço servidor; reexecutável por inbox idempotente."""
     if not (settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
             and settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED
@@ -197,7 +250,9 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     if not installed or not has_order_access(installed.scope, preview_enabled=True):
         raise RecheckBlocked("Escopo read_orders ausente")
     existing = NuvemshopOrderRecheck.objects.filter(event=event).first()
-    if existing and existing.status == "checked":
+    # reprocess: crédito desde a adesão relê um pedido já conferido pelo MESMO caminho
+    # (tudo aqui é idempotente: baixa, concessão e ingestão não se repetem).
+    if existing and existing.status == "checked" and not reprocess:
         return "already_checked"
     kwargs = {"opener": opener}
     if pause is not None:
@@ -212,6 +267,7 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
         and safe_id(order["store_id"]) != event.store_id
     ):
         raise RecheckBlocked("OAuth retornou pedido de outra loja")
+    _run_club(event=event, tenant=tenant, order=order)
     incident = check_paid_coupon_ownership(event=event, order=order, cfg=cfg)
     if incident in ("ownership_violation","requires_review"):
         NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
@@ -222,19 +278,16 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
         # An external discount may have been consumed, but ZERO loyalty
         # points/cashback are issued to either shopper or voucher issuer.
         return incident
+    # Clube no site, etapa 2: titularidade conferida -> concede com a regra de identidade do
+    # CLUBE (e-mail confirmado + celular que não desminta). Não depende da conferência estrita
+    # de contatos do motor antigo logo abaixo, que recusa telefone sem +55.
+    _run_club(event=event, tenant=tenant, order=order, grant=True)
     identity, profile = _buyer_identity(order, tenant)
     summary = summarize_order(order, order_id=event.order_id,
                               participant_verified=profile is not None)
     if summary["currency"] != "BRL":
         raise RecheckBlocked("Somente BRL pode ser normalizado")
-    if summary["review_status"] in ("blocked_refund", "blocked_chargeback"):
-        status = SaleRecord.OrderStatus.REFUNDED
-    elif summary["order_status"] == "cancelled":
-        status = SaleRecord.OrderStatus.CANCELLED
-    elif summary["payment_status"] == "paid":
-        status = SaleRecord.OrderStatus.PAID
-    else:
-        status = SaleRecord.OrderStatus.PENDING
+    status = _order_status(summary)
     if not identity:
         NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
             "status": "needs_identity", "checked_at": timezone.now(),

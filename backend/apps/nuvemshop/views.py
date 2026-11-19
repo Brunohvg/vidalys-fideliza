@@ -1,4 +1,5 @@
 """OAuth restrito e leitura de amostra: não cria nem altera produtos ou créditos."""
+import logging
 import secrets
 from django.conf import settings
 from .scopes import has_product_access, has_customer_access, has_order_access
@@ -23,10 +24,13 @@ from apps.catalog.reconciliation import InvalidSnapshot, normalize_products, rec
 from apps.costs.models import CostItem
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation, OAuthAttempt
+from .order_readonly import REFUSED_DETAIL
 from .provider import OAuthExchangeError, exchange_code
 from .security import (AUTHORIZE_HOST, OAuthConfigurationError, config,
                        decrypt_token, digest, encrypt_token)
 
+
+logger = logging.getLogger(__name__)
 
 def member_for(user, tenant_id):
     return get_object_or_404(
@@ -191,6 +195,14 @@ class OAuthStartView(APIView):
         return response
 
 
+def _queue_webhooks(tenant_id):
+    try:
+        from .tasks import ensure_order_webhooks
+        ensure_order_webhooks.delay(str(tenant_id))
+    except Exception:
+        logger.warning("nuvemshop order_webhooks enqueue_failed tenant=%s", tenant_id)
+
+
 @never_cache
 @require_GET
 def oauth_callback(request):
@@ -262,8 +274,17 @@ def oauth_callback(request):
                 tenant.platform = "nuvemshop"
                 tenant.external_store_id = received["store_id"]
                 tenant.save(update_fields=["platform", "external_store_id", "updated_at"])
+            # Sem os avisos de pedido a loja nunca informa pago/cancelado: cadastra o que faltar,
+            # no worker isolado, depois de gravar a instalação. Falha aqui não desfaz a conexão.
+            if getattr(settings, "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", False):
+                transaction.on_commit(lambda: _queue_webhooks(tenant.pk))
         return _safe_result("connected", attempt.tenant_id)
-    except (OAuthExchangeError, OAuthConfigurationError, IntegrityError, Tenant.DoesNotExist):
+    except OAuthExchangeError as exc:
+        logger.warning("nuvemshop oauth exchange refused tenant=%s reason=%s", attempt.tenant_id, exc)
+        # O app pediu permissões de escrita: a Nuvemshop já trocou o token, mas
+        # o sistema não guarda credencial com mais poder do que o aprovado.
+        return _safe_result("scopes" if "Permissões" in str(exc) else "failed")
+    except (OAuthConfigurationError, IntegrityError, Tenant.DoesNotExist):
         return _safe_result("failed")
 
 
@@ -331,7 +352,10 @@ class LiveCatalogPreviewView(APIView):
             return response
         except OAuthConfigurationError:
             return Response({"detail": "Chave de token indisponível."}, status=503)
-        except CatalogReadError:
+        except CatalogReadError as exc:
+            logger.warning("nuvemshop catalog preview failed tenant=%s reason=%s", tenant_id, exc)
+            if "(HTTP 401)" in str(exc) or "(HTTP 403)" in str(exc):
+                return Response({"detail": REFUSED_DETAIL, "reconnect_required": True}, status=409)
             return Response({"detail": "Falha na leitura da Nuvemshop; tente novamente."}, status=502)
         except InvalidSnapshot:
             return Response({"detail": "Página incompatível com a amostra limitada; revise os dados."}, status=422)

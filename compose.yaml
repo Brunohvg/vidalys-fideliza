@@ -52,6 +52,8 @@ services:
       FIDELIZA_ENVIRONMENT: ${FIDELIZA_ENVIRONMENT:-unconfigured}
       FIDELIZA_PILOT_ACTIVATION_APPROVAL: ${FIDELIZA_PILOT_ACTIVATION_APPROVAL:-}
       FIDELIZA_DEPLOYED_SHA: ${FIDELIZA_DEPLOYED_SHA:-}
+      # 1 somente na janela de migração, depois do backup. Padrão 0: API só confere.
+      FIDELIZA_APPLY_MIGRATIONS: ${FIDELIZA_APPLY_MIGRATIONS:-0}
       FIDELIZA_QA_ALLOWED_TENANT_IDS: ${FIDELIZA_QA_ALLOWED_TENANT_IDS:-}
       # Bloqueio de inscrições com PII até revisão e autorização da homologação.
       FIDELIZA_PUBLIC_SIGNUP_ENABLED: ${FIDELIZA_PUBLIC_SIGNUP_ENABLED:-0}
@@ -75,6 +77,13 @@ services:
       - |
         # Migrations are operator-controlled: backup + restore verification first.
         # If a deploy occurs too early, remain unhealthy instead of changing data.
+        # O worker depende da API saudável, então não serve para migrar. Após o
+        # backup, o operador liga FIDELIZA_APPLY_MIGRATIONS=1, faz Redeploy e
+        # volta para 0 assim que a API ficar saudável.
+        if [ "$${FIDELIZA_APPLY_MIGRATIONS:-0}" = "1" ]; then
+          echo "FIDELIZA_APPLY_MIGRATIONS=1: aplicando migrações autorizadas pelo operador"
+          python manage.py migrate --noinput
+        fi
         python manage.py migrate --check
         exec gunicorn config.wsgi:application --workers 1 --threads 2 --bind 0.0.0.0:8000 --access-logfile - --access-logformat '%(h)s %(U)s %(s)s'
     healthcheck:
@@ -138,10 +147,31 @@ services:
       FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED:-0}
       FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED:-0}
       FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED: ${FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED:-0}
+      # Cupom único do clube no site (criar/apagar). Requer write_coupons autorizado pela loja.
+      FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED: ${FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED:-0}
     depends_on:
       api:
         condition: service_healthy
     command: celery -A config worker --loglevel=INFO --concurrency=1 --queues=nuvemshop --hostname=nuvemshop@%h
+    logging: *bounded_logs
+
+  beat:
+    build: ./backend
+    restart: unless-stopped
+    # Agendador Celery (settings.CELERY_BEAT_SCHEDULE). INSTANCIA UNICA: nunca escalar.
+    # So publica tarefas na fila; cada tarefa confere suas flags e vira no-op enquanto
+    # desligada. Sem banco, sem SMTP e sem credenciais Nuvemshop.
+    user: "65534:65534"
+    networks: [app]
+    mem_limit: 128m
+    cpus: 0.10
+    environment:
+      <<: *django_env
+      HOME: /tmp
+    depends_on:
+      api:
+        condition: service_healthy
+    command: celery -A config beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
     logging: *bounded_logs
 
   frontend:

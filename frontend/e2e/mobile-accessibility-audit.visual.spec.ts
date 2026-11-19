@@ -91,7 +91,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
     await page.setViewportSize({width,height:width<=390?700:900});
     await setup(page);
     await page.goto("/app/visao-geral");
-    await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"O que fazer agora"})).toBeVisible();
     await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
     await expect(page.getByText("Recompensas publicadas")).toBeVisible();
     await expect(page.getByText("pontos de pedidos online",{exact:false})).toBeVisible();
@@ -116,9 +116,7 @@ for(const width of [320,360,390,430,768,1024,1440]){
       await opener.click();
     }
     await page.locator(".portal-nav").getByRole("button",{name:"Configurações",exact:true}).click();
-    await expect(page.getByRole("heading",{name:"Aparência do programa"})).toBeVisible();
-    await expect(page.getByRole("heading",{name:"Privacidade dos participantes"})).toBeVisible();
-    await expect(page.getByText("Dados de contato protegidos.",{exact:false})).toBeVisible();
+    await expect(page.getByRole("heading",{name:"Aparência do clube"})).toBeVisible();
     await assertNoHorizontalOverflow(page,"configurações "+width);
     const emailInput=page.getByPlaceholder("atendimento@sualoja.com.br");
     await expect(emailInput).toBeVisible();
@@ -127,10 +125,16 @@ for(const width of [320,360,390,430,768,1024,1440]){
       expect(fontSize,"Safari não deve ampliar a página ao focar o campo")
         .toBeGreaterThanOrEqual(16);
     }
-    const save=page.getByRole("button",{name:"Salvar alterações"});
+    const save=page.getByRole("button",{name:"Salvar aparência"});
     await expect(save).toBeDisabled();
-    const preview=page.locator(".ss-preview-stage");
+    const preview=page.locator(".ss-phone");
     await expect(preview).toBeVisible();
+    await expect(async()=>{
+      await page.getByRole("navigation",{name:"Seções das configurações"}).getByRole("button",{name:/Regulamento e privacidade/}).click();
+      await expect(page.getByRole("heading",{name:"Regulamento e privacidade"})).toBeVisible({timeout:1500});
+    }).toPass();
+    await expect(page.getByText("contato já protegido",{exact:false})).toBeVisible();
+    await assertNoHorizontalOverflow(page,"privacidade "+width);
     await page.screenshot({
       path:testInfo.outputPath("merchant-settings-"+width+".png"),
       fullPage:true,
@@ -144,23 +148,23 @@ test("Cores personalizadas mantêm contraste em fundo claro e escuro",async({pag
   await page.goto("/app/visao-geral");
   await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Configurações",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Aparência do programa"})).toBeVisible();
-  const colors=page.locator(".ss-color-control input[type=color]");
+  await expect(page.getByRole("heading",{name:"Aparência do clube"})).toBeVisible();
+  const colors=page.locator(".ss-swatch-custom input[type=color]");
   await expect(colors).toHaveCount(2);
   await colors.nth(0).fill("#ffffff");
-  await expect.poll(()=>page.locator(".ss-preview-stage").evaluate(
+  await expect.poll(()=>page.locator(".ss-phone").evaluate(
     element=>getComputedStyle(element).color
   )).toBe("rgb(0, 0, 0)");
   await colors.nth(0).fill("#000000");
-  await expect.poll(()=>page.locator(".ss-preview-stage").evaluate(
+  await expect.poll(()=>page.locator(".ss-phone").evaluate(
     element=>getComputedStyle(element).color
   )).toBe("rgb(255, 255, 255)");
   await colors.nth(1).fill("#111111");
-  await expect.poll(()=>page.locator(".ss-preview-icon").evaluate(
+  await expect.poll(()=>page.locator(".ss-phone-btn").evaluate(
     element=>getComputedStyle(element).color
   )).toBe("rgb(255, 255, 255)");
   await colors.nth(1).fill("#ffffff");
-  await expect.poll(()=>page.locator(".ss-preview-icon").evaluate(
+  await expect.poll(()=>page.locator(".ss-phone-btn").evaluate(
     element=>getComputedStyle(element).color
   )).toBe("rgb(0, 0, 0)");
   await assertNoHorizontalOverflow(page,"prévia com cores personalizadas");
@@ -200,43 +204,43 @@ for(const width of [320,390,768,1440]){
     }));
     await page.goto("/app/visao-geral");
     const screens=[
-      ["Programa","Seu programa de fidelidade."],
-      ["Clientes","Participantes do clube."],
-      ["Vendas","Pedidos e vendas."],
-      ["Campanhas","Uma campanha em poucos passos."],
-      ["Resultados","Resultados que importam."],
+      ["Meu clube","Como seu clube funciona"],
+      ["Clientes","Quem faz parte do clube"],
+      ["Vendas","Vendas"],
+      ["Campanhas","Dê um motivo para voltar"],
+      ["Resultados","O que o clube trouxe"],
       ["Custo dos benefícios","Quanto custa meu programa?"],
-      ["Custos por SKU","Conheça o custo antes do benefício."],
+      ["Custos dos produtos","Conheça o custo antes do benefício."],
       ["Conciliação","Valide variantes antes de importar."],
-      ["Configurações","Sua loja, do seu jeito."],
+      ["Configurações","Sua loja, do seu jeito"],
     ] as const;
+    const toolPaths:Record<string,string>={"Custo dos benefícios":"/app/ferramentas/margem",
+      "Custos dos produtos":"/app/ferramentas/custos","Conciliação":"/app/ferramentas/conciliacao"};
     for(const [nav,title] of screens){
-      if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-      if(["Campanhas","Resultados","Custo dos benefícios","Custos por SKU","Conciliação"].includes(nav)){
-        const group=page.locator(".portal-advanced-menu");
-        if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))
-          await group.locator("summary").click();
+      if(toolPaths[nav]){await page.goto(toolPaths[nav]);}
+      else{
+        if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
+        await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+nav+"(?:\\s|$)")}).click();
       }
-      await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+nav+"(?:\\s|$)")}).click();
       await expect(page.getByRole("heading",{level:1,name:title})).toBeVisible();
       if(nav==="Configurações"){
         await expect(page.getByRole("heading",{name:"Regras do clube"})).toHaveCount(0);
+        await page.getByRole("navigation",{name:"Seções das configurações"}).getByRole("button",{name:/Página do clube/}).click();
         await expect(page.getByRole("link",{name:"Abrir página do cliente"}))
           .toHaveAttribute("href","/clube/loja-auditoria");
       }
       if(nav==="Vendas"){
-        await expect(page.getByRole("heading",{name:"Informações da compra"})).toBeVisible();
-        await expect(page.getByLabel("Qual foi o valor?")).toBeVisible();
+        await expect(page.getByRole("form",{name:"Registrar venda no balcão"})).toBeVisible();
+        await expect(page.getByLabel("Valor da compra")).toBeVisible();
       }
       if(nav==="Resultados"){
-        await expect(page.getByRole("heading",{name:"Seu clube em números que fazem sentido."}))
-          .toBeVisible();
-        await expect(page.getByText("Ainda não medido")).toBeVisible();
+        await expect(page.locator(".vr-kpi")).toHaveCount(4);
+        await expect(page.getByText("não provam que o clube causou as vendas")).toBeVisible();
       }
       await assertNoHorizontalOverflow(page,nav+" "+width);
-      if(width===390&&["Vendas","Resultados","Programa"].includes(nav)){
+      if(width===390&&["Vendas","Resultados","Meu clube"].includes(nav)){
         await page.screenshot({path:info.outputPath(
-          "audit-"+nav.toLowerCase()+"-"+width+".png"),fullPage:true});
+          "audit-"+nav.toLowerCase().replace(/\s+/g,"-")+"-"+width+".png"),fullPage:true});
       }
     }
   });

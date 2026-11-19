@@ -25,13 +25,11 @@ async function mockMerchant(page:Page) {
       mode:"read_products_only",ready_for_write:false})
   }));
 }
+const toolPaths:Record<string,string>={"Custo dos benefícios":"/app/ferramentas/margem",
+  "Custos dos produtos":"/app/ferramentas/custos","Conciliação":"/app/ferramentas/conciliacao"};
 async function nav(page:Page,name:string,width:number){
+  if(toolPaths[name]){await page.goto(toolPaths[name]);return;}
   if(width<=1020) await page.getByRole("button",{name:"Abrir menu"}).click();
-  if(["Campanhas","Resultados","Custo dos benefícios","Custos por SKU","Conciliação"].includes(name)){
-   const group=page.locator(".portal-advanced-menu");
-   if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))
-     await group.locator("summary").click();
-  }
   await page.locator("#portal-sidebar").getByRole("button",{name:new RegExp("^"+name)}).click();
 }
 for(const width of [390,768,1440]) {
@@ -40,14 +38,14 @@ for(const width of [390,768,1440]) {
       await page.setViewportSize({width,height:width===390?844:900});
       await mockMerchant(page);
       await page.goto("/app/visao-geral");
-      await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
-      await expect(page.getByRole("heading",{name:"Olá! Seu clube está ganhando forma."})).toBeVisible();
-      await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes ativos");
+      await expect(page.getByRole("heading",{name:"Seu clube hoje"})).toBeVisible();
+      await expect(page.getByRole("heading",{name:"O que fazer agora"})).toBeVisible();
+      await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toContainText("Participantes");
       await expect(page.getByRole("heading",{name:"PRÓXIMA AÇÃO RECOMENDADA"})).toHaveCount(0);
 
       await nav(page,"Clientes",width);
-      await expect(page.getByRole("heading",{name:"Pessoas no clube",exact:true})).toBeVisible();
-      const enrollmentAction=page.getByRole("button",{name:"Gerenciar adesões"});
+      await expect(page.getByRole("heading",{name:"Quem faz parte do clube",exact:true})).toBeVisible();
+      const enrollmentAction=page.getByRole("button",{name:"Cadastrar cliente"});
       await expect(enrollmentAction).toBeVisible();
       const appearance=await enrollmentAction.evaluate(el=>{
         const css=getComputedStyle(el);
@@ -56,9 +54,9 @@ for(const width of [390,768,1440]) {
       expect(["flex","inline-flex"]).toContain(appearance.display);
       expect(appearance.radius).not.toBe("0px");
       expect(appearance.height).toBeGreaterThanOrEqual(44);
-      await expect(page.getByText("Sua comunidade começa com o primeiro aceite")).toBeVisible();
-      await expect(page.getByText("Somente quem confirmou a adesão ao clube aparece aqui.",{exact:false})).toBeVisible();
-      expect(await page.getByRole("button",{name:/Cadastrar cliente/}).count()).toBe(0);
+      await expect(page.getByText("Seu clube começa com o primeiro cliente")).toBeVisible();
+      await expect(page.getByText("Só entra quem aceita o regulamento.",{exact:false})).toBeVisible();
+      await expect(page.getByRole("button",{name:"Convite e adesões"})).toBeVisible();   // convite continua a um toque
       const clientsGeometry=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(clientsGeometry.doc).toBeLessThanOrEqual(clientsGeometry.width+1);
       await page.evaluate(()=>window.scrollTo(0,0));
@@ -66,30 +64,31 @@ for(const width of [390,768,1440]) {
       await page.screenshot({path:info.outputPath("new-clients-"+width+".png"),fullPage:true});
 
       await nav(page,"Campanhas",width);
-      await expect(page.getByRole("heading",{name:"O que você quer incentivar?"})).toBeVisible();
-      await page.getByRole("button",{name:/Reativar clientes/}).click();
-      await page.getByRole("button",{name:"Continuar"}).click();
-      await expect(page.getByRole("heading",{name:"Qual benefício você gostaria de oferecer?"})).toBeVisible();
+      await page.getByRole("button",{name:"Nova campanha"}).click();
+      await expect(page.getByRole("heading",{name:"Qual é o objetivo?"})).toBeVisible();
+      await page.getByRole("button",{name:/Trazer de volta/}).click();
+      await expect(page.getByRole("heading",{name:"Quanto de bônus?"})).toBeVisible();
       await page.getByRole("spinbutton",{name:"Pontos extras por pessoa"}).fill("20");
       await page.getByRole("spinbutton",{name:"Número máximo de pessoas"}).fill("100");
-      await page.getByRole("button",{name:"Revisar campanha"}).click();
-      await expect(page.getByRole("heading",{name:"Sua campanha, antes de publicar"})).toBeVisible();
-      await expect(page.getByText("2.000 pontos",{exact:false})).toBeVisible();
-      await expect(page.getByText("A campanha não envia e-mail",{exact:false})).toBeVisible();
+      await page.getByRole("button",{name:"Próximo"}).click();
+      await page.getByRole("button",{name:"Próximo"}).click();
+      await expect(page.getByRole("heading",{name:"Revise antes de publicar"})).toBeVisible();
+      await expect(page.getByText("20 pontos extras por pessoa",{exact:false})).toBeVisible();
+      await expect(page.getByText("Nenhum ponto é creditado e nada é enviado",{exact:false})).toBeVisible();
       const geom=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,width:innerWidth}));
       expect(geom.doc).toBeLessThanOrEqual(geom.width+1);
       await page.evaluate(()=>window.scrollTo(0,0));
       await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
       await page.screenshot({path:info.outputPath("new-campaign-"+width+".png"),fullPage:true});
-      expect(await page.getByRole("button",{name:/Publicar|Ativar/}).count()).toBe(0);
+      expect(await page.getByRole("button",{name:/Ativar/}).count()).toBe(0);
     });
 }
 test("Ações da loja não fabricam métricas de vendas e encaminham a tarefas",async ({page})=>{
   await mockMerchant(page);
   await page.goto("/app/visao-geral");
   await expect(page.getByRole("region",{name:"Indicadores reais do clube"})).toBeVisible();
-  await page.getByRole("button",{name:"Ver benefícios"}).click();
-  await expect(page.getByRole("heading",{name:"Seu clube em três passos."})).toBeVisible();
+  await page.getByRole("button",{name:/Recompensas publicadas/}).click();
+  await expect(page.getByRole("tab",{name:"2. Como usar"})).toHaveAttribute("aria-selected","true");
 });
 
 
@@ -134,13 +133,13 @@ for(const width of [390,1440]){
   }));
   await page.goto("/app/visao-geral");
   await nav(page,"Clientes",width);
-  await expect(page.getByRole("heading",{name:"Pessoas no clube"})).toBeVisible();
-  const cards=page.locator(".vf-clients-mobile-list");
-  const table=page.locator(".xp-table-wrap");
+  await expect(page.getByRole("heading",{name:"Quem faz parte do clube"})).toBeVisible();
+  const cards=page.locator(".vf-clients-cards");
+  const table=page.locator(".vf-clients-table");
   if(width===390){
    await expect(cards).toBeVisible();
    await expect(table).toBeHidden();
-   await expect(cards.locator(".vf-clients-mobile-card")).toHaveCount(1);
+   await expect(cards.locator("li")).toHaveCount(1);
   }else{
    await expect(cards).toBeHidden();
    await expect(table).toBeVisible();
@@ -160,8 +159,8 @@ for(const width of [390,1440]){
   }));
   await page.goto("/app/visao-geral");
   await nav(page,"Resultados",width);
-  await expect(page.getByRole("heading",{name:"Seu clube em números que fazem sentido."})).toBeVisible();
-  await expect(page.locator(".vf-results-stats article")).toHaveCount(3);
+  await expect(page.getByRole("heading",{name:"O que o clube trouxe"})).toBeVisible();
+  await expect(page.locator(".vr-kpi")).toHaveCount(4);
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
  });

@@ -5,6 +5,7 @@ este modelo permanece vazio. Não há geração automática de membros.
 """
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 
@@ -17,6 +18,7 @@ class ProgramParticipant(models.Model):
     class ConsentChannel(models.TextChoices):
         CUSTOMER_PORTAL = "customer_portal", "Portal do participante"
         STOREFRONT_OPT_IN = "storefront_opt_in", "Aceite na vitrine"
+        MERCHANT_ASSISTED = "merchant_assisted", "Cadastro pela loja com autorização da cliente"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE,
@@ -25,6 +27,9 @@ class ProgramParticipant(models.Model):
     external_customer_id = models.CharField(max_length=64, blank=True, null=True)
     display_name = models.CharField(max_length=140, blank=True, default="")
     contact_email = models.EmailField(blank=True, default="")
+    # Celular: só HMAC por loja + 4 últimos dígitos (ver phone.py). Não é contato comprovado.
+    phone_digest = models.CharField(max_length=64, blank=True, default="")
+    phone_last4 = models.CharField(max_length=4, blank=True, default="")
     consent_at = models.DateTimeField()
     consent_channel = models.CharField(max_length=32, choices=ConsentChannel.choices)
     terms_version = models.CharField(max_length=40)
@@ -39,7 +44,12 @@ class ProgramParticipant(models.Model):
             models.UniqueConstraint(
                 fields=["tenant", "external_customer_id"],
                 name="loyalty_tenant_customer_unique",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["tenant", "phone_digest"],
+                condition=~models.Q(phone_digest=""),
+                name="participant_phone_once",
+            ),
         ]
         indexes = [
             models.Index(fields=["tenant", "status", "joined_at"], name="loyalty_tenant_member_idx"),
@@ -47,3 +57,21 @@ class ProgramParticipant(models.Model):
 
 # Importados aqui para reconhecimento do Django e migrações.
 from .enrollment_models import ProgramTerms, EnrollmentInvite, EnrollmentSubmission, EnrollmentEmailChallenge, EnrollmentCustomerLink, MemberAccessChallenge  # noqa: E402,F401
+
+
+class ParticipantRemoval(models.Model):
+    """Registro auditável de uma remoção feita pela loja: quem, quando, por quê e o que foi feito.
+
+    data_result: "erased" (dados pessoais apagados ou anonimizados por completo) ou
+    "retained" (algo precisou ficar por vínculo protegido; ver details). Sem dados pessoais.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="participant_removals")
+    participant = models.OneToOneField(ProgramParticipant, on_delete=models.PROTECT, related_name="removal")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    reason = models.CharField(max_length=240, blank=True, default="")
+    reversed_units = models.PositiveIntegerField(default=0)
+    coupons_cancelled = models.PositiveIntegerField(default=0)
+    data_result = models.CharField(max_length=16, default="erased")
+    details = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)

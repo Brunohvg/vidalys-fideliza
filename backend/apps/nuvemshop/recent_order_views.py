@@ -8,7 +8,11 @@ from apps.participants.models import ProgramParticipant
 from apps.tenants.models import Tenant, TenantMembership
 from .models import NuvemshopInstallation
 from .order_preview_views import OrderPreviewView
-from .order_readonly import OrderReadError, safe_id, read_orders_page, summarize_order
+import logging
+
+from .order_readonly import REFUSED_DETAIL, OrderReadError, access_refused, safe_id, read_orders_page, summarize_order
+
+logger = logging.getLogger(__name__)
 from .scopes import has_order_access, has_customer_access
 from .security import OAuthConfigurationError, config, decrypt_token
 from .views import member_for
@@ -38,7 +42,13 @@ class RecentOrdersPreviewView(APIView):
                 or installed.store_id!=str(tenant.external_store_id)
                 or not has_order_access(installed.scope,preview_enabled=True)):
             return answer({"detail":"Autorize a leitura de pedidos nesta loja."},409)
+        # Protege a API da loja (1 consulta a cada 20 s), mas quem abre a aba de
+        # novo recebe a última lista em vez de um erro. A lista não tem PII.
+        cached_key=f"fideliza:recent-orders:last:{tenant.pk}"
         if not cache.add(f"fideliza:recent-orders:{tenant.pk}",1,timeout=20):
+            cached=cache.get(cached_key)
+            if cached:
+                return answer({**cached,"cached":True})
             return answer({"detail":"Consulta recente. Aguarde para atualizar."},429)
         try:
             token=decrypt_token(installed.token_ciphertext,cfg.token_keys)
@@ -57,6 +67,10 @@ class RecentOrdersPreviewView(APIView):
                 tenant=tenant,status=ProgramParticipant.Status.ACTIVE,
                 external_customer_id__in=ids,
             ).values_list("external_customer_id",flat=True)) if ids else set()
+            from apps.points.models import PointLot
+            granted=dict(PointLot.objects.filter(
+                tenant=tenant,source_reference__in=[f"site:{safe_id(i.get('id'))}" for i in source if safe_id(i.get("id"))],
+            ).values_list("source_reference","points_issued"))
             items=[]
             for item in source:
                 order_id=safe_id(item.get("id"))
@@ -64,18 +78,28 @@ class RecentOrdersPreviewView(APIView):
                     raise OrderReadError("Pedido sem ID válido")
                 customer=item.get("customer")
                 cid=safe_id(customer.get("id")) if isinstance(customer,dict) else None
-                items.append(summarize_order(
+                summary=summarize_order(
                     item,order_id=order_id,
                     participant_verified=bool(cid and cid in linked),
-                ))
-            return answer({
+                )
+                # Quanto o clube já concedeu por este pedido (pontos, ou centavos no giftback).
+                summary["club_units"]=granted.get(f"site:{order_id}",0)
+                if summary["club_units"]:
+                    summary["participant_verified"]=True
+                items.append(summary)
+            payload={
                 "mode":"read_only","source":"nuvemshop_live_read_only",
                 "items":items,"page":1,"page_size":10,
                 "points_credited":False,"coupons_created":False,
                 "read_only":True,
                 "note":"Consulta da primeira página da loja; pagamento não comprova captura financeira.",
-            })
+            }
+            cache.set(cached_key,payload,timeout=120)
+            return answer({**payload,"cached":False})
         except OAuthConfigurationError:
             return answer({"detail":"Credencial da loja indisponível."},503)
-        except (ValueError,OrderReadError):
+        except (ValueError,OrderReadError) as exc:
+            logger.warning("nuvemshop recent orders failed tenant=%s reason=%s", tenant.pk, exc)
+            if access_refused(exc):
+                return answer({"detail":REFUSED_DETAIL,"reconnect_required":True},409)
             return answer({"detail":"Não foi possível consultar os pedidos desta loja."},502)

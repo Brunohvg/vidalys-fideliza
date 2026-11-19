@@ -21,8 +21,9 @@ from .models import Tenant, TenantMembership
 BRANDING_FIELDS = ("program_name", "primary_color", "accent_color", "support_email")
 BRANDING_DEFAULTS = {
     "program_name": "",
-    "primary_color": "#087F79",
-    "accent_color": "#37D5BB",
+    # Loja que nunca salvou a aparência usa as cores Vidalys, não o teal legado.
+    "primary_color": "#6A3DF0",
+    "accent_color": "#FFC857",
     "support_email": "",
 }
 
@@ -152,3 +153,36 @@ class TenantSettingsView(APIView):
             "version": current.version, "branding": _display(tenant, current),
             "updated": True,
         }))
+
+
+class TenantAddressView(APIView):
+    """Troca o endereço público do clube. O antigo continua funcionando."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["post", "options"]
+
+    @transaction.atomic
+    def post(self, request, tenant_id):
+        from .club_address import address_taken, normalize_address
+        from .models import TenantSlugAlias
+        member = get_object_or_404(TenantMembership, tenant_id=tenant_id, user=request.user)
+        if member.role not in ("owner", "admin"):
+            return _no_cache(Response({"detail": "Somente administradores podem alterar a loja."},
+                                      status=403))
+        if not isinstance(request.data, dict) or set(request.data) != {"slug"}:
+            return _no_cache(Response({"detail": "Envie apenas o novo endereço."}, status=400))
+        try:
+            value = normalize_address(request.data["slug"])
+        except ValueError as exc:
+            return _no_cache(Response({"detail": str(exc)}, status=400))
+        tenant = Tenant.objects.select_for_update().get(pk=tenant_id)
+        if value == tenant.slug:
+            return _no_cache(Response({"slug": tenant.slug, "updated": False}))
+        if address_taken(value, tenant_id=tenant.pk):
+            return _no_cache(Response({"detail": "Este endereço já está em uso. Escolha outro."},
+                                      status=409))
+        # Voltar a um endereço antigo da própria loja: ele deixa de ser apelido.
+        TenantSlugAlias.objects.filter(slug=value, tenant=tenant).delete()
+        TenantSlugAlias.objects.get_or_create(slug=tenant.slug, defaults={"tenant": tenant})
+        tenant.slug = value
+        tenant.save(update_fields=["slug", "updated_at"])
+        return _no_cache(Response({"slug": tenant.slug, "updated": True}))

@@ -279,12 +279,28 @@ class OrderPreviewApiTests(TestCase):
         self.assertEqual(reader.call_args.kwargs["store_id"],54321)
         self.assertNotIn("secret@example.invalid",response.content.decode())
         with patch("apps.nuvemshop.recent_order_views.config",return_value=self.cfg):
-            self.assertEqual(self.client.get(url,secure=True).status_code,429)
+            again=self.client.get(url,secure=True)
+        # Dentro de 20 s não consulta a loja de novo: devolve a última lista.
+        self.assertEqual(again.status_code,200)
+        self.assertTrue(again.json()["cached"])
+        self.assertEqual(reader.call_count,1)
         self.client.force_login(self.analyst)
         self.assertEqual(self.client.get(url,secure=True).status_code,403)
         self.client.force_login(self.foreign)
         self.assertEqual(self.client.get(url,secure=True).status_code,404)
         self.assertFalse(CashbackEvent.objects.exists())
+
+    def test_refused_token_asks_to_reconnect_instead_of_generic_error(self):
+        from .order_readonly import OrderReadError
+        url=reverse("nuvemshop-recent-orders-preview",kwargs={"tenant_id":self.tenant.id})
+        with (patch("apps.nuvemshop.recent_order_views.config",return_value=self.cfg),
+              patch("apps.nuvemshop.recent_order_views.decrypt_token",return_value="synthetic-token-123456"),
+              patch("apps.nuvemshop.recent_order_views.read_orders_page",
+                    side_effect=OrderReadError("Consulta de pedidos indisponível (HTTP 401)"))):
+            response=self.client.get(url,secure=True)
+        self.assertEqual(response.status_code,409)
+        self.assertTrue(response.json()["reconnect_required"])
+        self.assertNotIn("synthetic-token",response.content.decode())
 
     def test_recent_orders_require_scopes_and_readonly_feature(self):
         url=reverse("nuvemshop-recent-orders-preview",kwargs={"tenant_id":self.tenant.id})

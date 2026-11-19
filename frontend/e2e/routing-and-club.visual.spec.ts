@@ -17,16 +17,16 @@ async function mockMerchant(page:Page){
 test("Rotas do lojista suportam deep link, voltar e recarga sem perder a loja",async({page})=>{
   await mockMerchant(page);
   await page.goto("/app/visao-geral");
-  await expect(page.getByRole("heading",{name:"O próximo passo da sua loja."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Seu clube hoje"})).toBeVisible();
   await page.getByRole("button",{name:"Clientes",exact:true}).click();
   await expect(page).toHaveURL(/\/app\/clientes$/);
-  await expect(page.getByRole("heading",{name:"Participantes do clube."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Quem faz parte do clube"})).toBeVisible();
   await page.getByRole("button",{name:"Vendas",exact:true}).click();
   await expect(page).toHaveURL(/\/app\/vendas$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/app\/clientes$/);
   await page.reload();
-  await expect(page.getByRole("heading",{name:"Participantes do clube."})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Quem faz parte do clube"})).toBeVisible();
   await expect(page.getByLabel("Loja selecionada")).toHaveValue(merchant.id);
 });
 
@@ -79,17 +79,15 @@ for(const width of [320,390,768]){
     await expect(vip).toContainText("Prata");
     await expect(vip.getByRole("progressbar",{name:"Progresso para o próximo nível VIP"}))
       .toHaveAttribute("aria-valuenow","45");
-    const wallet=page.getByRole("region",{name:"Resumo da minha carteira"});
+    const wallet=page.getByRole("region",{name:"Seu saldo"});
     await expect(wallet).toContainText("160");
-    await expect(wallet).toContainText("R$ 3,45");
-    const voucher=page.getByRole("region",{name:"Resgate rápido"});
-    await expect(voucher.getByRole("button",{name:"Gerar voucher"})).toBeDisabled();
+    await expect(wallet).toContainText("Saldo em conferência");
     await expect(page.getByRole("region",{name:"Missões do clube"})).toContainText("Perfil confirmado");
-    await page.getByRole("navigation",{name:"Seu clube"}).getByRole("button",{name:"Histórico"}).click();
+    await page.getByRole("navigation",{name:"Seções do clube"}).getByRole("button",{name:"Extrato"}).click();
     await expect(page).toHaveURL(/\/clube\/loja-omnichannel\/historico$/);
     await page.goBack();
     await expect(page).toHaveURL(/\/clube\/loja-omnichannel$/);
-    await expect(page.getByRole("heading",{name:"Recompensas do clube"})).toBeVisible();
+    await expect(page.getByRole("region",{name:"Seu saldo"})).toBeVisible();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth))
       .toBeLessThanOrEqual(1);
     await page.goto("/app/visao-geral");

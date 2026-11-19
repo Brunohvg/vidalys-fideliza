@@ -1,5 +1,8 @@
 import { useState } from "react";
 import MarginSimulator from "./MarginSimulator";
+import {ClaritySeal, ClubHealth, ClubHome, MarginRanking, type ClubInsights, type MerchantInsights} from "./club-differentials";
+import clubFixture from "./club-differentials/fixtures/club-active.json";
+import merchantFixture from "./club-differentials/fixtures/merchant.json";
 import {
   ArrowRight, ArrowUpRight, BarChart3, Check, ChevronDown,
   CircleHelp, Gift, LayoutDashboard, Menu, Plus, Settings2,
@@ -30,6 +33,10 @@ function StatCard({ title, amount, foot, icon: Icon, variant }: {
     <div className="stat-foot"><TrendingUp size={14} /> {foot}</div>
   </article>;
 }
+
+// Dados FICTÍCIOS gerados pelo motor Python (backend/apps/loyalty/engine) — mesmo contrato do produto.
+const demoClub = clubFixture as unknown as ClubInsights;
+const demoMerchant = merchantFixture as unknown as MerchantInsights;
 
 const months = [
   { month: "Mai", count: 37 }, { month: "Jun", count: 49 }, { month: "Jul", count: 42 },
@@ -78,9 +85,9 @@ export default function App() {
         <div className="topbar-right"><a className="demo-return" href="/">Voltar ao Fideliza <ArrowRight size={15}/></a><span className="sample-pill"><span/> DADOS FICTÍCIOS</span><button className="profile" title="Informações do protótipo" onClick={() => setInfo(true)}>VF</button></div>
       </header>
       <div className="content">
-        <div className="intro">
+        <div className={"intro" + (page === "overview" ? " intro-overview" : "")}>
           <div className="intro-copy"><div className="eyebrow">VIDALYS FIDELIZA <span>•</span> DEMONSTRAÇÃO ILUSTRATIVA</div><h1>{page === "overview" ? "Uma experiência de fidelidade que dá vontade de voltar." : title}</h1>
-            <p>{page === "overview" ? "Transforme cada compra em um motivo para voltar. Com controle, clareza e uma experiência que seu cliente merece." : "Uma operação de recompensas transparente, preparada para crescer com a sua loja."}</p></div>
+            <p>{page === "overview" ? "Regras claras para o cliente, custo sob controle para a loja e resultado medido com método." : page === "wallets" ? "Exatamente o que o participante vê no celular: saldo, meta, aviso de vencimento e recompensas." : page === "programs" ? "Regras que o cliente entende e recompensas que cabem na margem da loja." : page === "insights" ? "Indicadores com intervalo de confiança. Sem amostra suficiente, o painel diz “dados insuficientes”." : "Uma operação de recompensas transparente, preparada para crescer com a sua loja."}</p></div>
           {page !== "margin" && <button className="button-primary" onClick={() => page === "overview" ? navigate("programs") : navigate("margin")}><Plus size={18}/>{page === "overview" ? "Explorar programas" : "Simular rentabilidade"}</button>}
         </div>
 
@@ -91,32 +98,48 @@ export default function App() {
             <StatCard title="Recompensas usadas" amount="97" foot="Exemplo ilustrativo" icon={Gift} variant="violet"/>
             <StatCard title="Taxa de recompra" amount="28,6%" foot="Exemplo ilustrativo" icon={TrendingUp} variant="green"/>
           </div>
-          <div className="dashboard-grid">
+          <div className="vfd-insights demo-insights"><ClubHealth data={demoMerchant}/></div>
+          <div className="dashboard-grid demo-overview-grid">
             <section className="panel chart-panel"><div className="panel-header"><div><span className="panel-kicker">RETENÇÃO</span><h2>Clientes voltando a comprar</h2><p>Evolução ilustrativa de recompra</p></div><span className="soft-label">6 meses</span></div>
               <div className="chart" role="img" aria-label="Dados fictícios de evolução mensal de recompra: maio 37, junho 49, julho 42, agosto 63, setembro 58, outubro 83">
                 {months.map(m => <div className="bar-wrap" key={m.month}><div className="bar-track"><div className="bar" style={{ height: String(m.count) + "%" }}/></div><span>{m.month}</span></div>)}
               </div>
             </section>
-            <section className="panel card-feature"><span className="feature-icon"><Gift size={25}/></span><span className="feature-eyebrow">SEU PROGRAMA</span><h2>Fidelize com mais controle</h2><p>Conheça o conceito de pontos e recompensas, com regras claras e histórico de cada benefício.</p><div className="feature-divider"/><div className="feature-row"><Check size={16}/> Pontos com regras definidas</div><div className="feature-row"><Check size={16}/> Resgates controlados</div><div className="feature-row"><Check size={16}/> Foco em margem e recompra</div><button className="feature-button" onClick={() => navigate("programs")}>Explorar estrutura <ArrowUpRight size={16}/></button></section>
+            <section className="panel activity"><div className="panel-header"><div><span className="panel-kicker">ATIVIDADE</span><h2>Movimentações recentes</h2></div><span className="soft-label">Exemplo</span></div>
+              <div className="activity-list">{rows.map(r => <div className="activity-row" key={r.name}><span className="person-avatar">{r.initials}</span><div className="person-info"><b>{r.name}</b><span>{r.kind} · {r.time}</span></div><strong className={r.tone}>{r.amount}</strong></div>)}</div>
+              <button className="feature-button demo-link-button" onClick={() => navigate("wallets")}>Ver o clube do cliente <ArrowUpRight size={16}/></button>
+            </section>
           </div>
-          <section className="panel activity"><div className="panel-header"><div><span className="panel-kicker">ATIVIDADE</span><h2>Movimentações recentes</h2></div><span className="soft-label">Exemplo</span></div>
-            <div className="activity-list">{rows.map(r => <div className="activity-row" key={r.name}><span className="person-avatar">{r.initials}</span><div className="person-info"><b>{r.name}</b><span>{r.kind} · {r.time}</span></div><strong className={r.tone}>{r.amount}</strong></div>)}</div>
-          </section>
         </>}
 
         {page === "programs" && <div className="secondary-grid">
           <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 01</span><div className="program-icon blue"><Wallet size={25}/></div><h2>Desconto na próxima compra</h2><p>Uma recompensa que o participante pode conhecer e, após a homologação, trocar por pontos de compras elegíveis.</p><div className="program-bottom"><span className="soft-label">Exemplo ilustrativo</span><button onClick={() => navigate("margin")}>Simular <ArrowRight size={17}/></button></div></section>
           <section className="panel program-panel"><span className="panel-kicker">MODALIDADE 02</span><div className="program-icon cyan"><Gift size={25}/></div><h2>Pontos de fidelidade</h2><p>Pontos acumulados por compras elegíveis, convertidos em descontos futuros.</p><div className="program-bottom"><span className="soft-label">Em homologação</span><button onClick={() => setInfo(true)}>Entenda <ArrowRight size={17}/></button></div></section>
         </div>}
+        {page === "programs" && <div className="vfd-insights demo-insights"><div className="vfd-insights-grid">
+          <ClaritySeal data={demoMerchant}/><MarginRanking data={demoMerchant}/>
+        </div></div>}
 
-        {page === "wallets" && <div className="wallets-layout">
-          <section className="wallet-demo"><span className="wallet-brand">EXEMPLO DA CARTEIRA DO COMPRADOR</span><span className="wallet-caption">Pontos do exemplo</span><strong>270 <small>pontos</small></strong><span className="wallet-status"><Check size={15}/> Saldo demonstrativo</span><div className="wallet-divider"/><div className="wallet-split"><span>Pontos em análise<b>80</b></span><span>Próximo benefício<b>200 pontos</b></span></div></section>
-          <section className="panel guide"><span className="panel-kicker">EXPERIÊNCIA DO CLIENTE</span><h2>O benefício é simples. A regra é transparente.</h2><p>O participante consulta pontos e recompensas, acompanha as regras e aguarda a ativação segura dos resgates.</p><div className="guide-note"><ShieldCheck size={18}/> Os dados exibidos aqui são fictícios; nenhuma carteira real foi criada.</div></section>
+        {page === "wallets" && <div className="wallets-layout demo-wallets">
+          <div className="demo-phone" aria-label="Clube do participante (exemplo)"><div className="demo-phone-screen"><ClubHome data={demoClub} onRedeem={() => setInfo(true)}/></div></div>
+          <section className="panel guide"><span className="panel-kicker">EXPERIÊNCIA DO CLIENTE</span><h2>O benefício é simples. A regra é transparente.</h2>
+            <p>O participante vê quanto tem, quanto falta para a próxima recompensa e o que vai vencer, sem precisar ler o regulamento inteiro.</p>
+            <div className="demo-example-balance"><span>Pontos do exemplo</span><b>{demoClub.balance?.available ?? 0} pontos</b><em><Check size={14}/> Saldo demonstrativo</em></div>
+            <ul className="demo-diff-list">
+              <li><b>Meta com Margem</b><span>A próxima meta é a recompensa próxima que vale mais para o cliente por real de custo da loja.</span></li>
+              <li><b>Pontos sem Susto</b><span>Um aviso só, no prazo mais urgente, antes de qualquer ponto vencer.</span></li>
+              <li><b>Clube Claro</b><span>“Regras em 30 segundos”, geradas da própria configuração do programa.</span></li>
+              <li><b>Reconhecimento</b><span>Conquistas no clube, com no máximo uma mensagem por semana.</span></li>
+            </ul>
+            <div className="guide-note"><ShieldCheck size={18}/> Os dados exibidos aqui são fictícios; nenhuma carteira real foi criada.</div></section>
         </div>}
 
         {page === "margin" && <MarginSimulator />}
 
-        {page === "insights" && <section className="panel insights"><span className="panel-kicker">INTELIGÊNCIA COMERCIAL</span><h2>Mais do que distribuir descontos.</h2><p>O Vidalys Fideliza acompanhará recorrência, custo dos benefícios e impacto comercial. Nesta versão, os indicadores ainda são demonstrativos.</p><div className="insight-tags"><span>Segunda compra</span><span>Margem após incentivo</span><span>Pontos pendentes</span><span>Retenção por período</span></div><button className="button-primary" onClick={() => navigate("margin")}>Testar simulação <ArrowRight size={17}/></button></section>}
+        {page === "insights" && <>
+          <div className="vfd-insights demo-insights"><ClubHealth data={demoMerchant}/></div>
+          <section className="panel insights"><span className="panel-kicker">INTELIGÊNCIA COMERCIAL</span><h2>Mais do que distribuir descontos.</h2><p>Recompra com intervalo de confiança, custo potencial dos pontos em faixa e efeito medido contra um grupo de controle de mensagens. Nesta demonstração, os números são fictícios.</p><div className="insight-tags"><span>Segunda compra</span><span>Margem após incentivo</span><span>Pontos a vencer</span><span>Grupo de controle</span></div><button className="button-primary" onClick={() => navigate("margin")}>Testar simulação <ArrowRight size={17}/></button></section>
+        </>}
         <div className="prototype-footer"><ShieldCheck size={15}/> Ambiente demonstrativo. Nenhum dado ou operação de loja conectado.</div>
       </div>
     </main>

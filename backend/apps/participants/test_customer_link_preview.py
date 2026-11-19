@@ -56,9 +56,11 @@ class ScopeContractTests(TestCase):
                 }).encode())
         with override_settings(FIDELIZA_NUVEMSHOP_CUSTOMERS_PREVIEW_ENABLED=False,
                                FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=False):
-            with self.assertRaises(OAuthExchangeError):
-                exchange_code("secure-code-123", "11111", "test-client-secret",
-                    opener=OAuthAnswer("read_products,read_customers,read_orders"))
+            # Permissão a mais é guardada, mas não liga a prévia de clientes:
+            # has_customer_access continua exigindo a chave da funcionalidade.
+            result = exchange_code("secure-code-123", "11111", "test-client-secret",
+                opener=OAuthAnswer("read_products,read_customers,read_orders"))
+            self.assertFalse(has_customer_access(result["scope"], customer_preview_enabled=False))
             result = exchange_code("secure-code-123", "11111", "test-client-secret",
                 opener=OAuthAnswer("read_products"))
             self.assertEqual(result["scope"], "read_products")
@@ -69,9 +71,12 @@ class ScopeContractTests(TestCase):
             self.assertEqual(set(result["scope"].split(",")),
                              {"read_products", "read_customers", "read_orders"})
             for scopes in ("write_customers,write_products,write_orders",
-                           "read_customers,write_orders", "write_orders",
-                           "read_products,write_coupons"):
-                with self.subTest(scope=scopes), self.assertRaises(OAuthExchangeError):
+                           "read_customers,write_orders", "read_products,write_coupons"):
+                with self.subTest(scope=scopes):
+                    exchange_code("secure-code-123", "11111", "test-client-secret",
+                                  opener=OAuthAnswer(scopes))
+            for scopes in ("write_coupons", "read_products,bad scope"):
+                with self.subTest(refused=scopes), self.assertRaises(OAuthExchangeError):
                     exchange_code("secure-code-123", "11111", "test-client-secret",
                         opener=OAuthAnswer(scopes))
 
