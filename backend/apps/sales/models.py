@@ -283,7 +283,8 @@ class CounterRedemption(models.Model):
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
     sale = models.OneToOneField(SaleRecord, on_delete=models.PROTECT, related_name="counter_redemption")
     participant = models.ForeignKey("participants.ProgramParticipant", on_delete=models.PROTECT)
-    reward = models.ForeignKey(DiscountRewardDraft, on_delete=models.PROTECT)
+    # Vazio no modo giftback: o "vale" é o próprio crédito em reais.
+    reward = models.ForeignKey(DiscountRewardDraft, on_delete=models.PROTECT, null=True, blank=True)
     points = models.PositiveIntegerField()
     discount_cents = models.PositiveIntegerField()
     # [{"lot": "<uuid>", "amount": 123}] — de onde os pontos foram reservados.
@@ -297,4 +298,34 @@ class CounterRedemption(models.Model):
         constraints = [
             models.CheckConstraint(condition=Q(points__gt=0), name="counter_redemption_points_positive"),
             models.CheckConstraint(condition=Q(discount_cents__gt=0), name="counter_redemption_discount_positive"),
+        ]
+
+
+class ProgramMode(models.Model):
+    """Como o clube devolve valor ao cliente: pontos com recompensas OU giftback em reais.
+
+    Um modo por loja. No giftback, cada compra conferida vira crédito em centavos
+    (1 unidade do ledger de pontos = R$ 0,01), com teto, validade curta e pedido mínimo
+    para usar. Trocar de modo não apaga saldos já emitidos.
+    """
+    class Mode(models.TextChoices):
+        POINTS = "points", "Pontos"
+        GIFTBACK = "giftback", "Giftback"
+
+    tenant = models.OneToOneField("tenants.Tenant", on_delete=models.PROTECT, related_name="program_mode")
+    mode = models.CharField(max_length=10, choices=Mode.choices, default=Mode.POINTS)
+    giftback_bps = models.PositiveIntegerField(default=1000)          # 10%
+    giftback_cap_cents = models.PositiveIntegerField(default=2000)    # R$ 20 por compra
+    giftback_min_order_cents = models.PositiveIntegerField(default=8000)  # usar em compra de R$ 80+
+    giftback_validity_days = models.PositiveSmallIntegerField(default=30)
+    giftback_hold_days = models.PositiveSmallIntegerField(default=7)
+    version = models.PositiveIntegerField(default=1)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="program_modes")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(giftback_bps__gte=100) & Q(giftback_bps__lte=3000), name="program_mode_bps_range"),
+            models.CheckConstraint(condition=Q(giftback_cap_cents__gt=0), name="program_mode_cap_positive"),
+            models.CheckConstraint(condition=Q(giftback_validity_days__gte=7), name="program_mode_validity_min"),
         ]

@@ -50,7 +50,8 @@ export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:S
  </section>;
 
  const used=state.budget_points?Math.min(100,state.issued_points/state.budget_points*100):0;
- const ready=Boolean(state.rule);
+ const gift=state.program&&state.program.mode==="giftback"?state.program:null;
+ const ready=Boolean(state.rule)||Boolean(gift);
  return <section className="vf-card ss-section ss-pilot" aria-labelledby="ss-pilot-title">
   <div className="vf-card-head"><div><h2 id="ss-pilot-title" className="vf-h2">Piloto de pontos no balcão</h2>
    <span className="vf-muted vf-small">Teste controlado: só esta loja, só no ambiente de homologação.</span></div>
@@ -59,24 +60,27 @@ export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:S
   <ol className="ss-pilot-steps">
    <li><b>Balcão registra</b> a venda com o celular da cliente.</li>
    <li><b>Você confirma</b> em Vendas → Conferir. Só então os pontos entram, em carência.</li>
-   <li><b>A cliente troca no caixa:</b> o vendedor aplica o vale e o desconto sai na mesma compra.</li>
+   <li><b>A cliente usa no caixa:</b> o vendedor aplica {gift?"o crédito":"o vale"} e o desconto sai na mesma compra.</li>
   </ol>
 
   <div className="ss-pilot-budget">
-   <div className="ss-pilot-line"><span>Pontos emitidos</span><strong>{pts(state.issued_points)} de {pts(state.budget_points)}</strong></div>
+   <div className="ss-pilot-line"><span>{gift?"Crédito e pontos emitidos":"Pontos emitidos"}</span><strong>{pts(state.issued_points)} de {pts(state.budget_points)}</strong></div>
    <div className="ss-pilot-bar" role="progressbar" aria-label="Orçamento do piloto usado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used)}>
     <i style={{width:Math.max(used,2)+"%"}}/></div>
    <span className="vf-muted vf-small">Equivale a {money(state.issued_points)} em descontos possíveis. Ao atingir o orçamento, novas vendas são conferidas sem pontos.</span>
   </div>
 
-  <ul className="ss-pilot-checks" aria-label="Antes de ativar">
+  {gift?<ul className="ss-pilot-checks" aria-label="Antes de ativar">
+   <li className="is-ok"><Check size={15}/>Giftback salvo: {gift.percent_bps/100}% de volta · teto {money(gift.cap_cents)} · uso a partir de {money(gift.min_order_cents)} · validade {gift.validity_days} dias</li>
+  </ul>
+  :<ul className="ss-pilot-checks" aria-label="Antes de ativar">
    <li className={ready?"is-ok":"is-todo"}>{ready?<Check size={15}/>:<TriangleAlert size={15}/>}
     {ready?`Regra de pontos salva: ${pts(Math.round(state.rule!.points*10000/state.rule!.per_cents)/100)}% · carência ${state.rule!.hold_days} dias · validade ${state.rule!.validity_days} dias`
      :"Salve a regra de pontos em Meu clube"}</li>
    <li className={state.counter_rewards?"is-ok":"is-todo"}>{state.counter_rewards?<Gift size={15}/>:<TriangleAlert size={15}/>}
     {state.counter_rewards?`${state.counter_rewards} vale${state.counter_rewards===1?"":"s"} publicado${state.counter_rewards===1?"":"s"} para o balcão`
      :"Publique ao menos um vale com uso no balcão em Meu clube"}</li>
-  </ul>
+  </ul>}
 
   {owner?<>
    <div className="vf-grid2 ss-pilot-limits">

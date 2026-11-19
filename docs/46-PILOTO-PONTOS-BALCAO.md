@@ -36,3 +36,11 @@ Pausar no painel (imediato) ou esvaziar `FIDELIZA_PILOT_TENANTS` + Redeploy (tot
 Pedidos do site não geram pontos; estorno de venda já confirmada não é revertido automaticamente
 (recuse antes de confirmar). Status: CÓDIGO VALIDADO só após CI verde; HOMOLOGAÇÃO VALIDADA só
 após o fluxo acima executado na loja demo.
+
+## Modo giftback (19/11/2026)
+Meu clube → 1. Como ganhar → **Giftback** (um modo por loja; saldos emitidos continuam valendo,
+1 ponto = R$ 0,01). Recomendado: 10% de volta, teto R$ 20 por compra, uso em compra ≥ R$ 80,
+validade 30 dias, libera em 7 dias. No Balcão o vendedor vê "R$ X de crédito liberado" e aplica o
+crédito inteiro (pedido mínimo obrigatório). Confirmar a venda consome o crédito e gera o novo
+crédito sobre o valor pago; recusar ou desfazer devolve. Teto por venda e orçamento do piloto
+valem igualmente (em centavos). Requer `sales.0010_program_mode`.

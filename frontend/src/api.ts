@@ -334,7 +334,14 @@ export type ManualSaleRecord = {
   redemption?:{title:string;points:number;discount_cents:number;state:"reserved"|"redeemed"|"cancelled"}|null;
   alerts?:string[];can_undo?:boolean;submitted_by_name?:string|null;
 };
+export type ProgramInfo={mode:"points"}|{mode:"giftback";percent_bps:number;cap_cents:number;min_order_cents:number;validity_days:number;hold_days:number};
+export type ProgramModeState={
+  mode:"points"|"giftback";saved:boolean;giftback_bps:number;giftback_cap_cents:number;
+  giftback_min_order_cents:number;giftback_validity_days:number;giftback_hold_days:number;average_ticket_cents?:number;
+};
+export type ProgramModeInput=Omit<ProgramModeState,"saved"|"average_ticket_cents">;
 export type CounterWallet={
+  program?:ProgramInfo;credit?:{available_cents:number;min_order_cents:number}|null;
   pilot_active:boolean;available:number;pending:number;reserved:number;
   rewards:{id:string;title:string;points_cost:number;discount_cents:number;min_order_cents:number;affordable:boolean;exhausted:boolean}[];
   next_reward:{title:string;points_cost:number;missing:number;discount_cents:number}|null;
@@ -343,16 +350,17 @@ export type CounterPilotState={
   allowed:boolean;active:boolean;per_sale_cap_points:number;budget_points:number;issued_points:number;
   activated_at:string|null;paused_at:string|null;
   rule:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;counter_rewards:number;
+  program?:ProgramInfo;
 };
 export type ManualSaleInput = {
   reference:string;eligible_amount_cents:number;
   participant_id:string|null;reported_paid_at:string;evidence_reference:string;
-  customer_phone?:string;reward_id?:string;
+  customer_phone?:string;reward_id?:string;use_credit?:boolean;
 };
 export type PhoneMatch={id:string;display_name:string;phone_last4:string|null;status:string};
 export type ManualSaleList = {
   mode:"manual_review_only"|"pilot_points";points_credited:false;items:ManualSaleRecord[];
-  pilot_active?:boolean;average_ticket_cents?:number;
+  pilot_active?:boolean;average_ticket_cents?:number;program?:ProgramInfo;
 };
 export type ManualSaleResult = {
   already_recorded:boolean;sale:ManualSaleRecord;
@@ -650,6 +658,10 @@ export const merchantApi = {
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+encodeURIComponent(saleId)+"/undo/",{}),
   counterWallet: (tenantId:string,participantId:string)=>getJson<CounterWallet>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/counter/participants/"+encodeURIComponent(participantId)+"/wallet/"),
+  programMode: (tenantId:string)=>getJson<ProgramModeState>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/program-mode/"),
+  saveProgramMode: (tenantId:string,data:ProgramModeInput)=>postJson<ProgramModeState>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/program-mode/",data),
   counterPilot: (tenantId:string)=>getJson<CounterPilotState>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/pilot/"),
   setCounterPilot: (tenantId:string,data:{active?:boolean;per_sale_cap_points?:number;budget_points?:number})=>
@@ -831,7 +843,7 @@ export type MemberClubPublic = {
   terms:ProgramTerms|null;
   signup_available:boolean;points_enabled:boolean;rewards_enabled:boolean;redemption_enabled:boolean;
   published_rewards?:MemberClubReward[];
-  earning?:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;
+  earning?:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;program?:ProgramInfo;
 };
 export type MemberClubReward = {
   id:string;title:string;points_cost:number;discount_cents:number;
@@ -851,7 +863,7 @@ export type MemberClubPrivate = {
   terms:ProgramTerms;
   points_balance:number|null;points_pending:number|null;points_expiring:number|null;
   points_status:"not_active"|"ledger_only"|"verified"|"counter";
-  redemption_place?:"counter"|null;
+  redemption_place?:"counter"|null;program?:ProgramInfo;
   available_rewards:MemberClubReward[];
   transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;
   redemption_enabled:boolean;orders_verified:boolean;note:string;

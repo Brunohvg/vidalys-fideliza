@@ -1,4 +1,5 @@
 import {useEffect,useMemo,useState,type FormEvent} from "react";
+import ProgramModePanel from "./ProgramModePanel";
 import SiteInviteCard from "./SiteInviteCard";
 import {AlertTriangle,Check,Copy,ExternalLink,FlaskConical,Link2,Pencil,Plus,ShoppingBag,Smartphone,Trash2,X} from "lucide-react";
 import EnrollmentManagement from "./EnrollmentManagement";
@@ -35,6 +36,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
 }){
  const canEdit=role==="owner"||role==="admin";
  const [tab,setTab]=useState<Tab>(tabFor[initialArea]);
+ const [mode,setMode]=useState<"points"|"giftback">("points");
  const [rule,setRule]=useState<PointRuleDraft|null>(null);
  const [rewards,setRewards]=useState<DiscountRewardDraft[]>([]);
  const [loading,setLoading]=useState(true);
@@ -173,7 +175,8 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
   {message&&<div className="vf-toast" role="status"><Check size={18}/>{message}</div>}
   {!canEdit&&tab!=="participar"&&<div className="vf-toast is-info">Esta conta pode consultar o clube. Um administrador altera regras e recompensas.</div>}
 
-  {tab==="ganhar"&&canEdit&&(loading?<p className="vf-muted" role="status">Carregando a regra…</p>:<div className="vf-grid2 vf-club-tab">
+  {tab==="ganhar"&&<ProgramModePanel tenantId={tenantId} canEdit={canEdit} onMode={setMode}/>}
+  {tab==="ganhar"&&canEdit&&mode==="points"&&(loading?<p className="vf-muted" role="status">Carregando a regra…</p>:<div className="vf-grid2 vf-club-tab">
    <section className="vf-card" aria-labelledby="vf-earn-title">
     <div className="vf-card-head"><div><h2 id="vf-earn-title" className="vf-h2">Quanto devolver ao cliente?</h2>
      <span className="vf-muted vf-small">Uma decisão só. O sistema calcula pontos, trocas e custo.</span></div>
@@ -223,7 +226,13 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
    </section>
   </div>)}
 
-  {tab==="usar"&&canEdit&&<div className="vf-club-tab">
+  {tab==="usar"&&mode==="giftback"&&<section className="vf-card pm-usage" aria-labelledby="pm-usage-title">
+   <h2 id="pm-usage-title" className="vf-h2">No giftback, não há faixas para montar</h2>
+   <p className="vf-lead">O crédito é usado inteiro na próxima compra, no caixa: o vendedor digita o celular, o sistema mostra “Crédito disponível” e aplica com um toque.
+    A compra mínima e a validade são as que você escolheu em “1. Como ganhar”.</p>
+   <button type="button" className="vf-btn vf-self-start" onClick={()=>setTab("ganhar")}>Ver regras do giftback</button>
+  </section>}
+  {tab==="usar"&&canEdit&&mode==="points"&&<div className="vf-club-tab">
    <div className="vf-card-head"><span className="vf-muted">Faixas de troca: o desconto sai do preço do ponto (1 ponto = R$ 0,01), sem conta manual.</span>
     {!tierOpen&&<button type="button" className="vf-btn is-primary" onClick={()=>openTier()}><Plus size={17}/> Nova faixa</button>}</div>
    {tierOpen&&<form className="vf-card is-focus" onSubmit={createTier} aria-labelledby="vf-tier-title">

@@ -225,6 +225,11 @@ def _member_missions(tenant, participant):
     ]
 
 
+def _program(tenant):
+    from apps.sales.pilot import mode_payload
+    return mode_payload(tenant.pk)
+
+
 def _counter_pilot(tenant):
     from apps.sales.pilot import pilot_enabled
     return pilot_enabled(tenant)
@@ -326,6 +331,7 @@ class MemberClubPublicView(APIView):
             "redemption_enabled": live,
             "published_rewards": _published_catalog(tenant),
             "earning": _earning_rule(tenant),
+            "program": _program(tenant),
         }))
 
 
@@ -547,6 +553,7 @@ class MemberClubMeView(APIView):
             "points_status": (("verified" if live else "counter" if counter_pilot else "ledger_only")
                               if ledger else "not_active"),
             "redemption_place": "counter" if counter_pilot else None,
+            "program": _program(tenant),
             **vip,
             **cashback,
             "missions": missions,

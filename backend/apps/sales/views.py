@@ -91,7 +91,8 @@ def pilot_view(sale, viewer_id, avg_ticket):
         "points_issued": lot.points_issued if lot else None,
         "points_unlock_at": lot.unlock_at.isoformat() if lot else None,
         "points_preview": preview, "points_capped": capped,
-        "redemption": ({"title": redemption.reward.title, "points": redemption.points,
+        "redemption": ({"title": redemption.reward.title if redemption.reward_id else "Crédito de giftback",
+                        "points": redemption.points,
                         "discount_cents": redemption.discount_cents, "state": redemption.state}
                        if redemption else None),
         "alerts": sale_alerts(sale, avg_ticket) if sale.state == SaleRecord.State.AWAITING_REVIEW else [],
@@ -108,7 +109,7 @@ class ManualSalesView(APIView):
         member = staff_member(request.user, tenant_id)
         if not member:
             return safe_reply({"detail": "Acesso restrito à administração."}, 403)
-        from .pilot import average_ticket, pilot_enabled
+        from .pilot import average_ticket, mode_payload, pilot_enabled
         records = list(SaleRecord.objects.filter(
             tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
         ).select_related("participant", "submitted_by", "counter_redemption__reward")[:60])
@@ -117,7 +118,7 @@ class ManualSalesView(APIView):
         avg = average_ticket(tenant_id)
         return safe_reply({
             "mode": "pilot_points" if pilot else "manual_review_only", "points_credited": False,
-            "pilot_active": pilot, "average_ticket_cents": avg,
+            "pilot_active": pilot, "average_ticket_cents": avg, "program": mode_payload(tenant_id),
             "items": [present_sale(item, viewer_id=request.user.pk, suggestions=hints, pilot=True, avg_ticket=avg)
                       for item in records],
         })
@@ -132,8 +133,13 @@ class ManualSalesView(APIView):
         data = request.data
         expected = {"reference", "eligible_amount_cents", "participant_id",
                     "reported_paid_at", "evidence_reference"}
-        if not isinstance(data, dict) or not expected <= set(data) <= expected | {"customer_phone", "reward_id"}:
+        if not isinstance(data, dict) or not expected <= set(data) <= expected | {"customer_phone", "reward_id", "use_credit"}:
             return safe_reply({"detail": "Informe referência, valor, participante, data e comprovante."}, 400)
+        use_credit = data.get("use_credit", False)
+        if type(use_credit) is not bool or (use_credit and data.get("participant_id") is None):
+            return safe_reply({"detail": "Crédito só pode ser usado por cliente do clube."}, 400)
+        if use_credit and data.get("reward_id") is not None:
+            return safe_reply({"detail": "Use o crédito ou um vale, não os dois."}, 400)
         reward_id = data.get("reward_id")
         if reward_id is not None:
             try:
@@ -226,11 +232,14 @@ class ManualSalesView(APIView):
         except IngestionConflict:
             return safe_reply({"detail": "Evento incompatível com uma venda já registrada."}, 409)
         sale = outcome.sale
-        if reward_id is not None and not outcome.duplicate:
-            from .pilot import PilotBlocked, reserve_reward
+        if (reward_id is not None or use_credit) and not outcome.duplicate:
+            from .pilot import PilotBlocked, reserve_credit, reserve_reward
             try:
                 with transaction.atomic():
-                    reserve_reward(sale=sale, participant=participant, reward_id=reward_id, operator=request.user)
+                    if use_credit:
+                        reserve_credit(sale=sale, participant=participant, operator=request.user)
+                    else:
+                        reserve_reward(sale=sale, participant=participant, reward_id=reward_id, operator=request.user)
             except (PilotBlocked, ValueError, PermissionError) as exc:
                 transaction.set_rollback(True)
                 return safe_reply({"detail": str(exc)}, 409)
@@ -443,7 +452,9 @@ class CounterPilotView(APIView):
         tenant = Tenant.objects.select_for_update().get(pk=tenant_id)
         if data.get("active") and not pilot_allowed(tenant):
             return safe_reply({"detail": "O piloto não está liberado para esta loja neste servidor."}, 409)
-        if data.get("active") and not PointRuleDraft.objects.filter(tenant=tenant).exists():
+        from .pilot import program_mode
+        if (data.get("active") and not program_mode(tenant.pk)
+                and not PointRuleDraft.objects.filter(tenant=tenant).exists()):
             return safe_reply({"detail": "Salve a regra de pontos antes de ativar o piloto."}, 409)
         pilot, _ = CounterPilot.objects.get_or_create(tenant=tenant, defaults={"updated_by": request.user})
         now = timezone.now()
@@ -512,3 +523,65 @@ class PointRuleDraftView(APIView):
             ),
             "points_credited": False,
         })
+
+
+GIFTBACK_LIMITS = {
+    "giftback_bps": (100, 3000), "giftback_cap_cents": (100, 100_000),
+    "giftback_min_order_cents": (0, 1_000_000), "giftback_validity_days": (7, 365),
+    "giftback_hold_days": (0, 30),
+}
+
+
+def present_mode(tenant):
+    from .models import ProgramMode
+    row = ProgramMode.objects.filter(tenant=tenant).first()
+    defaults = ProgramMode(tenant=tenant)
+    source = row or defaults
+    return {
+        "mode": source.mode, "saved": row is not None,
+        **{key: getattr(source, key) for key in GIFTBACK_LIMITS},
+    }
+
+
+class ProgramModeView(APIView):
+    """Pontos ou giftback: um modo por loja. Trocar não apaga saldos já emitidos."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get(self, request, tenant_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        from .pilot import average_ticket
+        return safe_reply({**present_mode(member.tenant), "average_ticket_cents": average_ticket(tenant_id)})
+
+    @transaction.atomic
+    def post(self, request, tenant_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        if member.tenant.status != Tenant.Status.ACTIVE:
+            return safe_reply({"detail": "Empresa não está ativa."}, 409)
+        data = request.data
+        if not isinstance(data, dict) or set(data) != {"mode", *GIFTBACK_LIMITS}:
+            return safe_reply({"detail": "Informe o modo e todos os campos do giftback."}, 400)
+        if data["mode"] not in ("points", "giftback"):
+            return safe_reply({"detail": "Modo inválido."}, 400)
+        for key, (low, high) in GIFTBACK_LIMITS.items():
+            if not (is_int(data[key]) and low <= data[key] <= high):
+                return safe_reply({"detail": "Valor fora dos limites recomendados."}, 400)
+        if data["giftback_min_order_cents"] <= data["giftback_cap_cents"]:
+            return safe_reply({"detail": "O pedido mínimo precisa ser maior que o teto do crédito."}, 400)
+        from .models import ProgramMode
+        tenant = Tenant.objects.select_for_update().get(pk=tenant_id)
+        row = ProgramMode.objects.filter(tenant=tenant).first()
+        if row is None:
+            row = ProgramMode(tenant=tenant, updated_by=request.user)
+        elif any(getattr(row, key) != data[key] for key in ("mode", *GIFTBACK_LIMITS)):
+            row.version += 1
+        row.mode = data["mode"]
+        for key in GIFTBACK_LIMITS:
+            setattr(row, key, data[key])
+        row.updated_by = request.user
+        row.save()
+        return safe_reply({**present_mode(tenant), "points_credited": False})

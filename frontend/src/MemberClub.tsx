@@ -33,6 +33,11 @@ function earningHeadline(e:Earning|null|undefined){
 function earningSentence(e:Earning){
   return "A cada "+money(e.per_cents)+" em compras, você ganha "+pts(e.points)+(e.points===1?" ponto":" pontos")+". Cada ponto vale R$ 0,01.";
 }
+type Gift = Extract<NonNullable<MemberClubPublic["program"]>,{mode:"giftback"}>;
+const giftOf = (club:MemberClubPublic):Gift|null => club.program&&club.program.mode==="giftback"?club.program:null;
+function giftSentence(g:Gift){
+  return `Cada compra devolve ${percent(g.percent_bps/100)} em crédito (até ${money(g.cap_cents)}), para usar em até ${g.validity_days} dias numa compra a partir de ${money(g.min_order_cents)}.`;
+}
 function spendFor(e:Earning|null|undefined, points:number){
   if(!e||points<=0) return null;
   return Math.ceil(points*e.per_cents/e.points);
@@ -162,7 +167,8 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
   const [remember,setRemember] = useState(true);
   const formRef = useRef<HTMLDivElement>(null);
   const earning = club.earning;
-  const rewards = club.published_rewards||[];
+  const gift = giftOf(club);
+  const rewards = gift?[]:club.published_rewards||[];
   const cheapest = rewards.filter(r=>r.points_cost>0).sort((a,b)=>a.points_cost-b.points_cost)[0];
 
   useEffect(()=>{
@@ -215,7 +221,7 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
   return <div className="clb-stack">
     <section className="clb-hero" aria-labelledby="clb-hero-title">
       <span className="clb-eyebrow">{club.branding.program_name||("Clube "+club.store_name)}</span>
-      <h1 id="clb-hero-title">{earningHeadline(earning)}</h1>
+      <h1 id="clb-hero-title">{gift?`Ganhe ${percent(gift.percent_bps/100)} de volta em crédito para a próxima compra.`:earningHeadline(earning)}</h1>
       <p>Na loja ou no site, é só se identificar. Sem cartão, sem app e sem anuidade.</p>
       {!club.points_enabled&&<span className="clb-hero-note"><Clock3 size={15} aria-hidden="true"/>
         A loja está preparando o clube: os pontos começam a contar quando ela ativar.</span>}
@@ -295,13 +301,17 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
 
     <section className="clb-card" aria-labelledby="clb-how-title">
       <h2 id="clb-how-title">Como funciona</h2>
-      <ol className="clb-steps">
+      {gift?<ol className="clb-steps">
+        <li><span>1</span><p><strong>Compre na loja ou no site</strong> e diga seu celular no caixa.</p></li>
+        <li><span>2</span><p>Você recebe <strong>{percent(gift.percent_bps/100)} da compra em crédito</strong>, até {money(gift.cap_cents)}{gift.hold_days?`, liberado em ${gift.hold_days} dias`:""}.</p></li>
+        <li><span>3</span><p><strong>Use em até {gift.validity_days} dias</strong> numa compra a partir de {money(gift.min_order_cents)}. O desconto sai na hora.</p></li>
+      </ol>:<ol className="clb-steps">
         <li><span>1</span><p>{earning?<><strong>{earningSentence(earning)}</strong></>:<><strong>Compre na loja ou no site.</strong> Cada compra paga soma pontos.</>}</p></li>
         <li><span>2</span><p>{cheapest?<>Com <strong>{pts(cheapest.points_cost)} pontos</strong> você troca por {money(cheapest.discount_cents)} de desconto.</>
           :<>Troque os pontos por descontos <strong>assim que a loja publicar as recompensas.</strong></>}</p></li>
         <li><span>3</span><p>{earning&&earning.hold_days>0?<>Os pontos entram depois de <strong>{earning.hold_days} dias</strong>, o prazo de troca da compra.</>
           :<>Os pontos entram depois que a loja confere a compra.</>}{earning&&earning.validity_days>0?<> Valem por <strong>{earning.validity_days} dias</strong>.</>:null}</p></li>
-      </ol>
+      </ol>}
     </section>
 
     {rewards.length>0&&<section className="clb-card" aria-labelledby="clb-catalog-title">
@@ -334,10 +344,20 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
   const next = rewards.filter(r=>r.status!=="paused"&&r.status!=="sold_out"&&r.points_cost>0&&(balance===null||r.points_cost>balance))
     .sort((a,b)=>a.points_cost-b.points_cost)[0];
   const earning = club.earning;
+  const gift = giftOf(club);
 
   return <>
     {section==="home"&&<div className="clb-stack">
-      <section className="clb-wallet" aria-label="Seu saldo">
+      {gift?<section className="clb-wallet" aria-label="Seu crédito">
+        <span className="clb-eyebrow">SEU CRÉDITO</span>
+        <strong className="clb-big">{balance!==null?money(balance):"—"}</strong>
+        <span className="clb-wallet-line">{balance!==null?<>para usar numa compra a partir de <b>{money(gift.min_order_cents)}</b></>
+          :me.status==="active"?"Seu crédito aparece aqui depois da primeira compra conferida.":"Seu cadastro está sendo conferido pela loja."}</span>
+        {typeof me.points_pending==="number"&&me.points_pending>0&&<span className="clb-wallet-sub">+{money(me.points_pending)} a liberar, aguardando o prazo da compra</span>}
+        {atCounter&&<span className="clb-wallet-sub">Use no caixa da loja: diga seu celular e peça para aplicar o crédito.</span>}
+        <button type="button" className="clb-btn is-light" onClick={()=>setShowCounter(true)}><ScanLine size={18} aria-hidden="true"/> Mostrar no caixa</button>
+      </section>
+      :<section className="clb-wallet" aria-label="Seu saldo">
         <span className="clb-eyebrow">SEU SALDO</span>
         <strong className="clb-big">{balance!==null?pts(balance):"—"}</strong>
         {balance!==null?<span className="clb-wallet-line">pontos = <b>{money(balance)}</b> em descontos</span>
@@ -347,7 +367,7 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
         {me.points_status==="ledger_only"&&<span className="clb-wallet-sub">Saldo em conferência: ainda não pode ser trocado.</span>}
         {atCounter&&<span className="clb-wallet-sub">Troque seus pontos no caixa da loja: o vendedor aplica o vale na compra.</span>}
         <button type="button" className="clb-btn is-light" onClick={()=>setShowCounter(true)}><ScanLine size={18} aria-hidden="true"/> Mostrar no caixa</button>
-      </section>
+      </section>}
 
       {(me.offers||[]).length>0&&<section className="clb-offers" aria-labelledby="clb-offers-title">
         <h2 id="clb-offers-title" className="clb-section-label">Para você</h2>
@@ -355,13 +375,13 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
       </section>}
 
       {typeof me.points_expiring==="number"&&me.points_expiring>0&&<div className="clb-alert is-warn" role="status">
-        <Clock3 size={20} aria-hidden="true"/><div><strong>{pts(me.points_expiring)} pontos vencem em breve</strong>
-          <span>Troque antes de perder. Veja as opções em Trocar.</span></div></div>}
+        <Clock3 size={20} aria-hidden="true"/><div><strong>{gift?money(me.points_expiring)+" de crédito vence em breve":pts(me.points_expiring)+" pontos vencem em breve"}</strong>
+          <span>{gift?"Use na próxima compra antes de perder.":"Troque antes de perder. Veja as opções em Trocar."}</span></div></div>}
       {me.status!=="active"&&<div className="clb-alert is-info" role="status"><Store size={20} aria-hidden="true"/>
         <div><strong>{me.status==="paused"?"Participação pausada":"Cadastro aguardando a loja"}</strong>
           <span>{me.status==="paused"?"Fale com a loja para retomar.":"Assim que a loja confirmar seu cadastro, suas compras passam a contar."}</span></div></div>}
 
-      {next&&<section className="clb-card" aria-labelledby="clb-next-title">
+      {!gift&&next&&<section className="clb-card" aria-labelledby="clb-next-title">
         <div className="clb-card-head"><h2 id="clb-next-title">Próxima troca</h2>
           {balance!==null&&<span>faltam {pts(next.points_cost-balance)} pontos</span>}</div>
         <div className="clb-reward is-flat"><span className="clb-reward-ico is-gold">{shortMoney(next.discount_cents)}</span>
@@ -372,7 +392,7 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
           <span style={{width:Math.min(100,Math.round(balance/next.points_cost*100))+"%"}}/></div>}
       </section>}
 
-      {ready.length>0&&<section className="clb-card" aria-labelledby="clb-now-title">
+      {!gift&&ready.length>0&&<section className="clb-card" aria-labelledby="clb-now-title">
         <h2 id="clb-now-title">Você já pode trocar</h2>
         <ul className="clb-list">{ready.slice(0,3).map(r=><li key={r.id} className="clb-reward">
           <span className="clb-reward-ico">{shortMoney(r.discount_cents)}</span>
@@ -380,7 +400,7 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
           <button type="button" className="clb-btn is-primary is-small" onClick={()=>onOpen("rewards")}>Trocar</button></li>)}</ul>
       </section>}
 
-      {rewards.length===0&&<section className="clb-card clb-empty"><Gift size={24} aria-hidden="true"/>
+      {!gift&&rewards.length===0&&<section className="clb-card clb-empty"><Gift size={24} aria-hidden="true"/>
         <div><strong>Recompensas a caminho</strong><span>Quando a loja publicar as trocas, elas aparecem aqui.</span></div></section>}
 
       <ProfileNudge me={me} onOpen={()=>onOpen("profile")}/>
@@ -390,11 +410,18 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
 
       <button type="button" className="clb-card clb-link-card" onClick={()=>onOpen("rules")}>
         <span className="clb-reward-ico is-soft"><BookOpen size={22} aria-hidden="true"/></span>
-        <div><strong>Como funciona o clube</strong><span>{earning?earningSentence(earning):"Veja as regras e o regulamento."}</span></div>
+        <div><strong>Como funciona o clube</strong><span>{gift?giftSentence(gift):earning?earningSentence(earning):"Veja as regras e o regulamento."}</span></div>
         <ArrowRight size={18} aria-hidden="true"/></button>
     </div>}
 
-    {section==="rewards"&&<Redeem slug={slug} me={me} balance={balance} verified={verified}/>}
+    {section==="rewards"&&(gift?<div className="clb-stack">
+      <div className="clb-page-head"><h1>Usar crédito</h1><span>{balance!==null?"Você tem "+money(balance)+" de crédito.":"Seu crédito aparece depois da primeira compra conferida."}</span></div>
+      <section className="clb-card"><ol className="clb-steps">
+        <li><span>1</span><p>Na hora de pagar, <strong>diga seu celular</strong> ao vendedor.</p></li>
+        <li><span>2</span><p>Peça para <strong>usar o crédito</strong>. Ele vale em compras a partir de {money(gift.min_order_cents)}.</p></li>
+        <li><span>3</span><p>O desconto sai na mesma compra, e a compra nova já gera crédito para a próxima.</p></li>
+      </ol></section></div>
+      :<Redeem slug={slug} me={me} balance={balance} verified={verified}/>)}
     {section==="history"&&<History me={me}/>}
     {section==="rules"&&<Rules slug={slug} club={club} me={me}/>}
     {section==="profile"&&<Profile slug={slug} club={club} me={me} onLogout={onLogout} onChange={onChange}/>}
@@ -494,16 +521,22 @@ function History({me}:{me:MemberClubPrivate}){
 
 function Rules({slug,club,me}:{slug:string;club:MemberClubPublic;me:MemberClubPrivate}){
   const e = club.earning;
+  const gift = giftOf(club);
   const rewards = club.published_rewards||me.available_rewards||[];
   const cheapest = rewards.filter(r=>r.points_cost>0).sort((a,b)=>a.points_cost-b.points_cost)[0];
   const items:ReactNode[] = [];
-  if(e){
+  if(gift){
+    items.push(<><strong>Ganhe {percent(gift.percent_bps/100)} de volta em crédito.</strong> Até {money(gift.cap_cents)} por compra.</>);
+    items.push(gift.hold_days>0?<><strong>O crédito libera em {gift.hold_days} dias.</strong> É o prazo de troca. Compra cancelada não gera crédito.</>
+      :<><strong>O crédito entra após a conferência.</strong> Compra cancelada não gera crédito.</>);
+    items.push(<><strong>Use em até {gift.validity_days} dias</strong> numa compra a partir de {money(gift.min_order_cents)}, no caixa da loja.</>);
+  }else if(e){
     items.push(<><strong>Ganhe {percent(e.points/e.per_cents*100)} de volta.</strong> {earningSentence(e)}</>);
     items.push(e.hold_days>0?<><strong>Pontos liberam em {e.hold_days} dias.</strong> É o prazo de troca. Compra cancelada não gera pontos.</>
       :<><strong>Pontos entram após a conferência.</strong> Compra cancelada não gera pontos.</>);
     if(e.validity_days>0) items.push(<><strong>Valem {e.validity_days} dias.</strong> Depois disso, os pontos não usados expiram.</>);
   }else items.push(<><strong>Compre e junte pontos.</strong> A loja ainda está definindo quantos pontos cada compra gera.</>);
-  items.push(cheapest?<><strong>Troque a partir de {pts(cheapest.points_cost)} pontos.</strong> No site ou no caixa da loja.</>
+  if(!gift) items.push(cheapest?<><strong>Troque a partir de {pts(cheapest.points_cost)} pontos.</strong> No site ou no caixa da loja.</>
     :<><strong>Trocas em breve.</strong> As recompensas aparecem em Trocar quando a loja publicar.</>);
   return <div className="clb-stack">
     <div className="clb-page-head"><h1>Como funciona</h1>

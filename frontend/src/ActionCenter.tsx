@@ -1,4 +1,5 @@
 import {useEffect,useState} from "react";
+import {giftbackSentence} from "./ProgramModePanel";
 import {ArrowRight,CircleDollarSign,ClipboardCheck,Clock3,Gift,MessageCircle,PlugZap,ScrollText,
  Share2,ShieldCheck,ShoppingBag,Sparkles,Star,UserRound} from "lucide-react";
 import {merchantApi,type DiscountRewardDraft,type ManualSaleList,
@@ -130,8 +131,9 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
  const animPublished=useCountUp(published);
 
  /* Passos de montagem: só contam como feitos quando a API confirmou. */
- const ruleDone=!data||data.rule===undefined?null:data.rule!==null;
- const rewardDone=published===null?null:published>0;
+ const gift=data?.sales?.program&&data.sales.program.mode==="giftback"?data.sales.program:null;
+ const ruleDone=gift?true:!data||data.rule===undefined?null:data.rule!==null;
+ const rewardDone=gift?true:published===null?null:published>0;
  const termsDone=!data||data.terms===null?null:data.terms.terms!==null;
  const inviteDone=members===null?null:members>0;
  const saleDone=!data?.sales?null:data.sales.items.length>0;
@@ -168,7 +170,7 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
  const rule=data?.rule??null;
  const ret=summary?.returnBps??null;
  const hold=rule?(rule.hold_days===0?"libera na hora":`libera em ${periodText(rule.hold_days)}`):"";
- const sentence=!data?null:rule&&ret?<>
+ const sentence=!data?null:gift?<>{giftbackSentence(gift)}</>:rule&&ret?<>
    A cada compra, o cliente recebe <strong>{ret.min===ret.max?percentText(ret.max):`de ${percentText(ret.min)} a ${percentText(ret.max)}`} de volta em pontos</strong>.
    {" "}{pv!==null?`Cada ponto vale ${pointValueText(pv)}, `:"O valor do ponto muda conforme a recompensa; "}{hold} e vale por {periodText(rule.validity_days)}.</>
   :rule?<>

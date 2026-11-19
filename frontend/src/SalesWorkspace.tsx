@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState,type FormEvent} from "react";
 import {Check,CheckCircle2,Clock3,Gift,Link2,RefreshCw,Search,ShoppingBag,Smartphone,Star,Store as StoreIcon,
  TriangleAlert,Undo2,UserRound,X} from "lucide-react";
-import {ApiError,merchantApi,type CounterWallet,type ManualSaleRecord,type PaidOrderInspection,type PointRuleDraft,
+import {ApiError,merchantApi,type CounterWallet,type ProgramInfo,type ManualSaleRecord,type PaidOrderInspection,type PointRuleDraft,
  type ProgramParticipant,type Store} from "./api";
 import {pointValueText,summarizeClub} from "./club-summary";
 import {initialsOf} from "./ActionCenter";
@@ -41,6 +41,8 @@ const when=(iso:string|null)=>{
  return (same?"hoje ":d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})+" ")+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 };
 const dayMonth=(d:Date)=>d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"});
+/* Ganho por venda: pontos, ou reais no modo giftback (1 unidade = R$ 0,01). */
+const gain=(n:number,gift:boolean)=>gift?money(n):pts(n)+" pts";
 const firstName=(name:string)=>name.trim().split(/\s+/)[0]||name;
 const isToday=(iso:string)=>new Date(iso).toDateString()===new Date().toDateString();
 const TONES=["tone-1","tone-2","tone-3","tone-4","tone-5"];
@@ -51,7 +53,7 @@ const COUNTER_STATE:Record<ManualSaleRecord["state"],[string,string]>={
 
 export type SaleClient={id:string;display_name:string;detail:string};
 type Tab="counter"|"review"|"orders";
-type Shared={tenantId:string;items:ManualSaleRecord[];loading:boolean;listError:string;pilot:boolean;avgTicket:number;
+type Shared={tenantId:string;items:ManualSaleRecord[];loading:boolean;listError:string;pilot:boolean;avgTicket:number;program:ProgramInfo;
  rule:PointRuleDraft|null;pointValue:number|null;reload:()=>void};
 
 export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:string;role:Store["role"];initialClient?:SaleClient|null}){
@@ -60,6 +62,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
  const [items,setItems]=useState<ManualSaleRecord[]>([]);
  const [pilot,setPilot]=useState(false);
  const [avgTicket,setAvgTicket]=useState(0);
+ const [program,setProgram]=useState<ProgramInfo>({mode:"points"});
  const [loading,setLoading]=useState(true);
  const [listError,setListError]=useState("");
  const [version,setVersion]=useState(0);
@@ -68,7 +71,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
 
  useEffect(()=>{
   let active=true;setLoading(true);setListError("");
-  merchantApi.listManualSales(tenantId).then(d=>{if(active){setItems(d.items);setPilot(Boolean(d.pilot_active));setAvgTicket(d.average_ticket_cents||0);}})
+  merchantApi.listManualSales(tenantId).then(d=>{if(active){setItems(d.items);setPilot(Boolean(d.pilot_active));setAvgTicket(d.average_ticket_cents||0);setProgram(d.program&&d.program.mode?d.program:{mode:"points"});}})
    .catch(e=>{if(active)setListError(e instanceof ApiError?e.message:"Não foi possível consultar as vendas.");})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false};
@@ -88,7 +91,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
  },[tenantId,canEdit]);
 
  const pending=items.filter(i=>i.state==="awaiting_review"||i.state==="awaiting_member").length;
- const shared:Shared={tenantId,items,loading,listError,pilot,avgTicket,rule,pointValue,reload:()=>setVersion(v=>v+1)};
+ const shared:Shared={tenantId,items,loading,listError,pilot,avgTicket,program,rule,pointValue,reload:()=>setVersion(v=>v+1)};
  const TABS:[Tab,string][]=canEdit?[["counter","Balcão"],["review","Conferir"],["orders","Pedidos"]]:[["orders","Pedidos"]];
 
  return <section className="vf-screen vf-sales-page" aria-labelledby="vf-sales-title">
@@ -111,7 +114,9 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
 type Person={id:string;display_name:string;detail:string};
 
 function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient|null}){
- const {tenantId,items,pilot,avgTicket,rule,pointValue,reload}=shared;
+ const {tenantId,items,pilot,avgTicket,program,rule,pointValue,reload}=shared;
+ const gift=program.mode==="giftback"?program:null;
+ const [useCredit,setUseCredit]=useState(false);
  const [amount,setAmount]=useState("");
  const [receipt,setReceipt]=useState("");
  const [more,setMore]=useState(false);
@@ -162,7 +167,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
  },[tenantId,phone,mode,chosen]);
 
  useEffect(()=>{
-  setWallet(null);setRewardId("");
+  setWallet(null);setRewardId("");setUseCredit(false);
   if(!chosen)return;
   let active=true;
   merchantApi.counterWallet(tenantId,chosen.id).then(w=>{
@@ -171,23 +176,29 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
  },[tenantId,chosen]);
 
  const cents=centsFromText(amount);
- const reward=wallet?.rewards.find(r=>r.id===rewardId)||null;
- const discount=reward?reward.discount_cents:0;
+ const reward=gift?null:wallet?.rewards.find(r=>r.id===rewardId)||null;
+ const credit=gift&&wallet?.credit?wallet.credit.available_cents:0;
+ const creditOn=Boolean(gift&&useCredit&&credit>0);
+ const discount=reward?reward.discount_cents:creditOn?credit:0;
  const paid=cents!==null?Math.max(cents-discount,0):null;
- const points=useMemo(()=>(!rule||paid===null)?null:Math.floor(paid*rule.points/rule.per_cents),[rule,paid]);
+ const points=useMemo(()=>paid===null?null:gift?Math.min(Math.floor(paid*gift.percent_bps/10000),gift.cap_cents)
+  :rule?Math.floor(paid*rule.points/rule.per_cents):null,[rule,paid,gift]);
  const rewardProblem=reward&&cents!==null?(cents<reward.min_order_cents?`Este vale pede compra mínima de ${money(reward.min_order_cents)}.`
-  :reward.discount_cents>=cents?"O vale não pode ser maior que a compra.":""):"";
+  :reward.discount_cents>=cents?"O vale não pode ser maior que a compra.":"")
+  :creditOn&&gift&&cents!==null?(cents<gift.min_order_cents?`O crédito vale em compras a partir de ${money(gift.min_order_cents)}.`
+  :credit>=cents?"O crédito não pode ser maior que a compra.":""):"";
  const usable=(wallet?.rewards||[]).filter(r=>r.affordable);
  const mine=items.filter(i=>i.submitted_by_me&&isToday(i.created_at)).slice(0,8);
 
  // Próxima meta depois desta compra (pontos ainda em carência contam para a conta).
- const projected=wallet&&points!==null?wallet.available-(reward?.points_cost||0)+wallet.pending+points:null;
+ const projected=!gift&&wallet&&points!==null?wallet.available-(reward?.points_cost||0)+wallet.pending+points:null;
  const goal=wallet&&projected!==null?wallet.rewards.filter(r=>!r.exhausted&&r.points_cost>projected).sort((a,b)=>a.points_cost-b.points_cost)[0]:null;
  const missingCents=goal&&projected!==null&&rule?Math.ceil((goal.points_cost-projected)*rule.per_cents/rule.points):null;
  // A dica só aparece quando a meta está perto (até 3 compras médias; sem histórico, até R$ 300).
  const nearLimit=avgTicket>0?avgTicket*3:30000;
  const showTip=missingCents!==null&&missingCents<=nearLimit;
- const releaseDate=rule?dayMonth(new Date(Date.now()+rule.hold_days*86400000)):"";
+ const holdDays=gift?gift.hold_days:rule?rule.hold_days:0;
+ const releaseDate=dayMonth(new Date(Date.now()+holdDays*86400000));
 
  const submit=async(event:FormEvent)=>{
   event.preventDefault();
@@ -208,9 +219,10 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
    const keepPhone=!chosen&&mode==="phone"&&phoneComplete(phone);
    const result=await merchantApi.createManualSale(tenantId,{reference,eligible_amount_cents:cents,
     participant_id:chosen?chosen.id:null,reported_paid_at:time.toISOString(),evidence_reference:reference,
-    ...(keepPhone?{customer_phone:phone}:{}),...(reward&&chosen?{reward_id:reward.id}:{})});
+    ...(keepPhone?{customer_phone:phone}:{}),...(reward&&chosen?{reward_id:reward.id}:{}),...(creditOn&&chosen?{use_credit:true}:{})});
    setToast(result.already_recorded?"Este cupom já estava registrado. Nada foi duplicado."
     :chosen&&reward?`Venda registrada com o ${reward.title}. Os pontos do vale ficam reservados até a conferência.`
+    :chosen&&creditOn?`Venda registrada com ${money(credit)} de crédito. O crédito fica reservado até a conferência.`
     :chosen?"Venda registrada. Os pontos ficam pendentes até a conferência."
     :keepPhone?"Venda guardada com o celular do cliente. Vincule quando ele entrar no clube."
     :"Venda registrada sem cliente. Ela não gera pontos até alguém do clube ser vinculado.");
@@ -244,7 +256,8 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
      {chosen?<div className="vf-sale-chosen">
        <span className="vf-avatar tone-1" aria-hidden="true">{initialsOf(chosen.display_name)}</span>
        <div className="vf-row-main"><strong>{chosen.display_name}</strong>
-        <span>{wallet?`${pts(wallet.available)} pts liberados${wallet.pending?` · ${pts(wallet.pending)} em carência`:""}`:chosen.detail}</span></div>
+        <span>{!wallet?chosen.detail:gift?`${money(wallet.available)} de crédito liberado${wallet.pending?` · ${money(wallet.pending)} a liberar`:""}`
+         :`${pts(wallet.available)} pts liberados${wallet.pending?` · ${pts(wallet.pending)} em carência`:""}`}</span></div>
        <button type="button" className="vf-btn is-small" onClick={resetClient}>Trocar</button>
       </div>
      :chosen===null?<div className="vf-sale-chosen is-outside">
@@ -297,7 +310,17 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       <button type="button" className="vf-btn is-small is-primary" disabled={busy} onClick={()=>void savePhone()}>Salvar celular</button></div>
     </div>}
     {phoneSaved&&<div className="vf-toast" role="status"><Check size={18}/>{phoneSaved}</div>}
-    {chosen&&wallet?.pilot_active&&usable.length>0&&<fieldset className="vs-rewards">
+    {chosen&&gift&&wallet?.pilot_active&&credit>0&&<fieldset className="vs-rewards">
+     <legend>{creditOn?"Crédito aplicado nesta compra":`${who} tem crédito para usar agora`}</legend>
+     <label className={"vs-reward"+(creditOn?" is-on":"")}>
+      <input type="checkbox" checked={creditOn} onChange={()=>setUseCredit(v=>!v)}/>
+      <span className="vs-reward-ico" aria-hidden="true"><Gift size={18}/></span>
+      <span className="vs-reward-text"><strong>Crédito de {money(credit)}</strong>
+       <small>usa todo o crédito · compra mínima {money(gift.min_order_cents)}</small></span>
+      <span className="vs-reward-act" aria-hidden="true">{creditOn?"Aplicado":"Usar"}</span>
+     </label>
+    </fieldset>}
+    {chosen&&!gift&&wallet?.pilot_active&&usable.length>0&&<fieldset className="vs-rewards">
      <legend>{reward?"Vale aplicado nesta compra":`${who} pode usar um vale agora`}</legend>
      {usable.map(r=><label key={r.id} className={"vs-reward"+(rewardId===r.id?" is-on":"")}>
       <input type="checkbox" checked={rewardId===r.id} onChange={()=>setRewardId(rewardId===r.id?"":r.id)}/>
@@ -314,9 +337,9 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
        value={amount} onChange={e=>setAmount(e.target.value)}/></span>
     </label>
 
-    {reward&&cents!==null&&<div className="vs-calc" aria-label="Conta com o vale">
+    {(reward||creditOn)&&cents!==null&&<div className="vs-calc" aria-label="Conta com o vale">
      <div><span>Compra</span><span>{money(cents)}</span></div>
-     <div><span>{reward.title}</span><span>− {money(reward.discount_cents)}</span></div>
+     <div><span>{reward?reward.title:"Crédito de giftback"}</span><span>− {money(discount)}</span></div>
      <div className="is-total"><span>Cliente paga</span><span>{money(paid??0)}</span></div>
      {rewardProblem&&<p role="alert">{rewardProblem}</p>}
     </div>}
@@ -336,7 +359,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
     {formError&&<div className="vf-toast is-error" role="alert"><X size={18}/>{formError}</div>}
     <button type="submit" className="vf-btn is-primary is-big vs-submit" disabled={busy}>
      {busy?"Registrando…":"Registrar venda"}
-     {!busy&&chosen&&pilot&&points!==null&&points>0&&<span className="vs-submit-pts">+{pts(points)} pts</span>}
+     {!busy&&chosen&&pilot&&points!==null&&points>0&&<span className="vs-submit-pts">+{gain(points,Boolean(gift))}</span>}
     </button>
     {toast&&<div className="vf-toast" role="status"><Check size={18}/>{toast}</div>}
    </form>
@@ -344,9 +367,11 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
    <aside className="vf-card vs-ticket" aria-labelledby="vs-ticket-title">
     <span id="vs-ticket-title" className="vf-eyebrow">{chosen?`${who} vai receber`:"O cliente vai receber"}</span>
     {points!==null&&chosen!==null?<>
-     <strong className="vs-ticket-pts">+{pts(points)} <small>pontos</small></strong>
+     {gift?<><strong className="vs-ticket-pts">+{money(points)} <small>de crédito</small></strong>
+      <span className="vs-ticket-eq">{gift.percent_bps/100}% do valor pago, até {money(gift.cap_cents)} · para usar em compras a partir de {money(gift.min_order_cents)}</span></>
+     :<><strong className="vs-ticket-pts">+{pts(points)} <small>pontos</small></strong>
      <span className="vs-ticket-eq">{pointValue!==null?`= ${money(Math.round(points*pointValue/100))} de volta · `:""}
-      {rule?`${pts(Math.round(rule.points*10000/rule.per_cents)/100)}% do valor pago`:""}</span>
+      {rule?`${pts(Math.round(rule.points*10000/rule.per_cents)/100)}% do valor pago`:""}</span></>}
      {wallet&&goal&&projected!==null&&<div className="vs-goal">
       <div className="vs-goal-line"><span>{pts(Math.max(projected,0))} de {pts(goal.points_cost)} pts</span><span>{goal.title}</span></div>
       <div className="vs-bar" role="progressbar" aria-label={"Progresso até "+goal.title} aria-valuemin={0} aria-valuemax={goal.points_cost}
@@ -356,15 +381,16 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       <span>Diga {who?`para ${who}`:"ao cliente"}: “com mais {money(missingCents!)} em compras você ganha {goal.title}.”</span></p>}
      {pilot?<ol className="vs-steps">
       <li>Hoje: <b>venda registrada</b></li>
-      <li>Depois da conferência: <b>pontos reservados</b></li>
-      <li>{rule&&rule.hold_days>0?`Cerca de ${releaseDate}`:"Logo após a conferência"}: <b>liberados para troca</b></li>
+      <li>Depois da conferência: <b>{gift?"crédito reservado":"pontos reservados"}</b></li>
+      <li>{holdDays>0?`Cerca de ${releaseDate}`:"Logo após a conferência"}: <b>{gift?`liberado para usar, por ${gift.validity_days} dias`:"liberados para troca"}</b></li>
      </ol>
      :<p className="vs-off"><TriangleAlert size={16} aria-hidden="true"/>
       <span>Pontos ainda não estão ativos nesta loja: a venda fica registrada e conferida, sem crédito.</span></p>}
     </>
     :<p className="vs-ticket-hint">{chosen===null?"Cliente fora do clube não ganha pontos. Convide para entrar e as próximas compras contam."
-     :!rule?"Defina a regra de pontos em Meu clube para ver a prévia.":"Escolha o cliente e digite o valor para ver os pontos."}</p>}
-    {rule&&pointValue!==null&&<span className="vf-muted vf-small">Cada ponto vale {pointValueText(pointValue)}.</span>}
+     :!rule&&!gift?"Defina a regra de pontos em Meu clube para ver a prévia.":gift?"Escolha o cliente e digite o valor para ver o crédito."
+     :"Escolha o cliente e digite o valor para ver os pontos."}</p>}
+    {!gift&&rule&&pointValue!==null&&<span className="vf-muted vf-small">Cada ponto vale {pointValueText(pointValue)}.</span>}
    </aside>
   </div>
 
@@ -377,7 +403,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
      <div className="vs-row-main"><strong>{sale.participant_name||"Cliente fora do clube"}</strong>
       <span>{new Date(sale.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
        {sale.redemption?` · ${sale.redemption.title}`:""}</span></div>
-     <SaleValue sale={sale}/>
+     <SaleValue sale={sale} gift={program.mode==="giftback"}/>
      {sale.can_undo?<button type="button" className="vf-btn is-small" disabled={busy} onClick={()=>void undo(sale)}>
       <Undo2 size={15}/> Desfazer</button>:<span className={"vf-chip "+chip}>{label}</span>}
     </li>;})}</ul>}
@@ -385,18 +411,19 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
  </>;
 }
 
-function SaleValue({sale}:{sale:ManualSaleRecord}){
+function SaleValue({sale,gift=false}:{sale:ManualSaleRecord;gift?:boolean}){
  const discount=sale.redemption&&sale.redemption.state!=="cancelled"?sale.redemption.discount_cents:0;
  const points=sale.points_issued??(sale.state==="awaiting_review"?sale.points_preview:null);
  return <div className="vs-val"><strong>{money(sale.eligible_amount_cents-discount)}</strong>
   {sale.participant_id&&typeof points==="number"&&points>0&&sale.state!=="rejected"
-   ?<small>{sale.points_issued?"+"+pts(points)+" pts":"≈ +"+pts(points)+" pts"}</small>:null}</div>;
+   ?<small>{(sale.points_issued?"+":"≈ +")+gain(points,gift)}</small>:null}</div>;
 }
 
 /* ---------------- Conferir ---------------- */
 
 function Review({shared}:{shared:Shared}){
- const {tenantId,items,loading,listError,pilot,rule,reload}=shared;
+ const {tenantId,items,loading,listError,pilot,rule,program,reload}=shared;
+ const isGift=program.mode==="giftback";
  const [busy,setBusy]=useState(false);
  const [msg,setMsg]=useState("");
  const [error,setError]=useState("");
@@ -424,7 +451,7 @@ function Review({shared}:{shared:Shared}){
     decision==="approve"?"Conferida pelo lojista no painel.":"Recusada pelo lojista no painel.");
    const name=sale.participant_name?firstName(sale.participant_name):"a cliente";
    setMsg(decision==="reject"?"Venda recusada. Nenhum ponto foi creditado."+(sale.redemption?" O vale voltou para o saldo.":"")
-    :r.points?`Venda confirmada: +${pts(r.points)} pontos para ${name}, ${hold}.`
+    :r.points?`Venda confirmada: +${isGift?money(r.points)+" de crédito":pts(r.points)+" pontos"} para ${name}, ${isGift&&program.mode==="giftback"?(program.hold_days===0?"liberado logo":`liberado em ${program.hold_days} dias`):hold}.`
     :r.points_reason==="budget"?"Venda confirmada, mas o orçamento do piloto acabou: nenhum ponto foi creditado."
     :r.points_reason==="before_join"?"Venda confirmada. Ela é anterior à entrada no clube, por isso não gera pontos."
     :pilot?"Venda confirmada. Esta venda não gera pontos.":"Venda conferida. Nenhum ponto foi creditado: os pontos ainda não estão ativos.");
@@ -436,7 +463,7 @@ function Review({shared}:{shared:Shared}){
   if(busy||!clean.length)return;setBusy(true);setMsg("");setError("");
   try{
    const r=await merchantApi.confirmManualSales(tenantId,clean.map(i=>i.id));
-   setMsg(`${r.confirmed.length} venda${r.confirmed.length===1?" confirmada":"s confirmadas"}`+(r.points?` · +${pts(r.points)} pontos`:"")+
+   setMsg(`${r.confirmed.length} venda${r.confirmed.length===1?" confirmada":"s confirmadas"}`+(r.points?` · +${isGift?money(r.points)+" de crédito":pts(r.points)+" pontos"}`:"")+
     (r.skipped.length?`. ${r.skipped.length} ficou para conferir uma a uma.`:"."));
    reload();
   }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível confirmar as vendas.");}
@@ -470,7 +497,7 @@ function Review({shared}:{shared:Shared}){
        {sale.redemption?` · ${sale.redemption.title}`:""}</span>
       {alerts.length>0&&<span className="vs-alerts">{alerts.map(a=><span key={a} className="vs-alert"><TriangleAlert size={13} aria-hidden="true"/>{a}</span>)}</span>}
      </div>
-     <SaleValue sale={sale}/>
+     <SaleValue sale={sale} gift={program.mode==="giftback"}/>
      {rejecting===sale.id?<div className="vs-acts">
       <button type="button" className="vf-btn is-small" onClick={()=>setRejecting(null)}>Voltar</button>
       <button type="button" className="vf-btn is-small is-danger" disabled={busy} onClick={()=>void decide(sale,"reject")}>Recusar venda</button>
@@ -491,7 +518,7 @@ function Review({shared}:{shared:Shared}){
     <span className="vf-ico tone-gold" aria-hidden="true"><UserRound size={18}/></span>
     <div className="vs-row-main"><strong>Cliente fora do clube</strong>
      <span>{receiptLabel(sale.evidence_reference)} · {when(sale.reported_paid_at||sale.created_at)}</span></div>
-    <SaleValue sale={sale}/>
+    <SaleValue sale={sale} gift={program.mode==="giftback"}/>
     <div className="vs-acts">
      {sale.suggested_participant?<button type="button" className="vf-btn is-small is-primary" disabled={busy} onClick={()=>void link(sale,sale.suggested_participant!.id)}>
       <Link2 size={15}/> Vincular a {sale.suggested_participant.display_name}</button>
@@ -521,7 +548,8 @@ const SITE_STATUS=(o:PaidOrderInspection):[string,string]=>{
 };
 
 function Orders({shared}:{shared:Shared}){
- const {tenantId,items,loading,listError,reload}=shared;
+ const {tenantId,items,loading,listError,program,reload}=shared;
+ const isGift=program.mode==="giftback";
  const [site,setSite]=useState<PaidOrderInspection[]>([]);
  const [siteState,setSiteState]=useState<"loading"|"ok"|"off">("loading");
  const [siteMsg,setSiteMsg]=useState("");
@@ -547,7 +575,7 @@ function Orders({shared}:{shared:Shared}){
    const p=s.points_issued??(s.state==="awaiting_review"?s.points_preview:null);
    return {key:"c"+s.id,channel:"counter",title:s.participant_name||"Cliente fora do clube",
     sub:when(s.reported_paid_at||s.created_at)+(s.redemption?` · ${s.redemption.title}`:"")+" · "+receiptLabel(s.evidence_reference),
-    cents:s.eligible_amount_cents-discount,points:s.participant_id&&typeof p==="number"&&p>0&&s.state!=="rejected"?(s.points_issued?"+":"≈ +")+pts(p)+" pts":"sem pontos",
+    cents:s.eligible_amount_cents-discount,points:s.participant_id&&typeof p==="number"&&p>0&&s.state!=="rejected"?(s.points_issued?"+":"≈ +")+gain(p,isGift):"sem pontos",
     status:COUNTER_STATE[s.state],dim:s.state==="rejected",club:Boolean(s.participant_id),
     at:new Date(s.reported_paid_at||s.created_at).getTime(),initials:s.participant_name,
     search:[s.participant_name,s.reference].join(" ").toLowerCase()};});

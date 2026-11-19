@@ -169,3 +169,46 @@ class CounterPilotTests(TestCase):
                 "tenant_id": self.tenant.id, "participant_id": bob.id}))
             self.assertEqual(wallet.status_code, 404)
             self.assertFalse(CounterPilot.objects.filter(tenant=self.other).exists())
+
+
+class GiftbackModeTests(CounterPilotTests):
+    """Mesmo piloto, modo giftback: crédito em centavos com teto, validade e pedido mínimo."""
+
+    def gift(self, **over):
+        body = {"mode": "giftback", "giftback_bps": 1000, "giftback_cap_cents": 2000,
+                "giftback_min_order_cents": 8000, "giftback_validity_days": 30, "giftback_hold_days": 0, **over}
+        return self.post("program-mode", body)
+
+    def test_mode_validation_and_isolation(self):
+        self.assertEqual(self.gift(giftback_min_order_cents=1500).status_code, 400)   # mínimo <= teto
+        self.assertEqual(self.gift(giftback_bps=5000).status_code, 400)
+        self.assertEqual(self.gift(extra=1).status_code, 400)
+        saved = self.gift()
+        self.assertEqual(saved.status_code, 200, saved.data)
+        self.assertEqual(saved.data["mode"], "giftback")
+        other = self.client.get(reverse("program-mode", kwargs={"tenant_id": self.other.id})).data
+        self.assertEqual(other["mode"], "points")
+
+    def test_giftback_credit_capped_and_used_whole_at_counter(self):
+        with override_settings(FIDELIZA_ENVIRONMENT="homolog", FIDELIZA_PILOT_TENANTS=frozenset({str(self.tenant.id)})):
+            self.gift()
+            self.activate()
+            first = self.sale(15776).data["sale"]                       # 10% = 1577 centavos
+            self.assertEqual(self.approve(first["id"]).data["points"], 1577)
+            big = self.sale(50000).data["sale"]                          # 10% = 5000 -> teto 2000
+            self.assertEqual(self.approve(big["id"]).data["points"], 1500)  # teto do piloto (1500) vence
+            lot = PointLot.objects.get(source_reference=f"counter:{first['id']}")
+            self.assertEqual((lot.expires_at - lot.unlock_at).days, 30)
+            self.assertTrue(lot.rule_version.startswith("pilot-vg"))
+            wallet = counter_wallet(self.ana)
+            self.assertEqual(wallet["credit"]["available_cents"], 3077)
+            self.assertEqual(wallet["rewards"], [])
+            self.assertEqual(self.sale(7000, use_credit=True).status_code, 409)   # abaixo do pedido mínimo
+            self.assertEqual(self.sale(10000, reward_id=str(self.reward.id)).status_code, 409)  # vale de pontos bloqueado
+            used = self.sale(12000, use_credit=True)
+            self.assertEqual(used.status_code, 201, used.data)
+            self.assertEqual(used.data["sale"]["redemption"]["discount_cents"], 3077)
+            self.assertEqual(used.data["sale"]["redemption"]["title"], "Crédito de giftback")
+            # Crédito gerado sobre o valor pago (R$ 120 - R$ 30,77 = R$ 89,23 -> 892).
+            self.assertEqual(self.approve(used.data["sale"]["id"]).data["points"], 892)
+            self.assertEqual(CounterRedemption.objects.get().state, "redeemed")
