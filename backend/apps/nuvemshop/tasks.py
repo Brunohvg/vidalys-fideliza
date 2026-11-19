@@ -30,7 +30,7 @@ def recheck_nuvemshop_order_event(self, event_id: str):
     """Reconsulta HMAC inbox sob OAuth, somente no worker isolado."""
     from apps.channels.services import IngestionConflict
     from .coupon_revocation import RevocationBlocked
-    from .order_recheck_service import RecheckBlocked, recheck_order_event
+    from .order_recheck_service import ClubRetry, RecheckBlocked, recheck_order_event
     from .order_readonly import OrderReadError
     from .security import OAuthConfigurationError
     try:
@@ -40,7 +40,7 @@ def recheck_nuvemshop_order_event(self, event_id: str):
         # produzir loop de retries nem divulgar PII/token em logs.
         logger.warning("Pedido Nuvemshop exige conciliacao manual")
         return "requires_review"
-    except (OrderReadError, OAuthConfigurationError):
+    except (OrderReadError, OAuthConfigurationError, ClubRetry):
         logger.warning("Reconsulta OAuth temporariamente indisponivel, tentativa=%s",
                        self.request.retries + 1)
         raise self.retry(exc=RuntimeError("nuvemshop_order_recheck_retry")) from None

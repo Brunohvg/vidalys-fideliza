@@ -31,6 +31,10 @@ LIMITS = {
     COMMERCIAL: Limits(per_sale=20_000, budget=1_000_000),   # R$ 200 por compra, R$ 10.000 no total
 }
 STUCK_COUPON_AFTER = timedelta(hours=24)
+# "Pago" na Nuvemshop não é liquidação comprovada (pode ser marcado à mão, sofrer chargeback).
+# Garantia adotada no comercial: compra do site só vira saldo usável depois desta carência,
+# com reconsulta OAuth e estorno automático se cancelar/reembolsar nesse prazo.
+SITE_MIN_HOLD_DAYS = 7
 
 
 def _pilot(tenant):
@@ -59,8 +63,10 @@ def _requirements(pilot):
     from apps.participants.public_registration_views import active_terms_for, is_ready
     from .models import OnlineCoupon, PointRuleDraft, ProgramMode
     tenant = pilot.tenant
-    rule = (ProgramMode.objects.filter(tenant=tenant, mode=ProgramMode.Mode.GIFTBACK).exists()
-            or PointRuleDraft.objects.filter(tenant=tenant).exists())
+    gift = ProgramMode.objects.filter(tenant=tenant, mode=ProgramMode.Mode.GIFTBACK).first()
+    points_rule = PointRuleDraft.objects.filter(tenant=tenant).first()
+    rule = bool(gift or points_rule)
+    hold_days = gift.giftback_hold_days if gift else (points_rule.hold_days if points_rule else 0)
     items = [
         ("terms", is_ready(active_terms_for(tenant)), "Regulamento e aviso de privacidade publicados", {"all"}),
         ("rule", rule, "Regra de pontos ou de giftback salva", {"all"}),
@@ -78,6 +84,9 @@ def _requirements(pilot):
              "Pedidos pagos, cancelados e reembolsados chegando e sendo reconsultados", {"site_earn", "site_coupon"}),
             ("site_coupons", status["coupons_ready"], "Cupons liberados na Nuvemshop", {"site_coupon"}),
             ("coupons_settled", not stuck, "Nenhum cupom sem confirmação há mais de 24 horas", {"site_coupon"}),
+            ("site_hold", hold_days >= SITE_MIN_HOLD_DAYS,
+             f"Carência de pelo menos {SITE_MIN_HOLD_DAYS} dias (tempo para cancelamento e estorno aparecerem)",
+             {"site_earn", "site_coupon"}),
         ]
     return items
 

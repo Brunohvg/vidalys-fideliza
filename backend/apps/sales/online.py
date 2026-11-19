@@ -53,6 +53,11 @@ PENDING = (OnlineCoupon.State.ISSUING, OnlineCoupon.State.UNCERTAIN)
 RELEASED = (OnlineCoupon.State.CANCELLED, OnlineCoupon.State.EXPIRED, OnlineCoupon.State.FAILED)
 # Antes disso, "não encontrado" pode ser só atraso da Nuvemshop: não libera a reserva.
 CONFIRM_GRACE = timedelta(minutes=10)
+# Ausência só vale com o cupom tendo pelo menos 1 hora e DUAS consultas negativas com 30 min
+# de intervalo (atraso de índice na busca não libera saldo). Se ainda assim o código aparecer
+# num pedido pago, o uso tardio debita o saldo (handle_order).
+ABSENT_MIN_AGE = timedelta(hours=1)
+ABSENT_RECHECK_AFTER = timedelta(minutes=30)
 
 
 class CouponUnavailable(ValueError):
@@ -61,6 +66,22 @@ class CouponUnavailable(ValueError):
 
 class CouponPending(CouponUnavailable):
     """O resultado na Nuvemshop ainda não foi confirmado; nada foi liberado."""
+
+
+def _absence_confirmed(coupon, now):
+    """Já houve uma consulta negativa há 30+ min e o cupom tem 1+ hora? (esta é a segunda)."""
+    if coupon.created_at > now - ABSENT_MIN_AGE:
+        return False
+    from datetime import datetime
+    for entry in coupon.audit or []:
+        if entry.get("event") == "absent_seen":
+            try:
+                seen = datetime.fromisoformat(entry["at"])
+            except (KeyError, ValueError):
+                continue
+            if seen <= now - ABSENT_RECHECK_AFTER:
+                return True
+    return False
 
 
 def _audit(coupon, event, **extra):
@@ -345,14 +366,14 @@ def reconcile_coupon(coupon, *, opener=None):
             coupon.apply_url = coupon.apply_url or _apply_url(coupon, opener=opener)
             _audit(coupon, "confirmed_on_store")
             coupon.save(update_fields=["remote_id", "state", "apply_url", "audit"])
-        elif coupon.created_at <= now - CONFIRM_GRACE:
+        elif _absence_confirmed(coupon, now):
             _release_reserve(coupon, redeem=False)
             coupon.state, coupon.settled_at = OnlineCoupon.State.FAILED, now
             _audit(coupon, "confirmed_absent")
             coupon.save(update_fields=["state", "settled_at", "audit"])
         else:
             coupon.state = OnlineCoupon.State.UNCERTAIN
-            _audit(coupon, "absent_waiting")
+            _audit(coupon, "absent_seen")
             coupon.save(update_fields=["state", "audit"])
     return coupon
 
@@ -371,7 +392,7 @@ def revoke_coupon(coupon, *, state=OnlineCoupon.State.CANCELLED, opener=None):
             remote_id = _find_remote(coupon, opener=opener)        # inconclusivo -> exceção, nada muda
             if remote_id:
                 coupon.remote_id = remote_id
-            elif coupon.created_at > now - CONFIRM_GRACE:
+            elif not _absence_confirmed(coupon, now):       # a rotina horária faz as duas consultas
                 raise CouponPending("O cupom do site ainda está sendo confirmado.")
         _delete_remote(coupon, opener=opener)
         _release_reserve(coupon, redeem=False)

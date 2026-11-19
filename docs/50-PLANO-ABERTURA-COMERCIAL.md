@@ -13,6 +13,15 @@ Testes controlados continuam livres; cada item abaixo é **obrigatório antes de
 | 6 | Teste real ponta a ponta numa loja Nuvemshop (OAuth → pedido pago → cupom → uso → reembolso) | CI usa mocks | Pendente (operador) | Roteiro: docs/51, partes B, C e D |
 | 7 | Deploy conferido: commit implantado, migrações aplicadas, API/beat/nuvemshop-sync saudáveis | Versão defasada | Pendente (operador) | `python manage.py club_readiness` (docs/51, parte A) |
 
+## Revisão do parecer externo (19/11/2026)
+| # | Ponto | Status | O que foi feito |
+|---|---|---|---|
+| 8 | Falha do clube escondida com o pedido marcado `checked` | **Feito** | Clube roda logo após conferir loja/pedido, antes das paradas por identidade do motor antigo; falha grava `club_retry` e a tarefa repete; `club_readiness` mostra ✖ |
+| 9 | Cupom incerto liberado após uma consulta negativa e 10 min | **Feito** | Libera só com cupom de 1 h+ e duas consultas negativas com 30 min de intervalo; se o código aparecer num pedido depois, o uso tardio debita |
+| 10 | "Pago" na Nuvemshop não é liquidação comprovada | **Garantia definida** | Comercial exige carência de 7+ dias no site; reconsulta OAuth; estorno automático em cancelado/reembolsado/anulado. Risco restante: chargeback depois da carência, limitado ao teto por compra (R$ 200) |
+| 11 | Concorrência real com PostgreSQL e worker caindo | Pendente | Coberto por testes com simulação; falta teste com PostgreSQL e operações simultâneas |
+| 12 | Documentação legada contraditória | Pendente | docs/52 corrigido; consolidar 38–49 num guia único depois do teste real |
+
 ## Política de operação (item 2)
 - **Teste** (padrão de toda loja): tudo funciona, com tetos fixos baixos. Não precisa liberar nada.
 - **Comercial**: só pelo comando, rodado por superusuário no serviço `api` do Coolify:

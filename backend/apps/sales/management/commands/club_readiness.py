@@ -146,6 +146,12 @@ class Command(BaseCommand):
             self.line(OK if last else WARN, "Último aviso de pedido: " +
                       (timezone.localtime(last).strftime("%d/%m %H:%M") if last else "nenhum recebido ainda"))
             self.line(OK, f"Avisos de pedido nos últimos 7 dias: {events.filter(received_at__gte=since).count()}")
+            from apps.nuvemshop.models import NuvemshopOrderRecheck
+            rechecks = NuvemshopOrderRecheck.objects.filter(event__tenant=tenant)
+            failed = rechecks.filter(status="club_retry").count()
+            self.line(FAIL if failed else OK, f"Pedidos que o clube não conseguiu processar (aguardando nova tentativa): {failed}")
+            review = rechecks.filter(status__in=("needs_review", "needs_identity", "ownership_violation")).count()
+            self.line(WARN if review else OK, f"Pedidos para conferência manual (motor antigo): {review}")
             by_state = dict(OnlineCoupon.objects.filter(tenant=tenant).values_list("state").annotate(n=Count("id")))
             summary = ", ".join(f"{state} {n}" for state, n in sorted(by_state.items())) or "nenhum"
             self.line(OK, f"Cupons por estado: {summary}")

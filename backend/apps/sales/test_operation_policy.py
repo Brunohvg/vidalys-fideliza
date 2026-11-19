@@ -14,7 +14,7 @@ from apps.participants.enrollment_models import ProgramTerms
 from apps.points.models import PointEvent, PointLot
 from apps.points.services import create_pending_lot
 from apps.tenants.models import TenantMembership
-from .models import CounterPilot, OnlineCoupon
+from .models import CounterPilot, OnlineCoupon, ProgramMode
 from .online import issue_coupon
 from .pilot import points_for, wallet_balances
 from .policy import can_operate, effective_budget, effective_per_sale
@@ -34,6 +34,8 @@ class OperationPolicyTests(StoreFixture, TestCase):
         return CounterPilot.objects.get(tenant=self.tenant)
 
     def operate(self, mode, actor="vidalys-root"):
+        if mode == "commercial":                                # comercial exige carência de 7 dias no site
+            ProgramMode.objects.filter(tenant=self.tenant).update(giftback_hold_days=7)
         call_command("set_store_operation", "--tenant", self.tenant.slug, "--mode", mode,
                      "--actor", actor, "--confirm", mode.upper(), stdout=StringIO())
 
@@ -143,3 +145,10 @@ class OperationPolicyTests(StoreFixture, TestCase):
         CounterPilot.objects.filter(tenant=self.tenant).update(operation_mode="commercial", commercial_at=timezone.now())
         with self.assertRaises(SystemExit):                                 # comercial com bloqueio = falha
             call_command("club_readiness", "--tenant", self.tenant.slug, "--skip-workers", stdout=StringIO())
+
+    def test_commercial_site_requires_seven_day_hold(self):
+        self.operate("commercial")
+        ProgramMode.objects.filter(tenant=self.tenant).update(giftback_hold_days=2)
+        self.assertFalse(can_operate(self.tenant, "site_earn"))
+        self.assertFalse(can_operate(self.tenant, "site_coupon"))
+        self.assertTrue(can_operate(self.tenant))                               # balcão segue

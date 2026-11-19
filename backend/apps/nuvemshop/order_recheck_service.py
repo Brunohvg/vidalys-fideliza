@@ -30,6 +30,50 @@ from .security import config, decrypt_token
 logger = logging.getLogger(__name__)
 
 
+class ClubRetry(RuntimeError):
+    """Clube do site não processou o pedido: a tarefa repete (nunca marca "checked" por cima)."""
+
+
+def _order_status(summary):
+    from apps.sales.models import SaleRecord
+    if summary["review_status"] in ("blocked_refund", "blocked_chargeback"):
+        return SaleRecord.OrderStatus.REFUNDED
+    if summary["order_status"] == "cancelled" or summary["review_status"] == "blocked_cancelled":
+        return SaleRecord.OrderStatus.CANCELLED          # inclui pagamento anulado (voided)
+    if summary["payment_status"] == "paid":
+        return SaleRecord.OrderStatus.PAID
+    return SaleRecord.OrderStatus.PENDING
+
+
+def _run_club(*, event, tenant, order):
+    """Clube no site ANTES de qualquer parada por identidade/titularidade do motor antigo:
+    a baixa de um cupom do clube usado no pedido não pode depender de conferência manual.
+
+    Falha aqui fica registrada (status "club_retry") e sobe para a tarefa repetir.
+    """
+    from apps.sales.models import CounterPilot
+    if not CounterPilot.objects.filter(tenant=tenant).exists():
+        return None
+    summary = summarize_order(order, order_id=event.order_id)
+    if summary["currency"] != "BRL":
+        return None
+    try:
+        _, profile = _buyer_identity(order, tenant)
+    except RecheckBlocked:
+        profile = None            # contato contraditório: o clube usa só o e-mail confirmado no clube
+    try:
+        from apps.sales.online import handle_order
+        with transaction.atomic():
+            return handle_order(tenant=tenant, order=order, order_id=event.order_id,
+                                status=_order_status(summary), total_cents=summary["reported_total_cents"],
+                                profile=profile)
+    except Exception:
+        NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
+            "status": "club_retry", "checked_at": timezone.now()})
+        logger.warning("clube no site: pedido pendente de reprocessamento")
+        raise ClubRetry("club_pending") from None
+
+
 class RecheckBlocked(ValueError):
     pass
 
@@ -216,6 +260,7 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
         and safe_id(order["store_id"]) != event.store_id
     ):
         raise RecheckBlocked("OAuth retornou pedido de outra loja")
+    _run_club(event=event, tenant=tenant, order=order)
     incident = check_paid_coupon_ownership(event=event, order=order, cfg=cfg)
     if incident in ("ownership_violation","requires_review"):
         NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
@@ -231,14 +276,7 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
                               participant_verified=profile is not None)
     if summary["currency"] != "BRL":
         raise RecheckBlocked("Somente BRL pode ser normalizado")
-    if summary["review_status"] in ("blocked_refund", "blocked_chargeback"):
-        status = SaleRecord.OrderStatus.REFUNDED
-    elif summary["order_status"] == "cancelled":
-        status = SaleRecord.OrderStatus.CANCELLED
-    elif summary["payment_status"] == "paid":
-        status = SaleRecord.OrderStatus.PAID
-    else:
-        status = SaleRecord.OrderStatus.PENDING
+    status = _order_status(summary)
     if not identity:
         NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
             "status": "needs_identity", "checked_at": timezone.now(),
@@ -261,14 +299,7 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     coupon_result = _paid_coupon_from_order(
         event=event, order=order, sale=result.sale, profile=profile,
     )
-    # Clube no site: pedido pago gera saldo; cupom único do clube usado vira resgate.
-    try:
-        from apps.sales.online import handle_order
-        with transaction.atomic():
-            handle_order(tenant=tenant, order=order, order_id=event.order_id,
-                         status=status, total_cents=cents, profile=profile)
-    except Exception:
-        logger.warning("clube no site: pedido exige conferencia")
+    # Clube no site já processado em _run_club, logo após conferir loja e pedido.
     if (status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED)
             and tenant.loyalty_live_enabled
             and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED

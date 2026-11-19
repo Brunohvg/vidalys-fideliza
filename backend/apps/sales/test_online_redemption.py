@@ -152,12 +152,18 @@ class OnlineRedemptionTests(StoreFixture, TestCase):
         self.assertEqual((coupon.state, coupon.remote_id), ("issued", "888"))
         self.assertEqual(wallet_balances(self.ana)[1]["reserved"], 1577)
 
-    def test_reconcile_absent_only_releases_after_grace(self):
+    def test_reconcile_absent_needs_two_checks_30min_apart_and_one_hour(self):
         coupon = self.uncertain()
         with FIND(None):
             self.assertEqual(reconcile_coupon(coupon).state, "uncertain")   # pode ser atraso da Nuvemshop
+        self.age(coupon, 61)
+        with FIND(None):
+            self.assertEqual(reconcile_coupon(coupon).state, "uncertain")   # negativas recentes demais
         self.assertEqual(wallet_balances(self.ana)[1]["reserved"], 1577)
-        self.age(coupon)
+        old = (timezone.now() - timedelta(minutes=31)).isoformat(timespec="seconds")
+        coupon.refresh_from_db()
+        OnlineCoupon.objects.filter(pk=coupon.pk).update(
+            audit=[{**e, "at": old} if e["event"] == "absent_seen" else e for e in coupon.audit])
         with FIND(None):
             self.assertEqual(reconcile_coupon(coupon).state, "failed")
         self.assertEqual(wallet_balances(self.ana)[1], {"pending": 0, "available": 1577, "reserved": 0})
@@ -261,6 +267,46 @@ class OnlineRedemptionTests(StoreFixture, TestCase):
         self.assertNotIn("credit_restored", out)
         coupon.refresh_from_db()
         self.assertEqual(coupon.audit[-1]["event"], "restore_skipped")
+
+    # ---------- Reconsulta: clube antes das paradas do motor antigo, falha nunca escondida ----------
+
+    def nuvem_order(self, order_id, codes=(), **extra):
+        return {"id": int(order_id), "status": "open", "payment_status": "paid", "currency": "BRL",
+                "total": "120.00", "paid_at": "2026-11-19T12:00:00+00:00", "gateway": "pagarme",
+                "contact_email": "ana@example.invalid", "contact_phone": "não é telefone",
+                "coupon": [{"code": c} for c in codes], **extra}
+
+    def event(self, order_id):
+        from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
+        return OrderWebhookEvent.objects.create(tenant=self.tenant, store_id="555", order_id=order_id,
+                                                topic="order/paid", dedupe_key=("k" + order_id).ljust(64, "0"))
+
+    def test_recheck_settles_club_coupon_even_when_contacts_need_manual_review(self):
+        from apps.nuvemshop.order_recheck_service import _run_club
+        self.paid("9001", 10000)
+        with REMOTE:
+            coupon = issue_coupon(self.ana)
+        # Telefone inválido faria o motor antigo parar em "conferência manual" ANTES do clube.
+        out = _run_club(event=self.event("9700"), tenant=self.tenant, order=self.nuvem_order("9700", [coupon.code]))
+        self.assertIn("coupon_used", out)
+        coupon.refresh_from_db()
+        self.assertEqual(coupon.state, "used")
+
+    def test_recheck_voided_payment_counts_as_cancelled(self):
+        from apps.nuvemshop.order_recheck_service import _run_club
+        self.paid("9800", 12000)
+        out = _run_club(event=self.event("9800"), tenant=self.tenant,
+                        order=self.nuvem_order("9800", payment_status="voided"))
+        self.assertIn("reversed", out)
+
+    def test_recheck_club_failure_is_recorded_and_retried_not_marked_checked(self):
+        from apps.nuvemshop.models import NuvemshopOrderRecheck
+        from apps.nuvemshop.order_recheck_service import ClubRetry, _run_club
+        event = self.event("9900")
+        with mock.patch("apps.sales.online.handle_order", side_effect=RuntimeError("db down")), \
+                self.assertRaises(ClubRetry):
+            _run_club(event=event, tenant=self.tenant, order=self.nuvem_order("9900"))
+        self.assertEqual(NuvemshopOrderRecheck.objects.get(event=event).status, "club_retry")
 
     def test_double_click_returns_same_coupon(self):
         self.paid("9001", 15776)
