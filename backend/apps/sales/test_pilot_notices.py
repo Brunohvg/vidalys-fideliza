@@ -57,12 +57,13 @@ class PilotNoticeTests(TestCase):
 
     def lot(self, participant, *, unlock_days, expire_days, ref):
         now = timezone.now()
-        return create_pending_lot(
+        lot, _created = create_pending_lot(
             participant=participant, channel="counter", source_reference=f"counter:{ref}", eligible_amount_cents=10000,
             points=300, rule_version="pilot-v1", paid_at=now - timedelta(days=30),
             unlock_at=now + timedelta(days=unlock_days), expires_at=now + timedelta(days=expire_days),
             verification_digest="a" * 64,
         )
+        return lot
 
     def test_release_then_notify_once_and_only_with_consent(self):
         ana_lot = self.lot(self.ana, unlock_days=-1, expire_days=60, ref="ana-1")

@@ -195,22 +195,23 @@ class GiftbackModeTests(CounterPilotTests):
         with override_settings(FIDELIZA_ENVIRONMENT="homolog", FIDELIZA_PILOT_TENANTS=frozenset({str(self.tenant.id)})):
             self.gift()
             self.activate()
+            self.post("counter-pilot", {"per_sale_cap_points": 1800})
             first = self.sale(15776).data["sale"]                       # 10% = 1577 centavos
             self.assertEqual(self.approve(first["id"]).data["points"], 1577)
-            big = self.sale(50000).data["sale"]                          # 10% = 5000 -> teto 2000
-            self.assertEqual(self.approve(big["id"]).data["points"], 1500)  # teto do piloto (1500) vence
+            big = self.sale(50000).data["sale"]                          # 10% = 5000 -> giftback 2000 -> loja 1800
+            self.assertEqual(self.approve(big["id"]).data["points"], 1800)
             lot = PointLot.objects.get(source_reference=f"counter:{first['id']}")
             self.assertEqual((lot.expires_at - lot.unlock_at).days, 30)
             self.assertTrue(lot.rule_version.startswith("pilot-vg"))
             wallet = counter_wallet(self.ana)
-            self.assertEqual(wallet["credit"]["available_cents"], 3077)
+            self.assertEqual(wallet["credit"]["available_cents"], 3377)
             self.assertEqual(wallet["rewards"], [])
             self.assertEqual(self.sale(7000, use_credit=True).status_code, 409)   # abaixo do pedido mínimo
             self.assertEqual(self.sale(10000, reward_id=str(self.reward.id)).status_code, 409)  # vale de pontos bloqueado
             used = self.sale(12000, use_credit=True)
             self.assertEqual(used.status_code, 201, used.data)
-            self.assertEqual(used.data["sale"]["redemption"]["discount_cents"], 3077)
+            self.assertEqual(used.data["sale"]["redemption"]["discount_cents"], 3377)
             self.assertEqual(used.data["sale"]["redemption"]["title"], "Crédito de giftback")
-            # Crédito gerado sobre o valor pago (R$ 120 - R$ 30,77 = R$ 89,23 -> 892).
-            self.assertEqual(self.approve(used.data["sale"]["id"]).data["points"], 892)
+            # Crédito gerado sobre o valor pago (R$ 120 - R$ 33,77 = R$ 86,23 -> 862).
+            self.assertEqual(self.approve(used.data["sale"]["id"]).data["points"], 862)
             self.assertEqual(CounterRedemption.objects.get().state, "redeemed")
