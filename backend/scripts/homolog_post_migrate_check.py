@@ -63,6 +63,7 @@ def main():
         ("tenants", "0005_tenant_slug_alias"),
         ("sales", "0016_sale_removal"),
         ("participants", "0011_participant_removal"),
+        ("nuvemshop", "0012_order_event_backfill_topic"),
         ("loyalty", "0002_voucher_reward_origin"),
         ("loyalty", "0003_voucher_redemption_evidence"),
         ("points", "0002_immutable_postgres_ledger"),

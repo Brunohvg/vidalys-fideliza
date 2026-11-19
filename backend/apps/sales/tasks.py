@@ -124,7 +124,7 @@ def send_credit_notice(self, participant_id: str, kind: str, amount: int, expire
 
 
 @shared_task(name="sales.credit_since_join", queue="nuvemshop", ignore_result=True,
-             bind=True, max_retries=3, default_retry_delay=300)
+             bind=True, max_retries=6, default_retry_delay=300)
 def credit_since_join_task(self, participant_id: str, after: str = ""):
     """Crédito retroativo desde a adesão (precisa do token OAuth: fila isolada)."""
     from apps.participants.models import ProgramParticipant
@@ -135,7 +135,11 @@ def credit_since_join_task(self, participant_id: str, after: str = ""):
     try:
         out = credit_since_join(participant, after=after)
     except Exception:
-        raise self.retry(exc=RuntimeError("credit_since_join_retry")) from None
+        raise self.retry(exc=RuntimeError("credit_since_join_retry"),
+                         countdown=300 * 2 ** self.request.retries) from None
+    if out.get("retry_later"):              # Nuvemshop fora agora: tenta de novo (5, 10, 20… min), mesmo cursor
+        raise self.retry(exc=RuntimeError("credit_since_join_search_unavailable"),
+                         countdown=300 * 2 ** self.request.retries)
     if out.get("cursor"):                   # próximo lote começa depois do último tentado
         credit_since_join_task.apply_async(args=[participant_id, out["cursor"]], countdown=30)
     return out

@@ -215,6 +215,33 @@ class MemberManagementTests(StoreFixture, TestCase):
         self.assertEqual((out["granted"], out["retry"]), (1, 1))
         self.assertEqual(NuvemshopOrderRecheck.objects.get(event=events["9952"]).status, "club_retry")
 
+    def test_order_found_without_webhook_gets_a_backfill_entry_through_the_same_recheck(self):
+        from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
+        self.tenant.external_store_id = "555"
+        self.tenant.save(update_fields=["external_store_id"])
+        calls = []
+
+        def fake_recheck(*, event_id, reprocess=False, **kw):
+            calls.append((OrderWebhookEvent.objects.get(pk=event_id), reprocess))
+            return None
+
+        with mock.patch("apps.sales.online._orders_for_member", return_value=["9980"]), \
+                mock.patch("apps.nuvemshop.order_recheck_service.recheck_order_event", side_effect=fake_recheck):
+            out = credit_since_join(self.ana)
+            again = credit_since_join(self.ana)
+        event, reprocess = calls[0]
+        self.assertEqual((event.order_id, event.topic, event.store_id, reprocess), ("9980", "reconcile/backfill", "555", True))
+        self.assertEqual((out["backfill"], again.get("backfill", 0)), (1, 0))   # entrada criada uma vez só
+        self.assertEqual(OrderWebhookEvent.objects.filter(order_id="9980").count(), 1)
+
+    def test_search_unavailable_retries_the_task_with_the_same_cursor(self):
+        from apps.sales.tasks import credit_since_join_task
+        with mock.patch("apps.sales.online.credit_since_join", return_value={"retry_later": 1}), \
+                mock.patch.object(credit_since_join_task, "retry", side_effect=RuntimeError("retry")) as retry:
+            with self.assertRaises(RuntimeError):
+                credit_since_join_task.run(str(self.ana.pk), "123")
+        retry.assert_called_once()
+
     def test_retro_cursor_moves_past_ineligible_orders_in_batches(self):
         from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
         ids = [str(10000 + i) for i in range(120)]                         # mais de 50 pedidos, nenhum elegível

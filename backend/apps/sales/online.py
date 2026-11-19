@@ -727,7 +727,7 @@ def credit_since_join(participant, *, batch=RETRO_BATCH, after=""):
     Cursor: os pedidos vão em ordem crescente de id e `after` é o último já tentado, então um
     pedido inelegível ou bloqueado nunca é escolhido de novo e o lote seguinte sempre avança.
     Falha num pedido fica registrada (club_retry) e a rotina horária tenta de novo.
-    Devolve {"granted", "nothing", "retry", "blocked", "no_event", "cursor"?}."""
+    Devolve {"granted", "nothing", "retry", "blocked", "backfill", "cursor"?} ou {"retry_later"}."""
     from collections import Counter
     from apps.nuvemshop.models import NuvemshopOrderRecheck
     from apps.nuvemshop.order_recheck_service import ClubRetry, RecheckBlocked, recheck_order_event
@@ -749,7 +749,17 @@ def credit_since_join(participant, *, batch=RETRO_BATCH, after=""):
                   .values_list("source_reference", flat=True))
     with_event = set(OrderWebhookEvent.objects.filter(tenant=tenant, order_id__in=candidates)
                      .values_list("order_id", flat=True))
-    out["no_event"] = len([c for c in candidates if c not in with_event])   # aviso nunca chegou: só relatório
+    for order_id in candidates:
+        if order_id in with_event or f"site:{order_id}" in granted:
+            continue
+        # Aviso nunca chegou: entrada de RECONCILIAÇÃO (tópico próprio, não finge webhook) que
+        # passa pela mesma reconsulta. Idempotente: a chave é fixa por loja + pedido.
+        key = hashlib.sha256(f"backfill:{tenant.pk}:{order_id}".encode()).hexdigest()
+        OrderWebhookEvent.objects.get_or_create(dedupe_key=key, defaults={
+            "tenant": tenant, "store_id": tenant.external_store_id or "", "order_id": order_id,
+            "topic": OrderWebhookEvent.Topic.BACKFILL})
+        with_event.add(order_id)
+        out["backfill"] += 1
     after_key = _order_key(after) if after else None
     todo = sorted((c for c in with_event if f"site:{c}" not in granted
                    and (after_key is None or _order_key(c) > after_key)), key=_order_key)
