@@ -38,3 +38,13 @@
  .vf-club-example strong{font-size:18px}
 }
 @media(prefers-reduced-motion:reduce){.vf-club-tab{animation:none}}
+
+/* Compradores do site fora do clube (Participar) */
+.vf-site-invite{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:start;margin-bottom:16px;
+ background:var(--vf-reward-soft);border-color:color-mix(in srgb,var(--vf-gold) 55%,var(--vf-surface))}
+.vf-site-invite-text{display:flex;flex-direction:column;gap:6px;min-width:0}
+.vf-site-invite-text>span{font-size:14px;line-height:1.5;color:var(--vf-reward-ink);font-weight:600}
+.vf-site-invite-msg{margin:4px 0 0;padding:10px 12px;border-radius:12px;background:var(--vf-surface);font-size:13.5px;line-height:1.5;
+ color:var(--vf-purple-900);overflow-wrap:anywhere}
+.vf-site-invite-error{font-size:13px;color:var(--vf-danger);font-weight:700}
+@media(max-width:700px){.vf-site-invite{grid-template-columns:auto minmax(0,1fr)}.vf-site-invite>.vf-btn{grid-column:1/-1;justify-self:start}}

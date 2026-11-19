@@ -105,6 +105,15 @@
 @keyframes vf-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes vf-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
 
+/* Hoje no balcão */
+.loyalty-today header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.loyalty-today-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0}
+.loyalty-today-grid>div{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:16px;background:var(--vf-canvas);min-width:0}
+.loyalty-today-grid dt{font-size:13px;font-weight:700;color:var(--vf-muted)}
+.loyalty-today-grid dd{margin:0;font:800 24px/1.1 var(--vf-font-display);color:var(--vf-purple-950);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.loyalty-today-grid small{font-size:12px;color:var(--vf-muted)}
+@media(max-width:620px){.loyalty-today-grid{grid-template-columns:minmax(0,1fr)}}
+
 @media(max-width:980px){
  .loyalty-dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
  .loyalty-home-grid{grid-template-columns:minmax(0,1fr)}

@@ -1,4 +1,5 @@
 import {useEffect,useMemo,useState,type FormEvent} from "react";
+import SiteInviteCard from "./SiteInviteCard";
 import {AlertTriangle,Check,Copy,ExternalLink,FlaskConical,Link2,Pencil,Plus,ShoppingBag,Smartphone,Trash2,X} from "lucide-react";
 import EnrollmentManagement from "./EnrollmentManagement";
 import LoyaltyTrialPanel from "./LoyaltyTrialPanel";
@@ -18,7 +19,7 @@ const tabFor:Record<ProgramArea,Tab>={earning:"ganhar",rewards:"usar",participan
 
 const PCTS=[1,2,3,5];
 const HOLDS:[number,string][]=[[0,"Na hora"],[7,"7 dias"],[15,"15 dias"],[30,"30 dias"]];
-const VALIDITY:[number,string][]=[[180,"6 meses"],[365,"1 ano"],[730,"2 anos"]];
+const VALIDITY:[number,string][]=[[90,"3 meses"],[180,"6 meses"],[365,"1 ano"],[730,"2 anos"]];
 const DISCOUNTS=[500,1000,2000,5000];
 const POINT_CENTS=1; // preço do ponto nas faixas criadas aqui
 const money=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -28,7 +29,7 @@ const period=(days:number)=>days%365===0?`${days/365} ano${days===365?"":"s"}`:d
 const toCents=(raw:string)=>{const c=raw.trim().replace(/^R\$\s*/i,"");if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(c))return null;
  const [w,d=""]=c.replace(",",".").split(".");return Number(w)*100+Number(d.padEnd(2,"0"));};
 
-export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,initialArea="earning",onViewClients}:{
+export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platform,initialArea="earning",onViewClients}:{
  tenantId:string;role:Store["role"];storeSlug:string;tenantStatus:Store["status"];platform?:Store["platform"];
  initialArea?:ProgramArea;onViewClients:()=>void;onViewSales?:()=>void;onOpenSettings?:()=>void;
 }){
@@ -285,6 +286,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,initial
   </div>}
 
   {tab==="participar"&&<div className="vf-club-tab">
+   {platform==="nuvemshop"&&canEdit&&<SiteInviteCard tenantId={tenantId} joinUrl={joinUrl}/>}
    <div className="vf-grid3">
     <article className="vf-card is-lift"><span className="vf-ico tone-purple" aria-hidden="true"><Link2 size={20}/></span>
      <strong className="vf-h3">Link de convite</strong><span className="vf-muted vf-small">Para o Instagram, o WhatsApp e a loja online.</span>

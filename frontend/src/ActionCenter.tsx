@@ -120,6 +120,10 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
  const pv=summary?.pointValue&&summary.pointValue.min===summary.pointValue.max?summary.pointValue.max:null;
  const pointsBrl=(points:number)=>pv===null?null:brl(Math.round(points*pv/100));
 
+ /* Hoje no balcão: registradas hoje (sem recusadas), valor pago e pontos (confirmados + previstos). */
+ const todaySales=data?.sales?data.sales.items.filter(v=>v.state!=="rejected"&&new Date(v.created_at).toDateString()===new Date().toDateString()):null;
+ const todayCents=todaySales?todaySales.reduce((sum,v)=>sum+v.eligible_amount_cents-(v.redemption&&v.redemption.state!=="cancelled"?v.redemption.discount_cents:0),0):null;
+ const todayPoints=todaySales?todaySales.reduce((sum,v)=>sum+(v.points_issued??(v.state==="awaiting_review"&&v.participant_id?v.points_preview??0:0)),0):null;
  const animMembers=useCountUp(members);
  const animPoints=useCountUp(pointsHeld);
  const animPending=useCountUp(pending);
@@ -226,6 +230,17 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
     <span className="loyalty-metric-sub">benefícios visíveis no Meu Clube</span>
    </button>
   </section>
+
+  {canManage&&todaySales!==null&&<section className="loyalty-card loyalty-today" aria-labelledby="loyalty-today-title">
+   <header><h2 id="loyalty-today-title">Hoje no balcão</h2>
+    <button type="button" className="loyalty-pill" onClick={()=>onNavigate("sales")}>Abrir balcão</button></header>
+   <dl className="loyalty-today-grid">
+    <div><dt>Vendas registradas</dt><dd>{todaySales.length.toLocaleString("pt-BR")}</dd></div>
+    <div><dt>Valor pago</dt><dd>{brl(todayCents??0)}</dd></div>
+    <div><dt>Pontos do dia</dt><dd>{(todayPoints??0).toLocaleString("pt-BR")}</dd>
+     <small>{data?.sales?.pilot_active?"confirmados e a confirmar":"previstos: pontos ainda não estão ativos"}</small></div>
+   </dl>
+  </section>}
 
   <div className={"loyalty-home-grid"+(canManage?"":" is-single")}>
    {canManage&&<section className="loyalty-card loyalty-checklist" aria-labelledby="loyalty-checklist-title">
