@@ -45,11 +45,16 @@ def _order_status(summary):
     return SaleRecord.OrderStatus.PENDING
 
 
-def _run_club(*, event, tenant, order):
-    """Clube no site ANTES de qualquer parada por identidade/titularidade do motor antigo:
-    a baixa de um cupom do clube usado no pedido não pode depender de conferência manual.
+def _run_club(*, event, tenant, order, grant=False, profile=None):
+    """Clube no site em duas etapas da reconsulta:
 
-    Falha aqui fica registrada (status "club_retry") e sobe para a tarefa repetir.
+    1) grant=False, logo após conferir loja e pedido: só BAIXAS (cupom do clube usado, estorno,
+       devolução). Não depende de cadastro nem de titularidade: saldo já emitido não pode
+       ficar sem baixa por um telefone mal digitado.
+    2) grant=True, depois que identidade e titularidade passaram: concede o saldo novo.
+       Contato contraditório ou violação de titularidade param antes e nada é concedido.
+
+    Falha em qualquer etapa fica registrada (status "club_retry") e sobe para a tarefa repetir.
     """
     from apps.sales.models import CounterPilot
     if not CounterPilot.objects.filter(tenant=tenant).exists():
@@ -58,15 +63,11 @@ def _run_club(*, event, tenant, order):
     if summary["currency"] != "BRL":
         return None
     try:
-        _, profile = _buyer_identity(order, tenant)
-    except RecheckBlocked:
-        profile = None            # contato contraditório: o clube usa só o e-mail confirmado no clube
-    try:
         from apps.sales.online import handle_order
         with transaction.atomic():
             return handle_order(tenant=tenant, order=order, order_id=event.order_id,
                                 status=_order_status(summary), total_cents=summary["reported_total_cents"],
-                                profile=profile)
+                                profile=profile if grant else None, grant=grant)
     except Exception:
         NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
             "status": "club_retry", "checked_at": timezone.now()})
@@ -299,7 +300,8 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     coupon_result = _paid_coupon_from_order(
         event=event, order=order, sale=result.sale, profile=profile,
     )
-    # Clube no site já processado em _run_club, logo após conferir loja e pedido.
+    # Clube no site, etapa 2: identidade coerente e titularidade conferidas -> concede o saldo novo.
+    _run_club(event=event, tenant=tenant, order=order, grant=True, profile=profile)
     if (status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED)
             and tenant.loyalty_live_enabled
             and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED

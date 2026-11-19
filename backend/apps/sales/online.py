@@ -438,10 +438,13 @@ def _order_codes(order):
         if isinstance(codes, list) else set()
 
 
-def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
+def handle_order(*, tenant, order, order_id, status, total_cents, profile=None, grant=True):
     """Idempotente: o mesmo pedido pode chegar várias vezes (paid/updated).
 
-    Baixa de cupom e estorno acontecem mesmo com o clube pausado; ganhar exige poder operar.
+    Duas naturezas separadas:
+    - BAIXA (cupom usado, estorno, devolução): sempre, mesmo pausado ou com cadastro duvidoso;
+    - CONCESSÃO (saldo novo): só com grant=True, isto é, depois de a reconsulta confirmar
+      identidade coerente e titularidade, e com o clube podendo operar.
     """
     from .policy import can_operate
     pilot = CounterPilot.objects.filter(tenant=tenant).first()
@@ -468,7 +471,8 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
         participant = _participant_for(tenant, order, profile)
         ref = f"site:{order_id}"
         lot = PointLot.objects.filter(tenant=tenant, source_reference=ref).first()
-        if participant and pilot.online_earning and paid and lot is None and can_operate(tenant, "site_earn"):
+        if (grant and participant and pilot.online_earning and paid and lot is None
+                and can_operate(tenant, "site_earn")):
             result.append(_grant_site(tenant, participant, total_cents, ref, order_id))
         if status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED):
             # Pedido desfeito depois de usar o cupom: o crédito usado volta para a cliente (uma vez).

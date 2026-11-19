@@ -32,8 +32,9 @@ LIMITS = {
 }
 STUCK_COUPON_AFTER = timedelta(hours=24)
 # "Pago" na Nuvemshop não é liquidação comprovada (pode ser marcado à mão, sofrer chargeback).
-# Garantia adotada no comercial: compra do site só vira saldo usável depois desta carência,
-# com reconsulta OAuth e estorno automático se cancelar/reembolsar nesse prazo.
+# Proteção de RISCO no comercial (não é prova de liquidação): compra do site só vira saldo
+# usável depois desta carência, com reconsulta OAuth e estorno automático se cancelar/reembolsar
+# nesse prazo. Contestação depois disso continua possível, limitada ao teto por compra.
 SITE_MIN_HOLD_DAYS = 7
 
 

@@ -95,3 +95,28 @@ def ensure_order_webhooks(self, tenant_id: str):
     except Exception:
         logger.warning("Avisos de pedido pendentes de cadastro, tentativa=%s", self.request.retries + 1)
         raise self.retry(exc=RuntimeError("order_webhooks_pending")) from None
+
+
+CLUB_RETRY_AFTER_MINUTES = 60
+CLUB_RETRY_BATCH = 50
+
+
+def requeue_club_retries(now=None):
+    """Pedidos com status club_retry parados há 1 h+ voltam para a reconsulta (de hora em hora,
+    sem limite de dias): a baixa do clube não pode ficar perdida depois que o Celery desiste.
+    Visíveis no club_readiness enquanto não resolverem. Só UUIDs trafegam no broker."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from .models import NuvemshopOrderRecheck
+    now = now or timezone.now()
+    stale = (NuvemshopOrderRecheck.objects
+             .filter(status="club_retry", checked_at__lte=now - timedelta(minutes=CLUB_RETRY_AFTER_MINUTES))
+             .order_by("checked_at").values_list("event_id", flat=True)[:CLUB_RETRY_BATCH])
+    count = 0
+    for event_id in stale:
+        NuvemshopOrderRecheck.objects.filter(event_id=event_id, status="club_retry").update(checked_at=now)
+        recheck_nuvemshop_order_event.delay(str(event_id))
+        count += 1
+    if count:
+        logger.warning("Pedidos do clube devolvidos para reconsulta: %s", count)
+    return count

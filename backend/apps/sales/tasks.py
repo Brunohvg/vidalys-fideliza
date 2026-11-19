@@ -28,9 +28,13 @@ def pilot_wallet_scan():
 
 @shared_task(name="sales.online_coupon_refresh", queue="nuvemshop", ignore_result=True)
 def online_coupon_refresh():
-    """Fila isolada com token OAuth: vence cupons e mantém o cupom de giftback em dia."""
+    """Fila isolada com token OAuth: vence cupons, mantém o cupom de giftback em dia e
+    devolve à fila os pedidos que o clube não conseguiu processar (tentativas esgotadas)."""
+    from apps.nuvemshop.tasks import requeue_club_retries
     from .online import refresh_all
-    return refresh_all()
+    out = refresh_all()
+    requeue_club_retries()
+    return out
 
 
 def _money(cents):

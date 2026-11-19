@@ -16,9 +16,10 @@ Testes controlados continuam livres; cada item abaixo é **obrigatório antes de
 ## Revisão do parecer externo (19/11/2026)
 | # | Ponto | Status | O que foi feito |
 |---|---|---|---|
-| 8 | Falha do clube escondida com o pedido marcado `checked` | **Feito** | Clube roda logo após conferir loja/pedido, antes das paradas por identidade do motor antigo; falha grava `club_retry` e a tarefa repete; `club_readiness` mostra ✖ |
-| 9 | Cupom incerto liberado após uma consulta negativa e 10 min | **Feito** | Libera só com cupom de 1 h+ e duas consultas negativas com 30 min de intervalo; se o código aparecer num pedido depois, o uso tardio debita |
-| 10 | "Pago" na Nuvemshop não é liquidação comprovada | **Garantia definida** | Comercial exige carência de 7+ dias no site; reconsulta OAuth; estorno automático em cancelado/reembolsado/anulado. Risco restante: chargeback depois da carência, limitado ao teto por compra (R$ 200) |
+| 8 | Falha do clube escondida com o pedido marcado `checked` | **Feito** | Falha grava `club_retry` e a tarefa repete; esgotadas as tentativas, a rotina horária devolve o pedido à fila (sem limite de dias); `club_readiness` mostra ✖ |
+| 8a | Baixa e concessão misturadas (concederia antes da titularidade / com contato contraditório) | **Feito** | Etapa 1 (logo após conferir loja/pedido): só baixas — cupom usado, estorno, devolução. Etapa 2 (depois de identidade coerente e titularidade): concessão. Contato contraditório ou violação param antes da etapa 2 |
+| 9 | Cupom incerto liberado após uma consulta negativa e 10 min | **Feito, com risco residual** | Libera só com cupom de 1 h+ e duas consultas negativas com 30 min de intervalo. A busca da Nuvemshop por código pode ser incompleta: se o cupom existir e for usado depois, o uso tardio debita o saldo que houver e registra a falta |
+| 10 | "Pago" na Nuvemshop não é liquidação comprovada | **Proteção de risco (não é prova)** | Comercial exige carência de 7+ dias no site; reconsulta OAuth; estorno automático em cancelado/reembolsado/anulado. Contestação depois da carência continua possível, limitada ao teto por compra (R$ 200) |
 | 11 | Concorrência real com PostgreSQL e worker caindo | Pendente | Coberto por testes com simulação; falta teste com PostgreSQL e operações simultâneas |
 | 12 | Documentação legada contraditória | Pendente | docs/52 corrigido; consolidar 38–49 num guia único depois do teste real |
 

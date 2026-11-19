@@ -291,6 +291,30 @@ class OnlineRedemptionTests(StoreFixture, TestCase):
         self.assertIn("coupon_used", out)
         coupon.refresh_from_db()
         self.assertEqual(coupon.state, "used")
+        # Etapa de baixa NUNCA concede saldo novo: isso só depois de identidade e titularidade.
+        self.assertNotIn("granted", out)
+        self.assertFalse(PointLot.objects.filter(source_reference="site:9700").exists())
+
+    def test_recheck_grant_step_runs_only_after_checks_and_is_idempotent(self):
+        from apps.nuvemshop.order_recheck_service import _run_club
+        event, order = self.event("9750"), self.nuvem_order("9750", contact_phone="")
+        self.assertEqual(_run_club(event=event, tenant=self.tenant, order=order), "nothing")      # etapa 1
+        self.assertIn("granted", _run_club(event=event, tenant=self.tenant, order=order, grant=True))
+        self.assertNotIn("granted", _run_club(event=event, tenant=self.tenant, order=order, grant=True))
+        self.assertEqual(PointLot.objects.filter(source_reference="site:9750").count(), 1)
+
+    def test_exhausted_club_retries_go_back_to_the_queue_hourly(self):
+        from apps.nuvemshop.models import NuvemshopOrderRecheck
+        from apps.nuvemshop.tasks import requeue_club_retries
+        old, recent = self.event("9901"), self.event("9902")
+        NuvemshopOrderRecheck.objects.create(event=old, status="club_retry",
+                                             checked_at=timezone.now() - timedelta(hours=2))
+        NuvemshopOrderRecheck.objects.create(event=recent, status="club_retry", checked_at=timezone.now())
+        with mock.patch("apps.nuvemshop.tasks.recheck_nuvemshop_order_event.delay") as delay:
+            self.assertEqual(requeue_club_retries(), 1)
+        delay.assert_called_once_with(str(old.pk))
+        self.assertGreater(NuvemshopOrderRecheck.objects.get(event=old).checked_at,
+                           timezone.now() - timedelta(minutes=1))
 
     def test_recheck_voided_payment_counts_as_cancelled(self):
         from apps.nuvemshop.order_recheck_service import _run_club
