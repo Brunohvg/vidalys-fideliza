@@ -65,14 +65,18 @@ def _run_club(*, event, tenant, order, grant=False, profile=None):
     try:
         from apps.sales.online import handle_order
         with transaction.atomic():
-            return handle_order(tenant=tenant, order=order, order_id=event.order_id,
-                                status=_order_status(summary), total_cents=summary["reported_total_cents"],
-                                profile=profile if grant else None, grant=grant)
+            result = handle_order(tenant=tenant, order=order, order_id=event.order_id,
+                                  status=_order_status(summary), total_cents=summary["reported_total_cents"],
+                                  profile=profile if grant else None, grant=grant, require_paid_at=True)
     except Exception:
         NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
             "status": "club_retry", "checked_at": timezone.now()})
         logger.warning("clube no site: pedido pendente de reprocessamento")
         raise ClubRetry("club_pending") from None
+    if grant and "paid_at_missing" in (result or []):
+        # Pedido pago sem data de pagamento confiável: não concede sozinho, vai para conferência.
+        raise RecheckBlocked("Pedido pago sem data de pagamento: conferir antes de dar saldo.")
+    return result
 
 
 class RecheckBlocked(ValueError):

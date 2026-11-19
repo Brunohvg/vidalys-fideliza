@@ -215,6 +215,64 @@ class MemberManagementTests(StoreFixture, TestCase):
         self.assertEqual((out["granted"], out["retry"]), (1, 1))
         self.assertEqual(NuvemshopOrderRecheck.objects.get(event=events["9952"]).status, "club_retry")
 
+    def test_retro_cursor_moves_past_ineligible_orders_in_batches(self):
+        from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
+        ids = [str(10000 + i) for i in range(120)]                         # mais de 50 pedidos, nenhum elegível
+        for oid in ids:
+            OrderWebhookEvent.objects.create(tenant=self.tenant, store_id="555", order_id=oid,
+                                             topic="order/paid", dedupe_key=("c" + oid).ljust(64, "0"))
+        seen = []
+
+        def fake_recheck(*, event_id, reprocess=False, **kw):
+            seen.append(OrderWebhookEvent.objects.get(pk=event_id).order_id)
+            return None                                                     # inelegível: não concede
+
+        with mock.patch("apps.sales.online._orders_for_member", return_value=list(reversed(ids))), \
+                mock.patch("apps.nuvemshop.order_recheck_service.recheck_order_event", side_effect=fake_recheck):
+            first = credit_since_join(self.ana, batch=50)
+            second = credit_since_join(self.ana, batch=50, after=first["cursor"])
+            third = credit_since_join(self.ana, batch=50, after=second["cursor"])
+        self.assertEqual(seen, ids)                                         # cada pedido uma vez, em ordem
+        self.assertEqual((first["nothing"], second["nothing"], third["nothing"]), (50, 50, 20))
+        self.assertNotIn("cursor", third)                                   # acabou
+
+    def test_member_search_reads_every_page_by_update_date(self):
+        from apps.sales import online
+        pages = {1: [{"id": i} for i in range(1, 201)], 2: [{"id": i} for i in range(201, 231)]}
+        urls = []
+
+        class Resp:
+            def __init__(self, body): self.body = body
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self, n): return self.body
+
+        class Opener:
+            def open(self, request, timeout):
+                import json
+                from urllib.parse import parse_qs, urlparse
+                urls.append(request.full_url)
+                page = int(parse_qs(urlparse(request.full_url).query)["page"][0])
+                return Resp(json.dumps(pages.get(page, [])).encode())
+
+        with mock.patch("apps.sales.online._remote", return_value=("555", "tok", "ua")):
+            found = online._orders_for_member(self.ana, timezone.now() - timedelta(days=1), opener=Opener())
+        self.assertEqual(len(found), 230)
+        self.assertEqual(len(urls), 2)                                      # parou na página incompleta
+        self.assertIn("updated_at_min", urls[0])                            # criado antes, pago depois: aparece
+        self.assertNotIn("created_at_min", urls[0])
+
+    def test_recheck_without_paid_date_goes_to_review_never_grants(self):
+        from apps.nuvemshop.order_recheck_service import RecheckBlocked, _run_club
+        from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
+        event = OrderWebhookEvent.objects.create(tenant=self.tenant, store_id="555", order_id="9970",
+                                                 topic="order/paid", dedupe_key="z".ljust(64, "0"))
+        order = {"id": 9970, "status": "open", "payment_status": "paid", "currency": "BRL", "total": "120.00",
+                 "gateway": "pagarme", "contact_email": "ana@example.invalid", "contact_phone": "", "coupon": []}
+        with self.assertRaises(RecheckBlocked):
+            _run_club(event=event, tenant=self.tenant, order=order, grant=True)
+        self.assertFalse(PointLot.objects.filter(source_reference="site:9970").exists())
+
     def test_order_paid_before_joining_never_grants(self):
         before = (self.ana.joined_at - timedelta(days=1)).isoformat()
         order = {"contact_email": "ana@example.invalid", "paid_at": before}

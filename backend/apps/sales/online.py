@@ -456,10 +456,18 @@ def _remember_customer(tenant, participant, order):
         external_customer_id=cid)
 
 
-def _paid_before_join(order, participant):
+def _paid_at(order):
     from django.utils.dateparse import parse_datetime
     raw = order.get("paid_at")
-    paid_at = parse_datetime(raw) if isinstance(raw, str) else None
+    try:
+        paid_at = parse_datetime(raw) if isinstance(raw, str) else None
+    except ValueError:
+        return None
+    return paid_at if paid_at and paid_at.tzinfo else None
+
+
+def _paid_before_join(order, participant):
+    paid_at = _paid_at(order)
     return bool(paid_at and paid_at < max(participant.consent_at, participant.joined_at))
 
 
@@ -495,7 +503,8 @@ def _order_codes(order):
         if isinstance(codes, list) else set()
 
 
-def handle_order(*, tenant, order, order_id, status, total_cents, profile=None, grant=True):
+def handle_order(*, tenant, order, order_id, status, total_cents, profile=None, grant=True,
+                 require_paid_at=False):
     """Idempotente: o mesmo pedido pode chegar várias vezes (paid/updated).
 
     Duas naturezas separadas:
@@ -531,7 +540,9 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None, 
         if (grant and participant and pilot.online_earning and paid and lot is None
                 and can_operate(tenant, "site_earn")):
             buyer, why = club_buyer(tenant, order, participant)
-            if buyer and _paid_before_join(order, buyer):
+            if buyer and require_paid_at and _paid_at(order) is None:
+                buyer, why = None, "paid_at_missing"     # sem data confiável: conferência, nunca automático
+            elif buyer and _paid_before_join(order, buyer):
                 buyer, why = None, "before_join"         # compra antes de entrar no clube não conta
             result.append(_grant_site(tenant, buyer, total_cents, ref, order_id) if buyer else why)
             if buyer:
@@ -702,16 +713,22 @@ RETRO_DAYS = 30
 RETRO_BATCH = 50
 
 
-def credit_since_join(participant, *, batch=RETRO_BATCH):
-    """Ao ativar a participação, procura pedidos do site recebidos desde a adesão (até 30 dias)
-    que ainda não geraram saldo e os passa pela MESMA reconsulta dos pedidos normais
-    (recheck_order_event): loja/pedido conferidos na Nuvemshop, baixa de cupom, titularidade,
-    identidade do clube e "pago antes de entrar não conta". Não existe rota de concessão própria.
+def _order_key(order_id):
+    return (len(order_id), order_id)            # ids numéricos da Nuvemshop em ordem crescente
 
-    Em lotes; falha num pedido fica registrada (club_retry) e a rotina horária tenta de novo.
-    Devolve {"granted", "nothing", "retry", "blocked", "more"}."""
+
+def credit_since_join(participant, *, batch=RETRO_BATCH, after=""):
+    """Ao ativar a participação, procura pedidos do site desde a adesão (até 30 dias) que ainda
+    não geraram saldo e os passa pela MESMA reconsulta dos pedidos normais
+    (recheck_order_event): loja/pedido conferidos na Nuvemshop, baixa de cupom, titularidade,
+    identidade do clube, data de pagamento obrigatória e "pago antes de entrar não conta".
+    Não existe rota de concessão própria.
+
+    Cursor: os pedidos vão em ordem crescente de id e `after` é o último já tentado, então um
+    pedido inelegível ou bloqueado nunca é escolhido de novo e o lote seguinte sempre avança.
+    Falha num pedido fica registrada (club_retry) e a rotina horária tenta de novo.
+    Devolve {"granted", "nothing", "retry", "blocked", "no_event", "cursor"?}."""
     from collections import Counter
-    from django.db.models import Max
     from apps.nuvemshop.models import NuvemshopOrderRecheck
     from apps.nuvemshop.order_recheck_service import ClubRetry, RecheckBlocked, recheck_order_event
     from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
@@ -723,43 +740,53 @@ def credit_since_join(participant, *, batch=RETRO_BATCH):
         return {"skipped": 1}
     joined = max(participant.consent_at, participant.joined_at)
     since = max(joined, timezone.now() - timedelta(days=RETRO_DAYS))
-    # Só os pedidos DELA: busca na Nuvemshop pelo e-mail confirmado (a reconsulta confere de novo).
+    # Só os pedidos DELA, pela data de ALTERAÇÃO: pedido criado antes e pago depois da adesão
+    # também aparece (pagar altera o pedido). Quem decide é a reconsulta.
     candidates = _orders_for_member(participant, since)
     if candidates is None:
         return {"retry_later": 1}
     granted = set(PointLot.objects.filter(tenant=tenant, source_reference__in=[f"site:{c}" for c in candidates])
                   .values_list("source_reference", flat=True))
-    latest = (OrderWebhookEvent.objects.filter(tenant=tenant, order_id__in=candidates)
-              .values("order_id").annotate(last=Max("received_at")).order_by("last"))
-    todo = [row for row in latest if f"site:{row['order_id']}" not in granted]
-    with_event = {row["order_id"] for row in latest}
+    with_event = set(OrderWebhookEvent.objects.filter(tenant=tenant, order_id__in=candidates)
+                     .values_list("order_id", flat=True))
     out["no_event"] = len([c for c in candidates if c not in with_event])   # aviso nunca chegou: só relatório
-    for row in todo[:batch]:
-        event = (OrderWebhookEvent.objects.filter(tenant=tenant, order_id=row["order_id"])
+    after_key = _order_key(after) if after else None
+    todo = sorted((c for c in with_event if f"site:{c}" not in granted
+                   and (after_key is None or _order_key(c) > after_key)), key=_order_key)
+    for order_id in todo[:batch]:
+        event = (OrderWebhookEvent.objects.filter(tenant=tenant, order_id=order_id)
                  .order_by("-received_at").first())
         try:
             recheck_order_event(event_id=event.pk, reprocess=True)
         except ClubRetry:
             out["retry"] += 1                       # já marcado club_retry: a rotina horária repete
         except RecheckBlocked:
-            out["blocked"] += 1                     # o clube rodou antes; parada é do motor antigo
+            NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
+                "status": "needs_review", "checked_at": timezone.now()})
+            out["blocked"] += 1                     # fica em conferência manual (club_readiness)
         except Exception:
             NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
                 "status": "club_retry", "checked_at": timezone.now()})
             out["retry"] += 1
-        if PointLot.objects.filter(tenant=tenant, source_reference=f"site:{row['order_id']}").exists():
+        if PointLot.objects.filter(tenant=tenant, source_reference=f"site:{order_id}").exists():
             out["granted"] += 1
         else:
             out["nothing"] += 1
+    result = dict(out)
     if len(todo) > batch:
-        out["more"] = 1
-    logger.info("credit_since_join tenant=%s result=%s", tenant.pk, dict(out))
-    return dict(out)
+        result["cursor"] = todo[batch - 1]          # próximo lote começa depois deste pedido
+    logger.info("credit_since_join tenant=%s result=%s", tenant.pk,
+                {k: v for k, v in result.items() if k != "cursor"})
+    return result
+
+
+RETRO_PAGE_SIZE = 200
+RETRO_MAX_PAGES = 25
 
 
 def _orders_for_member(participant, since, opener=None):
-    """IDs de pedidos da loja buscados pelo e-mail confirmado da cliente desde `since`.
-    None = Nuvemshop indisponível agora (tentar depois). A busca é aproximada; quem decide é a reconsulta."""
+    """IDs de pedidos da loja buscados pelo e-mail confirmado da cliente, alterados desde `since`,
+    lendo todas as páginas. None = Nuvemshop indisponível agora (tentar depois)."""
     from apps.catalog.client import API_ROOT
     from apps.nuvemshop.coupon_client import NoRedirect
     from apps.nuvemshop.order_readonly import safe_id
@@ -771,24 +798,32 @@ def _orders_for_member(participant, since, opener=None):
         return []
     store_id, token, agent = _remote(participant.tenant)
     found = set()
+    client = opener or build_opener(NoRedirect())
     for email in sorted(e.lower() for e in emails)[:3]:
-        query = urlencode({"q": email, "created_at_min": since.isoformat(), "per_page": 50, "fields": "id"})
-        request = Request(f"{API_ROOT}/{safe_id(store_id)}/orders?{query}", method="GET", headers={
-            "Authorization": "Bearer " + token, "User-Agent": agent, "Accept": "application/json"})
-        try:
-            with (opener or build_opener(NoRedirect())).open(request, timeout=10) as response:
-                data = json.loads(response.read(262145))
-        except HTTPError as exc:
-            if exc.code == 404:
-                continue                                  # nenhum pedido
-            return None
-        except (URLError, TimeoutError, OSError, ValueError):
-            return None
-        for item in data if isinstance(data, list) else []:
-            oid = safe_id(item.get("id")) if isinstance(item, dict) else None
-            if oid:
-                found.add(oid)
-    return sorted(found)
+        for page in range(1, RETRO_MAX_PAGES + 1):
+            query = urlencode({"q": email, "updated_at_min": since.isoformat(), "per_page": RETRO_PAGE_SIZE,
+                               "page": page, "fields": "id"})
+            request = Request(f"{API_ROOT}/{safe_id(store_id)}/orders?{query}", method="GET", headers={
+                "Authorization": "Bearer " + token, "User-Agent": agent, "Accept": "application/json"})
+            try:
+                with client.open(request, timeout=10) as response:
+                    data = json.loads(response.read(1048577))
+            except HTTPError as exc:
+                if exc.code == 404:
+                    break                                 # sem pedidos / passou da última página
+                return None
+            except (URLError, TimeoutError, OSError, ValueError):
+                return None
+            items = data if isinstance(data, list) else []
+            for item in items:
+                oid = safe_id(item.get("id")) if isinstance(item, dict) else None
+                if oid:
+                    found.add(oid)
+            if len(items) < RETRO_PAGE_SIZE:
+                break
+        else:
+            logger.warning("credit_since_join: limite de páginas atingido tenant=%s", participant.tenant_id)
+    return sorted(found, key=_order_key)
 
 
 def queue_credit_since_join(participant_id):

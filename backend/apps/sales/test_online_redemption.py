@@ -275,7 +275,7 @@ class OnlineRedemptionTests(StoreFixture, TestCase):
 
     def nuvem_order(self, order_id, codes=(), **extra):
         return {"id": int(order_id), "status": "open", "payment_status": "paid", "currency": "BRL",
-                "total": "120.00", "paid_at": "2026-11-19T12:00:00+00:00", "gateway": "pagarme",
+                "total": "120.00", "paid_at": timezone.now().isoformat(), "gateway": "pagarme",
                 "contact_email": "ana@example.invalid", "contact_phone": "não é telefone",
                 "coupon": [{"code": c} for c in codes], **extra}
 
