@@ -85,6 +85,17 @@
 .ss-pilot-mail{display:flex;gap:10px;align-items:flex-start;margin:0;padding:12px 14px;border-radius:14px;background:var(--vf-info-soft);
  font-size:13.5px;line-height:1.5;color:var(--vf-purple-900)}
 .ss-pilot-mail svg{flex:none;margin-top:2px;color:var(--vf-primary)}
+/* Modo de operação (teste x comercial) */
+.ss-pilot-mode{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:var(--vf-reward-soft);color:var(--vf-reward-ink)}
+.ss-pilot-mode.is-commercial{background:var(--vf-info-soft);color:var(--vf-purple-900)}
+.ss-pilot-mode.is-blocked{background:#FDECEF;color:#8A1C33}
+.ss-pilot-mode svg{flex:none;margin-top:2px}
+.ss-pilot-mode>div{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13.5px;line-height:1.5}
+.ss-pilot-mode strong{font-size:14.5px}
+.ss-pilot-mode-warn{font-weight:800}
+.ss-pilot-mode ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.ss-pilot-mode li{display:flex;gap:6px;align-items:flex-start}
+.ss-pilot-mode li svg{margin-top:3px}
 
 @media(max-width:860px){
  .ss-menu{position:static;max-width:none;flex-basis:100%;flex-direction:row;overflow-x:auto;padding:6px}

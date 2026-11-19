@@ -34,8 +34,8 @@ def FIND(remote_id):
     return mock.patch("apps.sales.online._find_remote", return_value=remote_id)
 
 
-@override_settings(**FLAGS)
-class OnlineRedemptionTests(TestCase):
+class StoreFixture:
+    """Loja Nuvemshop em giftback, clube ativo e uma cliente com e-mail confirmado (reutilizado)."""
     def setUp(self):
         self.owner = get_user_model().objects.create_user(username="online-owner")
         self.tenant = Tenant.objects.create(name="Loja Online", slug="loja-online", platform="nuvemshop",
@@ -65,6 +65,10 @@ class OnlineRedemptionTests(TestCase):
         order = {"contact_email": email, "coupon": [{"code": c} for c in codes]}
         return handle_order(tenant=self.tenant, order=order, order_id=order_id,
                             status=SaleRecord.OrderStatus.PAID, total_cents=cents)
+
+
+@override_settings(**FLAGS)
+class OnlineRedemptionTests(StoreFixture, TestCase):
 
     def test_site_status_lists_what_is_missing(self):
         self.assertTrue(site_status(self.tenant)["coupons_ready"])

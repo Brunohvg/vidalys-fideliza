@@ -58,3 +58,8 @@ Decisão do proprietário: qualquer loja conectada pode ligar pontos/giftback no
 ambiente, para testes antes da publicação. `FIDELIZA_PILOT_TENANTS` foi removida; a exigência de
 `FIDELIZA_ENVIRONMENT=homolog` deixou de valer para este recurso. Continuam: ativação/pausa pelo
 proprietário em Meu clube, teto por venda e orçamento total. Avisos de "homologação" saíram do painel.
+
+## Modo de operação e limites (nov/2026)
+Teto por venda e orçamento continuam sendo do lojista, mas limitados pelo modo da loja
+(apps/sales/policy.py): **teste** até R$ 50 por compra e R$ 2.000 no total; **comercial** até
+R$ 200 e R$ 10.000, liberado só pela Vidalys. Detalhes e requisitos: docs/50.

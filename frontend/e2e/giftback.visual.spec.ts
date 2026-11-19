@@ -144,6 +144,51 @@ for(const width of [390,1440]){
   });
 }
 
+for(const width of [390,1440]){
+  test("Meu clube: modo teste mostra limite em reais e barra teto acima do máximo em "+width+"px",async({page},info)=>{
+    await page.setViewportSize({width,height:1000});await merchant(page);
+    await page.route("**/api/v1/tenants/**/loyalty/program-mode/",r=>r.fulfill(json({mode:"giftback",saved:true,giftback_bps:1000,
+      giftback_cap_cents:2000,giftback_min_order_cents:8000,giftback_validity_days:30,giftback_hold_days:7})));
+    const operation={mode:"test",max_per_sale:5000,max_budget:200000,commercial_at:null,blockers:[] as string[],effective_per_sale:2000,effective_budget:50000};
+    const posts:unknown[]=[];
+    await page.route("**/api/v1/tenants/**/sales/pilot/",r=>{
+      if(r.request().method()==="POST")posts.push(r.request().postDataJSON());
+      return r.fulfill(json({allowed:true,active:false,per_sale_cap_points:2000,budget_points:50000,issued_points:12400,activated_at:null,
+        paused_at:null,rule:null,counter_rewards:0,program,operation}));
+    });
+    await go(page,width,"Meu clube");
+    await page.getByRole("navigation",{name:"Ativação do clube"}).getByRole("button",{name:"Ir para a ativação"}).click();
+    const card=page.locator("#vf-pilot-card");
+    const banner=card.getByRole("note",{name:"Modo de operação"});
+    await expect(banner).toContainText("Modo teste");
+    await expect(banner).toContainText("até R$ 50,00 por compra e R$ 2.000,00 no total");
+    await expect(card).toContainText("Máximo neste modo: R$ 50,00");
+    await card.getByLabel("Teto por venda (R$)").fill("80");
+    await card.getByRole("button",{name:"Salvar tetos"}).click();
+    await expect(card.getByRole("alert")).toContainText("No modo teste, o teto por venda vai até R$ 50,00");
+    expect(posts).toEqual([]);
+    await noOverflow(page);
+    await banner.screenshot({path:info.outputPath("modo-teste-"+width+".png")});
+  });
+}
+
+test("Meu clube: modo comercial com requisito faltando mostra o bloqueio",async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await merchant(page);
+  await page.route("**/api/v1/tenants/**/loyalty/program-mode/",r=>r.fulfill(json({mode:"giftback",saved:true,giftback_bps:1000,
+    giftback_cap_cents:2000,giftback_min_order_cents:8000,giftback_validity_days:30,giftback_hold_days:7})));
+  await page.route("**/api/v1/tenants/**/sales/pilot/",r=>r.fulfill(json({allowed:true,active:false,per_sale_cap_points:2000,budget_points:50000,
+    issued_points:0,activated_at:null,paused_at:null,rule:null,counter_rewards:0,program,
+    operation:{mode:"commercial",max_per_sale:20000,max_budget:1000000,commercial_at:"2026-11-19T12:00:00Z",
+      blockers:["Nenhum cupom sem confirmação há mais de 24 horas"],effective_per_sale:2000,effective_budget:50000}})));
+  await go(page,1440,"Meu clube");
+  await page.getByRole("navigation",{name:"Ativação do clube"}).getByRole("button",{name:"Ir para a ativação"}).click();
+  const banner=page.locator("#vf-pilot-card").getByRole("note",{name:"Modo de operação"});
+  await expect(banner).toContainText("Modo comercial");
+  await expect(banner).toContainText("Até R$ 200,00 por compra e R$ 10.000,00 no total.");
+  await expect(banner).toContainText("Bloqueado nos canais afetados até resolver:");
+  await expect(banner).toContainText("Nenhum cupom sem confirmação há mais de 24 horas");
+});
+
 test("Conferir no giftback fala em crédito, não em pontos",async({page})=>{
   await merchant(page);
   const now=new Date().toISOString();

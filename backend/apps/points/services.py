@@ -33,12 +33,22 @@ MOVEMENTS = {
 }
 
 
-def _enabled(tenant_id=None):
+# Movimentos que só baixam ou devolvem saldo já emitido: nunca criam exposição nova.
+SETTLEMENT_KINDS = frozenset({
+    PointEvent.Kind.REDEEM, PointEvent.Kind.CANCEL_RESERVE, PointEvent.Kind.REVERSE_PENDING,
+    PointEvent.Kind.REVERSE_AVAILABLE, PointEvent.Kind.EXPIRE_PENDING, PointEvent.Kind.EXPIRE_AVAILABLE,
+})
+
+
+def _enabled(tenant_id=None, kind=None):
+    """Loja com clube (CounterPilot): decide SEMPRE a política central (apps/sales/policy.py),
+    mesmo com a flag global ligada. Sem clube: só a flag global do motor antigo."""
+    from apps.sales.policy import has_club, ledger_write_allowed
+    if tenant_id is not None and has_club(tenant_id):
+        if ledger_write_allowed(tenant_id, settles=kind in SETTLEMENT_KINDS):
+            return
+        raise PermissionError("Clube pausado ou fora dos requisitos desta loja.")
     if getattr(settings, "FIDELIZA_POINTS_WRITES_ENABLED", False):
-        return
-    # Única exceção: piloto de balcão ativo para ESTA loja (homologação + lista no servidor).
-    from apps.sales.pilot import pilot_enabled
-    if tenant_id is not None and pilot_enabled(tenant_id):
         return
     raise PermissionError("Pontos bloqueados: motor de pagamentos ainda não homologado.")
 
@@ -170,7 +180,7 @@ def transition_points(*, lot_id, kind, amount, idempotency_key, external_receipt
     lot = PointLot.objects.select_for_update().select_related(
         "wallet__participant","tenant",
     ).get(pk=lot_id)
-    _enabled(lot.tenant_id)
+    _enabled(lot.tenant_id, kind)
     # Bloquear leitura/escrita entre tenants depende do adaptador; esta função
     # NÃO deve ser exposta como endpoint do usuário final.
     now = timezone.now()

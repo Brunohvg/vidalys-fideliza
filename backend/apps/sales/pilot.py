@@ -1,8 +1,7 @@
 """Pontos/giftback no balcão: confirmar a venda gera o saldo; o vale ou crédito é usado no caixa.
 
 Disponível para qualquer loja: o proprietário liga e pausa em Meu clube (CounterPilot.active).
-Teto por venda e orçamento total limitam o risco. As flags financeiras globais do motor
-antigo continuam desligadas; nada aqui cria cupom na Nuvemshop.
+Se a loja pode operar, e com quais tetos, quem decide é apps/sales/policy.py (teste x comercial).
 """
 import hashlib
 from datetime import timedelta
@@ -34,16 +33,13 @@ def _tenant_id(value):
 
 
 def pilot_allowed(tenant):
-    """Qualquer loja pode ligar. Mantido como ponto único caso um bloqueio volte a ser preciso."""
+    """Qualquer loja pode ligar no modo teste (tetos baixos). O comercial é liberado à parte."""
     return True
 
 
 def pilot_enabled(tenant):
-    if not pilot_allowed(tenant):
-        return False
-    return CounterPilot.objects.filter(
-        tenant_id=_tenant_id(tenant), active=True, tenant__status=Tenant.Status.ACTIVE,
-    ).exists()
+    from .policy import can_operate
+    return can_operate(_tenant_id(tenant))
 
 
 def source_reference(sale):
@@ -96,8 +92,9 @@ def points_for(tenant_id, amount_cents):
         if rule is None:
             return 0, False
         raw = amount_cents * rule.points // rule.per_cents
+    from .policy import effective_per_sale
     pilot = CounterPilot.objects.filter(tenant_id=tenant_id).first()
-    cap = pilot.per_sale_cap_points if pilot else raw
+    cap = effective_per_sale(pilot) if pilot else raw
     return min(raw, cap), raw > cap
 
 
@@ -132,6 +129,7 @@ def _notice_stats(tenant):
 
 
 def pilot_state(tenant):
+    from .policy import snapshot
     pilot = CounterPilot.objects.filter(tenant=tenant).first()
     rule = _rule(tenant.pk)
     issued = issued_points(tenant.pk)
@@ -149,6 +147,7 @@ def pilot_state(tenant):
         "notices": _notice_stats(tenant),
         "site": _site_state(tenant, pilot),
         "counter_rewards": _rewards_qs(tenant.pk).count(),
+        "operation": snapshot(pilot),
     }
 
 
@@ -359,7 +358,8 @@ def grant_for_review(sale, reviewer):
     points, _capped = points_for(sale.tenant_id, base)
     if points <= 0:
         return 0, "zero"
-    left = pilot.budget_points - issued_points(sale.tenant_id)
+    from .policy import effective_budget
+    left = effective_budget(pilot) - issued_points(sale.tenant_id)
     if left <= 0:
         return 0, "budget"
     points = min(points, left)

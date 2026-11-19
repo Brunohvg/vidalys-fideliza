@@ -360,7 +360,10 @@ export type CounterPilotState={
   activated_at:string|null;paused_at:string|null;
   rule:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;counter_rewards:number;
   program?:ProgramInfo;notices?:{reachable_members:number;emails_queued:number};site?:SiteState|null;
+  operation?:OperationState;
 };
+export type OperationState={mode:"test"|"commercial";max_per_sale:number;max_budget:number;commercial_at:string|null;
+  blockers:string[];effective_per_sale?:number;effective_budget?:number};
 export type ManualSaleInput = {
   reference:string;eligible_amount_cents:number;
   participant_id:string|null;reported_paid_at:string;evidence_reference:string;

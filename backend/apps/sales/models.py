@@ -250,13 +250,21 @@ class SaleManualLinkAudit(models.Model):
 
 
 class CounterPilot(models.Model):
-    """Piloto de pontos no balcão de UMA loja (homologação + lista de lojas no servidor).
+    """Clube de pontos/giftback de UMA loja: o lojista liga, pausa e define os tetos aqui.
 
-    O lojista liga e pausa aqui. Tetos limitam o risco enquanto não há custo
-    de produto conferido: pontos por venda e pontos emitidos no total.
+    O modo de operação (teste ou comercial) só muda pelo comando `set_store_operation`
+    (superusuário). Regras e limites de cada modo: apps/sales/policy.py.
     """
+    class OperationMode(models.TextChoices):
+        TEST = "test", "Teste"
+        COMMERCIAL = "commercial", "Comercial"
+
     tenant = models.OneToOneField("tenants.Tenant", on_delete=models.PROTECT, related_name="counter_pilot")
     active = models.BooleanField(default=False)
+    operation_mode = models.CharField(max_length=12, choices=OperationMode.choices, default=OperationMode.TEST)
+    commercial_at = models.DateTimeField(null=True, blank=True)
+    commercial_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                      related_name="+")
     per_sale_cap_points = models.PositiveIntegerField(default=1500)
     budget_points = models.PositiveIntegerField(default=50000)
     # Site (Nuvemshop): ganhar em pedido pago e resgatar por cupom único.

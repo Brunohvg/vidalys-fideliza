@@ -3,8 +3,9 @@ import {Check,CirclePause,Mail,CirclePlay,Gift,LockKeyhole,ShieldCheck,ShoppingB
 import {ApiError,merchantApi,type CounterPilotState,type Store} from "./api";
 import "./store-settings.css";
 
-/* Ativação de pontos/giftback no balcão (Meu clube → Como ganhar). Antes ligável só quando o
-   servidor libera a loja. O proprietário ativa, ajusta os tetos e pausa na hora. */
+/* Ativação de pontos/giftback no balcão (Meu clube → Como ganhar). O proprietário ativa,
+   ajusta os tetos e pausa na hora. O modo (teste ou comercial) e os tetos máximos vêm da
+   política central do servidor; só a Vidalys libera o comercial. */
 
 const pts=(n:number)=>n.toLocaleString("pt-BR");
 const money=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -37,6 +38,9 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
  const saveLimits=()=>{
   const c=Math.round(Number(cap.replace(",","."))*100),b=Math.round(Number(budget.replace(",","."))*100);
   if(!Number.isFinite(c)||c<1||!Number.isFinite(b)||b<1){setError("Informe tetos em reais maiores que zero.");return;}
+  const op=state?.operation;
+  if(op&&(c>op.max_per_sale||b>op.max_budget)){
+   setError(`No modo ${op.mode==="commercial"?"comercial":"teste"}, o teto por venda vai até ${money(op.max_per_sale)} e o orçamento até ${money(op.max_budget)}.`);return;}
   void save({per_sale_cap_points:c,budget_points:b},"Tetos salvos.");
  };
 
@@ -51,7 +55,9 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
   </div>
  </section>;
 
- const used=state.budget_points?Math.min(100,state.issued_points/state.budget_points*100):0;
+ const op=state.operation;
+ const budgetNow=op?.effective_budget??state.budget_points;
+ const used=budgetNow?Math.min(100,state.issued_points/budgetNow*100):0;
  const gift=state.program&&state.program.mode==="giftback"?state.program:null;
  const ready=Boolean(state.rule)||Boolean(gift);
  const unit=gift?"crédito":"pontos";
@@ -60,6 +66,8 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
    <span className="vf-muted vf-small">Ligue quando quiser começar. Pausar congela tudo na hora, sem apagar saldos.</span></div>
    <span className={"vf-chip "+(state.active?"is-ok":"is-gold")}>{state.active?"Ativo":"Pausado"}</span></div>
 
+  {op&&<OperationBanner op={op}/>}
+
   <ol className="ss-pilot-steps">
    <li><b>Balcão registra</b> a venda com o celular da cliente.</li>
    <li><b>Você confirma</b> em Vendas → Conferir. Só então {gift?"o crédito entra":"os pontos entram"}, em carência.</li>
@@ -67,7 +75,7 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
   </ol>
 
   <div className="ss-pilot-budget">
-   <div className="ss-pilot-line"><span>{gift?"Crédito emitido":"Pontos emitidos"}</span><strong>{gift?`${money(state.issued_points)} de ${money(state.budget_points)}`:`${pts(state.issued_points)} de ${pts(state.budget_points)}`}</strong></div>
+   <div className="ss-pilot-line"><span>{gift?"Crédito emitido":"Pontos emitidos"}</span><strong>{gift?`${money(state.issued_points)} de ${money(budgetNow)}`:`${pts(state.issued_points)} de ${pts(budgetNow)}`}</strong></div>
    <div className="ss-pilot-bar" role="progressbar" aria-label="Orçamento usado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used)}>
     <i style={{width:Math.max(used,2)+"%"}}/></div>
    <span className="vf-muted vf-small">{gift?"":`Equivale a ${money(state.issued_points)} em descontos possíveis. `}Ao atingir o orçamento, novas vendas são conferidas sem gerar {unit}.</span>
@@ -95,10 +103,10 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
    <div className="vf-grid2 ss-pilot-limits">
     <label className="vf-field is-compact">Teto por venda (R$)
      <input inputMode="decimal" value={cap} onChange={e=>setCap(e.target.value)} disabled={busy}/>
-     <small>Uma venda nunca gera mais que isso em {unit}. Sugestão: R$ 15 (ou o teto do giftback).</small></label>
+     <small>Uma venda nunca gera mais que isso em {unit}. Sugestão: R$ 15 (ou o teto do giftback).{op?` Máximo neste modo: ${money(op.max_per_sale)}.`:""}</small></label>
     <label className="vf-field is-compact">Orçamento total (R$)
      <input inputMode="decimal" value={budget} onChange={e=>setBudget(e.target.value)} disabled={busy}/>
-     <small>Soma de tudo que pode ser emitido. Sugestão para começar: R$ 500.</small></label>
+     <small>Soma de tudo que pode ser emitido. Sugestão para começar: R$ 500.{op?` Máximo neste modo: ${money(op.max_budget)}.`:""}</small></label>
    </div>
    {error&&<div className="vf-toast is-error" role="alert"><TriangleAlert size={18}/>{error}</div>}
    {notice&&<div className="vf-toast" role="status"><Check size={18}/>{notice}</div>}
@@ -113,6 +121,21 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
    </div>
   </>:<p className="vf-note"><ShieldCheck size={16}/> Só o proprietário ativa, pausa ou muda os tetos.</p>}
  </section>;
+}
+
+/* Teste x comercial em linguagem de lojista: quanto pode sair no máximo e o que falta. */
+function OperationBanner({op}:{op:NonNullable<CounterPilotState["operation"]>}){
+ const commercial=op.mode==="commercial";
+ return <div className={"ss-pilot-mode"+(commercial?" is-commercial":"")+(op.blockers.length?" is-blocked":"")} role="note" aria-label="Modo de operação">
+  <ShieldCheck size={18} aria-hidden="true"/>
+  <div><strong>{commercial?"Modo comercial":"Modo teste"}</strong>
+   <span>{commercial?`Até ${money(op.max_per_sale)} por compra e ${money(op.max_budget)} no total.`
+    :`Funciona de verdade, com limite de segurança: até ${money(op.max_per_sale)} por compra e ${money(op.max_budget)} no total. `+
+     "Para limites maiores, a Vidalys libera o modo comercial."}</span>
+   {op.blockers.length>0&&<><span className="ss-pilot-mode-warn">Bloqueado nos canais afetados até resolver:</span>
+    <ul>{op.blockers.map(b=><li key={b}><TriangleAlert size={14} aria-hidden="true"/>{b}</li>)}</ul></>}
+  </div>
+ </div>;
 }
 
 type Site=NonNullable<CounterPilotState["site"]>;

@@ -39,7 +39,7 @@ from apps.tenants.models import Tenant
 
 from .models import CounterPilot, OnlineCoupon, SaleRecord
 from .pilot import (
-    PilotBlocked, _live_lots, _rewards_qs, _terms, _used, issued_points, pilot_enabled, points_for,
+    PilotBlocked, _live_lots, _rewards_qs, _terms, _used, issued_points, points_for,
     program_mode, release_due, wallet_balances,
 )
 
@@ -247,7 +247,8 @@ def active_coupon(participant, source=None):
 def issue_coupon(participant, *, reward_id=None, opener=None):
     """Cria o cupom único. Giftback: todo o crédito liberado. Pontos: a recompensa escolhida."""
     tenant = participant.tenant
-    if not pilot_enabled(tenant) or not coupons_live(tenant):
+    from .policy import can_operate
+    if not can_operate(tenant, "site_coupon") or not coupons_live(tenant):
         raise CouponUnavailable("Resgate pelo site está desligado nesta loja.")
     pilot = CounterPilot.objects.get(tenant=tenant)
     gift = program_mode(tenant.pk)
@@ -417,10 +418,14 @@ def _order_codes(order):
 
 
 def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
-    """Idempotente: o mesmo pedido pode chegar várias vezes (paid/updated)."""
-    if not pilot_enabled(tenant):
+    """Idempotente: o mesmo pedido pode chegar várias vezes (paid/updated).
+
+    Baixa de cupom e estorno acontecem mesmo com o clube pausado; ganhar exige poder operar.
+    """
+    from .policy import can_operate
+    pilot = CounterPilot.objects.filter(tenant=tenant).first()
+    if pilot is None:
         return "off"
-    pilot = CounterPilot.objects.get(tenant=tenant)
     result = []
     paid = status == SaleRecord.OrderStatus.PAID
     with transaction.atomic():
@@ -442,7 +447,7 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
         participant = _participant_for(tenant, order, profile)
         ref = f"site:{order_id}"
         lot = PointLot.objects.filter(tenant=tenant, source_reference=ref).first()
-        if participant and pilot.online_earning and paid and lot is None:
+        if participant and pilot.online_earning and paid and lot is None and can_operate(tenant, "site_earn"):
             result.append(_grant_site(tenant, participant, total_cents, ref, order_id))
         elif lot is not None and status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED):
             balances = lot_balances(lot)
@@ -459,7 +464,8 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
 def _late_redeem(coupon, order_id):
     """Cupom usado no site depois que a reserva voltou ao saldo: debita o que ainda houver.
 
-    Devolve o que faltou (já gasto no caixa, por exemplo) para ficar registrado na auditoria.
+    Baixa direta do disponível (REVERSE_AVAILABLE com o pedido como comprovante), que vale
+    mesmo com o clube pausado. Devolve o que faltou (já gasto no caixa) para a auditoria.
     """
     wallet = PointWallet.objects.filter(participant=coupon.participant, tenant=coupon.tenant).first()
     if wallet is None:
@@ -472,9 +478,7 @@ def _late_redeem(coupon, order_id):
         take = min(lot_balances(lot)["available"], remaining)
         if take <= 0:
             continue
-        transition_points(lot_id=lot.pk, kind=PointEvent.Kind.RESERVE, amount=take,
-                          idempotency_key=f"coupon-late-reserve:{coupon.pk}")
-        transition_points(lot_id=lot.pk, kind=PointEvent.Kind.REDEEM, amount=take,
+        transition_points(lot_id=lot.pk, kind=PointEvent.Kind.REVERSE_AVAILABLE, amount=take,
                           idempotency_key=f"coupon-late-redeem:{coupon.pk}",
                           external_receipt=f"site:{order_id}:{coupon.code}")
         remaining -= take
@@ -488,8 +492,9 @@ def _grant_site(tenant, participant, total_cents, ref, order_id):
     if terms is None:
         return "no_rule"
     hold_days, validity_days, rule_version = terms
+    from .policy import effective_budget
     points, _ = points_for(tenant.pk, total_cents)
-    left = pilot.budget_points - issued_points(tenant.pk)
+    left = effective_budget(pilot) - issued_points(tenant.pk)
     points = min(points, max(left, 0))
     if points <= 0:
         return "budget" if left <= 0 else "zero"
@@ -528,7 +533,8 @@ def refresh_tenant(tenant, opener=None):
             out["expired"] += 1
         except Exception:
             logger.warning("online_coupon expire_pending tenant=%s", tenant.pk)
-    if not (pilot_enabled(tenant) and coupons_live(tenant) and program_mode(tenant.pk)):
+    from .policy import can_operate
+    if not (can_operate(tenant, "site_coupon") and coupons_live(tenant) and program_mode(tenant.pk)):
         return out
     wallets = PointWallet.objects.filter(tenant=tenant, participant__status=ProgramParticipant.Status.ACTIVE)
     for wallet in wallets.select_related("participant"):
@@ -561,6 +567,7 @@ def free_for_counter(participant):
 
 
 def refresh_all():
-    tenants = Tenant.objects.filter(pk__in=CounterPilot.objects.filter(active=True).values("tenant_id"),
+    # Inclui clubes pausados: conferir cupons incertos e vencer cupons não pode parar.
+    tenants = Tenant.objects.filter(pk__in=CounterPilot.objects.values("tenant_id"),
                                     status=Tenant.Status.ACTIVE, platform="nuvemshop")
     return {str(t.pk): refresh_tenant(t) for t in tenants}

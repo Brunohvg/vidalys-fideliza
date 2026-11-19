@@ -39,9 +39,12 @@ def club_results(tenant, *, days=30):
     came_back = returning | repeat_in_period
 
     events = PointEvent.objects.filter(lot__in=lots, created_at__gte=since)
-    used = _sum(events.filter(kind=PointEvent.Kind.REDEEM), "amount")
+    # Uso tardio de cupom do site é baixa direta com o pedido como comprovante: conta como usado.
+    late_use = events.filter(kind=PointEvent.Kind.REVERSE_AVAILABLE, external_receipt__startswith="site:")
+    used = _sum(events.filter(kind=PointEvent.Kind.REDEEM), "amount") + _sum(late_use, "amount")
     expired = _sum(events.filter(kind__in=(PointEvent.Kind.EXPIRE_PENDING, PointEvent.Kind.EXPIRE_AVAILABLE)), "amount")
-    reversed_ = _sum(events.filter(kind__in=(PointEvent.Kind.REVERSE_PENDING, PointEvent.Kind.REVERSE_AVAILABLE)), "amount")
+    reversed_ = _sum(events.filter(kind__in=(PointEvent.Kind.REVERSE_PENDING, PointEvent.Kind.REVERSE_AVAILABLE))
+                     .exclude(pk__in=late_use.values("pk")), "amount")
 
     # Desconto efetivamente concedido (valor em reais do vale/crédito) e a venda que ele puxou.
     counter_used = CounterRedemption.objects.filter(tenant=tenant, state=CounterRedemption.State.REDEEMED,

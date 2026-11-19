@@ -448,10 +448,16 @@ class CounterPilotView(APIView):
         for key in ("active", *site_keys):
             if key in data and type(data[key]) is not bool:
                 return safe_reply({"detail": "Opção deve ser sim ou não."}, 400)
-        for key, top in (("per_sale_cap_points", 100_000), ("budget_points", 10_000_000)):
-            if key in data and not (is_int(data[key]) and 1 <= data[key] <= top):
-                return safe_reply({"detail": "Teto fora dos limites."}, 400)
         tenant = Tenant.objects.select_for_update().get(pk=tenant_id)
+        from .policy import COMMERCIAL, limits, mode_of
+        current = CounterPilot.objects.filter(tenant=tenant).first()
+        lim = limits(current)
+        mode_label = "comercial" if mode_of(current) == COMMERCIAL else "teste"
+        for key, top, label in (("per_sale_cap_points", lim.per_sale, "teto por venda"),
+                                ("budget_points", lim.budget, "orçamento total")):
+            if key in data and not (is_int(data[key]) and 1 <= data[key] <= top):
+                reais = f"{top / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                return safe_reply({"detail": f"No modo {mode_label}, o {label} vai até R$ {reais}."}, 400)
         if data.get("active") and not pilot_allowed(tenant):
             return safe_reply({"detail": "O piloto não está liberado para esta loja neste servidor."}, 409)
         from .pilot import program_mode
