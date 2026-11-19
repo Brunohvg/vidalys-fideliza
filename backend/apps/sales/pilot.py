@@ -108,6 +108,17 @@ def points_for(tenant_id, amount_cents):
     return min(raw, cap), raw > cap
 
 
+def _notice_stats(tenant):
+    from apps.participants.enrollment_models import EnrollmentSubmission
+    from .models import CreditNotice
+    reachable = EnrollmentSubmission.objects.filter(
+        tenant=tenant, participant__status=ProgramParticipant.Status.ACTIVE, email_verified_at__isnull=False,
+        withdrawn_at__isnull=True, marketing_opt_in=True,
+    ).count()
+    sent = CreditNotice.objects.filter(tenant=tenant, emailed=True).values("lot__wallet__participant", "kind").distinct().count()
+    return {"reachable_members": reachable, "emails_queued": sent}
+
+
 def pilot_state(tenant):
     pilot = CounterPilot.objects.filter(tenant=tenant).first()
     rule = _rule(tenant.pk)
@@ -123,6 +134,7 @@ def pilot_state(tenant):
         "rule": ({"points": rule.points, "per_cents": rule.per_cents,
                   "hold_days": rule.hold_days, "validity_days": rule.validity_days} if rule else None),
         "program": mode_payload(tenant.pk),
+        "notices": _notice_stats(tenant),
         "counter_rewards": _rewards_qs(tenant.pk).count(),
     }
 

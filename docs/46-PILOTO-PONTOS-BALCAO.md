@@ -44,3 +44,11 @@ validade 30 dias, libera em 7 dias. No Balcão o vendedor vê "R$ X de crédito 
 crédito inteiro (pedido mínimo obrigatório). Confirmar a venda consome o crédito e gera o novo
 crédito sobre o valor pago; recusar ou desfazer devolve. Teto por venda e orçamento do piloto
 valem igualmente (em centavos). Requer `sales.0010_program_mode`.
+
+## Avisos automáticos (19/11/2026)
+Celery Beat roda `sales.pilot_wallet_scan` de hora em hora (minuto 20), só para lojas com piloto
+ativo: libera carências vencidas e envia, **uma vez por lote**, "seu crédito/pontos liberou"
+(liberações dos últimos 3 dias) e "vence em até 5 dias". Só para quem confirmou o e-mail e marcou
+receber novidades (Meu Clube → Perfil); sem isso o aviso fica registrado como não enviado e nunca
+dispara depois. Auditoria em `EmailDispatch` tipo `notice`. Requer `core.0007` e `sales.0011` e
+o serviço `beat` rodando.

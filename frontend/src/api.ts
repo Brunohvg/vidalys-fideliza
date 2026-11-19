@@ -350,7 +350,7 @@ export type CounterPilotState={
   allowed:boolean;active:boolean;per_sale_cap_points:number;budget_points:number;issued_points:number;
   activated_at:string|null;paused_at:string|null;
   rule:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;counter_rewards:number;
-  program?:ProgramInfo;
+  program?:ProgramInfo;notices?:{reachable_members:number;emails_queued:number};
 };
 export type ManualSaleInput = {
   reference:string;eligible_amount_cents:number;

@@ -201,6 +201,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "loyalty.reconcile_verified_refunds",
         "schedule": crontab(minute="*/30"),
     },
+    # Piloto de balcão: libera carências vencidas e avisa saldo liberado/vencendo.
+    # No-op para lojas fora do piloto (homologação + lista + ativado pelo dono).
+    "sales-pilot-wallet-scan-hourly": {
+        "task": "sales.pilot_wallet_scan",
+        "schedule": crontab(minute=20),
+    },
     # PR26: must run on dedicated Nuvemshop OAuth worker, never generic SMTP.
     # Without Celery Beat deployment this schedule is inert.
     "nuvemshop-revoke-expired-hourly": {

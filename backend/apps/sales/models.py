@@ -329,3 +329,20 @@ class ProgramMode(models.Model):
             models.CheckConstraint(condition=Q(giftback_cap_cents__gt=0), name="program_mode_cap_positive"),
             models.CheckConstraint(condition=Q(giftback_validity_days__gte=7), name="program_mode_validity_min"),
         ]
+
+
+class CreditNotice(models.Model):
+    """Um aviso por lote e por tipo: impede e-mail repetido de "liberou" ou "vence em breve"."""
+    class Kind(models.TextChoices):
+        RELEASED = "released", "Liberado"
+        EXPIRING = "expiring", "Vencendo"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
+    lot = models.ForeignKey("points.PointLot", on_delete=models.CASCADE, related_name="notices")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    emailed = models.BooleanField(default=False)  # False: sem consentimento/e-mail confirmado
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["lot", "kind"], name="credit_notice_once_per_lot")]

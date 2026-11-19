@@ -1,6 +1,7 @@
 import {useEffect,useState} from "react";
-import {Check,CirclePause,CirclePlay,Gift,LockKeyhole,ShieldCheck,TriangleAlert} from "lucide-react";
+import {Check,CirclePause,Mail,CirclePlay,Gift,LockKeyhole,ShieldCheck,TriangleAlert} from "lucide-react";
 import {ApiError,merchantApi,type CounterPilotState,type Store} from "./api";
+import "./store-settings.css";
 
 /* Piloto de pontos no balcão (Configurações → Canais). Só aparece ligável quando o
    servidor libera a loja. O proprietário ativa, ajusta os tetos e pausa na hora. */
@@ -72,6 +73,9 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
    <span className="vf-muted vf-small">{gift?"":`Equivale a ${money(state.issued_points)} em descontos possíveis. `}Ao atingir o orçamento, novas vendas são conferidas sem gerar {unit}.</span>
   </div>
 
+  {state.notices&&<p className="ss-pilot-mail"><Mail size={16} aria-hidden="true"/>
+   <span><b>Avisos automáticos por e-mail:</b> “{gift?"seu crédito liberou":"seus pontos liberaram"}” e “vence em 5 dias”, só para quem confirmou o e-mail e aceitou novidades
+    ({state.notices.reachable_members} {state.notices.reachable_members===1?"cliente":"clientes"} hoje{state.notices.emails_queued?` · ${state.notices.emails_queued} avisos enviados`:""}).</span></p>}
   {gift?<ul className="ss-pilot-checks" aria-label="Antes de ativar">
    <li className="is-ok"><Check size={15}/>Giftback salvo: {gift.percent_bps/100}% de volta · teto {money(gift.cap_cents)} · uso a partir de {money(gift.min_order_cents)} · validade {gift.validity_days} dias</li>
   </ul>

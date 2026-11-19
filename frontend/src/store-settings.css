@@ -60,6 +60,9 @@
 .ss-pilot-checks li.is-ok{color:var(--vf-success)}
 .ss-pilot-checks li.is-todo{color:var(--vf-reward-ink)}
 .ss-pilot-actions{flex-wrap:wrap}
+.ss-pilot-mail{display:flex;gap:10px;align-items:flex-start;margin:0;padding:12px 14px;border-radius:14px;background:var(--vf-info-soft);
+ font-size:13.5px;line-height:1.5;color:var(--vf-purple-900)}
+.ss-pilot-mail svg{flex:none;margin-top:2px;color:var(--vf-primary)}
 
 @media(max-width:860px){
  .ss-menu{position:static;max-width:none;flex-basis:100%;flex-direction:row;overflow-x:auto;padding:6px}
