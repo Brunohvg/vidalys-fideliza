@@ -58,7 +58,7 @@ const COUNTER_STATE:Record<ManualSaleRecord["state"],[string,string]>={
 
 export type SaleClient={id:string;display_name:string;detail:string};
 type Tab="counter"|"review"|"orders";
-type Shared={tenantId:string;items:ManualSaleRecord[];loading:boolean;listError:string;pilot:boolean;
+type Shared={tenantId:string;items:ManualSaleRecord[];loading:boolean;listError:string;pilot:boolean;avgTicket:number;
  rule:PointRuleDraft|null;pointValue:number|null;reload:()=>void};
 
 export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:string;role:Store["role"];initialClient?:SaleClient|null}){
@@ -66,6 +66,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
  const [tab,setTab]=useState<Tab>(canEdit?"counter":"orders");
  const [items,setItems]=useState<ManualSaleRecord[]>([]);
  const [pilot,setPilot]=useState(false);
+ const [avgTicket,setAvgTicket]=useState(0);
  const [loading,setLoading]=useState(true);
  const [listError,setListError]=useState("");
  const [version,setVersion]=useState(0);
@@ -74,7 +75,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
 
  useEffect(()=>{
   let active=true;setLoading(true);setListError("");
-  merchantApi.listManualSales(tenantId).then(d=>{if(active){setItems(d.items);setPilot(Boolean(d.pilot_active));}})
+  merchantApi.listManualSales(tenantId).then(d=>{if(active){setItems(d.items);setPilot(Boolean(d.pilot_active));setAvgTicket(d.average_ticket_cents||0);}})
    .catch(e=>{if(active)setListError(e instanceof ApiError?e.message:"Não foi possível consultar as vendas.");})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false};
@@ -94,7 +95,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
  },[tenantId,canEdit]);
 
  const pending=items.filter(i=>i.state==="awaiting_review"||i.state==="awaiting_member").length;
- const shared:Shared={tenantId,items,loading,listError,pilot,rule,pointValue,reload:()=>setVersion(v=>v+1)};
+ const shared:Shared={tenantId,items,loading,listError,pilot,avgTicket,rule,pointValue,reload:()=>setVersion(v=>v+1)};
  const TABS:[Tab,string][]=canEdit?[["counter","Balcão"],["review","Conferir"],["orders","Pedidos"]]:[["orders","Pedidos"]];
 
  return <section className="vf-screen vf-sales-page" aria-labelledby="vf-sales-title">
@@ -117,7 +118,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
 type Person={id:string;display_name:string;detail:string};
 
 function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient|null}){
- const {tenantId,items,pilot,rule,pointValue,reload}=shared;
+ const {tenantId,items,pilot,avgTicket,rule,pointValue,reload}=shared;
  const [amount,setAmount]=useState("");
  const [receipt,setReceipt]=useState("");
  const [more,setMore]=useState(false);
@@ -188,6 +189,9 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
  const projected=wallet&&points!==null?wallet.available-(reward?.points_cost||0)+wallet.pending+points:null;
  const goal=wallet&&projected!==null?wallet.rewards.filter(r=>!r.exhausted&&r.points_cost>projected).sort((a,b)=>a.points_cost-b.points_cost)[0]:null;
  const missingCents=goal&&projected!==null&&rule?Math.ceil((goal.points_cost-projected)*rule.per_cents/rule.points):null;
+ // A dica só aparece quando a meta está perto (até 3 compras médias; sem histórico, até R$ 300).
+ const nearLimit=avgTicket>0?avgTicket*3:30000;
+ const showTip=missingCents!==null&&missingCents<=nearLimit;
  const releaseDate=rule?dayMonth(new Date(Date.now()+rule.hold_days*86400000)):"";
 
  const submit=async(event:FormEvent)=>{
@@ -337,8 +341,8 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       <div className="vs-bar" role="progressbar" aria-label={"Progresso até "+goal.title} aria-valuemin={0} aria-valuemax={goal.points_cost}
        aria-valuenow={Math.max(projected,0)}><i style={{width:Math.min(100,Math.max(4,projected/goal.points_cost*100))+"%"}}/></div>
      </div>}
-     {wallet&&goal&&missingCents!==null&&<p className="vs-tip"><Star size={16} aria-hidden="true"/>
-      <span>Diga {who?`à ${who}`:"ao cliente"}: “com mais {money(missingCents)} em compras você ganha o {goal.title}.”</span></p>}
+     {wallet&&goal&&showTip&&<p className="vs-tip"><Star size={16} aria-hidden="true"/>
+      <span>Diga {who?`para ${who}`:"ao cliente"}: “com mais {money(missingCents!)} em compras você ganha {goal.title}.”</span></p>}
      {pilot?<ol className="vs-steps">
       <li>Hoje: <b>venda registrada</b></li>
       <li>Depois da conferência: <b>pontos reservados</b></li>

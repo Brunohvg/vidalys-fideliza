@@ -76,7 +76,7 @@ for(const width of [390,768,1440]){
     await page.getByText("Vale R$ 20",{exact:true}).first().click();
     await expect(page.getByLabel("Conta com o vale")).toContainText("R$ 137,76");
     await expect(page.getByText("+413",{exact:false}).first()).toBeVisible();
-    await expect(page.getByText("Diga à Ana",{exact:false})).toBeVisible();
+    await expect(page.getByText("Diga para Ana",{exact:false})).toHaveCount(0); // meta longe: sem dica
     await expect(page.getByRole("button",{name:"Desfazer"})).toBeVisible();
     await noScroll(page);
     await page.screenshot({path:info.outputPath("balcao-"+width+".png"),fullPage:true});
@@ -187,4 +187,14 @@ test("Sem cliente escolhido, o registro explica o que falta",async({page})=>{
   await page.getByLabel("Valor da compra").fill("59,90");
   await page.getByRole("button",{name:"Registrar venda",exact:true}).click();
   await expect(page.getByRole("alert")).toContainText("Escolha o cliente");
+});
+
+test("Dica para o vendedor só aparece quando a próxima recompensa está perto",async({page})=>{
+  await mock(page);
+  await page.route("**/api/v1/tenants/**/sales/counter/participants/**/wallet/",r=>r.fulfill({contentType:"application/json",
+    body:JSON.stringify({...wallet,available:1800,rewards:wallet.rewards.map(x=>({...x,affordable:false}))})}));
+  await openSales(page,1440);
+  await page.locator("#vf-sale-phone").fill("31988421170");
+  await page.getByLabel("Valor da compra").fill("100,00");
+  await expect(page.getByText("Diga para Ana: “com mais R$ 300,00 em compras você ganha Vale R$ 30.”")).toBeVisible();
 });
