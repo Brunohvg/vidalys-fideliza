@@ -132,28 +132,17 @@ for(const width of [390,1440]){
     await expect(card).toContainText("R$ 124,00 de R$ 500,00");
     await expect(card).toContainText("Giftback salvo: 10% de volta");
     await expect(card).toContainText("3 clientes hoje · 2 avisos enviados");
-    await card.getByRole("button",{name:"Ativar piloto"}).click();
-    await expect(page.getByText("Piloto ativo.",{exact:false})).toBeVisible();
+    await card.getByRole("button",{name:"Ativar no balcão"}).click();
+    await expect(page.getByText("Ativado. Confirme",{exact:false})).toBeVisible();
     await expect(steps).toContainText("Ativo: confirme as vendas");
     await noOverflow(page);
     await steps.screenshot({path:info.outputPath("passos-"+width+".png")});
     await card.getByRole("button",{name:"Pausar agora"}).click();
-    await expect(page.getByText("Novas conferências não geram crédito",{exact:false})).toBeVisible();
+    await expect(page.getByText("Pausado. Novas conferências não geram crédito",{exact:false})).toBeVisible();
+    await expect(card).not.toContainText("homologação");
     expect(posts).toEqual([{active:true},{active:false}]);
   });
 }
-
-test("Piloto não liberado: passo 3 avisa liberação pela equipe, sem botão",async({page})=>{
-  await merchant(page);
-  await page.route("**/api/v1/tenants/**/loyalty/program-mode/",r=>r.fulfill(json({mode:"points",saved:false,giftback_bps:1000,
-    giftback_cap_cents:2000,giftback_min_order_cents:8000,giftback_validity_days:30,giftback_hold_days:7})));
-  await page.route("**/api/v1/tenants/**/sales/pilot/",r=>r.fulfill(json({allowed:false,active:false,per_sale_cap_points:1500,
-    budget_points:50000,issued_points:0,activated_at:null,paused_at:null,rule:null,counter_rewards:0,program:{mode:"points"}})));
-  await go(page,1440,"Meu clube");
-  await expect(page.getByRole("navigation",{name:"Ativação do clube"})).toContainText("Liberação pela equipe Vidalys");
-  await expect(page.getByRole("button",{name:"Ativar piloto"})).toHaveCount(0);
-  await expect(page.getByText("Não liberado")).toBeVisible();
-});
 
 test("Conferir no giftback fala em crédito, não em pontos",async({page})=>{
   await merchant(page);

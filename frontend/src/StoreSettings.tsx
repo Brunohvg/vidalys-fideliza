@@ -329,7 +329,7 @@ export default function StoreSettings({tenantId,role,userName,userEmail,initialS
      <div className="vf-row is-top">
       <span className="vf-ico tone-rose" aria-hidden="true"><ShieldCheck size={20}/></span>
       <div className="vf-row-main"><strong id="ss-pilot-link">Pontos e giftback no balcão</strong>
-       <span>Escolher o modo, revisar a regra e ativar o piloto ficam juntos em Meu clube → Como ganhar.</span></div>
+       <span>Escolher o modo, revisar a regra e ativar no balcão ficam juntos em Meu clube → Como ganhar.</span></div>
       <button type="button" className="vf-btn is-small" onClick={onGoToProgram}>Abrir em Meu clube</button>
      </div>
     </section>}

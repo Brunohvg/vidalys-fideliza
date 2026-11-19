@@ -176,7 +176,7 @@ export default function MerchantAccess({
           <span><CheckCircle2 size={18}/> Preparado para novos canais de venda</span>
         </div>
       </div>
-      <span className="portal-auth-foot">VIDALYS FIDELIZA • AMBIENTE DE HOMOLOGAÇÃO</span>
+      <span className="portal-auth-foot">VIDALYS FIDELIZA</span>
     </aside>
     <main className="portal-login-panel">
       <div className="portal-login-card merchant-login-card">

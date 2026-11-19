@@ -64,15 +64,17 @@ class CounterPilotTests(TestCase):
     def activate(self):
         return self.post("counter-pilot", {"active": True})
 
-    def test_off_by_default_and_never_outside_homolog_or_allowlist(self):
+    def test_off_until_owner_activates_in_any_environment(self):
         self.assertFalse(pilot_enabled(self.tenant))
-        with override_settings(FIDELIZA_ENVIRONMENT="production", FIDELIZA_PILOT_TENANTS=frozenset({str(self.tenant.id)})):
-            self.assertEqual(self.activate().status_code, 409)
-        with override_settings(FIDELIZA_ENVIRONMENT="homolog", FIDELIZA_PILOT_TENANTS=frozenset()):
-            self.assertEqual(self.activate().status_code, 409)
         sale = self.sale(10000).data["sale"]
-        self.assertEqual(self.approve(sale["id"]).data["points"], 0)
+        self.assertEqual(self.approve(sale["id"]).data["points"], 0)       # desligado: confere sem saldo
         self.assertFalse(PointLot.objects.exists())
+        with override_settings(FIDELIZA_ENVIRONMENT="production"):
+            state = self.activate()
+            self.assertEqual(state.status_code, 200)                      # sem lista de lojas nem ambiente
+            self.assertTrue(state.data["active"])
+            self.assertTrue(pilot_enabled(self.tenant))
+            self.assertFalse(pilot_enabled(self.other))                   # cada loja liga a sua
 
     def test_only_owner_toggles(self):
         with override_settings(FIDELIZA_ENVIRONMENT="homolog", FIDELIZA_PILOT_TENANTS=frozenset({str(self.tenant.id)})):

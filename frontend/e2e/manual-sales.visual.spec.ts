@@ -156,7 +156,7 @@ test("Sem piloto ativo, o balcão avisa que a venda não gera crédito",async({p
   await openSales(page,1440);
   await page.locator("#vf-sale-phone").fill("31988421170");
   await page.getByLabel("Valor da compra").fill("100,00");
-  await expect(page.getByText("Pontos ainda não estão ativos nesta loja",{exact:false})).toBeVisible();
+  await expect(page.getByText("Os pontos estão desligados nesta loja",{exact:false})).toBeVisible();
   await expect(page.getByText("pode usar um vale agora",{exact:false})).toHaveCount(0);
   await expect(page.getByRole("button",{name:"Registrar venda",exact:true})).toBeVisible();
 });

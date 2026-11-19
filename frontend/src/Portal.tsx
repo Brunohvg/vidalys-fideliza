@@ -299,7 +299,6 @@ export default function Portal() {
           {target==="sales" && pendingSales ? <span className="portal-nav-badge"><span aria-hidden="true">{pendingSales}</span><span className="portal-sr">, {pendingSales} para conferir</span></span> : null}</button>)}
       </nav>
       <div className="portal-side-bottom">
-        <span className="portal-env-label"><span aria-hidden="true"/> Ambiente de homologação</span>
         <div className="portal-user">
           <span className="portal-user-avatar" aria-hidden="true">{initials(session.user.display_name)}</span>
           <div className="portal-user-text"><strong>{session.user.display_name}</strong>

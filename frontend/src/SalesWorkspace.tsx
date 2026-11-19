@@ -13,7 +13,7 @@ import "./sales-workspace.css";
 
 /* Vendas em 3 abas, cada uma para um trabalho:
    Balcão  — o vendedor com a cliente na frente: achar, usar vale, registrar, desfazer.
-   Conferir — dono/admin aprova o que foi lançado (no piloto, aprovar gera os pontos).
+   Conferir — dono/admin aprova o que foi lançado (com o clube ativo, aprovar gera o saldo).
    Pedidos — consulta: balcão e site numa lista só. */
 
 const money=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -385,8 +385,8 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       <li>{holdDays>0?`Cerca de ${releaseDate}`:"Logo após a conferência"}: <b>{gift?`liberado para usar, por ${gift.validity_days} dias`:"liberados para troca"}</b></li>
      </ol>
      :<p className="vs-off"><TriangleAlert size={16} aria-hidden="true"/>
-      <span>{gift?"O giftback ainda não está ativo nesta loja: a venda fica registrada e conferida, sem gerar crédito."
-       :"Pontos ainda não estão ativos nesta loja: a venda fica registrada e conferida, sem gerar pontos."}</span></p>}
+      <span>{gift?"O giftback está desligado nesta loja: a venda fica registrada, sem gerar crédito. Ative em Meu clube → Como ganhar."
+       :"Os pontos estão desligados nesta loja: a venda fica registrada, sem gerar pontos. Ative em Meu clube → Como ganhar."}</span></p>}
     </>
     :<p className="vs-ticket-hint">{chosen===null?`Cliente fora do clube não ganha ${gift?"crédito":"pontos"}. Convide para entrar e as próximas compras contam.`
      :!rule&&!gift?"Defina a regra de pontos em Meu clube para ver a prévia.":gift?"Escolha o cliente e digite o valor para ver o crédito."
@@ -454,10 +454,10 @@ function Review({shared}:{shared:Shared}){
    const none=isGift?"nenhum crédito foi gerado":"nenhum ponto foi creditado";
    setMsg(decision==="reject"?`Venda recusada: ${none}.`+(sale.redemption?(isGift?" O crédito usado voltou para a cliente.":" O vale voltou para o saldo."):"")
     :r.points?`Venda confirmada: +${isGift?money(r.points)+" de crédito":pts(r.points)+" pontos"} para ${name}, ${isGift&&program.mode==="giftback"?(program.hold_days===0?"liberado logo":`liberado em ${program.hold_days} dias`):hold}.`
-    :r.points_reason==="budget"?`Venda confirmada, mas o orçamento do piloto acabou: ${none}.`
+    :r.points_reason==="budget"?`Venda confirmada, mas o orçamento total acabou: ${none}. Aumente em Meu clube → Como ganhar.`
     :r.points_reason==="before_join"?`Venda confirmada. Ela é anterior à entrada no clube, por isso não gera ${isGift?"crédito":"pontos"}.`
     :pilot?`Venda confirmada. Esta venda não gera ${isGift?"crédito":"pontos"}.`
-    :`Venda conferida: ${none}, porque ${isGift?"o giftback ainda não está ativo":"os pontos ainda não estão ativos"}.`);
+    :`Venda conferida: ${none}, porque ${isGift?"o giftback está desligado":"os pontos estão desligados"} nesta loja.`);
    setRejecting(null);reload();
   }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível concluir a conferência.");}
   finally{setBusy(false);}

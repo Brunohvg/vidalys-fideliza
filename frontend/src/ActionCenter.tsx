@@ -241,7 +241,7 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
     <div><dt>Vendas registradas</dt><dd>{todaySales.length.toLocaleString("pt-BR")}</dd></div>
     <div><dt>Valor pago</dt><dd>{brl(todayCents??0)}</dd></div>
     <div><dt>{gift?"Crédito do dia":"Pontos do dia"}</dt><dd>{gift?brl(todayPoints??0):(todayPoints??0).toLocaleString("pt-BR")}</dd>
-     <small>{data?.sales?.pilot_active?"confirmados e a confirmar":gift?"previsto: giftback ainda não está ativo":"previstos: pontos ainda não estão ativos"}</small></div>
+     <small>{data?.sales?.pilot_active?"confirmados e a confirmar":gift?"previsto: giftback desligado (ative em Meu clube)":"previstos: pontos desligados (ative em Meu clube)"}</small></div>
    </dl>
   </section>}
 

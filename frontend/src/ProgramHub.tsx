@@ -146,7 +146,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
   if(busy||!canEdit)return;setBusy(true);setError("");setMessage("");
   try{
    await merchantApi.setRewardCatalogPublication(tenantId,item.id,published);
-   setMessage(published?"Faixa publicada no Meu Clube. A troca de pontos continua desligada até a liberação.":"Faixa despublicada. Ela saiu do Meu Clube.");
+   setMessage(published?"Faixa publicada no Meu Clube. A cliente troca no caixa quando o clube estiver ativo no balcão.":"Faixa despublicada. Ela saiu do Meu Clube.");
    setConfirm(null);setRefresh(v=>v+1);
   }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível atualizar a publicação.");}
   finally{setBusy(false);}
@@ -316,7 +316,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
    <div className="vf-card vf-club-enroll"><EnrollmentManagement tenantId={tenantId} role={role} storeSlug={storeSlug} tenantStatus={tenantStatus}/></div>
   </div>}
 
-  {tab==="testar"&&<div className="vf-card vf-club-tab" aria-label="Ferramentas de homologação">
+  {tab==="testar"&&<div className="vf-card vf-club-tab" aria-label="Simulador do clube">
    <div className="vf-card-head"><div><h2 className="vf-h2">Testar antes de ativar</h2>
     <span className="vf-muted vf-small">Simule pontos e trocas sem gerar saldo nem cupom de verdade.</span></div>
     <span className="vf-ico tone-purple" aria-hidden="true"><FlaskConical size={20}/></span></div>
@@ -338,7 +338,7 @@ function ActivationSteps({mode,modeSaved,ruleSaved,rewardsPublished,pilot}:{mode
   [step1,"Escolha o modo",step1?(gift?"Giftback em uso":"Pontos em uso"):"Pontos ou giftback, logo abaixo"],
   [step2,gift?"Revise o giftback":"Regra e recompensas",step2?"Pronto":gift?"Salve os valores do giftback":
    !ruleSaved?"Salve quanto devolver":"Publique uma recompensa em “2. Como usar”"],
-  [step3,"Ative no balcão",step3?"Ativo: confirme as vendas em Vendas → Conferir":locked?"Liberação pela equipe Vidalys":"Quando os passos 1 e 2 estiverem prontos"],
+  [step3,"Ative no balcão",step3?"Ativo: confirme as vendas em Vendas → Conferir":locked?"Indisponível agora: recarregue a página":"Quando os passos 1 e 2 estiverem prontos"],
  ];
  const current=steps.findIndex(([done])=>!done);
  return <nav className="vf-card pm-steps" aria-label="Ativação do clube">

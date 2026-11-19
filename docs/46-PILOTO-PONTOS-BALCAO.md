@@ -52,3 +52,9 @@ ativo: libera carências vencidas e envia, **uma vez por lote**, "seu crédito/p
 receber novidades (Meu Clube → Perfil); sem isso o aviso fica registrado como não enviado e nunca
 dispara depois. Auditoria em `EmailDispatch` tipo `notice`. Requer `core.0007` e `sales.0011` e
 o serviço `beat` rodando.
+
+## Travas removidas (19/11/2026)
+Decisão do proprietário: qualquer loja conectada pode ligar pontos/giftback no balcão, em qualquer
+ambiente, para testes antes da publicação. `FIDELIZA_PILOT_TENANTS` foi removida; a exigência de
+`FIDELIZA_ENVIRONMENT=homolog` deixou de valer para este recurso. Continuam: ativação/pausa pelo
+proprietário em Meu clube, teto por venda e orçamento total. Avisos de "homologação" saíram do painel.

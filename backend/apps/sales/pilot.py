@@ -1,18 +1,12 @@
-"""Piloto de pontos no balcão: confirmar a venda libera os pontos; o vale é usado no caixa.
+"""Pontos/giftback no balcão: confirmar a venda gera o saldo; o vale ou crédito é usado no caixa.
 
-Portas de segurança (todas obrigatórias):
-1. servidor em homologação (FIDELIZA_ENVIRONMENT=homolog);
-2. loja listada em FIDELIZA_PILOT_TENANTS;
-3. piloto ligado pelo proprietário no painel (CounterPilot.active).
-
-As flags financeiras globais continuam desligadas. Sem custo de produto conferido,
-o risco é limitado por teto de pontos por venda e orçamento total do piloto.
-Nada aqui cria cupom na Nuvemshop nem movimenta cashback em reais.
+Disponível para qualquer loja: o proprietário liga e pausa em Meu clube (CounterPilot.active).
+Teto por venda e orçamento total limitam o risco. As flags financeiras globais do motor
+antigo continuam desligadas; nada aqui cria cupom na Nuvemshop.
 """
 import hashlib
 from datetime import timedelta
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
@@ -40,9 +34,8 @@ def _tenant_id(value):
 
 
 def pilot_allowed(tenant):
-    """Servidor e lista de lojas permitem o piloto (sem olhar se está ligado)."""
-    return (getattr(settings, "FIDELIZA_ENVIRONMENT", "") == "homolog"
-            and _tenant_id(tenant) in getattr(settings, "FIDELIZA_PILOT_TENANTS", frozenset()))
+    """Qualquer loja pode ligar. Mantido como ponto único caso um bloqueio volte a ser preciso."""
+    return True
 
 
 def pilot_enabled(tenant):

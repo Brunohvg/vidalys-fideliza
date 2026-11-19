@@ -3,7 +3,7 @@ import {Check,CirclePause,Mail,CirclePlay,Gift,LockKeyhole,ShieldCheck,TriangleA
 import {ApiError,merchantApi,type CounterPilotState,type Store} from "./api";
 import "./store-settings.css";
 
-/* Piloto de pontos no balcão (Configurações → Canais). Só aparece ligável quando o
+/* Ativação de pontos/giftback no balcão (Meu clube → Como ganhar). Antes ligável só quando o
    servidor libera a loja. O proprietário ativa, ajusta os tetos e pausa na hora. */
 
 const pts=(n:number)=>n.toLocaleString("pt-BR");
@@ -56,8 +56,8 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
  const ready=Boolean(state.rule)||Boolean(gift);
  const unit=gift?"crédito":"pontos";
  return <section id="vf-pilot-card" className="vf-card ss-section ss-pilot" aria-labelledby="ss-pilot-title">
-  <div className="vf-card-head"><div><h2 id="ss-pilot-title" className="vf-h2">{gift?"Giftback no balcão":"Pontos no balcão"}: piloto</h2>
-   <span className="vf-muted vf-small">Teste controlado: só esta loja, só no ambiente de homologação.</span></div>
+  <div className="vf-card-head"><div><h2 id="ss-pilot-title" className="vf-h2">{gift?"Giftback no balcão":"Pontos no balcão"}</h2>
+   <span className="vf-muted vf-small">Ligue quando quiser começar. Pausar congela tudo na hora, sem apagar saldos.</span></div>
    <span className={"vf-chip "+(state.active?"is-ok":"is-gold")}>{state.active?"Ativo":"Pausado"}</span></div>
 
   <ol className="ss-pilot-steps">
@@ -68,7 +68,7 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
 
   <div className="ss-pilot-budget">
    <div className="ss-pilot-line"><span>{gift?"Crédito emitido":"Pontos emitidos"}</span><strong>{gift?`${money(state.issued_points)} de ${money(state.budget_points)}`:`${pts(state.issued_points)} de ${pts(state.budget_points)}`}</strong></div>
-   <div className="ss-pilot-bar" role="progressbar" aria-label="Orçamento do piloto usado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used)}>
+   <div className="ss-pilot-bar" role="progressbar" aria-label="Orçamento usado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used)}>
     <i style={{width:Math.max(used,2)+"%"}}/></div>
    <span className="vf-muted vf-small">{gift?"":`Equivale a ${money(state.issued_points)} em descontos possíveis. `}Ao atingir o orçamento, novas vendas são conferidas sem gerar {unit}.</span>
   </div>
@@ -93,20 +93,20 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
     <label className="vf-field is-compact">Teto por venda (R$)
      <input inputMode="decimal" value={cap} onChange={e=>setCap(e.target.value)} disabled={busy}/>
      <small>Uma venda nunca gera mais que isso em {unit}. Sugestão: R$ 15 (ou o teto do giftback).</small></label>
-    <label className="vf-field is-compact">Orçamento total do piloto (R$)
+    <label className="vf-field is-compact">Orçamento total (R$)
      <input inputMode="decimal" value={budget} onChange={e=>setBudget(e.target.value)} disabled={busy}/>
-     <small>Soma de tudo que o piloto pode emitir. Sugestão: R$ 500.</small></label>
+     <small>Soma de tudo que pode ser emitido. Sugestão para começar: R$ 500.</small></label>
    </div>
    {error&&<div className="vf-toast is-error" role="alert"><TriangleAlert size={18}/>{error}</div>}
    {notice&&<div className="vf-toast" role="status"><Check size={18}/>{notice}</div>}
    <div className="ss-actions ss-pilot-actions">
     <button type="button" className="vf-btn" disabled={busy} onClick={saveLimits}>Salvar tetos</button>
     {state.active?<button type="button" className="vf-btn is-danger" disabled={busy}
-      onClick={()=>void save({active:false},gift?"Piloto pausado. Novas conferências não geram crédito e o crédito não pode ser usado.":"Piloto pausado. Novas conferências não geram pontos e vales não podem ser usados.")}>
+      onClick={()=>void save({active:false},gift?"Pausado. Novas conferências não geram crédito e o crédito não pode ser usado.":"Pausado. Novas conferências não geram pontos e vales não podem ser usados.")}>
       <CirclePause size={18}/> Pausar agora</button>
      :<button type="button" className="vf-btn is-primary" disabled={busy||!ready}
-      onClick={()=>void save({active:true},"Piloto ativo. Confirme as próximas vendas em Vendas → Conferir.")}>
-      <CirclePlay size={18}/> Ativar piloto</button>}
+      onClick={()=>void save({active:true},"Ativado. Confirme as próximas vendas em Vendas → Conferir.")}>
+      <CirclePlay size={18}/> Ativar no balcão</button>}
    </div>
   </>:<p className="vf-note"><ShieldCheck size={16}/> Só o proprietário ativa, pausa ou muda os tetos.</p>}
  </section>;
