@@ -1,20 +1,21 @@
 import {useEffect,useMemo,useRef,useState,type FormEvent} from "react";
-import {Check,CheckCircle2,Clock3,Link2,RefreshCw,Search,Smartphone,UserRound,X} from "lucide-react";
-import {ApiError,merchantApi,type ManualSaleRecord,type PointRuleDraft,
+import {Check,CheckCircle2,Clock3,Gift,Link2,RefreshCw,Search,ShoppingBag,Smartphone,Star,Store as StoreIcon,
+ TriangleAlert,Undo2,UserRound,X} from "lucide-react";
+import {ApiError,merchantApi,type CounterWallet,type ManualSaleRecord,type PaidOrderInspection,type PointRuleDraft,
  type ProgramParticipant,type Store} from "./api";
 import {pointValueText,summarizeClub} from "./club-summary";
 import {initialsOf} from "./ActionCenter";
 import PaidOrderCheck from "./PaidOrderCheck";
-import NuvemshopOrdersFeed from "./NuvemshopOrdersFeed";
 import "./vf-ui.css";
 import "./sales-workspace.css";
 
-/* Vendas — réplica do protótipo aprovado: "Venda em 10 segundos".
-   Esquerda: cliente, valor (com atalhos) e registrar. Direita: quanto o cliente
-   vai receber pela regra do clube e as vendas para conferir. Abaixo: pedidos da
-   Nuvemshop e o histórico do balcão. Registrar e conferir não creditam pontos. */
+/* Vendas em 3 abas, cada uma para um trabalho:
+   Balcão  — o vendedor com a cliente na frente: achar, usar vale, registrar, desfazer.
+   Conferir — dono/admin aprova o que foi lançado (no piloto, aprovar gera os pontos).
+   Pedidos — consulta: balcão e site numa lista só. */
 
 const money=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const pts=(n:number)=>n.toLocaleString("pt-BR");
 const localNow=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
 export const centsFromText=(raw:string):number|null=>{
  const clean=raw.trim().replace(/^R\$\s*/i,"").replace(/\.(?=\d{3}(\D|$))/g,"");
@@ -28,6 +29,9 @@ export const receiptReference=(raw:string):string|null=>{
  const reference=/^\d{1,72}$/.test(value)?"CUPOM-"+value:value;
  return /^[A-Z0-9][A-Z0-9._/-]{3,79}$/.test(reference)?reference:null;
 };
+const NO_RECEIPT="SEM-CUPOM-";
+const autoReference=()=>NO_RECEIPT+Date.now().toString(36).toUpperCase()+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
+const receiptLabel=(ref:string)=>ref.startsWith(NO_RECEIPT)?"sem cupom":ref;
 export const phoneDigits=(raw:string)=>raw.replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"");
 const formatPhone=(raw:string)=>{
  if(raw.trim().startsWith("+"))return raw.slice(0,20);
@@ -37,61 +41,40 @@ const formatPhone=(raw:string)=>{
  if(d.length<=10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
 };
-const when=(iso:string)=>{
+const when=(iso:string|null)=>{
+ if(!iso)return "";
  const d=new Date(iso);if(Number.isNaN(d.getTime()))return "";
- const today=new Date();const same=d.toDateString()===today.toDateString();
+ const same=d.toDateString()===new Date().toDateString();
  return (same?"hoje ":d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})+" ")+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 };
-const stateChip:Record<ManualSaleRecord["state"],[string,string]>={
- awaiting_member:["Sem cliente","is-soft"],
- awaiting_review:["Aguardando conferência","is-gold"],
- verified_manual:["Conferida","is-ok"],
- rejected:["Rejeitada","is-danger"],
-};
+const dayMonth=(d:Date)=>d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short"});
+const firstName=(name:string)=>name.trim().split(/\s+/)[0]||name;
+const isToday=(iso:string)=>new Date(iso).toDateString()===new Date().toDateString();
 const TONES=["tone-1","tone-2","tone-3","tone-4","tone-5"];
-const QUICK=[5000,10000,20000];
+const COUNTER_STATE:Record<ManualSaleRecord["state"],[string,string]>={
+ awaiting_member:["Sem cliente","is-soft"],awaiting_review:["Aguardando conferência","is-gold"],
+ verified_manual:["Conferida","is-ok"],rejected:["Recusada","is-danger"],
+};
 
 export type SaleClient={id:string;display_name:string;detail:string};
+type Tab="counter"|"review"|"orders";
+type Shared={tenantId:string;items:ManualSaleRecord[];loading:boolean;listError:string;pilot:boolean;
+ rule:PointRuleDraft|null;pointValue:number|null;reload:()=>void};
+
 export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:string;role:Store["role"];initialClient?:SaleClient|null}){
  const canEdit=role==="owner"||role==="admin";
+ const [tab,setTab]=useState<Tab>(canEdit?"counter":"orders");
  const [items,setItems]=useState<ManualSaleRecord[]>([]);
+ const [pilot,setPilot]=useState(false);
  const [loading,setLoading]=useState(true);
  const [listError,setListError]=useState("");
  const [version,setVersion]=useState(0);
  const [rule,setRule]=useState<PointRuleDraft|null>(null);
  const [pointValue,setPointValue]=useState<number|null>(null);
 
- const [amount,setAmount]=useState("");
- const [receipt,setReceipt]=useState("");
- const [customTime,setCustomTime]=useState(false);
- const [paidAt,setPaidAt]=useState(localNow);
- const [query,setQuery]=useState("");
- const [people,setPeople]=useState<ProgramParticipant[]>([]);
- const [peopleError,setPeopleError]=useState(false);
- type Person={id:string;display_name:string;detail:string};
- const [chosen,setChosen]=useState<Person|null|undefined>(initialClient??undefined); // undefined = não escolhido; null = fora do clube
- const [mode,setMode]=useState<"phone"|"name">("phone");
- const [phone,setPhone]=useState("");
- const [phoneState,setPhoneState]=useState<"idle"|"looking"|"error">("idle");
- const [phoneError,setPhoneError]=useState("");
- const resetClient=()=>{setChosen(undefined);setPhone("");setQuery("");setPhoneState("idle");};
- const [busy,setBusy]=useState(false);
- const [formError,setFormError]=useState("");
- const [toast,setToast]=useState("");
-
- const [bottom,setBottom]=useState<"history"|"online">("history");
- const [reviewing,setReviewing]=useState<string|null>(null);
- const [reviewWhere,setReviewWhere]=useState<"side"|"list">("side");
- const [note,setNote]=useState("");
- const [reviewMsg,setReviewMsg]=useState("");
- const [reviewError,setReviewError]=useState("");
- const [linking,setLinking]=useState<string|null>(null);
- const [linkTarget,setLinkTarget]=useState("");
- const amountRef=useRef<HTMLInputElement>(null);
-
  useEffect(()=>{
   let active=true;setLoading(true);setListError("");
-  merchantApi.listManualSales(tenantId).then(d=>{if(active)setItems(d.items);})
+  merchantApi.listManualSales(tenantId).then(d=>{if(active){setItems(d.items);setPilot(Boolean(d.pilot_active));}})
    .catch(e=>{if(active)setListError(e instanceof ApiError?e.message:"Não foi possível consultar as vendas.");})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false};
@@ -110,8 +93,54 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
   return()=>{active=false};
  },[tenantId,canEdit]);
 
+ const pending=items.filter(i=>i.state==="awaiting_review"||i.state==="awaiting_member").length;
+ const shared:Shared={tenantId,items,loading,listError,pilot,rule,pointValue,reload:()=>setVersion(v=>v+1)};
+ const TABS:[Tab,string][]=canEdit?[["counter","Balcão"],["review","Conferir"],["orders","Pedidos"]]:[["orders","Pedidos"]];
+
+ return <section className="vf-screen vf-sales-page" aria-labelledby="vf-sales-title">
+  <div className="vf-head"><div><span className="vf-eyebrow">Vendas</span><h1 id="vf-sales-title" className="vf-h1">Vendas</h1></div></div>
+  <div className="vs-tabs" role="tablist" aria-label="Áreas de vendas">
+   {TABS.map(([key,label])=><button key={key} type="button" role="tab" id={"vs-tab-"+key} aria-controls={"vs-panel-"+key}
+    aria-selected={tab===key} className={"vs-tab"+(tab===key?" is-on":"")} onClick={()=>setTab(key)}>
+    {label}{key==="review"&&pending>0&&<span className="vs-tab-count" aria-label={pending+" para conferir"}>{pending}</span>}</button>)}
+  </div>
+  <div role="tabpanel" id={"vs-panel-"+tab} aria-labelledby={"vs-tab-"+tab} className="vs-panel">
+   {tab==="counter"&&<Counter shared={shared} initialClient={initialClient}/>}
+   {tab==="review"&&<Review shared={shared}/>}
+   {tab==="orders"&&<Orders shared={shared}/>}
+  </div>
+ </section>;
+}
+
+/* ---------------- Balcão ---------------- */
+
+type Person={id:string;display_name:string;detail:string};
+
+function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient|null}){
+ const {tenantId,items,pilot,rule,pointValue,reload}=shared;
+ const [amount,setAmount]=useState("");
+ const [receipt,setReceipt]=useState("");
+ const [more,setMore]=useState(false);
+ const [customTime,setCustomTime]=useState(false);
+ const [paidAt,setPaidAt]=useState(localNow);
+ const [query,setQuery]=useState("");
+ const [people,setPeople]=useState<ProgramParticipant[]>([]);
+ const [peopleError,setPeopleError]=useState(false);
+ const [chosen,setChosen]=useState<Person|null|undefined>(initialClient??undefined); // undefined = não escolhido; null = fora do clube
+ const [mode,setMode]=useState<"phone"|"name">("phone");
+ const [phone,setPhone]=useState("");
+ const [phoneState,setPhoneState]=useState<"idle"|"looking"|"error">("idle");
+ const [phoneError,setPhoneError]=useState("");
+ const [wallet,setWallet]=useState<CounterWallet|null>(null);
+ const [rewardId,setRewardId]=useState("");
+ const [busy,setBusy]=useState(false);
+ const [formError,setFormError]=useState("");
+ const [toast,setToast]=useState("");
+ const [undoMsg,setUndoMsg]=useState("");
+ const amountRef=useRef<HTMLInputElement>(null);
+ const resetClient=()=>{setChosen(undefined);setPhone("");setQuery("");setPhoneState("idle");setWallet(null);setRewardId("");};
+
  useEffect(()=>{
-  if(!canEdit)return;
   let active=true;setPeopleError(false);
   const timer=window.setTimeout(()=>{
    merchantApi.listParticipants(tenantId,{status:"active",q:query.trim(),offset:0})
@@ -119,10 +148,10 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
     .catch(()=>{if(active){setPeople([]);setPeopleError(true);}});
   },query?250:0);
   return()=>{active=false;window.clearTimeout(timer)};
- },[tenantId,query,canEdit]);
+ },[tenantId,query]);
 
  useEffect(()=>{
-  if(!canEdit||mode!=="phone"||chosen!==undefined)return;
+  if(mode!=="phone"||chosen!==undefined)return;
   const digits=phoneDigits(phone);
   if(digits.length<10){setPhoneState("idle");return;}
   let active=true;setPhoneState("looking");
@@ -134,27 +163,45 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
    }).catch(e=>{if(active){setPhoneState("error");setPhoneError(e instanceof ApiError?e.message:"Não foi possível consultar o celular.");}});
   },350);
   return()=>{active=false;window.clearTimeout(timer)};
- },[tenantId,phone,mode,chosen,canEdit]);
+ },[tenantId,phone,mode,chosen]);
+
+ useEffect(()=>{
+  setWallet(null);setRewardId("");
+  if(!chosen)return;
+  let active=true;
+  merchantApi.counterWallet(tenantId,chosen.id).then(w=>{
+   if(active)setWallet(w&&Array.isArray(w.rewards)&&typeof w.available==="number"&&typeof w.pending==="number"?w:null);}).catch(()=>{if(active)setWallet(null);});
+  return()=>{active=false};
+ },[tenantId,chosen]);
 
  const cents=centsFromText(amount);
- const preview=useMemo(()=>{
-  if(!rule||cents===null)return null;
-  const points=Math.floor(cents*rule.points/rule.per_cents);
-  return {points,value:pointValue===null?null:money(Math.round(points*pointValue/100))};
- },[rule,cents,pointValue]);
- const holdText=!rule?"":rule.hold_days===0?"Liberam logo após a conferência.":`Liberam ${rule.hold_days} dia${rule.hold_days===1?"":"s"} depois da conferência.`;
+ const reward=wallet?.rewards.find(r=>r.id===rewardId)||null;
+ const discount=reward?reward.discount_cents:0;
+ const paid=cents!==null?Math.max(cents-discount,0):null;
+ const points=useMemo(()=>(!rule||paid===null)?null:Math.floor(paid*rule.points/rule.per_cents),[rule,paid]);
+ const rewardProblem=reward&&cents!==null?(cents<reward.min_order_cents?`Este vale pede compra mínima de ${money(reward.min_order_cents)}.`
+  :reward.discount_cents>=cents?"O vale não pode ser maior que a compra.":""):"";
+ const usable=(wallet?.rewards||[]).filter(r=>r.affordable);
+ const mine=items.filter(i=>i.submitted_by_me&&isToday(i.created_at)).slice(0,8);
 
- const pending=items.filter(i=>i.state==="awaiting_review");
+ // Próxima meta depois desta compra (pontos ainda em carência contam para a conta).
+ const projected=wallet&&points!==null?wallet.available-(reward?.points_cost||0)+wallet.pending+points:null;
+ const goal=wallet&&projected!==null?wallet.rewards.filter(r=>!r.exhausted&&r.points_cost>projected).sort((a,b)=>a.points_cost-b.points_cost)[0]:null;
+ const missingCents=goal&&projected!==null&&rule?Math.ceil((goal.points_cost-projected)*rule.per_cents/rule.points):null;
+ const releaseDate=rule?dayMonth(new Date(Date.now()+rule.hold_days*86400000)):"";
 
  const submit=async(event:FormEvent)=>{
   event.preventDefault();
-  if(busy||!canEdit)return;
-  setFormError("");setToast("");
+  if(busy)return;
+  setFormError("");setToast("");setUndoMsg("");
   if(chosen===undefined){setFormError("Escolha o cliente ou marque que ele ainda não participa do clube.");return;}
   if(cents===null){setFormError("Confira o valor da compra. Ex.: 89,90");amountRef.current?.focus();return;}
-  const reference=receiptReference(receipt);
-  if(!reference){setFormError(receipt.trim()?"O número do cupom tem caracteres inválidos. Use letras, números, ponto ou traço."
-   :"Informe o número do cupom ou recibo para conferir depois.");return;}
+  if(rewardProblem){setFormError(rewardProblem);return;}
+  let reference:string|null=autoReference();
+  if(receipt.trim()){
+   reference=receiptReference(receipt);
+   if(!reference){setFormError("O número do cupom tem caracteres inválidos. Use letras, números, ponto ou traço.");setMore(true);return;}
+  }
   const time=customTime?new Date(paidAt):new Date();
   if(Number.isNaN(time.getTime())){setFormError("Informe uma data de venda válida.");return;}
   setBusy(true);
@@ -162,62 +209,36 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
    const keepPhone=!chosen&&mode==="phone"&&phoneDigits(phone).length>=10;
    const result=await merchantApi.createManualSale(tenantId,{reference,eligible_amount_cents:cents,
     participant_id:chosen?chosen.id:null,reported_paid_at:time.toISOString(),evidence_reference:reference,
-    ...(keepPhone?{customer_phone:phone}:{})});
+    ...(keepPhone?{customer_phone:phone}:{}),...(reward&&chosen?{reward_id:reward.id}:{})});
    setToast(result.already_recorded?"Este cupom já estava registrado. Nada foi duplicado."
+    :chosen&&reward?`Venda registrada com o ${reward.title}. Os pontos do vale ficam reservados até a conferência.`
     :chosen?"Venda registrada. Os pontos ficam pendentes até a conferência."
     :keepPhone?"Venda guardada com o celular do cliente. Vincule quando ele entrar no clube."
     :"Venda registrada sem cliente. Ela não gera pontos até alguém do clube ser vinculado.");
-   setAmount("");setReceipt("");resetClient();setCustomTime(false);setPaidAt(localNow());
-   setVersion(v=>v+1);
+   setAmount("");setReceipt("");resetClient();setCustomTime(false);setMore(false);setPaidAt(localNow());
+   reload();
   }catch(e){setFormError(e instanceof ApiError?e.message:"Não foi possível registrar a venda.");}
   finally{setBusy(false);}
  };
 
- const review=async(sale:ManualSaleRecord,decision:"approve"|"reject")=>{
-  if(busy)return;setBusy(true);setReviewError("");setReviewMsg("");
-  try{
-   const r=await merchantApi.reviewManualSale(tenantId,sale.id,decision,note);
-   setReviewMsg(decision==="reject"?"Venda rejeitada. Nenhum ponto foi creditado."
-    :r.review_mode==="self_review"?"Conferência do responsável registrada e auditada. Nenhum ponto foi creditado."
-    :"Conferência registrada. Nenhum ponto foi creditado.");
-   setReviewing(null);setNote("");setVersion(v=>v+1);
-  }catch(e){setReviewError(e instanceof ApiError?e.message:"Não foi possível concluir a conferência.");}
-  finally{setBusy(false);}
- };
- const link=async(sale:ManualSaleRecord,target=linkTarget)=>{
-  if(busy||!target)return;setBusy(true);setReviewError("");setReviewMsg("");
-  try{
-   await merchantApi.linkManualSale(tenantId,sale.id,target);
-   setReviewMsg("Cliente vinculado à venda. Agora ela pode ser conferida.");
-   setLinking(null);setLinkTarget("");setVersion(v=>v+1);
-  }catch(e){setReviewError(e instanceof ApiError?e.message:"É preciso um participante com contato confirmado para vincular.");}
+ const undo=async(sale:ManualSaleRecord)=>{
+  if(busy)return;setBusy(true);setUndoMsg("");setToast("");
+  try{await merchantApi.undoManualSale(tenantId,sale.id);setUndoMsg("Venda desfeita."+(sale.redemption?" O vale voltou para o saldo da cliente.":""));reload();}
+  catch(e){setUndoMsg(e instanceof ApiError?e.message:"Não foi possível desfazer.");}
   finally{setBusy(false);}
  };
 
- const reviewPanel=(sale:ManualSaleRecord)=><div className="vf-sale-review" aria-label="Conferir venda">
-  <p className="vf-small">Confira o cupom <strong>{sale.evidence_reference}</strong> de <strong>{money(sale.eligible_amount_cents)}</strong> antes de concluir.</p>
-  {sale.submitted_by_me&&<p className="vf-note">Você está conferindo o próprio lançamento como responsável. A justificativa fica registrada na auditoria.</p>}
-  <label className="vf-field is-compact">Como você conferiu?
-   <textarea value={note} onChange={e=>setNote(e.target.value)} rows={2} minLength={10} maxLength={240}
-    placeholder="Ex.: Cupom e pagamento conferidos no caixa."/>
-  </label>
-  <div className="vf-sale-review-actions">
-   <button type="button" className="vf-btn is-small" onClick={()=>{setReviewing(null);setNote("");}}>Cancelar</button>
-   <button type="button" className="vf-btn is-small is-danger" disabled={busy||note.trim().length<10} onClick={()=>void review(sale,"reject")}>Rejeitar</button>
-   <button type="button" className="vf-btn is-small is-primary" disabled={busy||note.trim().length<10} onClick={()=>void review(sale,"approve")}><Check size={16}/> Confirmar conferência</button>
-  </div>
- </div>;
-
- return <section className="vf-screen vf-sales-page" aria-labelledby="vf-sales-title">
-  <div className="vf-head"><div><span className="vf-eyebrow">Vendas</span><h1 id="vf-sales-title" className="vf-h1">Venda em 10 segundos</h1></div></div>
-
-  {canEdit?<div className="vf-grid2">
+ const who=chosen?firstName(chosen.display_name):"";
+ return <>
+  <div className="vf-grid2 vs-counter">
    <form className="vf-card vf-sale-form" onSubmit={submit} noValidate aria-label="Registrar venda no balcão">
+    <h2 className="vf-h2">Nova venda</h2>
     <div className="vf-field">
      <span id="vf-sale-client-label">{mode==="phone"?"Celular do cliente":"Cliente"}</span>
      {chosen?<div className="vf-sale-chosen">
        <span className="vf-avatar tone-1" aria-hidden="true">{initialsOf(chosen.display_name)}</span>
-       <div className="vf-row-main"><strong>{chosen.display_name}</strong><span>{chosen.detail}</span></div>
+       <div className="vf-row-main"><strong>{chosen.display_name}</strong>
+        <span>{wallet?`${pts(wallet.available)} pts liberados${wallet.pending?` · ${pts(wallet.pending)} em carência`:""}`:chosen.detail}</span></div>
        <button type="button" className="vf-btn is-small" onClick={resetClient}>Trocar</button>
       </div>
      :chosen===null?<div className="vf-sale-chosen is-outside">
@@ -261,21 +282,36 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
       </>}
     </div>
 
-    <label className="vf-field" htmlFor="vf-sale-amount">Valor da compra (R$)
-     <input id="vf-sale-amount" ref={amountRef} inputMode="decimal" autoComplete="off" maxLength={12} placeholder="0,00"
-      value={amount} onChange={e=>setAmount(e.target.value)}/>
-    </label>
-    <div className="vf-pills" role="group" aria-label="Valores rápidos">
-     {QUICK.map(v=><button key={v} type="button" className={"vf-pill"+(cents===v?" is-on":"")} aria-pressed={cents===v}
-      onClick={()=>setAmount((v/100).toFixed(2).replace(".",","))}>{money(v).replace(",00","")}</button>)}
-    </div>
+    {chosen&&wallet?.pilot_active&&usable.length>0&&<fieldset className="vs-rewards">
+     <legend>{reward?"Vale aplicado nesta compra":`${who} pode usar um vale agora`}</legend>
+     {usable.map(r=><label key={r.id} className={"vs-reward"+(rewardId===r.id?" is-on":"")}>
+      <input type="checkbox" checked={rewardId===r.id} onChange={()=>setRewardId(rewardId===r.id?"":r.id)}/>
+      <span className="vs-reward-ico" aria-hidden="true"><Gift size={18}/></span>
+      <span className="vs-reward-text"><strong>{r.title}</strong>
+       <small>usa {pts(r.points_cost)} pts{r.min_order_cents?` · compra mínima ${money(r.min_order_cents)}`:""}</small></span>
+      <span className="vs-reward-act" aria-hidden="true">{rewardId===r.id?"Aplicado":"Usar"}</span>
+     </label>)}
+    </fieldset>}
 
-    <label className="vf-field is-compact" htmlFor="vf-sale-receipt">Número do cupom ou recibo
-     <input id="vf-sale-receipt" maxLength={80} autoComplete="off" placeholder="Ex.: 0042" value={receipt} onChange={e=>setReceipt(e.target.value)}/>
-     <small>É o que você confere depois e evita registrar a mesma venda duas vezes.</small>
+    <label className="vf-field" htmlFor="vf-sale-amount">Valor da compra
+     <span className="vs-money"><span aria-hidden="true">R$</span>
+      <input id="vf-sale-amount" ref={amountRef} inputMode="decimal" autoComplete="off" maxLength={12} placeholder="0,00"
+       value={amount} onChange={e=>setAmount(e.target.value)}/></span>
     </label>
-    <details className="vf-sale-more" open={customTime}>
-     <summary>Outra data</summary>
+
+    {reward&&cents!==null&&<div className="vs-calc" aria-label="Conta com o vale">
+     <div><span>Compra</span><span>{money(cents)}</span></div>
+     <div><span>{reward.title}</span><span>− {money(reward.discount_cents)}</span></div>
+     <div className="is-total"><span>Cliente paga</span><span>{money(paid??0)}</span></div>
+     {rewardProblem&&<p role="alert">{rewardProblem}</p>}
+    </div>}
+
+    <details className="vf-sale-more" open={more} onToggle={e=>setMore((e.currentTarget as HTMLDetailsElement).open)}>
+     <summary>+ Cupom fiscal ou outra data</summary>
+     <label className="vf-field is-compact" htmlFor="vf-sale-receipt">Número do cupom ou recibo (opcional)
+      <input id="vf-sale-receipt" maxLength={80} autoComplete="off" placeholder="Ex.: 0042" value={receipt} onChange={e=>setReceipt(e.target.value)}/>
+      <small>Ajuda a conferir depois e evita registrar a mesma venda duas vezes.</small>
+     </label>
      <button type="button" className="vf-btn is-link" aria-expanded={customTime} onClick={()=>{setCustomTime(v=>!v);setPaidAt(localNow());}}>
       <Clock3 size={15}/> A compra foi em outra data?</button>
      {customTime&&<label className="vf-field is-compact" htmlFor="vf-sale-date">Data e hora da venda
@@ -283,79 +319,264 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
     </details>
 
     {formError&&<div className="vf-toast is-error" role="alert"><X size={18}/>{formError}</div>}
-    <button type="submit" className="vf-btn is-primary is-big" disabled={busy}>{busy?"Registrando…":"Registrar venda"}</button>
+    <button type="submit" className="vf-btn is-primary is-big vs-submit" disabled={busy}>
+     {busy?"Registrando…":"Registrar venda"}
+     {!busy&&chosen&&pilot&&points!==null&&points>0&&<span className="vs-submit-pts">+{pts(points)} pts</span>}
+    </button>
     {toast&&<div className="vf-toast" role="status"><Check size={18}/>{toast}</div>}
    </form>
 
-   <section className="vf-card is-soft vf-sale-side" aria-labelledby="vf-sale-gain">
-    <span id="vf-sale-gain" className="vf-eyebrow">O cliente vai receber</span>
-    {preview?<><strong className="vf-sale-points">{`${preview.points.toLocaleString("pt-BR")} ponto${preview.points===1?"":"s"}`}</strong>
-     {preview.value&&<span className="vf-sale-value">= {preview.value} em desconto</span>}</>
-     :<span className="vf-sale-value is-hint">{!rule?"Defina a regra de pontos em Meu clube para ver a prévia.":"Digite o valor da compra para ver os pontos."}</span>}
-    {rule&&<span className="vf-muted vf-small">{holdText} Se a compra for cancelada, os pontos saem antes do uso.{pointValue!==null?` Cada ponto vale ${pointValueText(pointValue)}.`:""}</span>}
-
-    <div className="vf-sale-review-box">
-     <strong className="vf-h3">Para conferir</strong>
-     {reviewMsg&&<div className="vf-toast" role="status"><CheckCircle2 size={18}/>{reviewMsg}</div>}
-     {reviewError&&<div className="vf-toast is-error" role="alert"><X size={18}/>{reviewError}</div>}
-     {loading?<p className="vf-muted vf-small" role="status">Carregando vendas…</p>
-      :pending.length===0?<p className="vf-muted vf-small">Nenhuma venda aguardando conferência.</p>
-      :<ul className="vf-list">{pending.map((sale,i)=><li key={sale.id} className="vf-sale-pending">
-        <div className="vf-row">
-         <span className={"vf-avatar "+TONES[(i+2)%5]} aria-hidden="true">{initialsOf(sale.participant_name)}</span>
-         <div className="vf-row-main"><strong>{sale.participant_name||"Cliente"}</strong><span>{money(sale.eligible_amount_cents)} · {when(sale.reported_paid_at)}</span></div>
-         {!(reviewing===sale.id&&reviewWhere==="side")&&<button type="button" className="vf-btn is-small" onClick={()=>{setReviewing(sale.id);setReviewWhere("side");setNote("");setReviewMsg("");}}>Conferir</button>}
-        </div>
-        {reviewing===sale.id&&reviewWhere==="side"&&reviewPanel(sale)}
-       </li>)}</ul>}
-    </div>
-   </section>
+   <aside className="vf-card vs-ticket" aria-labelledby="vs-ticket-title">
+    <span id="vs-ticket-title" className="vf-eyebrow">{chosen?`${who} vai receber`:"O cliente vai receber"}</span>
+    {points!==null&&chosen!==null?<>
+     <strong className="vs-ticket-pts">+{pts(points)} <small>pontos</small></strong>
+     <span className="vs-ticket-eq">{pointValue!==null?`= ${money(Math.round(points*pointValue/100))} de volta · `:""}
+      {rule?`${pts(Math.round(rule.points*10000/rule.per_cents)/100)}% do valor pago`:""}</span>
+     {wallet&&goal&&projected!==null&&<div className="vs-goal">
+      <div className="vs-goal-line"><span>{pts(Math.max(projected,0))} de {pts(goal.points_cost)} pts</span><span>{goal.title}</span></div>
+      <div className="vs-bar" role="progressbar" aria-label={"Progresso até "+goal.title} aria-valuemin={0} aria-valuemax={goal.points_cost}
+       aria-valuenow={Math.max(projected,0)}><i style={{width:Math.min(100,Math.max(4,projected/goal.points_cost*100))+"%"}}/></div>
+     </div>}
+     {wallet&&goal&&missingCents!==null&&<p className="vs-tip"><Star size={16} aria-hidden="true"/>
+      <span>Diga {who?`à ${who}`:"ao cliente"}: “com mais {money(missingCents)} em compras você ganha o {goal.title}.”</span></p>}
+     {pilot?<ol className="vs-steps">
+      <li>Hoje: <b>venda registrada</b></li>
+      <li>Depois da conferência: <b>pontos reservados</b></li>
+      <li>{rule&&rule.hold_days>0?`Cerca de ${releaseDate}`:"Logo após a conferência"}: <b>liberados para troca</b></li>
+     </ol>
+     :<p className="vs-off"><TriangleAlert size={16} aria-hidden="true"/>
+      <span>Pontos ainda não estão ativos nesta loja: a venda fica registrada e conferida, sem crédito.</span></p>}
+    </>
+    :<p className="vs-ticket-hint">{chosen===null?"Cliente fora do clube não ganha pontos. Convide para entrar e as próximas compras contam."
+     :!rule?"Defina a regra de pontos em Meu clube para ver a prévia.":"Escolha o cliente e digite o valor para ver os pontos."}</p>}
+    {rule&&pointValue!==null&&<span className="vf-muted vf-small">Cada ponto vale {pointValueText(pointValue)}.</span>}
+   </aside>
   </div>
-  :<section className="vf-card"><h2 className="vf-h2">Registro disponível para administradores</h2>
-   <p className="vf-lead">Esta conta acompanha as vendas, mas não registra nem confere.</p></section>}
 
-  <div className="vf-tabs vf-sale-bottom-tabs" role="tablist" aria-label="Histórico e loja online">
-   <button type="button" role="tab" aria-selected={bottom==="history"} className={"vf-tab"+(bottom==="history"?" is-on":"")} onClick={()=>setBottom("history")}>Histórico do balcão</button>
-   <button type="button" role="tab" aria-selected={bottom==="online"} className={"vf-tab"+(bottom==="online"?" is-on":"")} onClick={()=>setBottom("online")}>Pedidos da Nuvemshop</button>
-  </div>
-  {bottom==="online"&&<section className="vf-card vf-sale-online" aria-labelledby="vf-sales-online-title">
-   <div className="vf-card-head"><div><h2 id="vf-sales-online-title" className="vf-h2">Pedidos da Nuvemshop</h2>
-    <span className="vf-muted vf-small">Compras do site não precisam ser registradas aqui. Esta lista só lê a loja.</span></div></div>
-   <NuvemshopOrdersFeed tenantId={tenantId}/>
-   <details className="vf-sale-more"><summary>Consultar um pedido pelo número ou link</summary><PaidOrderCheck tenantId={tenantId}/></details>
-  </section>}
-  {bottom==="history"&&<section className="vf-card" aria-labelledby="vf-sale-history-title">
-   <div className="vf-card-head"><div><h2 id="vf-sale-history-title" className="vf-h2">Vendas do balcão</h2>
-    <span className="vf-muted vf-small">{pending.length?`${pending.length} aguardando conferência.`:"Histórico das vendas registradas na loja física."}</span></div>
-    <button type="button" className="vf-btn is-small" onClick={()=>setVersion(v=>v+1)}><RefreshCw size={16}/> Atualizar</button></div>
-   {listError&&<div className="vf-toast is-error" role="alert">{listError}</div>}
+  <section className="vf-card vs-mine" aria-labelledby="vs-mine-title">
+   <div className="vf-card-head"><div><h2 id="vs-mine-title" className="vf-h2">Suas vendas de hoje</h2>
+    <span className="vf-muted vf-small">Errou? Desfaça em até 5 minutos. Depois disso, recuse em Conferir.</span></div></div>
+   {undoMsg&&<div className="vf-toast" role="status"><Undo2 size={18}/>{undoMsg}</div>}
+   {mine.length===0?<p className="vf-muted vf-small">Nenhuma venda registrada por você hoje.</p>
+   :<ul className="vs-rows">{mine.map(sale=>{const [label,chip]=COUNTER_STATE[sale.state];return <li key={sale.id} className="vs-row">
+     <div className="vs-row-main"><strong>{sale.participant_name||"Cliente fora do clube"}</strong>
+      <span>{new Date(sale.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+       {sale.redemption?` · ${sale.redemption.title}`:""}</span></div>
+     <SaleValue sale={sale}/>
+     {sale.can_undo?<button type="button" className="vf-btn is-small" disabled={busy} onClick={()=>void undo(sale)}>
+      <Undo2 size={15}/> Desfazer</button>:<span className={"vf-chip "+chip}>{label}</span>}
+    </li>;})}</ul>}
+  </section>
+ </>;
+}
+
+function SaleValue({sale}:{sale:ManualSaleRecord}){
+ const discount=sale.redemption&&sale.redemption.state!=="cancelled"?sale.redemption.discount_cents:0;
+ const points=sale.points_issued??(sale.state==="awaiting_review"?sale.points_preview:null);
+ return <div className="vs-val"><strong>{money(sale.eligible_amount_cents-discount)}</strong>
+  {sale.participant_id&&typeof points==="number"&&points>0&&sale.state!=="rejected"
+   ?<small>{sale.points_issued?"+"+pts(points)+" pts":"≈ +"+pts(points)+" pts"}</small>:null}</div>;
+}
+
+/* ---------------- Conferir ---------------- */
+
+function Review({shared}:{shared:Shared}){
+ const {tenantId,items,loading,listError,pilot,rule,reload}=shared;
+ const [busy,setBusy]=useState(false);
+ const [msg,setMsg]=useState("");
+ const [error,setError]=useState("");
+ const [rejecting,setRejecting]=useState<string|null>(null);
+ const [linking,setLinking]=useState<string|null>(null);
+ const [linkTarget,setLinkTarget]=useState("");
+ const [people,setPeople]=useState<ProgramParticipant[]>([]);
+ const pending=items.filter(i=>i.state==="awaiting_review");
+ const noClient=items.filter(i=>i.state==="awaiting_member");
+ const clean=pending.filter(i=>!(i.alerts||[]).length);
+ const total=pending.reduce((sum,i)=>sum+i.eligible_amount_cents,0);
+ const hold=rule?(rule.hold_days===0?"liberados logo":`liberados em ${rule.hold_days} dia${rule.hold_days===1?"":"s"}`):"";
+
+ useEffect(()=>{
+  if(!noClient.length)return;
+  let active=true;
+  merchantApi.listParticipants(tenantId,{status:"active",q:"",offset:0}).then(d=>{if(active)setPeople(d.items);}).catch(()=>{});
+  return()=>{active=false};
+ },[tenantId,noClient.length]);
+
+ const decide=async(sale:ManualSaleRecord,decision:"approve"|"reject")=>{
+  if(busy)return;setBusy(true);setMsg("");setError("");
+  try{
+   const r=await merchantApi.reviewManualSale(tenantId,sale.id,decision,
+    decision==="approve"?"Conferida pelo lojista no painel.":"Recusada pelo lojista no painel.");
+   const name=sale.participant_name?firstName(sale.participant_name):"a cliente";
+   setMsg(decision==="reject"?"Venda recusada. Nenhum ponto foi creditado."+(sale.redemption?" O vale voltou para o saldo.":"")
+    :r.points?`Venda confirmada: +${pts(r.points)} pontos para ${name}, ${hold}.`
+    :r.points_reason==="budget"?"Venda confirmada, mas o orçamento do piloto acabou: nenhum ponto foi creditado."
+    :r.points_reason==="before_join"?"Venda confirmada. Ela é anterior à entrada no clube, por isso não gera pontos."
+    :pilot?"Venda confirmada. Esta venda não gera pontos.":"Venda conferida. Nenhum ponto foi creditado: os pontos ainda não estão ativos.");
+   setRejecting(null);reload();
+  }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível concluir a conferência.");}
+  finally{setBusy(false);}
+ };
+ const confirmClean=async()=>{
+  if(busy||!clean.length)return;setBusy(true);setMsg("");setError("");
+  try{
+   const r=await merchantApi.confirmManualSales(tenantId,clean.map(i=>i.id));
+   setMsg(`${r.confirmed.length} venda${r.confirmed.length===1?" confirmada":"s confirmadas"}`+(r.points?` · +${pts(r.points)} pontos`:"")+
+    (r.skipped.length?`. ${r.skipped.length} ficou para conferir uma a uma.`:"."));
+   reload();
+  }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível confirmar as vendas.");}
+  finally{setBusy(false);}
+ };
+ const link=async(sale:ManualSaleRecord,target:string)=>{
+  if(busy||!target)return;setBusy(true);setMsg("");setError("");
+  try{await merchantApi.linkManualSale(tenantId,sale.id,target);setMsg("Cliente vinculado à venda. Agora ela pode ser conferida.");
+   setLinking(null);setLinkTarget("");reload();}
+  catch(e){setError(e instanceof ApiError?e.message:"É preciso um participante com contato confirmado para vincular.");}
+  finally{setBusy(false);}
+ };
+
+ return <div className="vs-review">
+  <section className="vf-card" aria-labelledby="vs-review-title">
+   <div className="vf-card-head vs-head-wrap"><div><h2 id="vs-review-title" className="vf-h2">Vendas do balcão</h2>
+    <span className="vf-muted vf-small">{pending.length?`${pending.length} para conferir · ${money(total)}. Confira com o cupom antes de confirmar.`
+     :"Confira com o cupom antes de confirmar."}{pilot?" Os pontos só entram depois de confirmar.":""}</span></div>
+    {clean.length>1&&<button type="button" className="vf-btn is-small vs-btn-outline" disabled={busy} onClick={()=>void confirmClean()}>
+     <Check size={16}/> Confirmar {clean.length} sem alerta</button>}
+   </div>
+   {msg&&<div className="vf-toast" role="status"><CheckCircle2 size={18}/>{msg}</div>}
+   {(error||listError)&&<div className="vf-toast is-error" role="alert"><X size={18}/>{error||listError}</div>}
    {loading?<p className="vf-muted" role="status">Carregando vendas…</p>
-    :items.length===0?<div className="vf-empty"><p>Nenhuma venda registrada ainda. As vendas do balcão aparecem aqui.</p></div>
-    :<ul className="vf-list">{items.map(sale=>{const [label,chip]=stateChip[sale.state];return <li key={sale.id} className="vf-sale-record">
-      <div className="vf-row is-wrap">
-       <div className="vf-row-main"><strong>{sale.participant_name||"Cliente fora do clube"}</strong>
-        <span>{sale.reference} · {when(sale.reported_paid_at)}</span></div>
-       <strong className="vf-num">{money(sale.eligible_amount_cents)}</strong>
-       <span className={"vf-chip vf-sale-state "+chip}>{label}</span>
-       {canEdit&&sale.state==="awaiting_member"&&sale.suggested_participant&&linking!==sale.id&&
-        <button type="button" className="vf-btn is-small is-primary" disabled={busy} onClick={()=>void link(sale,sale.suggested_participant!.id)}>
-         <Link2 size={15}/> Vincular a {sale.suggested_participant.display_name}</button>}
-       {canEdit&&sale.state==="awaiting_member"&&!sale.suggested_participant&&linking!==sale.id&&<button type="button" className="vf-btn is-small" onClick={()=>{setLinking(sale.id);setLinkTarget("");}}>Vincular cliente</button>}
-       {canEdit&&sale.state==="awaiting_review"&&!(reviewing===sale.id&&reviewWhere==="list")&&<button type="button" className="vf-btn is-small" onClick={()=>{setReviewing(sale.id);setReviewWhere("list");setNote("");setReviewMsg("");}}>Conferir venda</button>}
-      </div>
-      {reviewing===sale.id&&reviewWhere==="list"&&reviewPanel(sale)}
-      {linking===sale.id&&<div className="vf-sale-review" aria-label="Vincular cliente à venda">
-       <label className="vf-field is-compact">Participante com contato confirmado
-        <select value={linkTarget} onChange={e=>setLinkTarget(e.target.value)}>
-         <option value="" disabled>Selecione o participante</option>
-         {people.map(p=><option key={p.id} value={p.id}>{p.display_name} · {p.contact_email}</option>)}
-        </select></label>
-       <div className="vf-sale-review-actions">
-        <button type="button" className="vf-btn is-small" onClick={()=>setLinking(null)}>Cancelar</button>
-        <button type="button" className="vf-btn is-small is-primary" disabled={busy||!linkTarget} onClick={()=>void link(sale)}>Vincular</button>
-       </div>
-      </div>}
-     </li>;})}</ul>}
+   :pending.length===0?<div className="vs-empty"><CheckCircle2 size={26} aria-hidden="true"/><strong>Tudo conferido</strong>
+     <span>Quando alguém registrar uma venda no balcão, ela aparece aqui.</span></div>
+   :<ul className="vs-rows">{pending.map((sale,i)=>{const alerts=sale.alerts||[];return <li key={sale.id} className={"vs-row is-review"+(alerts.length?" has-alert":"")}>
+     <span className={"vf-avatar "+(alerts.length?"vs-avatar-alert":TONES[i%5])} aria-hidden="true">{initialsOf(sale.participant_name)}</span>
+     <div className="vs-row-main"><strong>{sale.participant_name||"Cliente"}</strong>
+      <span>{receiptLabel(sale.evidence_reference)} · {when(sale.reported_paid_at||sale.created_at)}{sale.submitted_by_name?` · por ${sale.submitted_by_name}`:""}
+       {sale.redemption?` · ${sale.redemption.title}`:""}</span>
+      {alerts.length>0&&<span className="vs-alerts">{alerts.map(a=><span key={a} className="vs-alert"><TriangleAlert size={13} aria-hidden="true"/>{a}</span>)}</span>}
+     </div>
+     <SaleValue sale={sale}/>
+     {rejecting===sale.id?<div className="vs-acts">
+      <button type="button" className="vf-btn is-small" onClick={()=>setRejecting(null)}>Voltar</button>
+      <button type="button" className="vf-btn is-small is-danger" disabled={busy} onClick={()=>void decide(sale,"reject")}>Recusar venda</button>
+     </div>
+     :<div className="vs-acts">
+      <button type="button" className="vf-btn is-small vs-ok" disabled={busy} onClick={()=>void decide(sale,"approve")}>
+       <Check size={16}/> Confirmar</button>
+      <button type="button" className="vf-btn is-small vs-no" disabled={busy} aria-label={"Recusar venda de "+(sale.participant_name||"cliente")}
+       onClick={()=>setRejecting(sale.id)}><X size={16}/></button>
+     </div>}
+    </li>;})}</ul>}
+  </section>
+
+  {noClient.length>0&&<section className="vf-card" aria-labelledby="vs-noclient-title">
+   <div className="vf-card-head"><div><h2 id="vs-noclient-title" className="vf-h2">Vendas sem cliente</h2>
+    <span className="vf-muted vf-small">Vincule quando a pessoa entrar no clube. Só depois a venda pode ser conferida.</span></div></div>
+   <ul className="vs-rows">{noClient.map(sale=><li key={sale.id} className="vs-row is-review">
+    <span className="vf-ico tone-gold" aria-hidden="true"><UserRound size={18}/></span>
+    <div className="vs-row-main"><strong>Cliente fora do clube</strong>
+     <span>{receiptLabel(sale.evidence_reference)} · {when(sale.reported_paid_at||sale.created_at)}</span></div>
+    <SaleValue sale={sale}/>
+    <div className="vs-acts">
+     {sale.suggested_participant?<button type="button" className="vf-btn is-small is-primary" disabled={busy} onClick={()=>void link(sale,sale.suggested_participant!.id)}>
+      <Link2 size={15}/> Vincular a {sale.suggested_participant.display_name}</button>
+     :linking===sale.id?<span className="vs-link">
+      <select aria-label="Participante para vincular" value={linkTarget} onChange={e=>setLinkTarget(e.target.value)}>
+       <option value="" disabled>Selecione</option>
+       {people.map(p=><option key={p.id} value={p.id}>{p.display_name} · {p.contact_email}</option>)}
+      </select>
+      <button type="button" className="vf-btn is-small is-primary" disabled={busy||!linkTarget} onClick={()=>void link(sale,linkTarget)}>Vincular</button>
+     </span>
+     :<button type="button" className="vf-btn is-small" onClick={()=>{setLinking(sale.id);setLinkTarget("");}}>Vincular cliente</button>}
+    </div>
+   </li>)}</ul>
   </section>}
+ </div>;
+}
+
+/* ---------------- Pedidos ---------------- */
+
+type Row={key:string;channel:"counter"|"site";title:string;sub:string;cents:number;points:string;status:[string,string];
+ dim:boolean;club:boolean;at:number;search:string;initials:string|null};
+const SITE_STATUS=(o:PaidOrderInspection):[string,string]=>{
+ if(o.review_status==="blocked_cancelled")return ["Cancelado","is-danger"];
+ if(o.review_status==="blocked_refund"||o.review_status==="blocked_chargeback")return ["Estornado","is-danger"];
+ if(o.payment_status==="paid")return ["Pago","is-ok"];
+ return ["Aguardando pagamento","is-gold"];
+};
+
+function Orders({shared}:{shared:Shared}){
+ const {tenantId,items,loading,listError,reload}=shared;
+ const [site,setSite]=useState<PaidOrderInspection[]>([]);
+ const [siteState,setSiteState]=useState<"loading"|"ok"|"off">("loading");
+ const [siteMsg,setSiteMsg]=useState("");
+ const [siteRev,setSiteRev]=useState(0);
+ const [q,setQ]=useState("");
+ const [channel,setChannel]=useState<"all"|"counter"|"site">("all");
+ const [status,setStatus]=useState<"all"|"open"|"done"|"cancelled">("all");
+ const [clubOnly,setClubOnly]=useState(false);
+
+ useEffect(()=>{
+  let active=true;setSiteState("loading");setSiteMsg("");
+  merchantApi.recentNuvemshopOrders(tenantId).then(r=>{if(active){setSite(r.items);setSiteState("ok");}})
+   .catch(e=>{if(!active)return;setSiteState("off");
+    setSiteMsg(e instanceof ApiError&&e.status===429?"A loja acabou de ser consultada. Atualize em alguns segundos."
+     :e instanceof ApiError&&e.status===409?(e.message.includes("recusou")?e.message:"Pedidos do site indisponíveis: confira a conexão em Configurações.")
+     :e instanceof ApiError&&e.status===503?"Pedidos do site indisponíveis: integração não configurada no servidor."
+     :e instanceof ApiError&&e.status===404?"Esta loja não tem site conectado.":"Não foi possível ler os pedidos do site agora.");});
+  return()=>{active=false};
+ },[tenantId,siteRev]);
+
+ const rows=useMemo<Row[]>(()=>{
+  const counter:Row[]=items.map(s=>{const discount=s.redemption&&s.redemption.state!=="cancelled"?s.redemption.discount_cents:0;
+   const p=s.points_issued??(s.state==="awaiting_review"?s.points_preview:null);
+   return {key:"c"+s.id,channel:"counter",title:s.participant_name||"Cliente fora do clube",
+    sub:when(s.reported_paid_at||s.created_at)+(s.redemption?` · ${s.redemption.title}`:"")+" · "+receiptLabel(s.evidence_reference),
+    cents:s.eligible_amount_cents-discount,points:s.participant_id&&typeof p==="number"&&p>0&&s.state!=="rejected"?(s.points_issued?"+":"≈ +")+pts(p)+" pts":"sem pontos",
+    status:COUNTER_STATE[s.state],dim:s.state==="rejected",club:Boolean(s.participant_id),
+    at:new Date(s.reported_paid_at||s.created_at).getTime(),initials:s.participant_name,
+    search:[s.participant_name,s.reference].join(" ").toLowerCase()};});
+  const online:Row[]=site.map(o=>{const st=SITE_STATUS(o);return {key:"s"+o.order_id,channel:"site",
+   title:(o.order_number?"#"+o.order_number:"Pedido "+o.order_id)+(o.participant_verified?" · cliente do clube":" · fora do clube"),
+   sub:o.paid_at?when(o.paid_at):"sem data de pagamento",cents:o.reported_total_cents,points:"sem pontos",status:st,
+   dim:st[1]==="is-danger",club:o.participant_verified,at:o.paid_at?new Date(o.paid_at).getTime():0,initials:null,
+   search:[o.order_number,o.order_id].join(" ").toLowerCase()};});
+  return [...counter,...online].sort((a,b)=>b.at-a.at);
+ },[items,site]);
+
+ const term=q.trim().toLowerCase().replace(/^#/,"");
+ const shown=rows.filter(r=>(channel==="all"||r.channel===channel)&&(!clubOnly||r.club)&&(!term||r.search.includes(term))&&
+  (status==="all"||(status==="cancelled"?r.dim:status==="open"?(!r.dim&&(r.status[1]==="is-gold"||r.status[1]==="is-soft")):(!r.dim&&r.status[1]==="is-ok"))));
+
+ return <section className="vf-card vs-orders" aria-labelledby="vs-orders-title">
+  <div className="vf-card-head vs-head-wrap"><div><h2 id="vs-orders-title" className="vf-h2">Todos os pedidos</h2>
+   <span className="vf-muted vf-small">Balcão e site juntos. Compras do site entram sozinhas: não registre no balcão.</span></div>
+   <button type="button" className="vf-btn is-small" onClick={()=>{reload();setSiteRev(v=>v+1);}}><RefreshCw size={16}/> Atualizar</button></div>
+  <div className="vs-filters">
+   <label className="vs-search"><Search size={17} aria-hidden="true"/><span className="vf-sr">Buscar pedido</span>
+    <input type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Nome, nº do pedido ou cupom" maxLength={80}/></label>
+   <label className="vs-select"><span className="vf-sr">Canal</span>
+    <select value={channel} onChange={e=>setChannel(e.target.value as typeof channel)}>
+     <option value="all">Canal: todos</option><option value="counter">Balcão</option><option value="site">Site</option></select></label>
+   <label className="vs-select"><span className="vf-sr">Situação</span>
+    <select value={status} onChange={e=>setStatus(e.target.value as typeof status)}>
+     <option value="all">Situação: todas</option><option value="open">Em aberto</option><option value="done">Conferidas e pagas</option>
+     <option value="cancelled">Canceladas e recusadas</option></select></label>
+   <label className="vs-toggle"><input type="checkbox" checked={clubOnly} onChange={e=>setClubOnly(e.target.checked)}/> Só clientes do clube</label>
+  </div>
+  {listError&&<div className="vf-toast is-error" role="alert">{listError}</div>}
+  {siteState==="off"&&siteMsg&&<div className="vf-toast is-info" role="status">{siteMsg}</div>}
+  {loading&&siteState==="loading"?<p className="vf-muted" role="status">Carregando pedidos…</p>
+  :shown.length===0?<div className="vs-empty"><ShoppingBag size={24} aria-hidden="true"/><strong>Nenhum pedido encontrado</strong>
+    <span>{rows.length?"Mude a busca ou os filtros.":"As vendas do balcão e do site aparecem aqui."}</span></div>
+  :<ul className="vs-rows" aria-label="Pedidos">{shown.map(r=><li key={r.key} className={"vs-row is-order"+(r.dim?" is-dim":"")}>
+    {r.initials?<span className="vf-avatar tone-1" aria-hidden="true">{initialsOf(r.initials)}</span>
+     :<span className="vf-avatar vs-avatar-site" aria-hidden="true"><ShoppingBag size={16}/></span>}
+    <div className="vs-row-main"><strong>{r.title}</strong><span>{r.sub}</span></div>
+    <span className="vs-channel">{r.channel==="counter"?<><StoreIcon size={14} aria-hidden="true"/> Balcão</>:<><ShoppingBag size={14} aria-hidden="true"/> Site</>}</span>
+    <div className="vs-val"><strong>{money(r.cents)}</strong><small className={r.points==="sem pontos"?"is-none":""}>{r.points}</small></div>
+    <span className={"vf-chip "+r.status[1]}>{r.status[0]}</span>
+   </li>)}</ul>}
+  <details className="vf-sale-more"><summary>Consultar um pedido pelo número ou link</summary><PaidOrderCheck tenantId={tenantId}/></details>
  </section>;
 }

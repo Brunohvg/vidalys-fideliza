@@ -125,6 +125,7 @@ A autenticação de comerciantes funciona por e-mail após confirmação. O cont
 
 O Compose **Raw** passa apenas ao serviço `api`:
 - `FIDELIZA_ENVIRONMENT=homolog`: ambiente de QA, não produção.
+- `FIDELIZA_PILOT_TENANTS`: IDs das lojas do piloto de pontos no balcão (vírgula). Vazio = piloto desligado para todas; só funciona com `FIDELIZA_ENVIRONMENT=homolog`. Ver docs/46.
 - `FIDELIZA_PILOT_ACTIVATION_APPROVAL=YES_VERIFIED_QA_ONLY`: aprovação
   do piloto e auditoria, a configurar após conferir backup e SHA.
 - `FIDELIZA_DEPLOYED_SHA=<SHA real verificado no Coolify>`: vincula a

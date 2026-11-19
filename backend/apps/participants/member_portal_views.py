@@ -91,7 +91,7 @@ POINT_HISTORY = {
     PointEvent.Kind.RELEASE: ("Pontos liberados da carência", 0),
     PointEvent.Kind.RESERVE: ("Pontos reservados", 0),
     PointEvent.Kind.CANCEL_RESERVE: ("Reserva cancelada", 0),
-    PointEvent.Kind.REDEEM: ("Resgate comprovado", -1),
+    PointEvent.Kind.REDEEM: ("Vale usado na loja", -1),
     PointEvent.Kind.REVERSE_PENDING: ("Compra estornada antes da liberação", -1),
     PointEvent.Kind.REVERSE_AVAILABLE: ("Compra estornada após liberação", -1),
     PointEvent.Kind.EXPIRE_PENDING: ("Pontos expirados em carência", -1),
@@ -225,6 +225,11 @@ def _member_missions(tenant, participant):
     ]
 
 
+def _counter_pilot(tenant):
+    from apps.sales.pilot import pilot_enabled
+    return pilot_enabled(tenant)
+
+
 def _pilot_redemption_ready(tenant):
     # A flag local NÃO basta: exigimos gates financeiros + comprovante PSP
     # e autorização de cupons do mesmo OAuth/tenant.
@@ -316,7 +321,7 @@ class MemberClubPublicView(APIView):
                 settings.FIDELIZA_PUBLIC_SIGNUP_ENABLED and terms
                 and len(terms.privacy_notice.strip()) >= 120
             ),
-            "points_enabled": live,
+            "points_enabled": live or _counter_pilot(tenant),
             "rewards_enabled": live,
             "redemption_enabled": live,
             "published_rewards": _published_catalog(tenant),
@@ -506,6 +511,16 @@ class MemberClubMeView(APIView):
         cashback = _member_cashback_snapshot(tenant, participant if active else None)
         missions = _member_missions(tenant, participant if active else None)
         live = _pilot_redemption_ready(tenant) and active and ledger is not None
+        from apps.sales.pilot import pilot_enabled, release_due
+        counter_pilot = active and pilot_enabled(tenant)
+        if counter_pilot and ledger is not None:
+            # Carência vencida vira saldo liberado na própria consulta.
+            from apps.points.models import PointWallet as _Wallet
+            release_due(_Wallet.objects.filter(tenant=tenant, participant=participant).first())
+            ledger = _ledger_snapshot(tenant, participant)
+        if counter_pilot and ledger is None:
+            ledger = {"points_balance": 0, "points_pending": 0, "points_expiring": 0,
+                      "points_status": "counter", "transactions": []}
         published_rewards = _published_catalog(
             tenant, points_balance=ledger["points_balance"] if ledger else None,
             live=live,
@@ -529,7 +544,9 @@ class MemberClubMeView(APIView):
             "points_balance": ledger["points_balance"] if ledger else None,
             "points_pending": ledger["points_pending"] if ledger else None,
             "points_expiring": ledger["points_expiring"] if ledger else None,
-            "points_status": ("verified" if live else "ledger_only") if ledger else "not_active",
+            "points_status": (("verified" if live else "counter" if counter_pilot else "ledger_only")
+                              if ledger else "not_active"),
+            "redemption_place": "counter" if counter_pilot else None,
             **vip,
             **cashback,
             "missions": missions,

@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState,type FormEvent} from "react";
+import CounterPilotCard from "./CounterPilotCard";
 import {Check,CircleHelp,Copy,Download,ExternalLink,FileText,LockKeyhole,Mail,MessageCircle,Monitor,
  RefreshCw,ShieldCheck,ShoppingBag,TriangleAlert,X} from "lucide-react";
 import {ApiError,merchantApi,type NuvemshopConnectionStatus,type ProgramTermsStatus,
@@ -310,7 +311,7 @@ export default function StoreSettings({tenantId,role,userName,userEmail,initialS
      </div>
      <div className="vf-row is-top">
       <span className="vf-ico tone-gold" aria-hidden="true"><Monitor size={20}/></span>
-      <div className="vf-row-main"><strong>Balcão da loja física</strong><span>Venda pelo painel em "Registrar venda", com conferência. Sempre disponível.</span></div>
+      <div className="vf-row-main"><strong>Balcão da loja física</strong><span>Venda pelo painel em Vendas → Balcão, com conferência. Sempre disponível.</span></div>
       <span className="vf-chip is-ok">Ativo</span>
      </div>
      <div className="vf-row is-top">
@@ -323,12 +324,9 @@ export default function StoreSettings({tenantId,role,userName,userEmail,initialS
       <div className="vf-row-main"><strong>Confirmação por e-mail</strong><span>O cliente confirma a adesão e acessa o Meu Clube com segurança.</span></div>
       <span className={"vf-chip "+(settings.features.email_delivery_enabled?"is-ok":"is-gold")}>{settings.features.email_delivery_enabled?"Configurada":"Em preparação"}</span>
      </div>
-     <div className="vf-row is-top">
-      <span className="vf-ico tone-rose" aria-hidden="true"><ShieldCheck size={20}/></span>
-      <div className="vf-row-main"><strong>Pontos de verdade</strong><span>Liberação feita pela equipe Vidalys, loja a loja, depois de homologar pagamentos.</span></div>
-      <span className={"vf-chip "+(settings.features.loyalty_live_enabled?"is-ok":"is-soft")}>{settings.features.loyalty_live_enabled?"Piloto autorizado":"Desligado"}</span>
-     </div>
     </section>}
+
+    {section==="canais"&&<CounterPilotCard tenantId={tenantId} role={role}/>}
 
     {section==="pagina"&&<section className="vf-card ss-section" aria-labelledby="ss-domains-title">
      <div className="vf-card-head"><div><h2 id="ss-domains-title" className="vf-h2">Página do clube</h2>

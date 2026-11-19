@@ -33,9 +33,14 @@ MOVEMENTS = {
 }
 
 
-def _enabled():
-    if not getattr(settings, "FIDELIZA_POINTS_WRITES_ENABLED", False):
-        raise PermissionError("Pontos bloqueados: motor de pagamentos ainda não homologado.")
+def _enabled(tenant_id=None):
+    if getattr(settings, "FIDELIZA_POINTS_WRITES_ENABLED", False):
+        return
+    # Única exceção: piloto de balcão ativo para ESTA loja (homologação + lista no servidor).
+    from apps.sales.pilot import pilot_enabled
+    if tenant_id is not None and pilot_enabled(tenant_id):
+        return
+    raise PermissionError("Pontos bloqueados: motor de pagamentos ainda não homologado.")
 
 
 def _number(value, maximum):
@@ -102,7 +107,7 @@ def create_pending_lot(*, participant, channel, source_reference,
                        eligible_amount_cents, points, rule_version,
                        paid_at, unlock_at, expires_at, verification_digest):
     """Domínio interno; digest fornecido não é prova independente de pagamento."""
-    _enabled()
+    _enabled(getattr(participant, "tenant_id", None))
     if (not isinstance(participant, ProgramParticipant)
             or participant.pk is None
             or participant.status != ProgramParticipant.Status.ACTIVE):
@@ -162,10 +167,10 @@ def create_pending_lot(*, participant, channel, source_reference,
 @transaction.atomic
 def transition_points(*, lot_id, kind, amount, idempotency_key, external_receipt=""):
     """Transição interna transacional; somente futuro adaptador autorizado."""
-    _enabled()
     lot = PointLot.objects.select_for_update().select_related(
         "wallet__participant","tenant",
     ).get(pk=lot_id)
+    _enabled(lot.tenant_id)
     # Bloquear leitura/escrita entre tenants depende do adaptador; esta função
     # NÃO deve ser exposta como endpoint do usuário final.
     now = timezone.now()

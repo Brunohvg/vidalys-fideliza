@@ -45,6 +45,22 @@
  background:var(--vf-surface);font:700 16px var(--vf-font);color:var(--vf-purple-950)}
 .ss-address-row input:focus{outline:3px solid var(--vf-lavender);border-color:var(--vf-primary)}
 
+/* Piloto de pontos no balcão */
+.ss-pilot{gap:16px}
+.ss-pilot-steps{margin:0;padding:0 0 0 20px;display:grid;gap:6px;font-size:14px;line-height:1.5;color:var(--vf-ink-soft)}
+.ss-pilot-steps b{color:var(--vf-purple-950)}
+.ss-pilot-budget{display:grid;gap:8px;padding:14px 16px;border-radius:14px;background:var(--vf-canvas);border:1px solid var(--vf-border)}
+.ss-pilot-line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--vf-purple-900)}
+.ss-pilot-line strong{font-variant-numeric:tabular-nums}
+.ss-pilot-bar{height:10px;border-radius:99px;background:var(--vf-lavender);overflow:hidden}
+.ss-pilot-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--vf-primary),var(--vf-purple-500))}
+.ss-pilot-checks{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ss-pilot-checks li{display:flex;gap:8px;align-items:flex-start;font-size:14px;font-weight:700;line-height:1.45}
+.ss-pilot-checks li svg{flex:none;margin-top:2px}
+.ss-pilot-checks li.is-ok{color:var(--vf-success)}
+.ss-pilot-checks li.is-todo{color:var(--vf-reward-ink)}
+.ss-pilot-actions{flex-wrap:wrap}
+
 @media(max-width:860px){
  .ss-menu{position:static;max-width:none;flex-basis:100%;flex-direction:row;overflow-x:auto;padding:6px}
  .ss-menu-item{width:auto;min-width:max-content;min-height:48px}

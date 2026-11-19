@@ -206,7 +206,7 @@ for(const width of [320,390,768,1440]){
     const screens=[
       ["Meu clube","Como seu clube funciona"],
       ["Clientes","Quem faz parte do clube"],
-      ["Vendas","Venda em 10 segundos"],
+      ["Vendas","Vendas"],
       ["Campanhas","Dê um motivo para voltar"],
       ["Resultados","O que o clube trouxe"],
       ["Custo dos benefícios","Quanto custa meu programa?"],
@@ -231,7 +231,7 @@ for(const width of [320,390,768,1440]){
       }
       if(nav==="Vendas"){
         await expect(page.getByRole("form",{name:"Registrar venda no balcão"})).toBeVisible();
-        await expect(page.getByLabel("Valor da compra (R$)")).toBeVisible();
+        await expect(page.getByLabel("Valor da compra")).toBeVisible();
       }
       if(nav==="Resultados"){
         await expect(page.getByRole("heading",{name:"Novos membros por mês"})).toBeVisible();

@@ -247,3 +247,54 @@ class SaleManualLinkAudit(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Auditoria de vínculo não pode ser removida.")
+
+
+class CounterPilot(models.Model):
+    """Piloto de pontos no balcão de UMA loja (homologação + lista de lojas no servidor).
+
+    O lojista liga e pausa aqui. Tetos limitam o risco enquanto não há custo
+    de produto conferido: pontos por venda e pontos emitidos no total.
+    """
+    tenant = models.OneToOneField("tenants.Tenant", on_delete=models.PROTECT, related_name="counter_pilot")
+    active = models.BooleanField(default=False)
+    per_sale_cap_points = models.PositiveIntegerField(default=1500)
+    budget_points = models.PositiveIntegerField(default=50000)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    paused_at = models.DateTimeField(null=True, blank=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="counter_pilots")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(per_sale_cap_points__gt=0), name="counter_pilot_cap_positive"),
+            models.CheckConstraint(condition=Q(budget_points__gt=0), name="counter_pilot_budget_positive"),
+        ]
+
+
+class CounterRedemption(models.Model):
+    """Vale usado no balcão. Pontos ficam reservados até a conferência:
+    confirmar consome, recusar ou desfazer devolve ao saldo."""
+    class State(models.TextChoices):
+        RESERVED = "reserved", "Reservado"
+        REDEEMED = "redeemed", "Usado"
+        CANCELLED = "cancelled", "Devolvido"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    sale = models.OneToOneField(SaleRecord, on_delete=models.PROTECT, related_name="counter_redemption")
+    participant = models.ForeignKey("participants.ProgramParticipant", on_delete=models.PROTECT)
+    reward = models.ForeignKey(DiscountRewardDraft, on_delete=models.PROTECT)
+    points = models.PositiveIntegerField()
+    discount_cents = models.PositiveIntegerField()
+    # [{"lot": "<uuid>", "amount": 123}] — de onde os pontos foram reservados.
+    allocations = models.JSONField(default=list)
+    state = models.CharField(max_length=10, choices=State.choices, default=State.RESERVED)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="counter_redemptions")
+    created_at = models.DateTimeField(auto_now_add=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(points__gt=0), name="counter_redemption_points_positive"),
+            models.CheckConstraint(condition=Q(discount_cents__gt=0), name="counter_redemption_discount_positive"),
+        ]

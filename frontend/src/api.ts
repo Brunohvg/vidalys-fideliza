@@ -328,15 +328,31 @@ export type ManualSaleRecord = {
   review_note:string|null;
   suggested_participant?:{id:string;display_name:string;phone_last4:string|null}|null;
   points_credited:false;cashback_credited:false;
+  /* Piloto de pontos no balcão (opcionais para respostas antigas). */
+  points_issued?:number|null;points_unlock_at?:string|null;
+  points_preview?:number;points_capped?:boolean;
+  redemption?:{title:string;points:number;discount_cents:number;state:"reserved"|"redeemed"|"cancelled"}|null;
+  alerts?:string[];can_undo?:boolean;submitted_by_name?:string|null;
+};
+export type CounterWallet={
+  pilot_active:boolean;available:number;pending:number;reserved:number;
+  rewards:{id:string;title:string;points_cost:number;discount_cents:number;min_order_cents:number;affordable:boolean;exhausted:boolean}[];
+  next_reward:{title:string;points_cost:number;missing:number;discount_cents:number}|null;
+};
+export type CounterPilotState={
+  allowed:boolean;active:boolean;per_sale_cap_points:number;budget_points:number;issued_points:number;
+  activated_at:string|null;paused_at:string|null;
+  rule:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;counter_rewards:number;
 };
 export type ManualSaleInput = {
   reference:string;eligible_amount_cents:number;
   participant_id:string|null;reported_paid_at:string;evidence_reference:string;
-  customer_phone?:string;
+  customer_phone?:string;reward_id?:string;
 };
 export type PhoneMatch={id:string;display_name:string;phone_last4:string|null;status:string};
 export type ManualSaleList = {
-  mode:"manual_review_only";points_credited:false;items:ManualSaleRecord[];
+  mode:"manual_review_only"|"pilot_points";points_credited:false;items:ManualSaleRecord[];
+  pilot_active?:boolean;average_ticket_cents?:number;
 };
 export type ManualSaleResult = {
   already_recorded:boolean;sale:ManualSaleRecord;
@@ -344,7 +360,7 @@ export type ManualSaleResult = {
 export type ManualSaleReviewResult = {
   sale:ManualSaleRecord;manual_evidence_reviewed:true;
   review_mode:"self_review"|"another_operator";
-  independent_payment_proof:false;points_credited:false;
+  independent_payment_proof:false;points_credited:boolean;points?:number;points_reason?:string;
 };
 export type PointRuleDraft = {
   version:number;points:number;per_cents:number;hold_days:number;validity_days:number;
@@ -627,6 +643,17 @@ export const merchantApi = {
     postJson<ManualSaleReviewResult>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+
       encodeURIComponent(saleId)+"/review/",{decision,note}),
+  confirmManualSales: (tenantId:string,ids:string[])=>
+    postJson<{confirmed:string[];skipped:string[];points:number}>(
+      "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/confirm-batch/",{ids}),
+  undoManualSale: (tenantId:string,saleId:string)=>postJson<{sale:ManualSaleRecord}>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+encodeURIComponent(saleId)+"/undo/",{}),
+  counterWallet: (tenantId:string,participantId:string)=>getJson<CounterWallet>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/counter/participants/"+encodeURIComponent(participantId)+"/wallet/"),
+  counterPilot: (tenantId:string)=>getJson<CounterPilotState>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/pilot/"),
+  setCounterPilot: (tenantId:string,data:{active?:boolean;per_sale_cap_points?:number;budget_points?:number})=>
+    postJson<CounterPilotState>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/pilot/",data),
   getPointRuleDraft: (tenantId:string)=>getJson<{
     mode:"draft_only";activation_available:false;rule:PointRuleDraft|null
   }>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/point-rule-draft/"),
@@ -823,7 +850,8 @@ export type MemberClubPrivate = {
   status:"active"|"paused"|"awaiting_link";joined_at:string|null;
   terms:ProgramTerms;
   points_balance:number|null;points_pending:number|null;points_expiring:number|null;
-  points_status:"not_active"|"ledger_only"|"verified";
+  points_status:"not_active"|"ledger_only"|"verified"|"counter";
+  redemption_place?:"counter"|null;
   available_rewards:MemberClubReward[];
   transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;
   redemption_enabled:boolean;orders_verified:boolean;note:string;

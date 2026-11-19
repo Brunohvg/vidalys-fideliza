@@ -156,6 +156,12 @@ FIDELIZA_LEDGER_WRITES_ENABLED = False
 # override_settings em testes de domínio (não há env que ligue isso).
 FIDELIZA_LOYALTY_FINANCIAL_EXECUTION_ENABLED = False
 FIDELIZA_TRUSTED_PAYMENT_ADAPTERS = frozenset()
+# Piloto de pontos no balcão: só em homologação e só para as lojas listadas.
+# Não liga as flags globais acima; o lojista ainda ativa/pausa no painel.
+FIDELIZA_ENVIRONMENT = os.getenv("FIDELIZA_ENVIRONMENT", "unconfigured")
+FIDELIZA_PILOT_TENANTS = frozenset(
+    v.strip().lower() for v in os.getenv("FIDELIZA_PILOT_TENANTS", "").split(",") if v.strip()
+)
 # PR26: recording a PSP/cash attestation also remains OFF in real runtime.
 # Only isolated tests may override this explicit hardcoded gate.
 FIDELIZA_PAYMENT_PROOF_RECORDING_ENABLED = False

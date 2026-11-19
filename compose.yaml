@@ -50,6 +50,7 @@ services:
       # Piloto multiloja controlado: somente na API, nunca no frontend/Redis.
       # A ausência mantém a ativação bloqueada (não liga dinheiro).
       FIDELIZA_ENVIRONMENT: ${FIDELIZA_ENVIRONMENT:-unconfigured}
+      FIDELIZA_PILOT_TENANTS: ${FIDELIZA_PILOT_TENANTS:-}
       FIDELIZA_PILOT_ACTIVATION_APPROVAL: ${FIDELIZA_PILOT_ACTIVATION_APPROVAL:-}
       FIDELIZA_DEPLOYED_SHA: ${FIDELIZA_DEPLOYED_SHA:-}
       # 1 somente na janela de migração, depois do backup. Padrão 0: API só confere.

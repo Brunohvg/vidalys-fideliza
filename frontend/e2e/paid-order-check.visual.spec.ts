@@ -62,9 +62,9 @@ for(const width of [320,390,1440]){
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
   await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
-  await page.getByRole("tab",{name:"Pedidos da Nuvemshop"}).click();
+  await page.getByRole("tab",{name:"Pedidos"}).click();
   await page.getByText("Consultar um pedido pelo número ou link").click();
-  await expect(page.getByRole("heading",{name:"Pedidos da Nuvemshop"})).toBeVisible();
+  await expect(page.getByRole("heading",{name:"Todos os pedidos"})).toBeVisible();
   const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
   await input.fill("invalido");
   await expect(page.getByRole("button",{name:"Buscar pedido"})).toBeDisabled();
@@ -97,7 +97,7 @@ test("Cancelamento e falta de autorização não geram pontos",async({page})=>{
  await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
- await page.getByRole("tab",{name:"Pedidos da Nuvemshop"}).click();
+ await page.getByRole("tab",{name:"Pedidos"}).click();
   await page.getByText("Consultar um pedido pelo número ou link").click();
  const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
  await input.fill("#14111");
@@ -124,7 +124,7 @@ test("Link administrativo e ID interno explícito não confundem com #numero",as
  await page.goto("/app/visao-geral");
  await page.getByRole("button",{name:"Abrir menu"}).click();
  await page.locator(".portal-nav").getByRole("button",{name:"Vendas"}).click();
- await page.getByRole("tab",{name:"Pedidos da Nuvemshop"}).click();
+ await page.getByRole("tab",{name:"Pedidos"}).click();
   await page.getByText("Consultar um pedido pelo número ou link").click();
  const input=page.getByRole("textbox",{name:"Número do pedido ou link da Nuvemshop"});
  await input.fill("https://bibelo8.lojavirtualnuvem.com.br/admin/orders/2120958234");

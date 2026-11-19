@@ -49,7 +49,7 @@ def suggested_participants(sales):
     return {(p.tenant_id, p.phone_digest): p for p in found}
 
 
-def present_sale(sale, *, viewer_id=None, suggestions=None):
+def present_sale(sale, *, viewer_id=None, suggestions=None, pilot=False, avg_ticket=0):
     hint = None
     if (suggestions and sale.state == SaleRecord.State.AWAITING_MEMBER
             and sale.counter_phone_digest):
@@ -76,6 +76,27 @@ def present_sale(sale, *, viewer_id=None, suggestions=None):
         ),
         "review_note": sale.review_note if sale.reviewed_at else None,
         "points_credited": False, "cashback_credited": False,
+        **(pilot_view(sale, viewer_id, avg_ticket) if pilot else {}),
+    }
+
+
+def pilot_view(sale, viewer_id, avg_ticket):
+    """Campos do piloto: pontos, vale, alertas e se ainda dá para desfazer."""
+    from .pilot import can_undo, points_for, sale_alerts, sale_lot
+    redemption = getattr(sale, "counter_redemption", None)
+    discount = redemption.discount_cents if redemption and redemption.state != "cancelled" else 0
+    lot = sale_lot(sale) if sale.state == SaleRecord.State.VERIFIED_MANUAL else None
+    preview, capped = points_for(sale.tenant_id, sale.eligible_amount_cents - discount)
+    return {
+        "points_issued": lot.points_issued if lot else None,
+        "points_unlock_at": lot.unlock_at.isoformat() if lot else None,
+        "points_preview": preview, "points_capped": capped,
+        "redemption": ({"title": redemption.reward.title, "points": redemption.points,
+                        "discount_cents": redemption.discount_cents, "state": redemption.state}
+                       if redemption else None),
+        "alerts": sale_alerts(sale, avg_ticket) if sale.state == SaleRecord.State.AWAITING_REVIEW else [],
+        "can_undo": can_undo(sale, viewer_id),
+        "submitted_by_name": (sale.submitted_by.get_username() if sale.submitted_by_id else None),
     }
 
 
@@ -87,13 +108,18 @@ class ManualSalesView(APIView):
         member = staff_member(request.user, tenant_id)
         if not member:
             return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        from .pilot import average_ticket, pilot_enabled
         records = list(SaleRecord.objects.filter(
             tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
-        ).select_related("participant")[:30])
+        ).select_related("participant", "submitted_by", "counter_redemption__reward")[:60])
         hints = suggested_participants(records)
+        pilot = pilot_enabled(tenant_id)
+        avg = average_ticket(tenant_id)
         return safe_reply({
-            "mode": "manual_review_only", "points_credited": False,
-            "items": [present_sale(item, viewer_id=request.user.pk, suggestions=hints) for item in records],
+            "mode": "pilot_points" if pilot else "manual_review_only", "points_credited": False,
+            "pilot_active": pilot, "average_ticket_cents": avg,
+            "items": [present_sale(item, viewer_id=request.user.pk, suggestions=hints, pilot=True, avg_ticket=avg)
+                      for item in records],
         })
 
     @transaction.atomic
@@ -106,8 +132,16 @@ class ManualSalesView(APIView):
         data = request.data
         expected = {"reference", "eligible_amount_cents", "participant_id",
                     "reported_paid_at", "evidence_reference"}
-        if not isinstance(data, dict) or set(data) not in (expected, expected | {"customer_phone"}):
+        if not isinstance(data, dict) or not expected <= set(data) <= expected | {"customer_phone", "reward_id"}:
             return safe_reply({"detail": "Informe referência, valor, participante, data e comprovante."}, 400)
+        reward_id = data.get("reward_id")
+        if reward_id is not None:
+            try:
+                reward_id = uuid.UUID(str(reward_id))
+            except (ValueError, TypeError):
+                return safe_reply({"detail": "Vale inválido."}, 400)
+            if data.get("participant_id") is None:
+                return safe_reply({"detail": "Vale só pode ser usado por cliente do clube."}, 400)
         # Celular de quem ainda não participa: guarda só o HMAC para vincular depois.
         phone_digest = ""
         raw_phone = data.get("customer_phone", "")
@@ -192,13 +226,21 @@ class ManualSalesView(APIView):
         except IngestionConflict:
             return safe_reply({"detail": "Evento incompatível com uma venda já registrada."}, 409)
         sale = outcome.sale
+        if reward_id is not None and not outcome.duplicate:
+            from .pilot import PilotBlocked, reserve_reward
+            try:
+                with transaction.atomic():
+                    reserve_reward(sale=sale, participant=participant, reward_id=reward_id, operator=request.user)
+            except (PilotBlocked, ValueError, PermissionError) as exc:
+                transaction.set_rollback(True)
+                return safe_reply({"detail": str(exc)}, 409)
         if (phone_digest and not outcome.duplicate and sale.participant_id is None
                 and sale.state == SaleRecord.State.AWAITING_MEMBER and not sale.counter_phone_digest):
             sale.counter_phone_digest = phone_digest
             sale.save(update_fields=["counter_phone_digest"])
         return safe_reply({
             "already_recorded": outcome.duplicate,
-            "sale": present_sale(outcome.sale, viewer_id=request.user.pk),
+            "sale": present_sale(outcome.sale, viewer_id=request.user.pk, pilot=True),
             "event_id": str(outcome.event.pk),
             "identity_status": outcome.identity_status,
             "payment_verified": False, "points_credited": False,
@@ -237,6 +279,20 @@ class ManualSaleLinkView(APIView):
         })
 
 
+def review_sale(sale, user, decision, note):
+    """Aprova ou recusa uma venda pendente (trava já obtida). No piloto, aprovar gera pontos."""
+    from .pilot import grant_for_review, settle_redemption
+    sale.state = (SaleRecord.State.VERIFIED_MANUAL if decision == "approve"
+                  else SaleRecord.State.REJECTED)
+    sale.reviewed_by = user
+    sale.reviewed_at = timezone.now()
+    sale.review_note = note.strip()
+    sale.save(update_fields=["state", "reviewed_by", "reviewed_at", "review_note"])
+    settle_redemption(sale, approve=decision == "approve")
+    points, reason = (grant_for_review(sale, user) if decision == "approve" else (0, "rejected"))
+    return points, reason
+
+
 class ManualSaleReviewView(APIView):
     permission_classes = [IsAuthenticated]
     http_method_names = ["post", "options"]
@@ -254,6 +310,7 @@ class ManualSaleReviewView(APIView):
         if (decision not in ("approve", "reject") or not isinstance(note, str)
                 or not 10 <= len(note.strip()) <= 240):
             return safe_reply({"detail": "Decisão ou justificativa inválida."}, 400)
+        Tenant.objects.select_for_update().get(pk=tenant_id)
         sale = get_object_or_404(
             SaleRecord.objects.select_for_update().select_related("participant"),
             pk=sale_id, tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
@@ -265,20 +322,143 @@ class ManualSaleReviewView(APIView):
         self_review = sale.submitted_by_id == request.user.pk
         if not sale.participant or sale.participant.status != ProgramParticipant.Status.ACTIVE:
             return safe_reply({"detail": "Participante inativo ou ausente."}, 409)
-        sale.state = (SaleRecord.State.VERIFIED_MANUAL if decision == "approve"
-                      else SaleRecord.State.REJECTED)
-        sale.reviewed_by = request.user
-        sale.reviewed_at = timezone.now()
-        sale.review_note = note.strip()
-        sale.save(update_fields=["state", "reviewed_by", "reviewed_at", "review_note"])
-        # Revisão operacional != pagamento confirmado por PSP. Sem saldo.
+        points, reason = review_sale(sale, request.user, decision, note)
+        # Fora do piloto: revisão operacional != pagamento confirmado por PSP. Sem saldo.
         return safe_reply({
-            "sale": present_sale(sale, viewer_id=request.user.pk),
+            "sale": present_sale(sale, viewer_id=request.user.pk, pilot=True),
             "manual_evidence_reviewed": True,
             "review_mode": "self_review" if self_review else "another_operator",
             "independent_payment_proof": False,
-            "points_credited": False,
+            "points_credited": points > 0, "points": points, "points_reason": reason,
         })
+
+
+class ManualSaleBatchConfirmView(APIView):
+    """Confirma de uma vez as vendas pendentes SEM alerta. As com alerta ficam para conferir uma a uma."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["post", "options"]
+
+    @transaction.atomic
+    def post(self, request, tenant_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        if member.tenant.status != Tenant.Status.ACTIVE:
+            return safe_reply({"detail": "Empresa não está ativa."}, 409)
+        ids = request.data.get("ids") if isinstance(request.data, dict) and set(request.data) == {"ids"} else None
+        if not isinstance(ids, list) or not 1 <= len(ids) <= 50:
+            return safe_reply({"detail": "Informe de 1 a 50 vendas."}, 400)
+        try:
+            ids = [uuid.UUID(str(value)) for value in ids]
+        except (ValueError, TypeError):
+            return safe_reply({"detail": "Venda inválida."}, 400)
+        from .pilot import average_ticket, sale_alerts
+        Tenant.objects.select_for_update().get(pk=tenant_id)
+        avg = average_ticket(tenant_id)
+        sales = SaleRecord.objects.select_for_update().select_related("participant").filter(
+            tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER, pk__in=ids,
+            state=SaleRecord.State.AWAITING_REVIEW,
+        ).order_by("created_at")
+        confirmed, skipped, total_points = [], [], 0
+        for sale in sales:
+            active = sale.participant and sale.participant.status == ProgramParticipant.Status.ACTIVE
+            if not active or sale_alerts(sale, avg):
+                skipped.append(str(sale.pk))
+                continue
+            points, _reason = review_sale(sale, request.user, "approve", "Conferida em lote pelo lojista no painel.")
+            total_points += points
+            confirmed.append(str(sale.pk))
+        return safe_reply({"confirmed": confirmed, "skipped": skipped, "points": total_points})
+
+
+class ManualSaleUndoView(APIView):
+    """Quem registrou desfaz em até 5 minutos, antes da conferência. Vale volta ao saldo."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["post", "options"]
+
+    @transaction.atomic
+    def post(self, request, tenant_id, sale_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        from .pilot import can_undo, settle_redemption
+        sale = get_object_or_404(SaleRecord.objects.select_for_update(),
+                                 pk=sale_id, tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER)
+        if not can_undo(sale, request.user.pk):
+            return safe_reply({"detail": "Só quem registrou desfaz, em até 5 minutos e antes da conferência."}, 409)
+        sale.state = SaleRecord.State.REJECTED
+        sale.reviewed_by = request.user
+        sale.reviewed_at = timezone.now()
+        sale.review_note = "Desfeita por quem registrou."
+        sale.save(update_fields=["state", "reviewed_by", "reviewed_at", "review_note"])
+        settle_redemption(sale, approve=False)
+        return safe_reply({"sale": present_sale(sale, viewer_id=request.user.pk, pilot=True)})
+
+
+class CounterWalletView(APIView):
+    """Saldo e vales da cliente para o vendedor, na hora da venda."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "head", "options"]
+
+    def get(self, request, tenant_id, participant_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        from .pilot import counter_wallet
+        participant = get_object_or_404(ProgramParticipant, pk=participant_id, tenant_id=tenant_id,
+                                        status=ProgramParticipant.Status.ACTIVE)
+        return safe_reply(counter_wallet(participant))
+
+
+class CounterPilotView(APIView):
+    """Liga, pausa e ajusta os tetos do piloto. Só o proprietário."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get(self, request, tenant_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        from .pilot import pilot_state
+        return safe_reply(pilot_state(member.tenant))
+
+    @transaction.atomic
+    def post(self, request, tenant_id):
+        member = staff_member(request.user, tenant_id)
+        if not member:
+            return safe_reply({"detail": "Acesso restrito à administração."}, 403)
+        if member.role != TenantMembership.Role.OWNER:
+            return safe_reply({"detail": "Somente o proprietário liga ou pausa o piloto."}, 403)
+        from .models import CounterPilot
+        from .pilot import pilot_allowed, pilot_state
+        data = request.data
+        allowed_keys = {"active", "per_sale_cap_points", "budget_points"}
+        if not isinstance(data, dict) or not data or not set(data) <= allowed_keys:
+            return safe_reply({"detail": "Informe se o piloto fica ativo e os tetos."}, 400)
+        if "active" in data and type(data["active"]) is not bool:
+            return safe_reply({"detail": "Ativo deve ser sim ou não."}, 400)
+        for key, top in (("per_sale_cap_points", 100_000), ("budget_points", 10_000_000)):
+            if key in data and not (is_int(data[key]) and 1 <= data[key] <= top):
+                return safe_reply({"detail": "Teto fora dos limites."}, 400)
+        tenant = Tenant.objects.select_for_update().get(pk=tenant_id)
+        if data.get("active") and not pilot_allowed(tenant):
+            return safe_reply({"detail": "O piloto não está liberado para esta loja neste servidor."}, 409)
+        if data.get("active") and not PointRuleDraft.objects.filter(tenant=tenant).exists():
+            return safe_reply({"detail": "Salve a regra de pontos antes de ativar o piloto."}, 409)
+        pilot, _ = CounterPilot.objects.get_or_create(tenant=tenant, defaults={"updated_by": request.user})
+        now = timezone.now()
+        for key in ("per_sale_cap_points", "budget_points"):
+            if key in data:
+                setattr(pilot, key, data[key])
+        if "active" in data and data["active"] != pilot.active:
+            pilot.active = data["active"]
+            if pilot.active:
+                pilot.activated_at, pilot.paused_at = now, None
+            else:
+                pilot.paused_at = now
+        pilot.updated_by = request.user
+        pilot.save()
+        return safe_reply(pilot_state(tenant))
 
 
 class PointRuleDraftView(APIView):

@@ -229,7 +229,8 @@ def summarize_order(data, *, order_id, participant_verified=False):
     paid_at = parse_datetime(raw_date) if isinstance(raw_date, str) else None
     if paid_at is not None and paid_at.tzinfo is None:
         paid_at = None
-    if status == "cancelled" or data.get("cancelled_at"):
+    # Pagamento anulado (voided) é pedido cancelado para o lojista, mesmo com status "open".
+    if status == "cancelled" or data.get("cancelled_at") or payment == "voided":
         state = "blocked_cancelled"
     elif payment == "chargeback":
         state = "blocked_chargeback"

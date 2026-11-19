@@ -325,7 +325,8 @@ function Done({title,text,icon,action}:{title:string;text:string;icon:ReactNode;
 function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;club:MemberClubPublic;me:MemberClubPrivate;
   section:ClubSection;onOpen:(s:ClubSection)=>void;onLogout:()=>void;onChange:(me:MemberClubPrivate)=>void}){
   const [showCounter,setShowCounter] = useState(false);
-  const verified = me.points_status==="verified" && typeof me.points_balance==="number";
+  const atCounter = me.redemption_place==="counter";
+  const verified = (me.points_status==="verified"||me.points_status==="counter") && typeof me.points_balance==="number";
   const balance = typeof me.points_balance==="number" ? me.points_balance : null;
   const rewards = me.available_rewards||[];
   const ready = rewards.filter(r=>me.redemption_enabled&&r.redemption_enabled&&r.status==="available"&&r.redemption_unit==="points");
@@ -343,6 +344,7 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
             :"Seu cadastro está sendo conferido pela loja."}</span>}
         {typeof me.points_pending==="number"&&me.points_pending>0&&<span className="clb-wallet-sub">+{pts(me.points_pending)} pontos pendentes, aguardando o prazo da compra</span>}
         {me.points_status==="ledger_only"&&<span className="clb-wallet-sub">Saldo em conferência: ainda não pode ser trocado.</span>}
+        {atCounter&&<span className="clb-wallet-sub">Troque seus pontos no caixa da loja: o vendedor aplica o vale na compra.</span>}
         <button type="button" className="clb-btn is-light" onClick={()=>setShowCounter(true)}><ScanLine size={18} aria-hidden="true"/> Mostrar no caixa</button>
       </section>
 
@@ -429,6 +431,7 @@ function rewardState(r:MemberClubReward, me:MemberClubPrivate, balance:number|nu
   if(r.status==="sold_out") return "Esgotada";
   if(me.redemption_enabled&&r.redemption_enabled&&r.status==="available"&&r.redemption_unit==="points") return null;
   if(balance!==null&&balance<r.points_cost) return "faltam "+pts(r.points_cost-balance);
+  if(me.redemption_place==="counter"&&balance!==null) return "Troque no caixa";
   return "Em breve";
 }
 
@@ -449,7 +452,9 @@ function Redeem({slug,me,balance,verified}:{slug:string;me:MemberClubPrivate;bal
   return <div className="clb-stack">
     <div className="clb-page-head"><h1>Trocar pontos</h1>
       <span>{balance!==null?"Você tem "+pts(balance)+" pontos ("+money(balance)+").":"Seu saldo aparece quando a loja ativar a pontuação."}</span></div>
-    {!me.redemption_enabled&&<div className="clb-alert is-info" role="status"><LockKeyhole size={20} aria-hidden="true"/>
+    {me.redemption_place==="counter"&&<div className="clb-alert is-info" role="status"><Store size={20} aria-hidden="true"/>
+      <div><strong>Trocas no caixa da loja</strong><span>Na hora de pagar, diga seu celular ao vendedor e peça para usar o vale. O desconto sai na mesma compra.</span></div></div>}
+    {!me.redemption_enabled&&me.redemption_place!=="counter"&&<div className="clb-alert is-info" role="status"><LockKeyhole size={20} aria-hidden="true"/>
       <div><strong>Trocas ainda não abertas</strong><span>{verified?"A loja ainda não liberou o resgate.":"Você já pode conhecer as recompensas. A troca abre quando a loja ativar o clube."}</span></div></div>}
     {issued&&<section className="clb-card clb-center is-ok" role="status">
       <span className="clb-badge is-ok"><CheckCircle2 size={28} aria-hidden="true"/></span>
