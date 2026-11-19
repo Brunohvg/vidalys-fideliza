@@ -5,12 +5,14 @@ import {ApiError,merchantApi,type ParticipantDetail,type Store} from "./api";
 import {initialsOf} from "./ActionCenter";
 import type {SaleClient} from "./SalesWorkspace";
 import "./vf-ui.css";
+import ClientWhatsApp from "./ClientWhatsApp";
 import "./clients.css";
 
 /* Página própria do cliente (/app/clientes/<id>). Abre por link, então dá para
    abrir em outra aba (Ctrl/⌘ + clique). Mostra tudo da participação e as ações
    do lojista: registrar venda, celular, pausar/retomar, conferir vendas e ver
-   as campanhas em que o cliente está. Nada aqui credita pontos ou envia mensagem. */
+   as campanhas em que o cliente está. Nada aqui credita pontos; a mensagem pronta
+   de WhatsApp só é aberta no aparelho do lojista, que escolhe o contato e envia. */
 
 const money=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const day=(iso:string|null)=>{if(!iso)return "—";const d=new Date(iso);
@@ -22,8 +24,8 @@ const SALE_STATE:Record<string,[string,string]>={
 };
 const CHANNEL:Record<string,string>={counter:"Balcão",nuvemshop:"Site",whatsapp:"WhatsApp",vidalys_flow:"Vidalys Flow"};
 
-export default function ClientPage({tenantId,clientId,role,storeSlug,onBack,onRegisterSale,onOpenSales}:{
- tenantId:string;clientId:string;role:Store["role"];storeSlug:string;
+export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="",onBack,onRegisterSale,onOpenSales}:{
+ tenantId:string;clientId:string;role:Store["role"];storeSlug:string;storeName?:string;
  onBack:()=>void;onRegisterSale:(client:SaleClient)=>void;onOpenSales:()=>void}){
  const canManage=role==="owner"||role==="admin";
  const [data,setData]=useState<ParticipantDetail|null>(null);
@@ -137,6 +139,8 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,onBack,onRe
    </div>
 
    <aside className="vf-client-side">
+    {!paused&&<ClientWhatsApp tenantId={tenantId} participantId={p.id} name={p.display_name} storeName={storeName}
+     clubUrl={clubUrl} phoneLast4={p.phone_last4} marketing={prof.marketing_opt_in} offers={data.offers}/>}
     <section className="vf-card" aria-labelledby="vf-client-contact">
      <h2 id="vf-client-contact" className="vf-h3">Contato e perfil</h2>
      <ul className="vf-client-facts">

@@ -109,6 +109,8 @@ class CounterPilotTests(TestCase):
             for _ in range(4):                                    # 4 x 300 = 1200 pts
                 self.approve(self.sale(10000).data["sale"]["id"])
             self.assertEqual(counter_wallet(self.ana)["available"], 1200)
+            self.assertEqual(counter_wallet(self.ana)["next_expiry"],
+                             PointLot.objects.order_by("expires_at").first().expires_at.isoformat())
             self.assertEqual(self.sale(4000, reward_id=str(self.reward.id)).status_code, 409)  # abaixo do mínimo
             used = self.sale(15000, reward_id=str(self.reward.id))
             self.assertEqual(used.status_code, 201, used.data)

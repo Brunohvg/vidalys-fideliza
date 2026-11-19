@@ -351,7 +351,7 @@ export type ProgramModeState={
 export type ProgramModeInput=Omit<ProgramModeState,"saved"|"average_ticket_cents">;
 export type CounterWallet={
   program?:ProgramInfo;credit?:{available_cents:number;min_order_cents:number;in_site_coupon_cents?:number}|null;
-  pilot_active:boolean;available:number;pending:number;reserved:number;
+  pilot_active:boolean;available:number;pending:number;reserved:number;next_expiry?:string|null;
   rewards:{id:string;title:string;points_cost:number;discount_cents:number;min_order_cents:number;affordable:boolean;exhausted:boolean}[];
   next_reward:{title:string;points_cost:number;missing:number;discount_cents:number}|null;
 };

@@ -47,7 +47,7 @@ for(const width of [390,768,1440]){
     await expect(page.getByText("Aniversário 12 mar")).toBeVisible();
     await expect(page.getByText("Celular final 8888")).toBeVisible();
     await expect(page.getByText("CUPOM-0042",{exact:false})).toBeVisible();
-    await expect(page.getByText("Sentimos sua falta: +200 pontos")).toBeVisible();
+    await expect(page.getByRole("region",{name:"Campanhas para este cliente"}).getByText("Sentimos sua falta: +200 pontos")).toBeVisible();
     await expect(page.getByRole("button",{name:"1 para conferir"})).toBeVisible();
     expect(await page.getByRole("button",{name:/Resgatar|Usar cashback/}).count()).toBe(0);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);

@@ -50,6 +50,27 @@
 .vf-client-phone-check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;font-weight:700;color:var(--vf-purple-900)}
 .vf-client-phone-check input{width:20px;height:20px;accent-color:var(--vf-primary)}
 
+/* Mensagem pronta de WhatsApp (ClientWhatsApp.tsx) */
+.vf-wa{gap:14px}
+.vf-wa-head{display:flex;gap:12px;align-items:flex-start}
+.vf-wa-head>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vf-wa-ico{width:36px;height:36px;flex:none;border-radius:11px;display:grid;place-items:center;background:#E3F6EC;color:#11744A}
+.vf-wa-kinds{display:flex;flex-wrap:wrap;gap:8px}
+.vf-wa-kind{min-height:44px;padding:0 14px;border-radius:99px;border:1px solid var(--vf-border);background:var(--vf-surface);
+ font:800 13.5px var(--vf-font);color:var(--vf-ink-soft);cursor:pointer}
+.vf-wa-kind.is-on{border-color:var(--vf-primary);background:var(--vf-info-soft);color:var(--vf-purple-950)}
+.vf-wa-kind:focus-visible{outline:3px solid var(--vf-primary);outline-offset:2px}
+.vf-wa-field textarea{width:100%;box-sizing:border-box;min-height:190px;padding:12px 14px;border-radius:14px;border:1px solid var(--vf-border);
+ background:var(--vf-canvas);font:500 14.5px/1.55 var(--vf-font);color:var(--vf-purple-950);resize:vertical}
+.vf-wa-field textarea:focus{outline:3px solid var(--vf-primary);outline-offset:1px;background:var(--vf-surface)}
+.vf-wa-actions{display:flex;flex-wrap:wrap;gap:10px}
+.vf-wa-actions .vf-btn{flex:1 1 auto;justify-content:center}
+.vf-client-side a.vf-btn.vf-wa-open{align-self:auto;background:#11744A;border-color:#11744A;color:#fff}
+.vf-client-side a.vf-btn.vf-wa-open:hover{background:#0D5E3C;border-color:#0D5E3C}
+.vf-client-side a.vf-btn.vf-wa-open[aria-disabled="true"]{opacity:.5;pointer-events:none}
+.vf-wa-hint{display:flex;gap:8px;align-items:flex-start;margin:0;font-size:12.5px;line-height:1.5;color:var(--vf-muted)}
+.vf-wa-hint svg{flex:none;margin-top:2px}
+
 @media(max-width:760px){
  .vf-clients-table{display:none}
  .vf-clients-cards{display:block}

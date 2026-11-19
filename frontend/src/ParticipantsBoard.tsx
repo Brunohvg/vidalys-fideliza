@@ -19,8 +19,8 @@ const name=(p:ProgramParticipant)=>p.display_name||"Participante sem nome";
 const channel=(p:ProgramParticipant)=>p.nuvemshop_customer_linked||p.consent_channel==="storefront_opt_in"?"Site":p.manual_sales_count>0?"Balcão":"Convite";
 const TONES=["tone-1","tone-2","tone-3","tone-4","tone-5"];
 
-export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch="",role,storeSlug,onRegisterSale,onOpenSales}:{
- tenantId:string;onOpenProgram:()=>void;initialSearch?:string;role:Store["role"];storeSlug:string;
+export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch="",role,storeSlug,storeName="",onRegisterSale,onOpenSales}:{
+ tenantId:string;onOpenProgram:()=>void;initialSearch?:string;role:Store["role"];storeSlug:string;storeName?:string;
  onRegisterSale:(client:SaleClient)=>void;onOpenSales:()=>void}){
  const [clientId,setClientId]=useState(()=>clientIdFromPath(window.location.pathname));
  useEffect(()=>{
@@ -56,7 +56,7 @@ export default function ParticipantsBoard({tenantId,onOpenProgram,initialSearch=
  const balance=(p:ProgramParticipant)=>p.points_status==="ledger_only"&&p.points_balance!==null?p.points_balance:null;
  const filters:[typeof status,string,number|undefined][]=[["all","Todos",data?.summary.total],["active","Participando",data?.summary.active],["paused","Pausados",data?.summary.paused]];
 
- if(clientId)return <ClientPage tenantId={tenantId} clientId={clientId} role={role} storeSlug={storeSlug}
+ if(clientId)return <ClientPage tenantId={tenantId} clientId={clientId} role={role} storeSlug={storeSlug} storeName={storeName}
   onBack={backToList} onRegisterSale={onRegisterSale} onOpenSales={onOpenSales} key={clientId}/>;
 
  return <section className="vf-screen vf-clients" aria-labelledby="vf-clients-title">

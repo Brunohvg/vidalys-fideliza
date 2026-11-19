@@ -222,13 +222,20 @@ def counter_wallet(participant, *, amount_cents=0):
     in_coupon = OnlineCoupon.objects.filter(participant=participant, source=OnlineCoupon.Source.GIFTBACK,
                                             state__in=(OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED))
     coupon_cents = sum(c.points for c in in_coupon)
+    # Vencimento mais próximo do que a cliente pode usar (disponível ou no cupom do site).
+    next_expiry = None
+    if wallet is not None:
+        for lot in _live_lots(wallet):
+            if sum(v for k, v in lot_balances(lot).items() if k != "pending") > 0:
+                next_expiry = lot.expires_at.isoformat()
+                break
     return {
         "program": mode_payload(participant.tenant_id),
         "credit": ({"available_cents": available + coupon_cents, "min_order_cents": gift.giftback_min_order_cents,
                     "in_site_coupon_cents": coupon_cents} if gift else None),
         "pilot_active": pilot_enabled(participant.tenant_id),
         "available": available, "pending": totals["pending"], "reserved": totals["reserved"],
-        "rewards": rewards,
+        "next_expiry": next_expiry, "rewards": rewards,
         "next_reward": ({"title": goal["title"], "points_cost": goal["points_cost"],
                          "missing": goal["points_cost"] - available,
                          "discount_cents": goal["discount_cents"]} if goal else None),
