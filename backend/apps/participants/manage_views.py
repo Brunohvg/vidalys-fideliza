@@ -126,4 +126,4 @@ class ParticipantRemoveView(APIView):
             out = remove_participant(participant, actor=request.user, reason=str(data.get("reason", ""))[:240])
         except RemovalBlocked as exc:
             return _private({"detail": str(exc)}, 409)
-        return _private({"removed": True, "reversed": out["reversed"]})
+        return _private({"removed": True, "reversed": out["reversed"], "data_result": out.get("data_result", "erased")})

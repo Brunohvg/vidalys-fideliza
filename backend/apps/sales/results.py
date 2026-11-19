@@ -49,8 +49,10 @@ def club_results(tenant, *, days=30):
                      .exclude(pk__in=late_use.values("pk")), "amount")
 
     # Desconto efetivamente concedido (valor em reais do vale/crédito) e a venda que ele puxou.
+    # Venda anulada: o desconto dela não conta (o crédito usado voltou para a cliente).
     counter_used = CounterRedemption.objects.filter(tenant=tenant, state=CounterRedemption.State.REDEEMED,
-                                                    settled_at__gte=since).select_related("sale")
+                                                    settled_at__gte=since, sale__removed_at__isnull=True
+                                                    ).select_related("sale")
     site_used = OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.USED, settled_at__gte=since)
     discount = sum(r.discount_cents for r in counter_used) + sum(c.discount_cents for c in site_used)
     site_orders = {f"site:{c.used_order_id}" for c in site_used if c.used_order_id}

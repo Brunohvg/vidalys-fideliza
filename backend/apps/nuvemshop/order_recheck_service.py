@@ -227,7 +227,7 @@ def _paid_coupon_from_order(*, event, order, sale, profile):
     return "applied_pending_independent_capture"
 
 
-def recheck_order_event(*, event_id, opener=None, pause=None):
+def recheck_order_event(*, event_id, opener=None, pause=None, reprocess=False):
     """Consulta exclusiva do serviço servidor; reexecutável por inbox idempotente."""
     if not (settings.FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED
             and settings.FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED
@@ -246,7 +246,9 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     if not installed or not has_order_access(installed.scope, preview_enabled=True):
         raise RecheckBlocked("Escopo read_orders ausente")
     existing = NuvemshopOrderRecheck.objects.filter(event=event).first()
-    if existing and existing.status == "checked":
+    # reprocess: crédito desde a adesão relê um pedido já conferido pelo MESMO caminho
+    # (tudo aqui é idempotente: baixa, concessão e ingestão não se repetem).
+    if existing and existing.status == "checked" and not reprocess:
         return "already_checked"
     kwargs = {"opener": opener}
     if pause is not None:

@@ -55,6 +55,7 @@
 .vf-client-create .vf-grid2{gap:12px}
 .vf-client-create>p{display:flex;gap:6px;align-items:center;margin:0}
 .vf-client-side .vf-btn.vf-client-remove{color:var(--vf-danger);align-self:flex-start}
+.vf-client-actions .vf-btn.vf-client-remove-top{color:var(--vf-danger);border-color:color-mix(in srgb,var(--vf-danger) 30%,var(--vf-border))}
 .vf-client-confirm.is-danger{flex-direction:column;align-items:stretch;background:color-mix(in srgb,var(--vf-danger) 6%,var(--vf-surface));
  border:1px solid color-mix(in srgb,var(--vf-danger) 22%,transparent)}
 .vf-client-confirm.is-danger .vf-pills{justify-content:flex-end}

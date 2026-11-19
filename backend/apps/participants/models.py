@@ -5,6 +5,7 @@ este modelo permanece vazio. Não há geração automática de membros.
 """
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 
@@ -56,3 +57,21 @@ class ProgramParticipant(models.Model):
 
 # Importados aqui para reconhecimento do Django e migrações.
 from .enrollment_models import ProgramTerms, EnrollmentInvite, EnrollmentSubmission, EnrollmentEmailChallenge, EnrollmentCustomerLink, MemberAccessChallenge  # noqa: E402,F401
+
+
+class ParticipantRemoval(models.Model):
+    """Registro auditável de uma remoção feita pela loja: quem, quando, por quê e o que foi feito.
+
+    data_result: "erased" (dados pessoais apagados ou anonimizados por completo) ou
+    "retained" (algo precisou ficar por vínculo protegido; ver details). Sem dados pessoais.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT, related_name="participant_removals")
+    participant = models.OneToOneField(ProgramParticipant, on_delete=models.PROTECT, related_name="removal")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    reason = models.CharField(max_length=240, blank=True, default="")
+    reversed_units = models.PositiveIntegerField(default=0)
+    coupons_cancelled = models.PositiveIntegerField(default=0)
+    data_result = models.CharField(max_length=16, default="erased")
+    details = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)

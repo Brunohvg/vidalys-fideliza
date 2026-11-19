@@ -557,7 +557,7 @@ const SITE_STATUS=(o:PaidOrderInspection):[string,string]=>{
 function Orders({shared}:{shared:Shared}){
  const {tenantId,items,loading,listError,program,reload,canEdit}=shared;
  const isGift=program.mode==="giftback";
- /* Apagar venda lançada à mão: pede o motivo e desfaz o saldo que ela mexeu (servidor). */
+ /* Anular venda lançada à mão: pede o motivo e desfaz o saldo que ela mexeu (servidor). */
  const [removing,setRemoving]=useState<string|null>(null);
  const [removeReason,setRemoveReason]=useState("");
  const [removeBusy,setRemoveBusy]=useState(false);
@@ -565,9 +565,9 @@ function Orders({shared}:{shared:Shared}){
  const removeSale=async(saleId:string)=>{
   if(removeBusy)return;setRemoveBusy(true);setRemoveMsg(null);
   try{const r=await merchantApi.removeManualSale(tenantId,saleId,removeReason.trim());
-   const parts=[r.returned?`${gain(r.returned,isGift)} devolvido à cliente`:"",r.reversed?`${gain(r.reversed,isGift)} estornado`:""].filter(Boolean);
-   setRemoveMsg(["Venda apagada."+(parts.length?" "+parts.join(" · ")+".":""),true]);setRemoving(null);setRemoveReason("");reload();}
-  catch(e){setRemoveMsg([e instanceof ApiError?e.message:"Não foi possível apagar agora.",false]);}
+   const parts=[r.returned?`${gain(r.returned,isGift)} devolvido à cliente`:"",r.reversed?`${gain(r.reversed,isGift)} estornado`:"",r.recovered?`${gain(r.recovered,isGift)} já gasto descontado do saldo`:""].filter(Boolean);
+   setRemoveMsg(["Venda anulada."+(parts.length?" "+parts.join(" · ")+".":""),true]);setRemoving(null);setRemoveReason("");reload();}
+  catch(e){setRemoveMsg([e instanceof ApiError?e.message:"Não foi possível anular agora.",false]);}
   finally{setRemoveBusy(false);}
  };
  const noneLabel=isGift?"sem crédito":"sem pontos";
@@ -643,14 +643,14 @@ function Orders({shared}:{shared:Shared}){
     <div className="vs-val"><strong>{money(r.cents)}</strong><small className={r.points===noneLabel?"is-none":""}>{r.points}</small></div>
     <span className={"vf-chip "+r.status[1]}>{r.status[0]}</span>
     {canEdit&&r.saleId&&removing!==r.saleId&&<button type="button" className="vf-btn is-small is-link vs-remove"
-     aria-label={"Apagar venda de "+r.title} onClick={()=>{setRemoving(r.saleId!);setRemoveReason("");setRemoveMsg(null);}}><Trash2 size={15}/></button>}
-    {removing===r.saleId&&<div className="vs-remove-box" role="group" aria-label="Apagar venda">
-     <span className="vf-small">Apagar esta venda? Some da lista e dos resultados. O que ela gerou de saldo é estornado e o crédito usado nela volta para a cliente.</span>
+     aria-label={"Anular venda de "+r.title} onClick={()=>{setRemoving(r.saleId!);setRemoveReason("");setRemoveMsg(null);}}><Trash2 size={15}/> Anular</button>}
+    {removing===r.saleId&&<div className="vs-remove-box" role="group" aria-label="Anular venda">
+     <span className="vf-small">Anular esta venda? Ela sai da lista e dos resultados. O saldo que ela gerou é estornado; se a cliente já gastou esse saldo, ele é descontado do que ela tem — e, se não houver saldo, a anulação é recusada. O crédito usado nesta venda volta para a cliente.</span>
      <label className="vf-field is-compact">Motivo<input maxLength={240} value={removeReason} onChange={e=>setRemoveReason(e.target.value)}
       placeholder="Ex.: lançada em dobro, valor errado, teste"/></label>
      <div className="vf-pills"><button type="button" className="vf-btn is-small" onClick={()=>setRemoving(null)}>Cancelar</button>
       <button type="button" className="vf-btn is-small is-danger" disabled={removeBusy||removeReason.trim().length<3}
-       onClick={()=>void removeSale(r.saleId!)}>{removeBusy?"Apagando…":"Apagar venda"}</button></div>
+       onClick={()=>void removeSale(r.saleId!)}>{removeBusy?"Anulando…":"Anular venda"}</button></div>
     </div>}
    </li>)}</ul>}
   <details className="vf-sale-more"><summary>Consultar um pedido pelo número ou link</summary><PaidOrderCheck tenantId={tenantId}/></details>

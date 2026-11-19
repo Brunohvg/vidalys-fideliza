@@ -133,6 +133,9 @@ def credit_since_join_task(self, participant_id: str):
     if participant is None:
         return None
     try:
-        return credit_since_join(participant)
+        out = credit_since_join(participant)
     except Exception:
         raise self.retry(exc=RuntimeError("credit_since_join_retry")) from None
+    if out.get("more"):                     # próximo lote, sem segurar o worker
+        credit_since_join_task.apply_async(args=[participant_id], countdown=30)
+    return out

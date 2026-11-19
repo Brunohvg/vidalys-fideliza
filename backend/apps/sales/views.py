@@ -425,8 +425,11 @@ class ManualSaleRemoveView(APIView):
                 or not 3 <= len(reason.strip()) <= 240:
             return safe_reply({"detail": "Diga em poucas palavras por que a venda será apagada."}, 400)
         sale = get_object_or_404(SaleRecord, pk=sale_id, tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER)
-        from apps.participants.removal import remove_counter_sale
-        sale, summary = remove_counter_sale(sale, actor=request.user, reason=reason.strip())
+        from apps.participants.removal import RemovalBlocked, remove_counter_sale
+        try:
+            sale, summary = remove_counter_sale(sale, actor=request.user, reason=reason.strip())
+        except RemovalBlocked as exc:
+            return safe_reply({"detail": str(exc)}, 409)
         return safe_reply({"removed": True, **summary})
 
 

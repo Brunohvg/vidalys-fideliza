@@ -36,7 +36,8 @@ def activate_standalone_after_email(token: str) -> bool:
     if member:
         from apps.sales.online import queue_credit_since_join
         queue_credit_since_join(member)
-    return outcome in ("created", "joined_existing")
+    # Cadastro feito pela loja: a participação já existia; agora o e-mail também está confirmado.
+    return outcome in ("created", "joined_existing", "skipped:already_member")
 
 
 @transaction.atomic

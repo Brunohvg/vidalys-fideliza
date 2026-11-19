@@ -63,7 +63,8 @@ test("Remover cliente explica o que acontece e volta para a lista",async({page})
     return r.fulfill(json({source:"verified_opt_in_only",data_status:"consent_verified",summary:{total:0,active:0,paused:0},
       total_filtered:0,limit:20,offset:0,items:[],note:""}));});
   await page.goto("/app/clientes/"+pid);
-  await page.getByRole("button",{name:"Remover do clube"}).click();
+  await expect(page.getByRole("button",{name:"Remover do clube"})).toHaveCount(2);   // no topo e em Participação
+  await page.getByRole("button",{name:"Remover do clube"}).first().click();
   const box=page.getByRole("group",{name:"Confirmar remoção"});
   await expect(box).toContainText("O saldo dela é zerado");
   await expect(box).toContainText("Não dá para desfazer");
@@ -73,7 +74,7 @@ test("Remover cliente explica o que acontece e volta para a lista",async({page})
   expect(removed).toEqual({confirm:true,reason:"pedido da cliente"});
 });
 
-test("Pedidos: apagar venda lançada à mão pede motivo; site mostra o crédito dado",async({page},info)=>{
+test("Pedidos: anular venda lançada à mão pede motivo; site mostra o crédito dado",async({page},info)=>{
   await page.setViewportSize({width:1440,height:1000});await merchant(page);
   const now=new Date().toISOString();
   let items=[{id:"s1",channel:"counter",reference:"CUPOM-9",participant_id:"p1",participant_name:"Ana Souza",eligible_amount_cents:12000,
@@ -94,14 +95,15 @@ test("Pedidos: apagar venda lançada à mão pede motivo; site mostra o crédito
   await page.goto("/app/vendas");
   const list=page.getByRole("list",{name:"Pedidos"});
   await expect(list).toContainText("+R$ 6,95");                            // crédito do clube no pedido do site
-  await list.getByRole("button",{name:"Apagar venda de Ana Souza"}).click();
-  const box=page.getByRole("group",{name:"Apagar venda"});
-  const confirm=box.getByRole("button",{name:"Apagar venda"});
+  await list.screenshot({path:info.outputPath("pedidos-anular-1440.png")});
+  await list.getByRole("button",{name:"Anular venda de Ana Souza"}).click();
+  const box=page.getByRole("group",{name:"Anular venda"});
+  const confirm=box.getByRole("button",{name:"Anular venda"});
   await expect(confirm).toBeDisabled();
   await box.getByLabel("Motivo").fill("lançada em dobro");
-  await box.screenshot({path:info.outputPath("apagar-venda-1440.png")});
+  await box.screenshot({path:info.outputPath("anular-venda-1440.png")});
   await confirm.click();
-  await expect(page.getByText("Venda apagada.")).toBeVisible();
+  await expect(page.getByText("Venda anulada.")).toBeVisible();
   expect(posted).toEqual({reason:"lançada em dobro"});
   await expect(list).not.toContainText("Ana Souza");
 });

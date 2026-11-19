@@ -666,7 +666,7 @@ export const merchantApi = {
   confirmManualSales: (tenantId:string,ids:string[])=>
     postJson<{confirmed:string[];skipped:string[];points:number}>(
       "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/confirm-batch/",{ids}),
-  removeManualSale: (tenantId:string,saleId:string,reason:string)=>postJson<{removed:true;returned?:number;reversed?:number}>(
+  removeManualSale: (tenantId:string,saleId:string,reason:string)=>postJson<{removed:true;returned?:number;reversed?:number;recovered?:number}>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+encodeURIComponent(saleId)+"/remove/",{reason}),
   createParticipant: (tenantId:string,data:{name:string;email:string;phone?:string;authorized:boolean})=>
     postJson<ParticipantDetail&{email_confirmation:"sent"|"confirmed"}>(

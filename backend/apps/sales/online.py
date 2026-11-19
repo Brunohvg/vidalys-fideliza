@@ -456,6 +456,13 @@ def _remember_customer(tenant, participant, order):
         external_customer_id=cid)
 
 
+def _paid_before_join(order, participant):
+    from django.utils.dateparse import parse_datetime
+    raw = order.get("paid_at")
+    paid_at = parse_datetime(raw) if isinstance(raw, str) else None
+    return bool(paid_at and paid_at < max(participant.consent_at, participant.joined_at))
+
+
 def club_buyer(tenant, order, participant):
     """Regra de identidade do CLUBE para conceder saldo de um pedido do site.
 
@@ -524,6 +531,8 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None, 
         if (grant and participant and pilot.online_earning and paid and lot is None
                 and can_operate(tenant, "site_earn")):
             buyer, why = club_buyer(tenant, order, participant)
+            if buyer and _paid_before_join(order, buyer):
+                buyer, why = None, "before_join"         # compra antes de entrar no clube não conta
             result.append(_grant_site(tenant, buyer, total_cents, ref, order_id) if buyer else why)
             if buyer:
                 _remember_customer(tenant, buyer, order)
@@ -690,17 +699,21 @@ def refresh_all():
 # ---------- Crédito retroativo desde a adesão ----------
 
 RETRO_DAYS = 30
-RETRO_MAX_ORDERS = 200
+RETRO_BATCH = 50
 
 
-def credit_since_join(participant, *, opener=None):
-    """Ao ativar a participação: pedidos pagos do site feitos DEPOIS da adesão (até 30 dias)
-    que ainda não geraram saldo passam pela mesma concessão do clube. Sem duplicar (um lote
-    por pedido) e só se o pedido for dela pela regra de identidade do clube. Fila "nuvemshop"."""
+def credit_since_join(participant, *, batch=RETRO_BATCH):
+    """Ao ativar a participação, procura pedidos do site recebidos desde a adesão (até 30 dias)
+    que ainda não geraram saldo e os passa pela MESMA reconsulta dos pedidos normais
+    (recheck_order_event): loja/pedido conferidos na Nuvemshop, baixa de cupom, titularidade,
+    identidade do clube e "pago antes de entrar não conta". Não existe rota de concessão própria.
+
+    Em lotes; falha num pedido fica registrada (club_retry) e a rotina horária tenta de novo.
+    Devolve {"granted", "nothing", "retry", "blocked", "more"}."""
     from collections import Counter
-    from django.utils.dateparse import parse_datetime
-    from apps.nuvemshop.order_readonly import INTEGRATION_FIELDS, read_order, summarize_order
-    from apps.nuvemshop.order_recheck_service import _order_status
+    from django.db.models import Max
+    from apps.nuvemshop.models import NuvemshopOrderRecheck
+    from apps.nuvemshop.order_recheck_service import ClubRetry, RecheckBlocked, recheck_order_event
     from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
     from .policy import can_operate
     tenant = participant.tenant
@@ -710,34 +723,72 @@ def credit_since_join(participant, *, opener=None):
         return {"skipped": 1}
     joined = max(participant.consent_at, participant.joined_at)
     since = max(joined, timezone.now() - timedelta(days=RETRO_DAYS))
-    order_ids = list(OrderWebhookEvent.objects.filter(tenant=tenant, received_at__gte=since)
-                     .values_list("order_id", flat=True).distinct()[:RETRO_MAX_ORDERS])
-    if not order_ids:
-        return {}
-    store_id, token, agent = _remote(tenant)
-    for order_id in order_ids:
-        if PointLot.objects.filter(tenant=tenant, source_reference=f"site:{order_id}").exists():
-            out["already"] += 1
-            continue
+    # Só os pedidos DELA: busca na Nuvemshop pelo e-mail confirmado (a reconsulta confere de novo).
+    candidates = _orders_for_member(participant, since)
+    if candidates is None:
+        return {"retry_later": 1}
+    granted = set(PointLot.objects.filter(tenant=tenant, source_reference__in=[f"site:{c}" for c in candidates])
+                  .values_list("source_reference", flat=True))
+    latest = (OrderWebhookEvent.objects.filter(tenant=tenant, order_id__in=candidates)
+              .values("order_id").annotate(last=Max("received_at")).order_by("last"))
+    todo = [row for row in latest if f"site:{row['order_id']}" not in granted]
+    with_event = {row["order_id"] for row in latest}
+    out["no_event"] = len([c for c in candidates if c not in with_event])   # aviso nunca chegou: só relatório
+    for row in todo[:batch]:
+        event = (OrderWebhookEvent.objects.filter(tenant=tenant, order_id=row["order_id"])
+                 .order_by("-received_at").first())
         try:
-            order = read_order(store_id=store_id, order_id=order_id, access_token=token, user_agent=agent,
-                               fields=INTEGRATION_FIELDS, opener=opener)
-            summary = summarize_order(order, order_id=order_id)
+            recheck_order_event(event_id=event.pk, reprocess=True)
+        except ClubRetry:
+            out["retry"] += 1                       # já marcado club_retry: a rotina horária repete
+        except RecheckBlocked:
+            out["blocked"] += 1                     # o clube rodou antes; parada é do motor antigo
         except Exception:
-            out["unreadable"] += 1
-            continue
-        paid_at = parse_datetime(order.get("paid_at") or "") if isinstance(order.get("paid_at"), str) else None
-        if summary["payment_status"] != "paid" or paid_at is None or paid_at < joined:
-            out["not_eligible"] += 1                 # não pago, ou pago antes de entrar no clube
-            continue
-        if _participant_for(tenant, order, None) != participant:
-            out["other_buyer"] += 1
-            continue
-        result = handle_order(tenant=tenant, order=order, order_id=order_id, status=_order_status(summary),
-                              total_cents=summary["reported_total_cents"])
-        out["granted" if "granted" in result else "nothing"] += 1
+            NuvemshopOrderRecheck.objects.update_or_create(event=event, defaults={
+                "status": "club_retry", "checked_at": timezone.now()})
+            out["retry"] += 1
+        if PointLot.objects.filter(tenant=tenant, source_reference=f"site:{row['order_id']}").exists():
+            out["granted"] += 1
+        else:
+            out["nothing"] += 1
+    if len(todo) > batch:
+        out["more"] = 1
     logger.info("credit_since_join tenant=%s result=%s", tenant.pk, dict(out))
     return dict(out)
+
+
+def _orders_for_member(participant, since, opener=None):
+    """IDs de pedidos da loja buscados pelo e-mail confirmado da cliente desde `since`.
+    None = Nuvemshop indisponível agora (tentar depois). A busca é aproximada; quem decide é a reconsulta."""
+    from apps.catalog.client import API_ROOT
+    from apps.nuvemshop.coupon_client import NoRedirect
+    from apps.nuvemshop.order_readonly import safe_id
+    from apps.participants.enrollment_models import EnrollmentSubmission
+    from urllib.request import build_opener
+    emails = set(EnrollmentSubmission.objects.filter(participant=participant, email_verified_at__isnull=False,
+                                                     withdrawn_at__isnull=True).values_list("email", flat=True))
+    if not emails:
+        return []
+    store_id, token, agent = _remote(participant.tenant)
+    found = set()
+    for email in sorted(e.lower() for e in emails)[:3]:
+        query = urlencode({"q": email, "created_at_min": since.isoformat(), "per_page": 50, "fields": "id"})
+        request = Request(f"{API_ROOT}/{safe_id(store_id)}/orders?{query}", method="GET", headers={
+            "Authorization": "Bearer " + token, "User-Agent": agent, "Accept": "application/json"})
+        try:
+            with (opener or build_opener(NoRedirect())).open(request, timeout=10) as response:
+                data = json.loads(response.read(262145))
+        except HTTPError as exc:
+            if exc.code == 404:
+                continue                                  # nenhum pedido
+            return None
+        except (URLError, TimeoutError, OSError, ValueError):
+            return None
+        for item in data if isinstance(data, list) else []:
+            oid = safe_id(item.get("id")) if isinstance(item, dict) else None
+            if oid:
+                found.add(oid)
+    return sorted(found)
 
 
 def queue_credit_since_join(participant_id):

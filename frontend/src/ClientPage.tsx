@@ -105,6 +105,9 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
     {counter&&<button type="button" className="vf-btn is-primary" disabled={paused} onClick={()=>onRegisterSale({id:p.id,display_name:p.display_name,detail:p.phone_last4?"Celular final "+p.phone_last4:p.contact_email})}>
      <Receipt size={17}/> Registrar venda</button>}
     <button type="button" className="vf-btn" onClick={()=>void copyLink()}><Copy size={16}/> Link do clube</button>
+    <button type="button" className="vf-btn vf-client-remove-top" onClick={()=>{setRemoveOpen(true);
+     window.setTimeout(()=>document.getElementById("vf-client-remove-box")?.scrollIntoView({behavior:"smooth",block:"center"}),0);}}>
+     <Trash2 size={16}/> Remover do clube</button>
    </div>}
   </header>
 
@@ -177,7 +180,7 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
      :<button type="button" className="vf-btn is-small" onClick={()=>setConfirmPause(true)}><Pause size={15}/> Pausar participação</button>}
      {!removeOpen?<button type="button" className="vf-btn is-small is-link vf-client-remove" onClick={()=>setRemoveOpen(true)}>
       <Trash2 size={15}/> Remover do clube</button>
-     :<div className="vf-client-confirm is-danger" role="group" aria-label="Confirmar remoção">
+     :<div id="vf-client-remove-box" className="vf-client-confirm is-danger" role="group" aria-label="Confirmar remoção">
       <span className="vf-small"><strong>Remover {p.display_name||"esta cliente"}?</strong> O saldo dela é zerado, o cupom do site é cancelado
        e nome, e-mail e celular são apagados. As vendas continuam nos números da loja como “Cliente removido”. Não dá para desfazer.</span>
       <label className="vf-field is-compact">Motivo (opcional)<input maxLength={240} value={removeReason} onChange={e=>setRemoveReason(e.target.value)}

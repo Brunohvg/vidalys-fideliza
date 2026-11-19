@@ -78,6 +78,22 @@ class MemberManagementTests(StoreFixture, TestCase):
         self.assertEqual(self.paid("9003", 10000), "nothing")              # não é mais reconhecida
         self.assertEqual(self.api.get(reverse("tenant-participant-detail", kwargs={
             "tenant_id": self.tenant.id, "participant_id": self.ana.pk})).status_code, 404)
+        from apps.participants.models import ParticipantRemoval
+        record = ParticipantRemoval.objects.get(participant=self.ana)
+        self.assertEqual((record.reason, record.coupons_cancelled, record.data_result), ("pedido da cliente", 1, "erased"))
+        self.assertGreater(record.reversed_units, 0)                       # saldo zerado ficou registrado
+
+    def test_remove_client_frees_the_nuvemshop_customer_link(self):
+        from apps.participants.enrollment_models import EnrollmentCustomerLink
+        submission = EnrollmentSubmission.objects.get(participant=self.ana)
+        EnrollmentCustomerLink.objects.create(tenant=self.tenant, submission=submission, participant=self.ana,
+                                              external_customer_id="4242")
+        ProgramParticipant.objects.filter(pk=self.ana.pk).update(external_customer_id="4242")
+        self.assertEqual(self.post("tenant-participant-remove", {"confirm": True},
+                                   participant_id=self.ana.pk).status_code, 200)
+        self.assertFalse(EnrollmentCustomerLink.objects.filter(external_customer_id="4242").exists())
+        self.ana.refresh_from_db()
+        self.assertIsNone(self.ana.external_customer_id)
 
     # ---------- Remover venda de balcão ----------
 
@@ -124,6 +140,44 @@ class MemberManagementTests(StoreFixture, TestCase):
         self.assertEqual(self.balances(), {"pending": 0, "available": 1000, "reserved": 0})
         self.assertEqual(CounterRedemption.objects.get(sale=sale).state, "redeemed")   # histórico mantido
 
+    def confirmed_counter_sale_with_credit(self, units=1000):
+        from apps.points.services import create_pending_lot
+        CounterPilot.objects.filter(tenant=self.tenant).update(counter_enabled=True)
+        sale = self.counter_sale(state=SaleRecord.State.VERIFIED_MANUAL)
+        now = timezone.now()
+        lot, _ = create_pending_lot(participant=self.ana, channel="counter", source_reference=f"counter:{sale.pk}",
+                                    eligible_amount_cents=10000, points=units, rule_version="pilot-vg1",
+                                    paid_at=now, unlock_at=now, expires_at=now + timedelta(days=30),
+                                    verification_digest="e" * 64)
+        release_due(lot.wallet)
+        return sale, lot
+
+    def spend(self, lot, amount, key):
+        from apps.points.models import PointEvent
+        from apps.points.services import transition_points
+        transition_points(lot_id=lot.pk, kind=PointEvent.Kind.RESERVE, amount=amount, idempotency_key=key + "-r")
+        transition_points(lot_id=lot.pk, kind=PointEvent.Kind.REDEEM, amount=amount, idempotency_key=key,
+                          external_receipt="teste:" + key)
+
+    def test_annul_sale_whose_credit_was_spent_recovers_from_other_balance(self):
+        sale, lot = self.confirmed_counter_sale_with_credit()
+        self.spend(lot, 1000, "gasto-1")                                   # cliente usou os R$ 10
+        self.paid("9001", 20000)                                           # depois ganhou R$ 20 no site
+        release_due(lot.wallet)
+        out = self.post("manual-sale-remove", {"reason": "venda lançada errada"}, sale_id=sale.pk)
+        self.assertEqual(out.status_code, 200, out.data)
+        self.assertEqual(out.data["recovered"], 1000)
+        self.assertEqual(self.balances()["available"], 1000)               # 2000 - 1000 recuperado
+
+    def test_annul_sale_whose_credit_was_spent_without_balance_is_blocked(self):
+        sale, lot = self.confirmed_counter_sale_with_credit()
+        self.spend(lot, 1000, "gasto-2")
+        out = self.post("manual-sale-remove", {"reason": "venda lançada errada"}, sale_id=sale.pk)
+        self.assertEqual(out.status_code, 409)
+        self.assertIn("já usou", out.data["detail"])
+        sale.refresh_from_db()
+        self.assertIsNone(sale.removed_at)                                  # nada mudou
+
     # ---------- Reconhecimento pelo cliente da Nuvemshop ----------
 
     def test_customer_id_is_remembered_and_recognizes_other_email(self):
@@ -136,31 +190,38 @@ class MemberManagementTests(StoreFixture, TestCase):
         self.assertIn("granted", handle_order(tenant=self.tenant, order=other, order_id="9902",
                                               status=SaleRecord.OrderStatus.PAID, total_cents=10000))
 
-    # ---------- Crédito retroativo desde a adesão ----------
+    # ---------- Crédito retroativo desde a adesão (mesma reconsulta dos pedidos normais) ----------
 
-    def test_credit_since_join_grants_orders_paid_after_joining_only(self):
+    def test_credit_since_join_reuses_the_recheck_path_for_her_orders_only(self):
+        from apps.nuvemshop.models import NuvemshopOrderRecheck
         from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
-        joined = max(self.ana.consent_at, self.ana.joined_at)
-        orders = {
-            "9950": {"id": 9950, "status": "open", "payment_status": "paid", "currency": "BRL", "total": "100.00",
-                     "paid_at": (joined + timedelta(minutes=5)).isoformat(), "contact_email": "ana@example.invalid"},
-            "9951": {"id": 9951, "status": "open", "payment_status": "paid", "currency": "BRL", "total": "100.00",
-                     "paid_at": (joined - timedelta(days=1)).isoformat(), "contact_email": "ana@example.invalid"},
-            "9952": {"id": 9952, "status": "open", "payment_status": "paid", "currency": "BRL", "total": "100.00",
-                     "paid_at": (joined + timedelta(minutes=5)).isoformat(), "contact_email": "outra@example.invalid"},
-        }
-        for oid in orders:
-            OrderWebhookEvent.objects.create(tenant=self.tenant, store_id="555", order_id=oid, topic="order/paid",
-                                             dedupe_key=("r" + oid).ljust(64, "0"))
-        with mock.patch("apps.sales.online._remote", return_value=("555", "t" * 20, "Vidalys QA agent")), \
-                mock.patch("apps.nuvemshop.order_readonly.read_order",
-                           side_effect=lambda **kw: orders[kw["order_id"]]):
+        events = {oid: OrderWebhookEvent.objects.create(tenant=self.tenant, store_id="555", order_id=oid,
+                                                         topic="order/paid", dedupe_key=("r" + oid).ljust(64, "0"))
+                  for oid in ("9950", "9951", "9952")}
+        self.paid("9951", 10000)                                           # já tem saldo: não relê
+        calls = []
+
+        def fake_recheck(*, event_id, reprocess=False, **kw):
+            calls.append((event_id, reprocess))
+            if event_id == events["9952"].pk:
+                raise RuntimeError("Nuvemshop fora do ar")
+            return self.paid("9950", 10000)                                # o caminho normal concede
+
+        with mock.patch("apps.sales.online._orders_for_member", return_value=["9950", "9951", "9952"]), \
+                mock.patch("apps.nuvemshop.order_recheck_service.recheck_order_event", side_effect=fake_recheck):
             out = credit_since_join(self.ana)
-            again = credit_since_join(self.ana)
-        self.assertEqual(out, {"granted": 1, "not_eligible": 1, "other_buyer": 1})
-        self.assertEqual(again.get("already"), 1)                           # não duplica
-        self.assertTrue(PointLot.objects.filter(source_reference="site:9950").exists())
-        self.assertFalse(PointLot.objects.filter(source_reference="site:9951").exists())
+        self.assertEqual({c[0] for c in calls}, {events["9950"].pk, events["9952"].pk})
+        self.assertTrue(all(reprocess for _, reprocess in calls))           # sempre pela reconsulta
+        self.assertEqual((out["granted"], out["retry"]), (1, 1))
+        self.assertEqual(NuvemshopOrderRecheck.objects.get(event=events["9952"]).status, "club_retry")
+
+    def test_order_paid_before_joining_never_grants(self):
+        before = (self.ana.joined_at - timedelta(days=1)).isoformat()
+        order = {"contact_email": "ana@example.invalid", "paid_at": before}
+        out = handle_order(tenant=self.tenant, order=order, order_id="9960",
+                           status=SaleRecord.OrderStatus.PAID, total_cents=10000)
+        self.assertIn("before_join", out)
+        self.assertFalse(PointLot.objects.filter(source_reference="site:9960").exists())
 
     # ---------- Ativação sem pendência ----------
 

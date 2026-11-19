@@ -141,10 +141,10 @@
 .vs-row+.vs-row{border-top:1px solid var(--vf-info-soft)}
 .vs-row.is-review{grid-template-columns:auto minmax(0,1fr) auto auto}
 .vs-row.is-review.has-alert{background:color-mix(in srgb,var(--vf-danger) 3%,var(--vf-surface))}
-.vs-row.is-order{grid-template-columns:auto minmax(0,1.4fr) auto auto auto 44px}
+.vs-row.is-order{grid-template-columns:auto minmax(0,1.4fr) auto auto auto 104px}
 /* Apagar venda lançada à mão */
-.vs-row>.vs-remove{width:44px;min-height:44px;padding:0;justify-content:center;color:var(--vf-muted)}
-.vs-row>.vs-remove:hover{color:var(--vf-danger)}
+.vs-row>.vs-remove{min-height:44px;padding:0 12px;justify-content:center;gap:6px;color:var(--vf-danger);font-weight:800}
+.vs-row>.vs-remove:hover{background:color-mix(in srgb,var(--vf-danger) 8%,var(--vf-surface))}
 .vs-remove-box{grid-column:1/-1;display:flex;flex-direction:column;gap:10px;padding:12px 14px;border-radius:14px;
  background:color-mix(in srgb,var(--vf-danger) 5%,var(--vf-surface));border:1px solid color-mix(in srgb,var(--vf-danger) 20%,transparent)}
 .vs-remove-box .vf-pills{justify-content:flex-end}
