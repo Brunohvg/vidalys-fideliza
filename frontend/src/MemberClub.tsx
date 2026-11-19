@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode} from "react";
+import SiteCouponArea,{CouponTicket} from "./SiteCoupon";
 import {formatPhone} from "./phone-mask";
 import {ArrowRight, BookOpen, Cake, CalendarDays, CheckCircle2, CircleHelp, Clock3, Download, Gift, House, KeyRound, ListOrdered, LockKeyhole,
   LogOut, Mail, ScanLine, Share, ShieldCheck, Smartphone, Sparkles, Store, TicketPercent, TriangleAlert, UserRound, X} from "lucide-react";
@@ -345,13 +346,16 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
     .sort((a,b)=>a.points_cost-b.points_cost)[0];
   const earning = club.earning;
   const gift = giftOf(club);
+  // No giftback, o crédito que virou cupom do site continua sendo da cliente: soma no saldo exibido.
+  const inCoupon = (me.site?.coupons||[]).filter(c=>c.source==="giftback").reduce((sum,c)=>sum+c.discount_cents,0);
+  const credit = balance===null&&!inCoupon?null:(balance??0)+inCoupon;
 
   return <>
     {section==="home"&&<div className="clb-stack">
       {gift?<section className="clb-wallet" aria-label="Seu crédito">
         <span className="clb-eyebrow">SEU CRÉDITO</span>
-        <strong className="clb-big">{balance!==null?money(balance):"—"}</strong>
-        <span className="clb-wallet-line">{balance!==null?<>para usar numa compra a partir de <b>{money(gift.min_order_cents)}</b></>
+        <strong className="clb-big">{credit!==null?money(credit):"—"}</strong>
+        <span className="clb-wallet-line">{credit!==null?<>para usar numa compra a partir de <b>{money(gift.min_order_cents)}</b>, no caixa{me.site?.coupons_enabled?" ou no site":""}</>
           :me.status==="active"?"Seu crédito aparece aqui depois da primeira compra conferida.":"Seu cadastro está sendo conferido pela loja."}</span>
         {typeof me.points_pending==="number"&&me.points_pending>0&&<span className="clb-wallet-sub">+{money(me.points_pending)} a liberar, aguardando o prazo da compra</span>}
         {atCounter&&<span className="clb-wallet-sub">Use no caixa da loja: diga seu celular e peça para aplicar o crédito.</span>}
@@ -368,6 +372,8 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
         {atCounter&&<span className="clb-wallet-sub">Troque seus pontos no caixa da loja: o vendedor aplica o vale na compra.</span>}
         <button type="button" className="clb-btn is-light" onClick={()=>setShowCounter(true)}><ScanLine size={18} aria-hidden="true"/> Mostrar no caixa</button>
       </section>}
+
+      {gift&&<SiteCouponArea slug={slug} me={me} balance={balance} gift onChange={onChange}/>}
 
       {(me.offers||[]).length>0&&<section className="clb-offers" aria-labelledby="clb-offers-title">
         <h2 id="clb-offers-title" className="clb-section-label">Para você</h2>
@@ -415,13 +421,14 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
     </div>}
 
     {section==="rewards"&&(gift?<div className="clb-stack">
-      <div className="clb-page-head"><h1>Usar crédito</h1><span>{balance!==null?"Você tem "+money(balance)+" de crédito.":"Seu crédito aparece depois da primeira compra conferida."}</span></div>
+      <div className="clb-page-head"><h1>Usar crédito</h1><span>{credit!==null?"Você tem "+money(credit)+" de crédito.":"Seu crédito aparece depois da primeira compra conferida."}</span></div>
+      <SiteCouponArea slug={slug} me={me} balance={balance} gift onChange={onChange}/>
       <section className="clb-card"><ol className="clb-steps">
         <li><span>1</span><p>Na hora de pagar, <strong>diga seu celular</strong> ao vendedor.</p></li>
         <li><span>2</span><p>Peça para <strong>usar o crédito</strong>. Ele vale em compras a partir de {money(gift.min_order_cents)}.</p></li>
         <li><span>3</span><p>O desconto sai na mesma compra, e a compra nova já gera crédito para a próxima.</p></li>
-      </ol></section></div>
-      :<Redeem slug={slug} me={me} balance={balance} verified={verified}/>)}
+      </ol>{me.site?.coupons_enabled&&<p className="clb-note">No site, use o cupom acima no carrinho. Usou em um lugar, o outro é cancelado sozinho.</p>}</section></div>
+      :<Redeem slug={slug} me={me} balance={balance} verified={verified} onChange={onChange}/>)}
     {section==="history"&&<History me={me} gift={Boolean(gift)}/>}
     {section==="rules"&&<Rules slug={slug} club={club} me={me}/>}
     {section==="profile"&&<Profile slug={slug} club={club} me={me} onLogout={onLogout} onChange={onChange}/>}
@@ -465,7 +472,18 @@ function rewardState(r:MemberClubReward, me:MemberClubPrivate, balance:number|nu
 
 type Voucher = {code:string;discount_cents:number;expires_at:string;external_coupon_created:boolean};
 
-function Redeem({slug,me,balance,verified}:{slug:string;me:MemberClubPrivate;balance:number|null;verified:boolean}){
+function Redeem({slug,me,balance,verified,onChange}:{slug:string;me:MemberClubPrivate;balance:number|null;verified:boolean;
+  onChange:(me:MemberClubPrivate)=>void}){
+  const siteOn = Boolean(me.site?.coupons_enabled);
+  const siteCoupons = (me.site?.coupons||[]).filter(c=>c.source==="reward");
+  const [siteBusy,setSiteBusy] = useState("");
+  const toSite = async (r:MemberClubReward) => {
+    if(siteBusy) return;
+    setSiteBusy(r.id);setError("");
+    try{await publicEnrollmentApi.clubCreateCoupon(slug,r.id);onChange(await publicEnrollmentApi.clubMe(slug));}
+    catch(cause){setError(cause instanceof ApiError?cause.message:"Não foi possível gerar o cupom agora.");}
+    finally{setSiteBusy("");}
+  };
   const [busy,setBusy] = useState("");
   const [issued,setIssued] = useState<Voucher|null>(null);
   const [error,setError] = useState("");
@@ -491,6 +509,7 @@ function Redeem({slug,me,balance,verified}:{slug:string;me:MemberClubPrivate;bal
         Vale {money(issued.discount_cents)} até {new Date(issued.expires_at).toLocaleDateString("pt-BR")}, uma vez.</p>
     </section>}
     {error&&<div className="clb-alert is-danger" role="alert"><TriangleAlert size={20} aria-hidden="true"/><span>{error}</span></div>}
+    {siteCoupons.map(c=><CouponTicket key={c.code} coupon={c}/>)}
     {rewards.length===0?<section className="clb-card clb-empty"><Gift size={24} aria-hidden="true"/>
       <div><strong>Nenhuma recompensa publicada</strong><span>Quando a loja publicar as trocas, elas aparecem aqui.</span></div></section>
     :<ul className="clb-list is-cards">{rewards.map(r=>{
@@ -498,7 +517,10 @@ function Redeem({slug,me,balance,verified}:{slug:string;me:MemberClubPrivate;bal
       return <li key={r.id} className={"clb-reward is-card"+(state?" is-locked":"")}>
         <span className="clb-reward-ico">{shortMoney(r.discount_cents)}</span>
         <div><strong>{r.title}</strong><span>{pts(r.points_cost)} pontos{r.min_order_cents>0?" · compra mínima "+money(r.min_order_cents):""}</span></div>
-        {state?<span className="clb-chip">{state}</span>
+        {siteOn&&balance!==null&&balance>=r.points_cost&&r.status!=="paused"&&r.status!=="sold_out"
+          ?<button type="button" className="clb-btn is-primary is-small" disabled={Boolean(siteBusy)} onClick={()=>void toSite(r)}>
+            {siteBusy===r.id?"Gerando…":"Cupom para o site"}</button>
+          :state?<span className="clb-chip">{state}</span>
           :<button type="button" className="clb-btn is-primary is-small" disabled={Boolean(busy)} onClick={()=>void redeem(r)}>
             {busy===r.id?"Trocando…":"Trocar"}</button>}
       </li>;})}</ul>}

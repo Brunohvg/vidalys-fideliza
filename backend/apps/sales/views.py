@@ -441,11 +441,13 @@ class CounterPilotView(APIView):
         from .models import CounterPilot
         from .pilot import pilot_allowed, pilot_state
         data = request.data
-        allowed_keys = {"active", "per_sale_cap_points", "budget_points"}
+        site_keys = {"online_earning", "online_coupons", "coupon_combines", "coupons_paused"}
+        allowed_keys = {"active", "per_sale_cap_points", "budget_points", *site_keys}
         if not isinstance(data, dict) or not data or not set(data) <= allowed_keys:
             return safe_reply({"detail": "Informe se o piloto fica ativo e os tetos."}, 400)
-        if "active" in data and type(data["active"]) is not bool:
-            return safe_reply({"detail": "Ativo deve ser sim ou não."}, 400)
+        for key in ("active", *site_keys):
+            if key in data and type(data[key]) is not bool:
+                return safe_reply({"detail": "Opção deve ser sim ou não."}, 400)
         for key, top in (("per_sale_cap_points", 100_000), ("budget_points", 10_000_000)):
             if key in data and not (is_int(data[key]) and 1 <= data[key] <= top):
                 return safe_reply({"detail": "Teto fora dos limites."}, 400)
@@ -458,7 +460,7 @@ class CounterPilotView(APIView):
             return safe_reply({"detail": "Salve a regra de pontos antes de ativar o piloto."}, 409)
         pilot, _ = CounterPilot.objects.get_or_create(tenant=tenant, defaults={"updated_by": request.user})
         now = timezone.now()
-        for key in ("per_sale_cap_points", "budget_points"):
+        for key in ("per_sale_cap_points", "budget_points", *site_keys):
             if key in data:
                 setattr(pilot, key, data[key])
         if "active" in data and data["active"] != pilot.active:

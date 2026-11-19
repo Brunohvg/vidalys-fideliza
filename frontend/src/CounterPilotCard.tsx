@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {Check,CirclePause,Mail,CirclePlay,Gift,LockKeyhole,ShieldCheck,TriangleAlert} from "lucide-react";
+import {Check,CirclePause,Mail,CirclePlay,Gift,LockKeyhole,ShieldCheck,ShoppingBag,TriangleAlert} from "lucide-react";
 import {ApiError,merchantApi,type CounterPilotState,type Store} from "./api";
 import "./store-settings.css";
 
@@ -28,7 +28,7 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[tenantId,refresh]);
 
- const save=async(data:{active?:boolean;per_sale_cap_points?:number;budget_points?:number},done:string)=>{
+ const save=async(data:Parameters<typeof merchantApi.setCounterPilot>[1],done:string)=>{
   if(busy)return;setBusy(true);setError("");setNotice("");
   try{const s=await merchantApi.setCounterPilot(tenantId,data);setState(s);onState?.(s);setNotice(done);}
   catch(e){setError(e instanceof ApiError?e.message:"Não foi possível salvar.");}
@@ -88,6 +88,9 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
      :"Publique ao menos um vale com uso no balcão em Meu clube"}</li>
   </ul>}
 
+  {state.site&&<SiteSection site={state.site} gift={Boolean(gift)} owner={owner} busy={busy}
+    onToggle={(key,value,done)=>void save({[key]:value},done)}/>}
+
   {owner?<>
    <div className="vf-grid2 ss-pilot-limits">
     <label className="vf-field is-compact">Teto por venda (R$)
@@ -111,3 +114,38 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
   </>:<p className="vf-note"><ShieldCheck size={16}/> Só o proprietário ativa, pausa ou muda os tetos.</p>}
  </section>;
 }
+
+type Site=NonNullable<CounterPilotState["site"]>;
+type SiteKey="online_earning"|"online_coupons"|"coupon_combines"|"coupons_paused";
+
+/* Site (Nuvemshop): o que já funciona, o que falta e as escolhas do lojista, em linguagem simples. */
+function SiteSection({site,gift,owner,busy,onToggle}:{site:Site;gift:boolean;owner:boolean;busy:boolean;
+ onToggle:(key:SiteKey,value:boolean,done:string)=>void}){
+ const unit=gift?"crédito":"pontos";
+ const checks:[boolean,string,string][]=[
+  [site.connected,"Loja Nuvemshop conectada","Conecte em Configurações → Canais de venda."],
+  [site.orders_scope&&site.webhooks,"Pedidos do site chegando sozinhos","Falta liberar a leitura de pedidos e os avisos de pedido no servidor."],
+  [site.coupons_scope,"Permissão para criar cupons","Em Configurações → Canais, clique Atualizar conexão e aceite a permissão de Cupons."],
+  [site.coupons_server,"Cupons ligados no servidor","Falta ligar a criação de cupons na hospedagem (variável de cupons)."],
+ ];
+ const toggles:[SiteKey,boolean,string,string,boolean][]=[
+  ["online_earning",site.online_earning,`Compras pagas no site geram ${unit}`,"Sem conferir: o pedido pago já conta. Cancelou na carência, sai.",site.earning_ready],
+  ["online_coupons",site.online_coupons,"Resgate por cupom único no site",gift?"O crédito liberado vira um cupom da cliente, de uso único, com a compra mínima e a validade do giftback."
+   :"A cliente gera o cupom da recompensa no Meu Clube. Uso único, vale 30 dias.",site.coupons_ready],
+  ["coupon_combines",site.coupon_combines,"Cupom soma com outras promoções","Desligado é o mais seguro para a margem.",site.coupons_ready],
+  ["coupons_paused",site.coupons_paused,"Pausar novos cupons","Use em campanhas como a Black Friday. Cupons já gerados continuam valendo.",site.coupons_ready],
+ ];
+ return <div className="ss-site" role="group" aria-labelledby="ss-site-title">
+  <div className="ss-site-head"><span className="vf-ico tone-purple" aria-hidden="true"><ShoppingBag size={18}/></span>
+   <div><strong id="ss-site-title">No site (Nuvemshop)</strong>
+    <span>{site.coupons_ready?`${site.coupons_active} cupons ativos · ${site.coupons_used} usados no site`:"Complete os itens abaixo para ligar o site."}</span></div></div>
+  <ul className="ss-pilot-checks" aria-label="Situação do site">{checks.map(([ok,title,fix])=><li key={title} className={ok?"is-ok":"is-todo"}>
+   {ok?<Check size={15}/>:<TriangleAlert size={15}/>}<span>{title}{ok?"":<small> — {fix}</small>}</span></li>)}</ul>
+  <ul className="ss-switches">{toggles.map(([key,on,title,hint,ready])=><li key={key}>
+   <div><strong>{title}</strong><small>{hint}</small></div>
+   <button type="button" role="switch" aria-checked={on} aria-label={title} className={"ss-switch"+(on?" is-on":"")}
+    disabled={!owner||busy||!ready} onClick={()=>onToggle(key,!on,`${title}: ${!on?"ligado":"desligado"}.`)}><span aria-hidden="true"/></button>
+  </li>)}</ul>
+ </div>;
+}
+

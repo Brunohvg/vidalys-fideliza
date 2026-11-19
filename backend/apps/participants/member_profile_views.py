@@ -225,3 +225,33 @@ class ClubIconView(APIView):
         response = HttpResponse(svg, content_type="image/svg+xml")
         response["Cache-Control"] = "public, max-age=300"
         return response
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class MemberCouponView(APIView):
+    """Cliente gera o cupom único para usar no site (giftback: todo o crédito; pontos: a recompensa)."""
+    permission_classes = [AllowAny]
+    http_method_names = ["post", "options"]
+
+    def post(self, request, slug):
+        from apps.sales.online import CouponUnavailable, issue_coupon, present_coupon
+        tenant = _tenant(slug)
+        found = _authorized_submission(request, tenant)
+        if not found:
+            return secure(Response({"detail": "Faça login para gerar seu cupom."}, status=401))
+        participant = _owned_participant(found, tenant)
+        if participant is None or participant.status != ProgramParticipant.Status.ACTIVE:
+            return secure(Response({"detail": "Sua participação ainda não está ativa."}, status=409))
+        data = request.data if isinstance(request.data, dict) else None
+        if data is None or not set(data) <= {"reward_id"}:
+            return secure(Response({"detail": "Pedido inválido."}, status=400))
+        reward_id = data.get("reward_id")
+        if reward_id is not None and (not isinstance(reward_id, str) or len(reward_id) > 40):
+            return secure(Response({"detail": "Recompensa inválida."}, status=400))
+        try:
+            coupon = issue_coupon(participant, reward_id=reward_id)
+        except CouponUnavailable as exc:
+            return secure(Response({"detail": str(exc)}, status=409))
+        except (ValueError, PermissionError):
+            return secure(Response({"detail": "Não foi possível gerar o cupom agora."}, status=409))
+        return secure(Response({"coupon": present_coupon(coupon)}, status=201))

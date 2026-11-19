@@ -26,6 +26,13 @@ def pilot_wallet_scan():
     return scan_all()
 
 
+@shared_task(name="sales.online_coupon_refresh", queue="nuvemshop", ignore_result=True)
+def online_coupon_refresh():
+    """Fila isolada com token OAuth: vence cupons e mantém o cupom de giftback em dia."""
+    from .online import refresh_all
+    return refresh_all()
+
+
 def _money(cents):
     text = f"{cents / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return "R$ " + text
@@ -79,6 +86,13 @@ def send_credit_notice(self, participant_id: str, kind: str, amount: int, expire
             expires_at=timezone.localtime(datetime.fromisoformat(expires_iso)),
             min_order_cents=gift.giftback_min_order_cents if gift else None)
         url = settings.FIDELIZA_PUBLIC_BASE_URL.rstrip("/") + "/clube/" + tenant.slug
+        from .online import active_coupon
+        coupon = active_coupon(participant)
+        if coupon is not None and coupon.state == "issued":
+            # Mesmo crédito, dois caminhos: cupom no site ou celular no caixa.
+            text += f" No site, use o cupom {coupon.code} (já aplicado pelo botão abaixo)."
+            if coupon.apply_url:
+                url, label = coupon.apply_url, "Comprar com meu cupom"
         plain, html = transactional_message(
             title=title, greeting="Olá, " + participant.local_enrollment.name + "!",
             description=text, action_label=label, action_url=url,

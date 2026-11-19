@@ -4,6 +4,7 @@ A plataforma relata payment_status, mas não prova captura PSP. Nenhuma função
 aqui concede pontos, cashback ou marca LoyaltyVoucher como redeemed.
 """
 import hashlib
+import logging
 import json
 from decimal import Decimal, InvalidOperation
 
@@ -24,6 +25,9 @@ from .order_readonly import (
 from .order_webhook_models import OrderWebhookEvent
 from .scopes import has_order_access
 from .security import config, decrypt_token
+
+
+logger = logging.getLogger(__name__)
 
 
 class RecheckBlocked(ValueError):
@@ -257,6 +261,14 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     coupon_result = _paid_coupon_from_order(
         event=event, order=order, sale=result.sale, profile=profile,
     )
+    # Clube no site: pedido pago gera saldo; cupom único do clube usado vira resgate.
+    try:
+        from apps.sales.online import handle_order
+        with transaction.atomic():
+            handle_order(tenant=tenant, order=order, order_id=event.order_id,
+                         status=status, total_cents=cents, profile=profile)
+    except Exception:
+        logger.warning("clube no site: pedido exige conferencia")
     if (status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED)
             and tenant.loyalty_live_enabled
             and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED

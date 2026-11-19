@@ -262,6 +262,32 @@
 @media(max-width:360px){
  .clb-reward.is-card>.clb-btn,.clb-reward.is-card>.clb-chip{margin-left:0}
 }
+/* Cupom do clube para o site: ticket com picote, código grande e ação principal */
+.clb-ticket{display:flex;flex-direction:column;border-radius:var(--clb-radius);overflow:hidden;background:var(--vf-surface);
+ border:1.5px solid color-mix(in srgb,var(--clb-brand) 30%,var(--vf-border));box-shadow:0 14px 34px color-mix(in srgb,var(--clb-brand) 12%,transparent);
+ animation:clb-pop .45s ease both}
+.clb-ticket-top{display:flex;flex-direction:column;gap:6px;padding:18px 20px 16px;background:var(--clb-soft);color:var(--clb-soft-ink)}
+.clb-ticket-top .clb-eyebrow{display:inline-flex;align-items:center;gap:6px}
+.clb-ticket-value{font-size:34px;line-height:1;font-weight:800;letter-spacing:-.03em;color:var(--vf-purple-950);font-variant-numeric:tabular-nums}
+.clb-ticket-rule{font-size:13.5px;font-weight:600;line-height:1.45}
+.clb-ticket-cut{position:relative;height:0;border-top:2px dashed color-mix(in srgb,var(--clb-brand) 28%,var(--vf-border))}
+.clb-ticket-cut::before,.clb-ticket-cut::after{content:"";position:absolute;top:-11px;width:20px;height:20px;border-radius:50%;
+ background:var(--clb-page,var(--vf-canvas));border:1.5px solid color-mix(in srgb,var(--clb-brand) 30%,var(--vf-border))}
+.clb-ticket-cut::before{left:-11px}.clb-ticket-cut::after{right:-11px}
+.clb-ticket-bottom{display:flex;flex-direction:column;gap:12px;padding:16px 20px 18px}
+.clb-ticket-code{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;
+ background:var(--vf-canvas);border:1px dashed var(--vf-border)}
+.clb-ticket-code code{font:800 19px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;color:var(--vf-purple-950);overflow-wrap:anywhere}
+.clb-ticket-bottom>.clb-btn{align-self:stretch;justify-content:center;text-decoration:none}
+.clb-ticket-bottom small{font-size:12.5px;line-height:1.5;color:var(--vf-muted)}
+.clb-ticket-empty{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center}
+.clb-ticket-empty .clb-badge{width:48px;height:48px}
+.clb-ticket-empty>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.clb-ticket-empty strong{font-size:16px;color:var(--vf-purple-950)}
+.clb-ticket-empty span{font-size:14px;line-height:1.5;color:var(--vf-muted)}
+.clb-ticket-error{grid-column:1/-1;display:flex;gap:6px;align-items:center;font-size:13px;font-weight:700;color:var(--vf-danger)}
+.clb-note{margin:12px 0 0;font-size:13.5px;line-height:1.5;color:var(--vf-muted)}
+@media(max-width:560px){.clb-ticket-empty{grid-template-columns:auto minmax(0,1fr)}.clb-ticket-empty>.clb-btn{grid-column:1/-1;justify-self:stretch}}
 @media(prefers-reduced-motion:reduce){
  .clb-shell *{animation:none !important;transition:none !important}
 }

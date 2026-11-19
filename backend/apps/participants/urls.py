@@ -3,7 +3,7 @@ from .member_portal_views import (
     MemberClubPublicView, MemberClubRequestAccessView,
     MemberClubConfirmAccessView, MemberClubMeView, MemberClubLogoutView, MemberClubCodeView,
 )
-from .member_profile_views import ClubIconView, ClubManifestView, MemberExportView, MemberProfileView
+from .member_profile_views import ClubIconView, ClubManifestView, MemberExportView, MemberCouponView, MemberProfileView
 from .views import ParticipantListView
 from .detail_views import ParticipantDetailView, ParticipantStatusView
 from .phone_views import ParticipantPhoneLookupView, ParticipantPhoneView
@@ -33,6 +33,8 @@ urlpatterns = [
          MemberProfileView.as_view(), name="member-club-profile"),
     path("public/clubs/<slug:slug>/me/export/",
          MemberExportView.as_view(), name="member-club-export"),
+    path("public/clubs/<slug:slug>/coupons/",
+         MemberCouponView.as_view(), name="member-club-coupon"),
     path("public/clubs/<slug:slug>/manifest.webmanifest",
          ClubManifestView.as_view(), name="member-club-manifest"),
     path("public/clubs/<slug:slug>/icon.svg",

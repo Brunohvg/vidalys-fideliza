@@ -61,6 +61,7 @@ def verify_service_env(services):
             "api": DJANGO | OAUTH | API_ONLY,
             "worker": DJANGO | SMTP,
             "nuvemshop-sync": DJANGO | OAUTH | {
+                "FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED",
                 "FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED",
                 "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED",
                 "FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED",

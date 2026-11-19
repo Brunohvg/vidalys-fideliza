@@ -259,6 +259,11 @@ class CounterPilot(models.Model):
     active = models.BooleanField(default=False)
     per_sale_cap_points = models.PositiveIntegerField(default=1500)
     budget_points = models.PositiveIntegerField(default=50000)
+    # Site (Nuvemshop): ganhar em pedido pago e resgatar por cupom único.
+    online_earning = models.BooleanField(default=True)
+    online_coupons = models.BooleanField(default=True)
+    coupon_combines = models.BooleanField(default=False)
+    coupons_paused = models.BooleanField(default=False)
     activated_at = models.DateTimeField(null=True, blank=True)
     paused_at = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="counter_pilots")
@@ -346,3 +351,48 @@ class CreditNotice(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["lot", "kind"], name="credit_notice_once_per_lot")]
+
+
+class OnlineCoupon(models.Model):
+    """Cupom único da cliente na Nuvemshop (uso máximo 1, pedido mínimo, validade).
+
+    O saldo fica RESERVADO no ledger enquanto o cupom existe: usado no site vira
+    resgate; cancelado, vencido ou trocado pelo uso no caixa devolve a reserva.
+    """
+    class State(models.TextChoices):
+        ISSUING = "issuing", "Criando"
+        ISSUED = "issued", "Disponível"
+        USED = "used", "Usado"
+        CANCELLED = "cancelled", "Cancelado"
+        EXPIRED = "expired", "Vencido"
+        FAILED = "failed", "Falhou"
+
+    class Source(models.TextChoices):
+        GIFTBACK = "giftback", "Crédito de giftback"
+        REWARD = "reward", "Recompensa de pontos"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.PROTECT)
+    participant = models.ForeignKey("participants.ProgramParticipant", on_delete=models.PROTECT, related_name="online_coupons")
+    source = models.CharField(max_length=10, choices=Source.choices)
+    reward = models.ForeignKey(DiscountRewardDraft, on_delete=models.PROTECT, null=True, blank=True)
+    code = models.CharField(max_length=40, unique=True)
+    remote_id = models.CharField(max_length=40, blank=True, default="")
+    apply_url = models.URLField(max_length=300, blank=True, default="")
+    points = models.PositiveIntegerField()
+    discount_cents = models.PositiveIntegerField()
+    min_order_cents = models.PositiveIntegerField(default=0)
+    combines = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    allocations = models.JSONField(default=list)
+    state = models.CharField(max_length=10, choices=State.choices, default=State.ISSUING)
+    used_order_id = models.CharField(max_length=40, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["tenant", "state", "expires_at"], name="online_coupon_state_idx")]
+        constraints = [
+            models.CheckConstraint(condition=Q(points__gt=0), name="online_coupon_points_positive"),
+            models.CheckConstraint(condition=Q(discount_cents__gt=0), name="online_coupon_discount_positive"),
+        ]

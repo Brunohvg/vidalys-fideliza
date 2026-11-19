@@ -334,6 +334,11 @@ export type ManualSaleRecord = {
   redemption?:{title:string;points:number;discount_cents:number;state:"reserved"|"redeemed"|"cancelled"}|null;
   alerts?:string[];can_undo?:boolean;submitted_by_name?:string|null;
 };
+export type SiteCoupon={code:string;discount_cents:number;min_order_cents:number;expires_at:string;apply_url:string;
+  source:"giftback"|"reward";title:string;state:"issuing"|"issued"};
+export type SiteState={connected:boolean;orders_scope:boolean;coupons_scope:boolean;webhooks:boolean;coupons_server:boolean;
+  earning_ready:boolean;coupons_ready:boolean;online_earning:boolean;online_coupons:boolean;coupon_combines:boolean;
+  coupons_paused:boolean;coupons_active:number;coupons_used:number};
 export type ProgramInfo={mode:"points"}|{mode:"giftback";percent_bps:number;cap_cents:number;min_order_cents:number;validity_days:number;hold_days:number};
 export type ProgramModeState={
   mode:"points"|"giftback";saved:boolean;giftback_bps:number;giftback_cap_cents:number;
@@ -341,7 +346,7 @@ export type ProgramModeState={
 };
 export type ProgramModeInput=Omit<ProgramModeState,"saved"|"average_ticket_cents">;
 export type CounterWallet={
-  program?:ProgramInfo;credit?:{available_cents:number;min_order_cents:number}|null;
+  program?:ProgramInfo;credit?:{available_cents:number;min_order_cents:number;in_site_coupon_cents?:number}|null;
   pilot_active:boolean;available:number;pending:number;reserved:number;
   rewards:{id:string;title:string;points_cost:number;discount_cents:number;min_order_cents:number;affordable:boolean;exhausted:boolean}[];
   next_reward:{title:string;points_cost:number;missing:number;discount_cents:number}|null;
@@ -350,7 +355,7 @@ export type CounterPilotState={
   allowed:boolean;active:boolean;per_sale_cap_points:number;budget_points:number;issued_points:number;
   activated_at:string|null;paused_at:string|null;
   rule:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;counter_rewards:number;
-  program?:ProgramInfo;notices?:{reachable_members:number;emails_queued:number};
+  program?:ProgramInfo;notices?:{reachable_members:number;emails_queued:number};site?:SiteState|null;
 };
 export type ManualSaleInput = {
   reference:string;eligible_amount_cents:number;
@@ -664,7 +669,8 @@ export const merchantApi = {
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/program-mode/",data),
   counterPilot: (tenantId:string)=>getJson<CounterPilotState>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/pilot/"),
-  setCounterPilot: (tenantId:string,data:{active?:boolean;per_sale_cap_points?:number;budget_points?:number})=>
+  setCounterPilot: (tenantId:string,data:{active?:boolean;per_sale_cap_points?:number;budget_points?:number;
+    online_earning?:boolean;online_coupons?:boolean;coupon_combines?:boolean;coupons_paused?:boolean})=>
     postJson<CounterPilotState>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/pilot/",data),
   getPointRuleDraft: (tenantId:string)=>getJson<{
     mode:"draft_only";activation_available:false;rule:PointRuleDraft|null
@@ -864,6 +870,7 @@ export type MemberClubPrivate = {
   points_balance:number|null;points_pending:number|null;points_expiring:number|null;
   points_status:"not_active"|"ledger_only"|"verified"|"counter";
   redemption_place?:"counter"|null;program?:ProgramInfo;
+  site?:{coupons_enabled:boolean;coupons:SiteCoupon[]}|null;
   available_rewards:MemberClubReward[];
   transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;
   redemption_enabled:boolean;orders_verified:boolean;note:string;
@@ -896,6 +903,8 @@ export const publicEnrollmentApi = {
     "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/access/code/",{email,code,remember}),
   clubUpdateProfile:(slug:string,data:MemberProfileInput)=>writeJson<{profile:MemberProfile;updated:true}>(
     "PATCH","/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/profile/",data),
+  clubCreateCoupon:(slug:string,rewardId?:string)=>postJson<{coupon:SiteCoupon}>(
+    "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/coupons/",rewardId?{reward_id:rewardId}:{}),
   clubExportUrl:(slug:string)=>"/api/v1/public/clubs/"+encodeURIComponent(slug)+"/me/export/",
   clubLogout:(slug:string)=>postJson<{authenticated:false}>(
     "/api/v1/public/clubs/"+encodeURIComponent(slug)+"/logout/",{}),

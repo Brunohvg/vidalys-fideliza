@@ -160,3 +160,91 @@ test("Conferir no giftback fala em crédito, não em pontos",async({page})=>{
   await page.getByRole("button",{name:"Confirmar",exact:true}).click();
   await expect(page.getByText("Venda confirmada: +R$ 15,77 de crédito para Ana, liberado em 7 dias.")).toBeVisible();
 });
+
+/* ---------- Resgate no site (cupom único) ---------- */
+const siteCoupon={code:"LOJAGI-7K2Q9MXP",discount_cents:1577,min_order_cents:8000,expires_at:"2026-12-20T03:00:00Z",
+  apply_url:"https://loja.example/discount/LOJAGI-7K2Q9MXP",source:"giftback",title:"Crédito de giftback",state:"issued"};
+async function member(page:Page,me:Record<string,unknown>,clubProgram:unknown=program){
+  const terms={id:"t1",version:"v1",title:"Regulamento",body:"Regras.",privacy_notice:"Dados.",approved_at:"2026-11-13T12:00:00Z"};
+  const club={store_name:"Loja Gift",store_slug:"loja-gift",branding:{program_name:"Clube Gift",primary_color:"#0B4FA8",accent_color:"#FF8A3D",support_email:""},
+    terms,signup_available:true,points_enabled:true,rewards_enabled:false,redemption_enabled:false,published_rewards:[],earning:null,program:clubProgram};
+  const base={store_name:"Loja Gift",display_name:"Ana Souza",phone_last4:"1170",status:"active",joined_at:"2026-11-13T12:30:00Z",terms,
+    points_pending:0,points_expiring:0,points_status:"counter",redemption_place:"counter",program:clubProgram,
+    available_rewards:[],transactions:[],redemption_enabled:false,orders_verified:false,note:""};
+  await page.context().addCookies([{name:"csrftoken",value:"csrf-member-site",url:"http://127.0.0.1:4173"}]);
+  await page.route("**/api/v1/auth/session/",r=>r.fulfill(json({authenticated:false,user:null,tenants:[]})));
+  await page.route("**/api/v1/public/clubs/*/",r=>r.fulfill(json(club)));
+  let current={...base,...me};
+  await page.route("**/api/v1/public/clubs/*/me/",r=>r.fulfill(json(current)));
+  return {set:(next:Record<string,unknown>)=>{current={...base,...next};}};
+}
+
+for(const width of [390,1440]){
+  test("Meu Clube mostra o cupom do site com código, copiar e comprar em "+width+"px",async({page,context},info)=>{
+    await context.grantPermissions(["clipboard-read","clipboard-write"]);
+    await page.setViewportSize({width,height:900});
+    await member(page,{points_balance:0,site:{coupons_enabled:true,coupons:[siteCoupon]}});
+    await page.goto("/clube/loja-gift");
+    await expect(page.getByText("R$ 15,77",{exact:true}).first()).toBeVisible();          // saldo inclui o cupom
+    const ticket=page.getByRole("region",{name:/Cupom para o site/});
+    await expect(ticket).toContainText("LOJAGI-7K2Q9MXP");
+    await expect(ticket).toContainText("compra a partir de R$ 80,00");
+    await expect(ticket.getByRole("link",{name:"Comprar com o cupom"})).toHaveAttribute("href",siteCoupon.apply_url);
+    await ticket.getByRole("button",{name:/Copiar cupom/}).click();
+    expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe("LOJAGI-7K2Q9MXP");
+    await noOverflow(page);
+    await ticket.screenshot({path:info.outputPath("cupom-site-"+width+".png")});
+  });
+}
+
+test("Sem cupom ainda: cliente gera o cupom do crédito com um toque",async({page})=>{
+  const m=await member(page,{points_balance:1577,site:{coupons_enabled:true,coupons:[]}});
+  let posted:unknown=null;
+  await page.route("**/api/v1/public/clubs/*/coupons/",r=>{posted=r.request().postDataJSON();
+    m.set({points_balance:0,site:{coupons_enabled:true,coupons:[siteCoupon]}});
+    return r.fulfill(json({coupon:siteCoupon},201));});
+  await page.goto("/clube/loja-gift");
+  await page.getByRole("button",{name:"Gerar cupom"}).click();
+  await expect(page.getByRole("region",{name:/Cupom para o site/})).toContainText("LOJAGI-7K2Q9MXP");
+  expect(posted).toEqual({});
+});
+
+test("Pontos: recompensa vira cupom para o site",async({page})=>{
+  const reward={id:"r10",title:"Vale R$ 10",points_cost:1000,discount_cents:1000,min_order_cents:5000,status:"available",
+    redemption_unit:"points",redemption_enabled:false};
+  const m=await member(page,{points_balance:1200,available_rewards:[reward],site:{coupons_enabled:true,coupons:[]}},{mode:"points"});
+  let posted:unknown=null;
+  await page.route("**/api/v1/public/clubs/*/coupons/",r=>{posted=r.request().postDataJSON();
+    m.set({points_balance:200,available_rewards:[reward],site:{coupons_enabled:true,coupons:[{...siteCoupon,source:"reward",title:"Vale R$ 10",discount_cents:1000,min_order_cents:5000}]}});
+    return r.fulfill(json({coupon:siteCoupon},201));});
+  await page.goto("/clube/loja-gift");
+  await page.locator(".clb-tabs").getByRole("button",{name:"Trocar"}).click();
+  await page.getByRole("button",{name:"Cupom para o site"}).click();
+  await expect(page.getByRole("region",{name:/Cupom para o site: Vale R\$ 10/})).toBeVisible();
+  expect(posted).toEqual({reward_id:"r10"});
+});
+
+for(const width of [390,1440]){
+  test("Meu clube: seção do site mostra o que falta e liga opções em "+width+"px",async({page},info)=>{
+    await page.setViewportSize({width,height:1000});await merchant(page);
+    await page.route("**/api/v1/tenants/**/loyalty/program-mode/",r=>r.fulfill(json({mode:"giftback",saved:true,giftback_bps:1000,
+      giftback_cap_cents:2000,giftback_min_order_cents:8000,giftback_validity_days:30,giftback_hold_days:7})));
+    let pilot={allowed:true,active:true,per_sale_cap_points:2000,budget_points:50000,issued_points:0,activated_at:null,paused_at:null,rule:null,
+      counter_rewards:0,program,site:{connected:true,orders_scope:true,coupons_scope:false,webhooks:true,coupons_server:true,earning_ready:true,
+      coupons_ready:false,online_earning:true,online_coupons:true,coupon_combines:false,coupons_paused:false,coupons_active:0,coupons_used:0}};
+    const posts:unknown[]=[];
+    await page.route("**/api/v1/tenants/**/sales/pilot/",r=>{
+      if(r.request().method()==="POST"){const b=r.request().postDataJSON();posts.push(b);pilot={...pilot,site:{...pilot.site,...b}};}
+      return r.fulfill(json(pilot));
+    });
+    await go(page,width,"Meu clube");
+    const site=page.getByRole("group",{name:"No site (Nuvemshop)"});
+    await expect(site).toContainText("Permissão para criar cupons — Em Configurações → Canais");
+    await expect(site.getByRole("switch",{name:"Resgate por cupom único no site"})).toBeDisabled();
+    await site.getByRole("switch",{name:"Compras pagas no site geram crédito"}).click();
+    await expect(page.getByText("Compras pagas no site geram crédito: desligado.")).toBeVisible();
+    expect(posts).toEqual([{online_earning:false}]);
+    await noOverflow(page);
+    await site.screenshot({path:info.outputPath("site-lojista-"+width+".png")});
+  });
+}

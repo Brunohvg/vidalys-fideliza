@@ -60,6 +60,28 @@
 .ss-pilot-checks li.is-ok{color:var(--vf-success)}
 .ss-pilot-checks li.is-todo{color:var(--vf-reward-ink)}
 .ss-pilot-actions{flex-wrap:wrap}
+.ss-site{display:flex;flex-direction:column;gap:14px;padding:16px;border-radius:16px;border:1px solid var(--vf-border);background:var(--vf-canvas)}
+.ss-site-head{display:flex;gap:12px;align-items:center}
+.ss-site-head>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ss-site-head strong{font-size:15px;color:var(--vf-purple-950)}
+.ss-site-head span{font-size:13px;color:var(--vf-muted)}
+.ss-pilot-checks li small{font-weight:600;color:var(--vf-muted)}
+.ss-switches{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-radius:14px;overflow:hidden;border:1px solid var(--vf-border);background:var(--vf-surface)}
+.ss-switches li{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px}
+.ss-switches li+li{border-top:1px solid var(--vf-info-soft)}
+.ss-switches li>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ss-switches strong{font-size:14px;color:var(--vf-purple-950)}
+.ss-switches small{font-size:12.5px;line-height:1.45;color:var(--vf-muted)}
+.ss-switch{position:relative;flex:none;width:52px;height:30px;border-radius:99px;border:0;background:var(--vf-border);cursor:pointer;
+ transition:background .2s ease;min-height:30px}
+.ss-switch::after{content:"";position:absolute;inset:-7px 0}
+.ss-switch span{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--vf-surface);
+ box-shadow:0 2px 6px rgba(36,17,63,.18);transition:transform .2s ease}
+.ss-switch.is-on{background:var(--vf-primary)}
+.ss-switch.is-on span{transform:translateX(22px)}
+.ss-switch:focus-visible{outline:3px solid var(--vf-primary);outline-offset:2px}
+.ss-switch:disabled{opacity:.5;cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){.ss-switch,.ss-switch span{transition:none}}
 .ss-pilot-mail{display:flex;gap:10px;align-items:flex-start;margin:0;padding:12px 14px;border-radius:14px;background:var(--vf-info-soft);
  font-size:13.5px;line-height:1.5;color:var(--vf-purple-900)}
 .ss-pilot-mail svg{flex:none;margin-top:2px;color:var(--vf-primary)}

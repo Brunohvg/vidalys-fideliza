@@ -101,6 +101,23 @@ def points_for(tenant_id, amount_cents):
     return min(raw, cap), raw > cap
 
 
+def _site_state(tenant, pilot):
+    from .models import OnlineCoupon
+    from .online import site_status
+    status = site_status(tenant) if tenant.platform == "nuvemshop" else None
+    if status is None:
+        return None
+    return {
+        **status,
+        "online_earning": pilot.online_earning if pilot else True,
+        "online_coupons": pilot.online_coupons if pilot else True,
+        "coupon_combines": pilot.coupon_combines if pilot else False,
+        "coupons_paused": pilot.coupons_paused if pilot else False,
+        "coupons_active": OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.ISSUED).count(),
+        "coupons_used": OnlineCoupon.objects.filter(tenant=tenant, state=OnlineCoupon.State.USED).count(),
+    }
+
+
 def _notice_stats(tenant):
     from apps.participants.enrollment_models import EnrollmentSubmission
     from .models import CreditNotice
@@ -128,6 +145,7 @@ def pilot_state(tenant):
                   "hold_days": rule.hold_days, "validity_days": rule.validity_days} if rule else None),
         "program": mode_payload(tenant.pk),
         "notices": _notice_stats(tenant),
+        "site": _site_state(tenant, pilot),
         "counter_rewards": _rewards_qs(tenant.pk).count(),
     }
 
@@ -200,9 +218,14 @@ def counter_wallet(participant, *, amount_cents=0):
     gift = program_mode(participant.tenant_id)
     if gift:
         rewards, goal = [], None
+    from .models import OnlineCoupon
+    in_coupon = OnlineCoupon.objects.filter(participant=participant, source=OnlineCoupon.Source.GIFTBACK,
+                                            state__in=(OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED))
+    coupon_cents = sum(c.points for c in in_coupon)
     return {
         "program": mode_payload(participant.tenant_id),
-        "credit": ({"available_cents": available, "min_order_cents": gift.giftback_min_order_cents} if gift else None),
+        "credit": ({"available_cents": available + coupon_cents, "min_order_cents": gift.giftback_min_order_cents,
+                    "in_site_coupon_cents": coupon_cents} if gift else None),
         "pilot_active": pilot_enabled(participant.tenant_id),
         "available": available, "pending": totals["pending"], "reserved": totals["reserved"],
         "rewards": rewards,
@@ -247,14 +270,24 @@ def reserve_credit(*, sale, participant, operator):
         raise PilotBlocked("Esta loja usa pontos, não giftback.")
     if sale.eligible_amount_cents < gift.giftback_min_order_cents:
         raise PilotBlocked("A compra não atinge o valor mínimo para usar o crédito.")
+    from .models import OnlineCoupon
+    from .online import free_for_counter
     wallet = PointWallet.objects.filter(participant=participant, tenant_id=sale.tenant_id).first()
     release_due(wallet)
+    _, totals = wallet_balances(participant)
+    in_coupon = sum(c.points for c in OnlineCoupon.objects.filter(
+        participant=participant, state__in=(OnlineCoupon.State.ISSUING, OnlineCoupon.State.ISSUED)))
+    prospective = totals["available"] + in_coupon
+    if prospective <= 0:
+        raise PilotBlocked("A cliente não tem crédito liberado agora.")
+    if prospective >= sale.eligible_amount_cents:
+        raise PilotBlocked("O crédito não pode ser maior que a compra.")
+    # Só depois das validações: o crédito preso no cupom do site volta ao saldo (cupom apagado).
+    free_for_counter(participant)
     _, totals = wallet_balances(participant)
     amount = totals["available"]
     if amount <= 0:
         raise PilotBlocked("A cliente não tem crédito liberado agora.")
-    if amount >= sale.eligible_amount_cents:
-        raise PilotBlocked("O crédito não pode ser maior que a compra.")
     return _reserve(sale=sale, participant=participant, wallet=wallet, amount=amount,
                     discount_cents=amount, reward=None, operator=operator)
 

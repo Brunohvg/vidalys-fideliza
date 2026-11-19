@@ -256,7 +256,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
      {chosen?<div className="vf-sale-chosen">
        <span className="vf-avatar tone-1" aria-hidden="true">{initialsOf(chosen.display_name)}</span>
        <div className="vf-row-main"><strong>{chosen.display_name}</strong>
-        <span>{!wallet?chosen.detail:gift?`${money(wallet.available)} de crédito liberado${wallet.pending?` · ${money(wallet.pending)} a liberar`:""}`
+        <span>{!wallet?chosen.detail:gift?`${money(wallet.credit?.available_cents??wallet.available)} de crédito liberado${wallet.pending?` · ${money(wallet.pending)} a liberar`:""}`
          :`${pts(wallet.available)} pts liberados${wallet.pending?` · ${pts(wallet.pending)} em carência`:""}`}</span></div>
        <button type="button" className="vf-btn is-small" onClick={resetClient}>Trocar</button>
       </div>
@@ -316,7 +316,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       <input type="checkbox" checked={creditOn} onChange={()=>setUseCredit(v=>!v)}/>
       <span className="vs-reward-ico" aria-hidden="true"><Gift size={18}/></span>
       <span className="vs-reward-text"><strong>Crédito de {money(credit)}</strong>
-       <small>usa todo o crédito · compra mínima {money(gift.min_order_cents)}</small></span>
+       <small>usa todo o crédito · compra mínima {money(gift.min_order_cents)}{wallet?.credit?.in_site_coupon_cents?" · o cupom do site dela será cancelado":""}</small></span>
       <span className="vs-reward-act" aria-hidden="true">{creditOn?"Aplicado":"Usar"}</span>
      </label>
     </fieldset>}

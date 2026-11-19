@@ -202,6 +202,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "sales.pilot_wallet_scan",
         "schedule": crontab(minute=20),
     },
+    # Cupons do clube no site: roda no worker Nuvemshop (token OAuth), depois da liberação.
+    "sales-online-coupon-refresh-hourly": {
+        "task": "sales.online_coupon_refresh",
+        "schedule": crontab(minute=15),
+        "options": {"queue": "nuvemshop"},
+    },
     # PR26: must run on dedicated Nuvemshop OAuth worker, never generic SMTP.
     # Without Celery Beat deployment this schedule is inert.
     "nuvemshop-revoke-expired-hourly": {

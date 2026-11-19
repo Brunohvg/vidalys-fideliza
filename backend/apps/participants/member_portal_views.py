@@ -239,6 +239,15 @@ def _member_missions(tenant, participant):
     ]
 
 
+def _site(tenant, participant):
+    """Cupons do clube no site: se a loja liberou e quais cupons a cliente tem agora."""
+    from apps.sales.models import OnlineCoupon
+    from apps.sales.online import ACTIVE, coupons_live, present_coupon
+    coupons = OnlineCoupon.objects.filter(participant=participant, state__in=ACTIVE).select_related("reward")
+    return {"coupons_enabled": coupons_live(tenant),
+            "coupons": [present_coupon(c) for c in coupons.order_by("-created_at")[:5]]}
+
+
 def _program(tenant):
     from apps.sales.pilot import mode_payload
     return mode_payload(tenant.pk)
@@ -568,6 +577,7 @@ class MemberClubMeView(APIView):
                               if ledger else "not_active"),
             "redemption_place": "counter" if counter_pilot else None,
             "program": _program(tenant),
+            "site": _site(tenant, participant) if counter_pilot else None,
             **vip,
             **cashback,
             "missions": missions,
