@@ -24,8 +24,11 @@ from .online import (
 )
 from .pilot import wallet_balances
 
+# SECURE_SSL_REDIRECT: o stack do CI (igual ao Coolify) liga o redirect HTTPS; os testes chamam a API
+# pelo cliente de teste em HTTP e não devem depender dessa variável do ambiente.
 FLAGS = dict(FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED=True, FIDELIZA_NUVEMSHOP_ORDER_RECHECK_ENABLED=True,
-             FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True, FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED=True)
+             FIDELIZA_NUVEMSHOP_ORDERS_PREVIEW_ENABLED=True, FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED=True,
+             SECURE_SSL_REDIRECT=False)
 REMOTE = mock.patch("apps.sales.online._create_remote", return_value=("777", "https://loja.example/discount/X"))
 DELETE = mock.patch("apps.sales.online._delete_remote", return_value=True)
 

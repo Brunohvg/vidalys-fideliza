@@ -15,6 +15,7 @@ from .models import CounterPilot, CounterRedemption, DiscountRewardDraft, PointR
 from .pilot import counter_wallet, pilot_enabled, wallet_balances
 
 
+@override_settings(SECURE_SSL_REDIRECT=False)     # stack do CI/Coolify liga o redirect HTTPS
 class CounterPilotTests(TestCase):
     def setUp(self):
         User = get_user_model()
