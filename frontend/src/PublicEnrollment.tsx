@@ -1,4 +1,5 @@
 import {useEffect, useState, type FormEvent, type CSSProperties} from "react";
+import {formatPhone} from "./phone-mask";
 import {ArrowRight,CheckCircle2, LockKeyhole, ShieldCheck,Gift,Mail,Sparkles} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type PublicInvitationPreview,
   type PublicConsentResult, type PublicStoreProgram,
@@ -144,7 +145,7 @@ export default function PublicEnrollment(){
             </label>
             {storeSlug&&<label>Seu celular (opcional)
               <input autoComplete="tel" type="tel" inputMode="tel" maxLength={20} value={phone}
-                onChange={e=>setPhone(e.target.value)} placeholder="(31) 99999-9999"/>
+                onChange={e=>setPhone(formatPhone(e.target.value))} placeholder="(31) 99999-9999"/>
               <small>Na loja física, basta dizer o número no caixa para somar pontos.</small>
             </label>}
           </div>

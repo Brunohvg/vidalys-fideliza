@@ -172,7 +172,7 @@ test("Cliente fora do clube: venda guardada com o celular, cupom opcional",async
   });
   await openSales(page,1440);
   await page.locator("#vf-sale-phone").fill("(31) 98888-7777");
-  await expect(page.getByText("Celular ainda não está no clube")).toBeVisible();
+  await expect(page.getByText("(31) 98888-7777 não está no clube")).toBeVisible();
   await page.getByLabel("Valor da compra").fill("59,90");
   await page.getByText("+ Cupom fiscal ou outra data").click();
   await page.getByLabel("Número do cupom ou recibo").fill("0071");
@@ -197,4 +197,38 @@ test("Dica para o vendedor só aparece quando a próxima recompensa está perto"
   await page.locator("#vf-sale-phone").fill("31988421170");
   await page.getByLabel("Valor da compra").fill("100,00");
   await expect(page.getByText("Diga para Ana: “com mais R$ 300,00 em compras você ganha Vale R$ 30.”")).toBeVisible();
+});
+
+test("Máscara de celular: formata ao digitar, aceita +55 e só busca com o número completo",async({page})=>{
+  await mock(page);
+  const lookups:string[]=[];
+  await page.route("**/api/v1/tenants/**/participants/by-phone/",r=>{lookups.push(r.request().postDataJSON().phone);
+    return r.fulfill({contentType:"application/json",body:JSON.stringify({match:null})});});
+  await page.setViewportSize({width:390,height:900});
+  await openSales(page,390);
+  const input=page.locator("#vf-sale-phone");
+  await input.pressSequentially("3198842117",{delay:20});
+  await expect(input).toHaveValue("(31) 98842-117");
+  await page.waitForTimeout(600);
+  expect(lookups).toEqual([]);                       // celular com 10 dígitos ainda está incompleto
+  await expect(page.getByText("Continue digitando: celular tem 11 dígitos com o DDD.")).toBeVisible();
+  await input.fill("+55 (31) 9 8842-1170");
+  await expect(page.getByText("(31) 98842-1170 não está no clube")).toBeVisible();
+  expect(lookups).toEqual(["(31) 98842-1170"]);
+});
+
+test("Celular não achado: busca pelo nome e salva o celular no cadastro",async({page})=>{
+  await mock(page);
+  let saved:unknown=null;
+  await page.route("**/api/v1/tenants/**/participants/by-phone/",r=>r.fulfill({contentType:"application/json",body:JSON.stringify({match:null})}));
+  await page.route("**/api/v1/tenants/**/participants/*/phone/",r=>{saved=r.request().postDataJSON();
+    return r.fulfill({contentType:"application/json",body:JSON.stringify({participant:{id:member.id,display_name:"Ana Souza",phone_last4:"1170",status:"active"}})});});
+  await openSales(page,1440);
+  await page.locator("#vf-sale-phone").fill("31988421170");
+  await page.getByRole("button",{name:"É do clube? Buscar pelo nome"}).click();
+  await page.locator("#vf-sale-client").fill("Ana");
+  await page.getByRole("list",{name:"Participantes encontrados"}).getByRole("button",{name:/Ana Souza/}).click();
+  await page.getByRole("button",{name:"Salvar celular"}).click();
+  await expect(page.getByText("Celular salvo no cadastro de Ana.")).toBeVisible();
+  expect(saved).toEqual({phone:"(31) 98842-1170",customer_informed:true});
 });

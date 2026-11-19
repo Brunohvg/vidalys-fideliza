@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode} from "react";
+import {formatPhone} from "./phone-mask";
 import {ArrowRight, BookOpen, Cake, CalendarDays, CheckCircle2, CircleHelp, Clock3, Download, Gift, House, KeyRound, ListOrdered, LockKeyhole,
   LogOut, Mail, ScanLine, Share, ShieldCheck, Smartphone, Sparkles, Store, TicketPercent, TriangleAlert, UserRound, X} from "lucide-react";
 import {ApiError, publicEnrollmentApi, type MemberClubPrivate, type MemberClubPublic, type MemberClubReward, type MemberOffer} from "./api";
@@ -257,7 +258,7 @@ function Guest({slug,club,token,ready,onEntered}:{slug:string;club:MemberClubPub
             onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com"/></label>
         <label className="clb-field">Celular (opcional)
           <input type="tel" inputMode="tel" autoComplete="tel" maxLength={20} value={phone}
-            onChange={e=>setPhone(e.target.value)} placeholder="(31) 9 9999-9999"/>
+            onChange={e=>setPhone(formatPhone(e.target.value))} placeholder="(31) 99999-9999"/>
           <small>Na loja física, basta dizer o número no caixa.</small></label>
         <label className="clb-check"><input type="checkbox" required checked={accepted} onChange={e=>setAccepted(e.target.checked)}/>
           <span>Li e aceito o regulamento e o aviso de privacidade do clube.</span></label>
@@ -617,8 +618,8 @@ function Profile({slug,club,me,onLogout,onChange}:{slug:string;club:MemberClubPu
       <label className="clb-field">Nome
         <input autoComplete="name" minLength={3} maxLength={140} value={name} onChange={e=>setName(e.target.value)}/></label>
       <label className="clb-field">Celular
-        <input type="tel" inputMode="tel" autoComplete="tel" maxLength={20} value={phone} onChange={e=>setPhone(e.target.value)}
-          placeholder={me.phone_last4?"Cadastrado: final "+me.phone_last4+" · digite para trocar":"(31) 9 9999-9999"}/>
+        <input type="tel" inputMode="tel" autoComplete="tel" maxLength={20} value={phone} onChange={e=>setPhone(formatPhone(e.target.value))}
+          placeholder={me.phone_last4?"Cadastrado: final "+me.phone_last4+" · digite para trocar":"(31) 99999-9999"}/>
         <small>{me.phone_last4?"Guardamos o número protegido; aparecem só os 4 últimos dígitos.":"Com o celular, o vendedor encontra você no caixa em segundos."}</small></label>
       <fieldset className="clb-birth">
         <legend>Aniversário <small>(sem o ano)</small></legend>

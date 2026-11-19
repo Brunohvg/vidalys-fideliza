@@ -1,4 +1,5 @@
 import {useEffect,useState} from "react";
+import {formatPhone} from "./phone-mask";
 import {ArrowLeft,Cake,CheckCircle2,Copy,ExternalLink,Gift,Mail,Pause,Phone,Play,Receipt,ShoppingBag,Sparkles,Store as StoreIcon,X} from "lucide-react";
 import {ApiError,merchantApi,type ParticipantDetail,type Store} from "./api";
 import {initialsOf} from "./ActionCenter";
@@ -145,7 +146,7 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,onBack,onRe
      {canManage&&!phoneOpen&&<button type="button" className="vf-btn is-small" onClick={()=>setPhoneOpen(true)}><Phone size={15}/> {p.phone_last4?"Trocar celular":"Cadastrar celular"}</button>}
      {phoneOpen&&<form className="vf-client-phone-form" onSubmit={e=>{e.preventDefault();void savePhone();}}>
       <label className="vf-field is-compact">Celular com DDD<input type="tel" inputMode="tel" maxLength={20} placeholder="(31) 99999-9999"
-       value={phoneValue} onChange={e=>setPhoneValue(e.target.value)}/></label>
+       value={phoneValue} onChange={e=>setPhoneValue(formatPhone(e.target.value))}/></label>
       <label className="vf-client-phone-check"><input type="checkbox" checked={phoneOk} onChange={e=>setPhoneOk(e.target.checked)}/>
        O próprio cliente me informou este número</label>
       <div className="vf-pills"><button type="button" className="vf-btn is-small" onClick={()=>setPhoneOpen(false)}>Cancelar</button>

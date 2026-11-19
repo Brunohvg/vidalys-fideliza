@@ -6,6 +6,8 @@ import {ApiError,merchantApi,type CounterWallet,type ManualSaleRecord,type PaidO
 import {pointValueText,summarizeClub} from "./club-summary";
 import {initialsOf} from "./ActionCenter";
 import PaidOrderCheck from "./PaidOrderCheck";
+import {formatPhone,phoneComplete,phoneDigits} from "./phone-mask";
+export {phoneDigits};
 import "./vf-ui.css";
 import "./sales-workspace.css";
 
@@ -32,15 +34,6 @@ export const receiptReference=(raw:string):string|null=>{
 const NO_RECEIPT="SEM-CUPOM-";
 const autoReference=()=>NO_RECEIPT+Date.now().toString(36).toUpperCase()+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
 const receiptLabel=(ref:string)=>ref.startsWith(NO_RECEIPT)?"sem cupom":ref;
-export const phoneDigits=(raw:string)=>raw.replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"");
-const formatPhone=(raw:string)=>{
- if(raw.trim().startsWith("+"))return raw.slice(0,20);
- const d=raw.replace(/\D/g,"").slice(0,11);
- if(d.length<=2)return d.length?"("+d:"";
- if(d.length<=6)return `(${d.slice(0,2)}) ${d.slice(2)}`;
- if(d.length<=10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
- return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
-};
 const when=(iso:string|null)=>{
  if(!iso)return "";
  const d=new Date(iso);if(Number.isNaN(d.getTime()))return "";
@@ -139,7 +132,9 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
  const [toast,setToast]=useState("");
  const [undoMsg,setUndoMsg]=useState("");
  const amountRef=useRef<HTMLInputElement>(null);
- const resetClient=()=>{setChosen(undefined);setPhone("");setQuery("");setPhoneState("idle");setWallet(null);setRewardId("");};
+ const [pendingPhone,setPendingPhone]=useState("");
+ const [phoneSaved,setPhoneSaved]=useState("");
+ const resetClient=()=>{setChosen(undefined);setPhone("");setQuery("");setPhoneState("idle");setWallet(null);setRewardId("");setPendingPhone("");setPhoneSaved("");};
 
  useEffect(()=>{
   let active=true;setPeopleError(false);
@@ -154,7 +149,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
  useEffect(()=>{
   if(mode!=="phone"||chosen!==undefined)return;
   const digits=phoneDigits(phone);
-  if(digits.length<10){setPhoneState("idle");return;}
+  if(!phoneComplete(phone)){setPhoneState("idle");return;}
   let active=true;setPhoneState("looking");
   const timer=window.setTimeout(()=>{
    merchantApi.findParticipantByPhone(tenantId,phone).then(r=>{
@@ -210,7 +205,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
   if(Number.isNaN(time.getTime())){setFormError("Informe uma data de venda válida.");return;}
   setBusy(true);
   try{
-   const keepPhone=!chosen&&mode==="phone"&&phoneDigits(phone).length>=10;
+   const keepPhone=!chosen&&mode==="phone"&&phoneComplete(phone);
    const result=await merchantApi.createManualSale(tenantId,{reference,eligible_amount_cents:cents,
     participant_id:chosen?chosen.id:null,reported_paid_at:time.toISOString(),evidence_reference:reference,
     ...(keepPhone?{customer_phone:phone}:{}),...(reward&&chosen?{reward_id:reward.id}:{})});
@@ -225,6 +220,13 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
   finally{setBusy(false);}
  };
 
+ const savePhone=async()=>{
+  if(busy||!chosen||!pendingPhone)return;setBusy(true);setFormError("");
+  try{await merchantApi.setParticipantPhone(tenantId,chosen.id,pendingPhone);
+   setPhoneSaved(`Celular salvo no cadastro de ${firstName(chosen.display_name)}.`);setPendingPhone("");}
+  catch(e){setFormError(e instanceof ApiError?e.message:"Não foi possível salvar o celular.");}
+  finally{setBusy(false);}
+ };
  const undo=async(sale:ManualSaleRecord)=>{
   if(busy)return;setBusy(true);setUndoMsg("");setToast("");
   try{await merchantApi.undoManualSale(tenantId,sale.id);setUndoMsg("Venda desfeita."+(sale.redemption?" O vale voltou para o saldo da cliente.":""));reload();}
@@ -247,10 +249,12 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       </div>
      :chosen===null?<div className="vf-sale-chosen is-outside">
        <span className="vf-ico tone-gold" aria-hidden="true"><UserRound size={18}/></span>
-       <div className="vf-row-main"><strong>{phoneDigits(phone).length>=10&&mode==="phone"?"Celular ainda não está no clube":"Cliente ainda não participa"}</strong>
-        <span>{phoneDigits(phone).length>=10&&mode==="phone"
-         ?"A venda fica guardada com este celular. Quando a pessoa entrar no clube com o mesmo número, é só vincular."
-         :"A venda fica registrada sem pontos."}</span></div>
+       <div className="vf-row-main"><strong>{phoneComplete(phone)&&mode==="phone"?phone+" não está no clube":"Cliente ainda não participa"}</strong>
+        <span>{phoneComplete(phone)&&mode==="phone"
+         ?"Confira o número. Se a pessoa já é do clube com outro celular (ou sem celular), busque pelo nome."
+         :"A venda fica registrada sem pontos."}</span>
+        {phoneComplete(phone)&&mode==="phone"&&<button type="button" className="vf-btn is-link vs-inline-link"
+         onClick={()=>{setPendingPhone(phone);setChosen(undefined);setMode("name");setQuery("");setFormError("");}}>É do clube? Buscar pelo nome</button>}</div>
        <button type="button" className="vf-btn is-small" onClick={resetClient}>Trocar</button>
       </div>
      :mode==="phone"?<>
@@ -260,6 +264,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
          placeholder="(31) 99999-9999" value={phone} onChange={e=>setPhone(formatPhone(e.target.value))}/>
        </div>
        <small role="status">{phoneState==="looking"?"Procurando no clube…":phoneState==="error"?phoneError
+        :phoneDigits(phone).length>=3&&!phoneComplete(phone)?`Continue digitando: ${phoneDigits(phone)[2]==="9"?"celular tem 11 dígitos":"fixo tem 10 dígitos"} com o DDD.`
         :"Digite o celular com DDD. O sistema encontra o cliente sozinho."}</small>
        <div className="vf-sale-client-alt">
         <button type="button" className="vf-btn is-link" onClick={()=>{setMode("name");setFormError("");}}>Buscar pelo nome</button>
@@ -286,6 +291,12 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       </>}
     </div>
 
+    {chosen&&pendingPhone&&<div className="vs-save-phone" role="group" aria-label="Salvar celular no cadastro">
+     <span>Salvar <b>{pendingPhone}</b> no cadastro de {firstName(chosen.display_name)}? Na próxima, é só digitar o celular.</span>
+     <div><button type="button" className="vf-btn is-small" onClick={()=>setPendingPhone("")}>Agora não</button>
+      <button type="button" className="vf-btn is-small is-primary" disabled={busy} onClick={()=>void savePhone()}>Salvar celular</button></div>
+    </div>}
+    {phoneSaved&&<div className="vf-toast" role="status"><Check size={18}/>{phoneSaved}</div>}
     {chosen&&wallet?.pilot_active&&usable.length>0&&<fieldset className="vs-rewards">
      <legend>{reward?"Vale aplicado nesta compra":`${who} pode usar um vale agora`}</legend>
      {usable.map(r=><label key={r.id} className={"vs-reward"+(rewardId===r.id?" is-on":"")}>
