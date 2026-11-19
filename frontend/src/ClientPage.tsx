@@ -56,6 +56,7 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
  const paused=p.status==="paused";
  const points=p.points_status==="ledger_only"&&p.points_balance!==null?p.points_balance:null;
  const gift=data.program?.mode==="giftback";
+ const counter=data.channels?.counter!==false;
  const pending=data.sales.filter(s=>s.state==="awaiting_review").length;
  const clubUrl=window.location.origin+"/clube/"+encodeURIComponent(storeSlug);
 
@@ -94,8 +95,8 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
     </div>
    </div>
    {canManage&&<div className="vf-client-actions">
-    <button type="button" className="vf-btn is-primary" disabled={paused} onClick={()=>onRegisterSale({id:p.id,display_name:p.display_name,detail:p.phone_last4?"Celular final "+p.phone_last4:p.contact_email})}>
-     <Receipt size={17}/> Registrar venda</button>
+    {counter&&<button type="button" className="vf-btn is-primary" disabled={paused} onClick={()=>onRegisterSale({id:p.id,display_name:p.display_name,detail:p.phone_last4?"Celular final "+p.phone_last4:p.contact_email})}>
+     <Receipt size={17}/> Registrar venda</button>}
     <button type="button" className="vf-btn" onClick={()=>void copyLink()}><Copy size={16}/> Link do clube</button>
    </div>}
   </header>
@@ -140,7 +141,7 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,storeName="
 
    <aside className="vf-client-side">
     {!paused&&<ClientWhatsApp tenantId={tenantId} participantId={p.id} name={p.display_name} storeName={storeName}
-     clubUrl={clubUrl} phoneLast4={p.phone_last4} marketing={prof.marketing_opt_in} offers={data.offers}/>}
+     clubUrl={clubUrl} phoneLast4={p.phone_last4} marketing={prof.marketing_opt_in} offers={data.offers} counter={counter}/>}
     <section className="vf-card" aria-labelledby="vf-client-contact">
      <h2 id="vf-client-contact" className="vf-h3">Contato e perfil</h2>
      <ul className="vf-client-facts">

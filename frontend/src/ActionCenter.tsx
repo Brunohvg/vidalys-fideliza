@@ -112,6 +112,7 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
  const balances=items.map(p=>p.points_balance);
  const pointsHeld=complete&&items.length>0&&balances.every(v=>typeof v==="number")
   ?balances.reduce<number>((sum,v)=>sum+(v as number),0):null;
+ const counterOn=data?.sales?.channels?.counter!==false;
  const pending=data?.sales?data.sales.items.filter(v=>v.state==="awaiting_review").length:null;
  const published=data?.rewards?data.rewards.filter(v=>v.published).length:null;
  const connected=data?.integration?.connected;
@@ -222,11 +223,16 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
      :gift?"crédito liberado das clientes"
      :pointsBrl(pointsHeld)?`equivalem a ${pointsBrl(pointsHeld)}`:"saldo disponível dos participantes"}</span>
    </button>
-   <button type="button" className={"loyalty-dashboard-metric"+(pending?" is-attention":"")} onClick={()=>onNavigate("sales")}>
+   {counterOn?<button type="button" className={"loyalty-dashboard-metric"+(pending?" is-attention":"")} onClick={()=>onNavigate("sales")}>
     <span className="loyalty-metric-top"><span className="loyalty-ico tone-rose"><ClipboardCheck size={20}/></span><small>Vendas para conferir</small></span>
     <strong>{pending===null?dash(null):dash(animPending)}</strong>
     <span className="loyalty-metric-sub">{pending?(gift?"crédito aguardando sua conferência":"pontos aguardando sua conferência"):"no balcão, últimos registros"}</span>
    </button>
+   :<button type="button" className="loyalty-dashboard-metric" onClick={()=>onNavigate("results")}>
+    <span className="loyalty-metric-top"><span className="loyalty-ico tone-rose"><ClipboardCheck size={20}/></span><small>Compras no site</small></span>
+    <strong>Automático</strong>
+    <span className="loyalty-metric-sub">pedido pago de cliente do clube já conta, sem conferir</span>
+   </button>}
    <button type="button" className="loyalty-dashboard-metric" onClick={()=>onNavigate("program","rewards")}>
     <span className="loyalty-metric-top"><span className="loyalty-ico tone-green"><Gift size={20}/></span><small>Recompensas publicadas</small></span>
     <strong>{published===null?dash(null):dash(animPublished)}</strong>
@@ -234,7 +240,7 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
    </button>
   </section>
 
-  {canManage&&todaySales!==null&&<section className="loyalty-card loyalty-today" aria-labelledby="loyalty-today-title">
+  {canManage&&counterOn&&todaySales!==null&&<section className="loyalty-card loyalty-today" aria-labelledby="loyalty-today-title">
    <header><h2 id="loyalty-today-title">Hoje no balcão</h2>
     <button type="button" className="loyalty-pill" onClick={()=>onNavigate("sales")}>Abrir balcão</button></header>
    <dl className="loyalty-today-grid">

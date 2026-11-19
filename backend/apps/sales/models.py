@@ -267,6 +267,8 @@ class CounterPilot(models.Model):
                                       related_name="+")
     per_sale_cap_points = models.PositiveIntegerField(default=1500)
     budget_points = models.PositiveIntegerField(default=50000)
+    # Canais do clube. Lojas Nuvemshop começam só no site; balcão é ligado à parte.
+    counter_enabled = models.BooleanField(default=False)
     # Site (Nuvemshop): ganhar em pedido pago e resgatar por cupom único.
     online_earning = models.BooleanField(default=True)
     online_coupons = models.BooleanField(default=True)

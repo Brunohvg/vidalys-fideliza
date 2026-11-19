@@ -13,8 +13,8 @@ const pts=(n:number)=>n.toLocaleString("pt-BR");
 const shortDay=(iso:string)=>new Date(iso).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
 const firstName=(name:string)=>(name||"").trim().split(/\s+/)[0]||"";
 
-export function buildMessage({kind,name,store,clubUrl,wallet,offer}:{kind:MessageKind;name:string;store:string;clubUrl:string;
- wallet:CounterWallet|null;offer?:MemberOffer|null}){
+export function buildMessage({kind,name,store,clubUrl,wallet,offer,counter=true}:{kind:MessageKind;name:string;store:string;clubUrl:string;
+ wallet:CounterWallet|null;offer?:MemberOffer|null;counter?:boolean}){
  const hi=`Oi${firstName(name)?", "+firstName(name):""}! Aqui é da loja${store?" "+store:""}.`;
  const club=`Acompanhe no seu clube: ${clubUrl}`;
  if(kind==="campaign"&&offer)return `${hi} ${offer.title}: ${offer.message.trim().replace(/\.?$/,".")} ${club}`;
@@ -23,13 +23,15 @@ export function buildMessage({kind,name,store,clubUrl,wallet,offer}:{kind:Messag
   const until=wallet.next_expiry?`, até ${shortDay(wallet.next_expiry)}`:"";
   if(gift&&wallet.credit&&wallet.credit.available_cents>0){
    const site=wallet.credit.in_site_coupon_cents?" ou usar o cupom no site":"";
+   const how=counter?`é só informar seu celular no caixa${site}`:"use o cupom do seu clube no carrinho do site";
    return `${hi} Você tem ${money(wallet.credit.available_cents)} de crédito para usar com a gente${until}. `+
-    `Vale em compras a partir de ${money(wallet.credit.min_order_cents)}: é só informar seu celular no caixa${site}. ${club}`;
+    `Vale em compras a partir de ${money(wallet.credit.min_order_cents)}: ${how}. ${club}`;
   }
   if(gift&&wallet.pending>0)return `${hi} O crédito de ${money(wallet.pending)} da sua última compra já está garantido e libera em breve para usar com a gente. ${club}`;
   const ready=wallet.rewards.filter(r=>r.affordable);
   if(!gift&&ready.length){const best=ready[ready.length-1];
-   return `${hi} Você tem ${pts(wallet.available)} pontos e já pode trocar por ${best.title} (${money(best.discount_cents)} de desconto) na próxima compra${until}. É só informar seu celular no caixa. ${club}`;}
+   return `${hi} Você tem ${pts(wallet.available)} pontos e já pode trocar por ${best.title} (${money(best.discount_cents)} de desconto) na próxima compra${until}. `+
+    (counter?"É só informar seu celular no caixa. ":"Troque pelo seu clube e use o cupom no site. ")+club;}
   if(!gift&&wallet.next_reward&&wallet.available>0)
    return `${hi} Você tem ${pts(wallet.available)} pontos. Faltam ${pts(wallet.next_reward.missing)} para ganhar ${wallet.next_reward.title} (${money(wallet.next_reward.discount_cents)} de desconto). ${club}`;
  }
@@ -42,9 +44,9 @@ export function hasBalance(wallet:CounterWallet|null){
  return wallet.rewards.some(r=>r.affordable)||Boolean(wallet.next_reward&&wallet.available>0);
 }
 
-export default function ClientWhatsApp({tenantId,participantId,name,storeName,clubUrl,phoneLast4,marketing,offers}:{
+export default function ClientWhatsApp({tenantId,participantId,name,storeName,clubUrl,phoneLast4,marketing,offers,counter=true}:{
  tenantId:string;participantId:string;name:string;storeName:string;clubUrl:string;phoneLast4?:string|null;
- marketing:boolean;offers:MemberOffer[]}){
+ marketing:boolean;offers:MemberOffer[];counter?:boolean}){
  const [wallet,setWallet]=useState<CounterWallet|null>(null);
  const [loaded,setLoaded]=useState(false);
  const [kind,setKind]=useState<MessageKind|null>(null);
@@ -73,8 +75,8 @@ export default function ClientWhatsApp({tenantId,participantId,name,storeName,cl
 
  useEffect(()=>{
   if(!loaded||edited)return;
-  setText(buildMessage({kind:current,name,store:storeName,clubUrl,wallet,offer}));
- },[loaded,edited,current,name,storeName,clubUrl,wallet,offer]);
+  setText(buildMessage({kind:current,name,store:storeName,clubUrl,wallet,offer,counter}));
+ },[loaded,edited,current,name,storeName,clubUrl,wallet,offer,counter]);
 
  const choose=(k:MessageKind)=>{setKind(k);setEdited(false);};
  const copy=async()=>{try{await navigator.clipboard.writeText(text);setCopied(true);window.setTimeout(()=>setCopied(false),2000);}catch{/* seleção manual */}};

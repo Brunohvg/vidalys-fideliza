@@ -251,7 +251,8 @@ export default function Portal() {
     let active = true; setPendingSales(0);
     if (!tenantKey || !canReview) return;
     merchantApi.listManualSales(tenantKey)
-      .then(list => { if (active) setPendingSales(list.items.filter(item => item.state === "awaiting_review").length); })
+      .then(list => { if (active) setPendingSales(list.channels?.counter === false ? 0
+        : list.items.filter(item => item.state === "awaiting_review").length); })
       .catch(() => { if (active) setPendingSales(0); });
     return () => { active = false; };
   }, [tenantKey, canReview, page]);

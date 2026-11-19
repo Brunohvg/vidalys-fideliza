@@ -61,18 +61,24 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
  const gift=state.program&&state.program.mode==="giftback"?state.program:null;
  const ready=Boolean(state.rule)||Boolean(gift);
  const unit=gift?"crédito":"pontos";
+ const counter=state.channels?.counter!==false;
+ const siteOnly=Boolean(state.channels?.site)&&!counter;
  return <section id="vf-pilot-card" className="vf-card ss-section ss-pilot" aria-labelledby="ss-pilot-title">
-  <div className="vf-card-head"><div><h2 id="ss-pilot-title" className="vf-h2">{gift?"Giftback no balcão":"Pontos no balcão"}</h2>
+  <div className="vf-card-head"><div><h2 id="ss-pilot-title" className="vf-h2">{siteOnly?(gift?"Giftback no site":"Pontos no site"):gift?"Giftback no balcão":"Pontos no balcão"}</h2>
    <span className="vf-muted vf-small">Ligue quando quiser começar. Pausar congela tudo na hora, sem apagar saldos.</span></div>
    <span className={"vf-chip "+(state.active?"is-ok":"is-gold")}>{state.active?"Ativo":"Pausado"}</span></div>
 
   {op&&<OperationBanner op={op}/>}
 
-  <ol className="ss-pilot-steps">
+  {siteOnly?<ol className="ss-pilot-steps">
+   <li><b>A cliente compra no site</b> com o e-mail do clube.</li>
+   <li><b>Pedido pago conta sozinho</b>, sem conferir: {gift?"o crédito entra":"os pontos entram"} em carência e saem se o pedido for cancelado.</li>
+   <li><b>Ela usa no site</b> com o cupom único do Meu Clube.</li>
+  </ol>:<ol className="ss-pilot-steps">
    <li><b>Balcão registra</b> a venda com o celular da cliente.</li>
    <li><b>Você confirma</b> em Vendas → Conferir. Só então {gift?"o crédito entra":"os pontos entram"}, em carência.</li>
    <li><b>A cliente usa no caixa:</b> o vendedor aplica {gift?"o crédito":"o vale"} e o desconto sai na mesma compra.</li>
-  </ol>
+  </ol>}
 
   <div className="ss-pilot-budget">
    <div className="ss-pilot-line"><span>{gift?"Crédito emitido":"Pontos emitidos"}</span><strong>{gift?`${money(state.issued_points)} de ${money(budgetNow)}`:`${pts(state.issued_points)} de ${pts(budgetNow)}`}</strong></div>
@@ -98,6 +104,15 @@ export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tena
 
   {state.site&&<SiteSection site={state.site} gift={Boolean(gift)} owner={owner} busy={busy}
     onToggle={(key,value,done)=>void save({[key]:value},done)}/>}
+
+  {state.channels&&<ul className="ss-switches" aria-label="Balcão">
+   <li><div><strong>Balcão (loja física)</strong>
+    <small>{counter?"Ligado: aparecem Balcão e Conferir em Vendas, e a cliente vê como usar no caixa."
+     :"Desligado: o clube funciona só no site. Ligue quando quiser usar na loja física."}</small></div>
+    <button type="button" role="switch" aria-checked={counter} aria-label="Balcão (loja física)" disabled={!owner||busy}
+     className={"ss-switch"+(counter?" is-on":"")}
+     onClick={()=>void save({counter_enabled:!counter},counter?"Balcão desligado: o clube segue só no site.":"Balcão ligado.")}><span aria-hidden="true"/></button></li>
+  </ul>}
 
   {owner?<>
    <div className="vf-grid2 ss-pilot-limits">

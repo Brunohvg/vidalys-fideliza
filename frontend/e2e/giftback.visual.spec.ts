@@ -312,3 +312,54 @@ for(const width of [390,1440]){
     await site.screenshot({path:info.outputPath("site-lojista-"+width+".png")});
   });
 }
+
+/* Loja só no site (balcão desligado): nada de caixa para a cliente nem Balcão/Conferir para o lojista. */
+for(const width of [390,1440]){
+  test("Meu Clube só no site: sem caixa, com e-mail do clube e cupom em "+width+"px",async({page},info)=>{
+    await page.setViewportSize({width,height:900});
+    await member(page,{points_balance:0,email:"ana@example.invalid",channels:{site:true,counter:false},redemption_place:"site",
+      site:{coupons_enabled:true,coupons:[siteCoupon]}});
+    await page.goto("/clube/loja-gift");
+    await expect(page.getByText("R$ 15,77",{exact:true}).first()).toBeVisible();
+    await expect(page.getByRole("button",{name:/Mostrar no caixa/})).toHaveCount(0);
+    await expect(page.getByText("compre no site usando o e-mail")).toBeVisible();
+    await expect(page.getByText("no site da loja").first()).toBeVisible();
+    await expect(page.getByText(/caixa/i)).toHaveCount(0);
+    await noOverflow(page);
+    await page.screenshot({path:info.outputPath("clube-so-site-"+width+".png"),fullPage:true});
+  });
+}
+
+test("Vendas só no site: só Pedidos, sem selo de conferir; cartão mostra o interruptor do balcão",async({page})=>{
+  await page.setViewportSize({width:1440,height:1000});await merchant(page);
+  const now=new Date().toISOString();
+  await page.route("**/api/v1/tenants/**/sales/manual/",r=>r.fulfill(json({mode:"pilot_points",points_credited:false,pilot_active:true,program,
+    channels:{site:true,counter:false},items:[{id:"g1",channel:"counter",reference:"CUPOM-1",participant_id:"p1",participant_name:"Ana",
+      eligible_amount_cents:15776,reported_paid_at:now,evidence_reference:"CUPOM-1",state:"awaiting_review",submitted_by_me:true,
+      reviewed_by_me:false,review_mode:null,review_note:null,created_at:now,reviewed_at:null,points_credited:false,
+      cashback_credited:false,points_preview:1577,alerts:[],can_undo:false}]})));
+  let pilot={allowed:true,active:false,per_sale_cap_points:2000,budget_points:50000,issued_points:0,activated_at:null,paused_at:null,
+    rule:null,counter_rewards:0,program,channels:{site:true,counter:false}};
+  await page.route("**/api/v1/tenants/**/loyalty/program-mode/",r=>r.fulfill(json({mode:"giftback",saved:true,giftback_bps:1000,
+    giftback_cap_cents:2000,giftback_min_order_cents:8000,giftback_validity_days:30,giftback_hold_days:7})));
+  const posts:unknown[]=[];
+  await page.route("**/api/v1/tenants/**/sales/pilot/",r=>{
+    if(r.request().method()==="POST"){const b=r.request().postDataJSON();posts.push(b);
+      pilot={...pilot,channels:{site:true,counter:Boolean(b.counter_enabled)}};}
+    return r.fulfill(json(pilot));});
+  await go(page,1440,"Vendas");
+  const tabs=page.getByRole("tablist",{name:"Áreas de vendas"});
+  await expect(tabs.getByRole("tab")).toHaveCount(1);
+  await expect(tabs.getByRole("tab",{name:"Pedidos"})).toBeVisible();
+  await expect(page.locator(".portal-nav-badge")).toHaveCount(0);
+  await page.locator(".portal-nav").getByRole("button",{name:/^Meu clube/}).click();
+  await page.getByRole("navigation",{name:"Ativação do clube"}).getByRole("button",{name:"Ir para a ativação"}).click();
+  const card=page.locator("#vf-pilot-card");
+  await expect(card.getByRole("heading",{name:"Giftback no site"})).toBeVisible();
+  await expect(card).toContainText("Pedido pago conta sozinho");
+  const sw=card.getByRole("switch",{name:"Balcão (loja física)"});
+  await expect(sw).toHaveAttribute("aria-checked","false");
+  await sw.click();
+  await expect(page.getByText("Balcão ligado.")).toBeVisible();
+  expect(posts).toEqual([{counter_enabled:true}]);
+});

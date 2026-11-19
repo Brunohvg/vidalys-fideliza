@@ -42,24 +42,30 @@ def _money(cents):
     return "R$ " + text
 
 
-def notice_copy(*, store, gift, kind, amount, expires_at, min_order_cents=None):
-    """(assunto, título, texto, botão) do aviso — em reais no giftback, em pontos no modo pontos."""
+def notice_copy(*, store, gift, kind, amount, expires_at, min_order_cents=None, counter=True):
+    """(assunto, título, texto, botão) do aviso — em reais no giftback, em pontos no modo pontos.
+
+    counter=False (loja só no site): fala em usar no site, nunca em caixa.
+    """
     when = expires_at.strftime("%d/%m")
+    how = "É só dizer seu celular no caixa." if counter else "Use no site da loja com o cupom do seu Meu Clube."
+    how_short = "é só dizer seu celular no caixa." if counter else "use no site com o cupom do seu Meu Clube."
+    trade = "troque no caixa" if counter else "troque pelo seu Meu Clube e use no site"
     value = _money(amount) if gift else f"{amount:,}".replace(",", ".") + " pontos"
     if kind == "released":
         subject = (f"Seu crédito de {value} liberou | {store}" if gift else f"Seus {value} liberaram | {store}")
         title = "Seu crédito está liberado." if gift else "Seus pontos estão liberados."
         text = ((f"Você tem {value} de crédito para usar na próxima compra na {store}"
                  + (f", a partir de {_money(min_order_cents)}" if min_order_cents else "")
-                 + f". É só dizer seu celular no caixa. O crédito vale até {when}.") if gift else
-                (f"Você tem {value} liberados no clube da {store}. Veja as recompensas e troque no caixa. "
+                 + f". {how} O crédito vale até {when}.") if gift else
+                (f"Você tem {value} liberados no clube da {store}. Veja as recompensas e {trade}. "
                  f"Os pontos valem até {when}."))
     else:
         subject = (f"Seu crédito de {value} vence em breve | {store}" if gift
                    else f"Seus {value} vencem em breve | {store}")
         title = "Não deixe seu crédito vencer." if gift else "Não deixe seus pontos vencerem."
         text = ((f"Seu crédito de {value} na {store} vence em {when}. Use numa compra antes disso: "
-                 "é só dizer seu celular no caixa.") if gift else
+                 + how_short) if gift else
                 f"Seus {value} na {store} vencem em {when}. Troque por uma recompensa antes disso.")
     return subject, title, text, ("Ver meu crédito" if gift else "Ver meus pontos")
 
@@ -85,10 +91,12 @@ def send_credit_notice(self, participant_id: str, kind: str, amount: int, expire
             return "skipped"
         tenant = participant.tenant
         gift = program_mode(tenant.pk)
+        from .policy import channels
+        on_counter = channels(tenant)["counter"]
         subject, title, text, label = notice_copy(
             store=tenant.name, gift=bool(gift), kind=kind, amount=int(amount),
             expires_at=timezone.localtime(datetime.fromisoformat(expires_iso)),
-            min_order_cents=gift.giftback_min_order_cents if gift else None)
+            min_order_cents=gift.giftback_min_order_cents if gift else None, counter=on_counter)
         url = settings.FIDELIZA_PUBLIC_BASE_URL.rstrip("/") + "/clube/" + tenant.slug
         from .online import active_coupon
         coupon = active_coupon(participant)
@@ -101,7 +109,8 @@ def send_credit_notice(self, participant_id: str, kind: str, amount: int, expire
             title=title, greeting="Olá, " + participant.local_enrollment.name + "!",
             description=text, action_label=label, action_url=url,
             context="Clube " + tenant.name,
-            safety_note="A loja nunca pede senha ou código por e-mail. O saldo só é usado no caixa ou pelo seu Meu Clube.",
+            safety_note=("A loja nunca pede senha ou código por e-mail. O saldo só é usado "
+                         + ("no caixa ou pelo seu Meu Clube." if on_counter else "pelo seu Meu Clube e no site da loja.")),
             footer_note=("Você recebe este aviso porque aceitou novidades do clube de " + tenant.name +
                          ". Para parar, desmarque a opção em Meu Clube → Perfil."),
         )

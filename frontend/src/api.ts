@@ -360,7 +360,7 @@ export type CounterPilotState={
   activated_at:string|null;paused_at:string|null;
   rule:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;counter_rewards:number;
   program?:ProgramInfo;notices?:{reachable_members:number;emails_queued:number};site?:SiteState|null;
-  operation?:OperationState;
+  operation?:OperationState;channels?:ClubChannels;
 };
 export type OperationState={mode:"test"|"commercial";max_per_sale:number;max_budget:number;commercial_at:string|null;
   blockers:string[];effective_per_sale?:number;effective_budget?:number};
@@ -372,7 +372,7 @@ export type ManualSaleInput = {
 export type PhoneMatch={id:string;display_name:string;phone_last4:string|null;status:string};
 export type ManualSaleList = {
   mode:"manual_review_only"|"pilot_points";points_credited:false;items:ManualSaleRecord[];
-  pilot_active?:boolean;average_ticket_cents?:number;program?:ProgramInfo;
+  pilot_active?:boolean;average_ticket_cents?:number;program?:ProgramInfo;channels?:ClubChannels;
 };
 export type ManualSaleResult = {
   already_recorded:boolean;sale:ManualSaleRecord;
@@ -394,7 +394,7 @@ export type ParticipantDetail = {
   participant:ProgramParticipant;
   profile:{email_verified:boolean;marketing_opt_in:boolean;birth_day:number|null;birth_month:number|null;terms_version:string};
   sales:{id:string;channel:string;reference:string;amount_cents:number;at:string|null;state:string;order_status:string}[];
-  offers:MemberOffer[];program?:ProgramInfo;
+  offers:MemberOffer[];program?:ProgramInfo;channels?:ClubChannels;
 };
 export type ProgramParticipant = {
   id: string;
@@ -679,7 +679,7 @@ export const merchantApi = {
   counterPilot: (tenantId:string)=>getJson<CounterPilotState>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/pilot/"),
   setCounterPilot: (tenantId:string,data:{active?:boolean;per_sale_cap_points?:number;budget_points?:number;
-    online_earning?:boolean;online_coupons?:boolean;coupon_combines?:boolean;coupons_paused?:boolean})=>
+    online_earning?:boolean;online_coupons?:boolean;coupon_combines?:boolean;coupons_paused?:boolean;counter_enabled?:boolean})=>
     postJson<CounterPilotState>("/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/pilot/",data),
   getPointRuleDraft: (tenantId:string)=>getJson<{
     mode:"draft_only";activation_available:false;rule:PointRuleDraft|null
@@ -859,7 +859,10 @@ export type MemberClubPublic = {
   signup_available:boolean;points_enabled:boolean;rewards_enabled:boolean;redemption_enabled:boolean;
   published_rewards?:MemberClubReward[];
   earning?:{points:number;per_cents:number;hold_days:number;validity_days:number}|null;program?:ProgramInfo;
+  channels?:ClubChannels;
 };
+/* Onde o clube funciona na loja. Sem o campo (servidor antigo), vale o comportamento com balcão. */
+export type ClubChannels={site:boolean;counter:boolean};
 export type MemberClubReward = {
   id:string;title:string;points_cost:number;discount_cents:number;
   min_order_cents:number;redemption_unit:"points"|"cashback";status:"available"|"locked"|"paused"|"sold_out";
@@ -878,7 +881,7 @@ export type MemberClubPrivate = {
   terms:ProgramTerms;
   points_balance:number|null;points_pending:number|null;points_expiring:number|null;
   points_status:"not_active"|"ledger_only"|"verified"|"counter";
-  redemption_place?:"counter"|null;program?:ProgramInfo;
+  redemption_place?:"counter"|"site"|null;program?:ProgramInfo;channels?:ClubChannels;
   site?:{coupons_enabled:boolean;coupons:SiteCoupon[]}|null;
   available_rewards:MemberClubReward[];
   transactions:Array<{id:string;kind:string;points_delta:number;created_at:string;description:string}>;

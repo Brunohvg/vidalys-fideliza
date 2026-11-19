@@ -374,6 +374,48 @@ class OnlineRedemptionTests(StoreFixture, TestCase):
             self.assertEqual(recheck_nuvemshop_order_event.apply(args=[str(event.pk)]).get(), "requires_review")
         self.assertEqual(NuvemshopOrderRecheck.objects.get(event=event).status, "needs_review")
 
+    # ---------- Cadastros confirmados que ficaram "aguardando a loja" ----------
+
+    def verified_signup(self, name, email):
+        now = timezone.now()
+        terms = ProgramTerms.objects.get(tenant=self.tenant)
+        invite = EnrollmentInvite.objects.create(tenant=self.tenant, terms=terms,
+                                                 token_digest=hashlib.sha256(email.encode()).hexdigest(),
+                                                 expires_at=now + timedelta(hours=1), consumed_at=now)
+        return EnrollmentSubmission.objects.create(
+            tenant=self.tenant, invitation=invite, terms=terms, name=name, email=email, accepted_at=now,
+            terms_digest="d" * 64, email_verified_at=now, status=EnrollmentSubmission.Status.EMAIL_VERIFIED)
+
+    def test_activate_verified_members_then_site_order_grants(self):
+        from io import StringIO
+        from django.core.management import call_command
+        bia = self.verified_signup("Bia", "bia@example.invalid")
+        self.assertEqual(self.paid("9701", 10000, email="bia@example.invalid"), "nothing")   # ainda não participa
+        preview = StringIO()
+        call_command("activate_verified_members", "--tenant", self.tenant.slug, stdout=preview)
+        self.assertIn("1 cadastro(s) confirmado(s) aguardando a loja", preview.getvalue())
+        bia.refresh_from_db()
+        self.assertIsNone(bia.participant_id)                              # sem --apply nada muda
+        out = StringIO()
+        call_command("activate_verified_members", "--tenant", self.tenant.slug, "--apply", stdout=out)
+        self.assertIn("1 ativadas agora", out.getvalue())
+        bia.refresh_from_db()
+        self.assertEqual(bia.participant.status, "active")
+        self.assertIn("granted", self.paid("9702", 10000, email="bia@example.invalid"))
+
+    def test_repeated_signup_with_same_email_joins_existing_member(self):
+        from apps.participants.standalone_activation import activate_verified_submission
+        caio = ProgramParticipant.objects.create(
+            tenant=self.tenant, display_name="Caio", contact_email="caio@example.invalid", external_customer_id=None,
+            consent_at=timezone.now() - timedelta(days=1), terms_version="v1",
+            consent_channel=ProgramParticipant.ConsentChannel.CUSTOMER_PORTAL, status=ProgramParticipant.Status.ACTIVE)
+        signup = self.verified_signup("Caio", "Caio@Example.invalid")
+        self.assertEqual(activate_verified_submission(signup.pk), "joined_existing")
+        signup.refresh_from_db()
+        self.assertEqual(signup.participant_id, caio.pk)
+        again = self.verified_signup("Ana de novo", "ana@example.invalid")      # Ana já entra pelo cadastro dela
+        self.assertEqual(activate_verified_submission(again.pk), "skipped:duplicate_signup")
+
     def test_double_click_returns_same_coupon(self):
         self.paid("9001", 15776)
         with REMOTE:

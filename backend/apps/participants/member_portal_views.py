@@ -258,6 +258,11 @@ def _program(tenant):
     return mode_payload(tenant.pk)
 
 
+def _channels(tenant):
+    from apps.sales.policy import channels
+    return channels(tenant)
+
+
 def _counter_pilot(tenant):
     from apps.sales.pilot import pilot_enabled
     return pilot_enabled(tenant)
@@ -355,6 +360,7 @@ class MemberClubPublicView(APIView):
                 and len(terms.privacy_notice.strip()) >= 120
             ),
             "points_enabled": live or _counter_pilot(tenant),
+            "channels": _channels(tenant),
             "rewards_enabled": live,
             "redemption_enabled": live,
             "published_rewards": _published_catalog(tenant),
@@ -580,7 +586,8 @@ class MemberClubMeView(APIView):
             "points_expiring": ledger["points_expiring"] if ledger else None,
             "points_status": (("verified" if live else "counter" if counter_pilot else "ledger_only")
                               if ledger else "not_active"),
-            "redemption_place": "counter" if counter_pilot else None,
+            "redemption_place": (("counter" if _channels(tenant)["counter"] else "site") if counter_pilot else None),
+            "channels": _channels(tenant),
             "program": _program(tenant),
             "site": _site(tenant, participant) if counter_pilot else None,
             **vip,

@@ -129,8 +129,13 @@ class Command(BaseCommand):
         self.line(OK, f"Tetos em vigor: {brl(effective_per_sale(pilot))} por compra · {brl(effective_budget(pilot))} no total")
         for text in blockers(pilot):
             self.line(FAIL, f"Bloqueio do comercial: {text}")
-        self.line(OK if can_operate(tenant) else WARN, "Balcão pode gerar saldo agora" if can_operate(tenant)
-                  else "Balcão não gera saldo agora (pausado ou bloqueado)")
+        from apps.sales.policy import channels
+        on = channels(tenant)
+        self.line(OK, "Canais do clube: " + (" e ".join(n for n, v in (("site", on["site"]), ("balcão", on["counter"])) if v)
+                                             or "nenhum"))
+        if on["counter"]:
+            self.line(OK if can_operate(tenant) else WARN, "Balcão pode gerar saldo agora" if can_operate(tenant)
+                      else "Balcão não gera saldo agora (pausado ou bloqueado)")
         if tenant.platform == "nuvemshop":
             status = site_status(tenant)
             labels = (("connected", "Loja conectada"), ("orders_scope", "Permissão de pedidos"),

@@ -152,3 +152,13 @@ class OperationPolicyTests(StoreFixture, TestCase):
         self.assertFalse(can_operate(self.tenant, "site_earn"))
         self.assertFalse(can_operate(self.tenant, "site_coupon"))
         self.assertTrue(can_operate(self.tenant))                               # balcão segue
+
+    def test_nuvemshop_store_runs_site_only_until_counter_is_turned_on(self):
+        from .pilot import counter_enabled
+        from .policy import channels
+        self.assertEqual(channels(self.tenant), {"site": True, "counter": False})
+        self.assertFalse(counter_enabled(self.tenant))
+        self.assertTrue(can_operate(self.tenant, "site_earn"))                  # site segue normal
+        on = self.caps(counter_enabled=True)
+        self.assertEqual(on.data["channels"], {"site": True, "counter": True})
+        self.assertTrue(counter_enabled(self.tenant))

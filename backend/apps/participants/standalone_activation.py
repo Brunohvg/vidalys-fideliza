@@ -23,24 +23,45 @@ def activate_standalone_after_email(token: str) -> bool:
     ).values("submission_id").first()
     if not challenge:
         return False
+    return activate_verified_submission(challenge["submission_id"]) == "created"
+
+
+@transaction.atomic
+def activate_verified_submission(submission_id) -> str:
+    """Ativa um cadastro com aceite e e-mail confirmado que ainda não virou participante.
+
+    "created": nova participação ativa. "joined_existing": já havia participação ATIVA com o
+    mesmo e-mail nesta loja (cadastro repetido): o cadastro passa a apontar para ela, sem
+    criar outra pessoa. Outros resultados ("skipped:<motivo>") não mudam nada.
+    Usado na confirmação do e-mail e pelo comando activate_verified_members.
+    """
+    sub = EnrollmentSubmission.objects.select_related("tenant", "terms").get(pk=submission_id)
     # Trava do tenant impede corrida de dois aceites do mesmo e-mail.
-    sub = EnrollmentSubmission.objects.select_related("tenant", "terms").get(
-        pk=challenge["submission_id"],
-    )
     tenant = Tenant.objects.select_for_update().get(pk=sub.tenant_id)
     submission = EnrollmentSubmission.objects.select_for_update().get(pk=sub.id)
-    if (tenant.status != Tenant.Status.ACTIVE
-            or submission.status != EnrollmentSubmission.Status.EMAIL_VERIFIED
-            or submission.email_verified_at is None
-            or submission.withdrawn_at is not None
-            or submission.participant_id is not None):
-        return False
+    if tenant.status != Tenant.Status.ACTIVE:
+        return "skipped:store_inactive"
+    if (submission.status != EnrollmentSubmission.Status.EMAIL_VERIFIED
+            or submission.email_verified_at is None):
+        return "skipped:not_verified"
+    if submission.withdrawn_at is not None:
+        return "skipped:withdrawn"
+    if submission.participant_id is not None:
+        return "skipped:already_member"
     # Uma pessoa já inscrita neste mesmo tenant não vira outra por novo formulário.
-    if ProgramParticipant.objects.filter(
+    same = list(ProgramParticipant.objects.filter(
         tenant=tenant, contact_email__iexact=submission.email,
         status__in=(ProgramParticipant.Status.ACTIVE, ProgramParticipant.Status.PAUSED),
-    ).exists():
-        return False
+    )[:2])
+    if same:
+        if len(same) != 1 or same[0].status != ProgramParticipant.Status.ACTIVE:
+            return "skipped:existing_needs_review"
+        if EnrollmentSubmission.objects.filter(participant=same[0]).exists():
+            return "skipped:duplicate_signup"     # a pessoa já entra pelo cadastro anterior
+        submission.participant = same[0]
+        submission.status = EnrollmentSubmission.Status.MEMBER
+        submission.save(update_fields=["participant", "status"])
+        return "joined_existing"
     participant = ProgramParticipant.objects.create(
         tenant=tenant, external_customer_id=None,
         display_name=submission.name, contact_email=submission.email,
@@ -58,4 +79,4 @@ def activate_standalone_after_email(token: str) -> bool:
         tenant_id=tenant.pk, participant_id=participant.pk,
         email=submission.email, proof_method="email_otp",
     )
-    return True
+    return "created"

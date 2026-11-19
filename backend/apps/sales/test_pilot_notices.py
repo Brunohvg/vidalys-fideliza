@@ -98,6 +98,10 @@ class PilotNoticeTests(TestCase):
         self.assertIn("R$ 15,77", subject)
         self.assertIn("a partir de R$ 80,00", text)
         self.assertEqual(label, "Ver meu crédito")
+        _, _, site_text, _ = notice_copy(store="Bibelô", gift=True, kind="released", amount=1577,
+                                         expires_at=when, min_order_cents=8000, counter=False)
+        self.assertNotIn("caixa", site_text)                       # loja só no site
+        self.assertIn("no site", site_text)
         subject, *_ = notice_copy(store="Bibelô", gift=False, kind="expiring", amount=1200, expires_at=when)
         self.assertIn("1.200 pontos", subject)
         self.assertTrue(ProgramMode)  # importado: modo giftback usa o mesmo ledger

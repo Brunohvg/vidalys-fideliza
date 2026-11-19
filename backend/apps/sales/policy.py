@@ -136,3 +136,16 @@ def ledger_write_allowed(tenant, *, settles):
     """Baixas e devoluções (resgate, estorno, vencimento) sempre podem acontecer: pausar o clube
     não pode deixar um cupom usado sem baixa. Crédito novo, liberação e reserva exigem operar."""
     return has_club(tenant) if settles else can_operate(tenant)
+
+
+def channels(tenant):
+    """Onde o clube funciona nesta loja: {"site": bool, "counter": bool}."""
+    from apps.tenants.models import Tenant
+    tenant_obj = tenant if isinstance(tenant, Tenant) else Tenant.objects.filter(pk=tenant).first()
+    pilot = _pilot(tenant)
+    site = bool(tenant_obj and tenant_obj.platform == "nuvemshop" and (pilot is None or pilot.online_earning))
+    if pilot is None:
+        counter = bool(tenant_obj and tenant_obj.platform != "nuvemshop")
+    else:
+        counter = pilot.counter_enabled
+    return {"site": site, "counter": counter}

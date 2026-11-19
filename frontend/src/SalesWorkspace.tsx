@@ -61,6 +61,7 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
  const [tab,setTab]=useState<Tab>(canEdit?"counter":"orders");
  const [items,setItems]=useState<ManualSaleRecord[]>([]);
  const [pilot,setPilot]=useState(false);
+ const [counterOn,setCounterOn]=useState(true);
  const [avgTicket,setAvgTicket]=useState(0);
  const [program,setProgram]=useState<ProgramInfo>({mode:"points"});
  const [loading,setLoading]=useState(true);
@@ -71,7 +72,8 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
 
  useEffect(()=>{
   let active=true;setLoading(true);setListError("");
-  merchantApi.listManualSales(tenantId).then(d=>{if(active){setItems(d.items);setPilot(Boolean(d.pilot_active));setAvgTicket(d.average_ticket_cents||0);setProgram(d.program&&d.program.mode?d.program:{mode:"points"});}})
+  merchantApi.listManualSales(tenantId).then(d=>{if(active){setItems(d.items);setPilot(Boolean(d.pilot_active));setAvgTicket(d.average_ticket_cents||0);setProgram(d.program&&d.program.mode?d.program:{mode:"points"});
+   setCounterOn(d.channels?.counter!==false);}})
    .catch(e=>{if(active)setListError(e instanceof ApiError?e.message:"Não foi possível consultar as vendas.");})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false};
@@ -92,7 +94,9 @@ export default function SalesWorkspace({tenantId,role,initialClient}:{tenantId:s
 
  const pending=items.filter(i=>i.state==="awaiting_review"||i.state==="awaiting_member").length;
  const shared:Shared={tenantId,items,loading,listError,pilot,avgTicket,program,rule,pointValue,reload:()=>setVersion(v=>v+1)};
- const TABS:[Tab,string][]=canEdit?[["counter","Balcão"],["review","Conferir"],["orders","Pedidos"]]:[["orders","Pedidos"]];
+ /* Loja só no site: Balcão e Conferir somem (o clube ganha pelos pedidos pagos, sem conferência). */
+ const TABS:[Tab,string][]=canEdit&&counterOn?[["counter","Balcão"],["review","Conferir"],["orders","Pedidos"]]:[["orders","Pedidos"]];
+ useEffect(()=>{if(!counterOn&&tab!=="orders")setTab("orders");},[counterOn,tab]);
 
  return <section className="vf-screen vf-sales-page" aria-labelledby="vf-sales-title">
   <div className="vf-head"><div><span className="vf-eyebrow">Vendas</span><h1 id="vf-sales-title" className="vf-h1">Vendas</h1></div></div>

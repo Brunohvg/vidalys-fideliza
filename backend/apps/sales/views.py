@@ -110,6 +110,7 @@ class ManualSalesView(APIView):
         if not member:
             return safe_reply({"detail": "Acesso restrito à administração."}, 403)
         from .pilot import average_ticket, mode_payload, pilot_enabled
+        from .policy import channels
         records = list(SaleRecord.objects.filter(
             tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
         ).select_related("participant", "submitted_by", "counter_redemption__reward")[:60])
@@ -119,6 +120,7 @@ class ManualSalesView(APIView):
         return safe_reply({
             "mode": "pilot_points" if pilot else "manual_review_only", "points_credited": False,
             "pilot_active": pilot, "average_ticket_cents": avg, "program": mode_payload(tenant_id),
+            "channels": channels(tenant_id),
             "items": [present_sale(item, viewer_id=request.user.pk, suggestions=hints, pilot=True, avg_ticket=avg)
                       for item in records],
         })
@@ -442,6 +444,7 @@ class CounterPilotView(APIView):
         from .pilot import pilot_allowed, pilot_state
         data = request.data
         site_keys = {"online_earning", "online_coupons", "coupon_combines", "coupons_paused"}
+        site_keys = {*site_keys, "counter_enabled"}
         allowed_keys = {"active", "per_sale_cap_points", "budget_points", *site_keys}
         if not isinstance(data, dict) or not data or not set(data) <= allowed_keys:
             return safe_reply({"detail": "Informe se o piloto fica ativo e os tetos."}, 400)
@@ -464,7 +467,8 @@ class CounterPilotView(APIView):
         if (data.get("active") and not program_mode(tenant.pk)
                 and not PointRuleDraft.objects.filter(tenant=tenant).exists()):
             return safe_reply({"detail": "Salve a regra de pontos antes de ativar o piloto."}, 409)
-        pilot, _ = CounterPilot.objects.get_or_create(tenant=tenant, defaults={"updated_by": request.user})
+        pilot, _ = CounterPilot.objects.get_or_create(tenant=tenant, defaults={
+            "updated_by": request.user, "counter_enabled": tenant.platform != "nuvemshop"})
         now = timezone.now()
         for key in ("per_sale_cap_points", "budget_points", *site_keys):
             if key in data:

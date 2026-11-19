@@ -8,7 +8,7 @@ import {ApiError,publicEnrollmentApi,type MemberClubPrivate,type SiteCoupon as C
 const money=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const day=(iso:string)=>new Date(iso).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
 
-export function CouponTicket({coupon}:{coupon:Coupon}){
+export function CouponTicket({coupon,counter=true}:{coupon:Coupon;counter?:boolean}){
  const [copied,setCopied]=useState(false);
  /* Criação ainda sem confirmação da loja: sem código (pode não existir) e com o saldo guardado. */
  if(coupon.state!=="issued")return <section className="clb-card clb-ticket-empty clb-ticket-pending" role="status"
@@ -30,7 +30,8 @@ export function CouponTicket({coupon}:{coupon:Coupon}){
     <button type="button" className="clb-btn is-light is-small" onClick={()=>void copy()} aria-label={"Copiar cupom "+coupon.code}>
      {copied?<><Check size={16} aria-hidden="true"/> Copiado</>:<><Copy size={16} aria-hidden="true"/> Copiar</>}</button></div>
    {coupon.apply_url&&<a className="clb-btn is-primary" href={coupon.apply_url} target="_blank" rel="noopener noreferrer">Comprar com o cupom</a>}
-   <small>Vale uma vez. Se preferir usar no caixa, é só dizer seu celular: o cupom do site é cancelado sozinho.</small>
+   <small>{counter?"Vale uma vez. Se preferir usar no caixa, é só dizer seu celular: o cupom do site é cancelado sozinho."
+    :"Vale uma vez, no carrinho do site. Compre com o mesmo e-mail do clube para ganhar crédito de novo."}</small>
   </div>
  </section>;
 }
@@ -49,7 +50,7 @@ export default function SiteCouponArea({slug,me,balance,gift,onChange}:{slug:str
    publicEnrollmentApi.clubMe(slug).then(onChange).catch(()=>undefined);}
   finally{setBusy(false);}
  };
- if(gift&&credit)return <CouponTicket coupon={credit}/>;
+ if(gift&&credit)return <CouponTicket coupon={credit} counter={me.channels?.counter??true}/>;
  if(gift&&balance!==null&&balance>0)return <section className="clb-card clb-ticket-empty">
   <span className="clb-badge"><Ticket size={22} aria-hidden="true"/></span>
   <div><strong>Prefere comprar no site?</strong><span>Gere um cupom com seu crédito de {money(balance)}. Ele vale uma vez e o desconto sai no carrinho.</span></div>

@@ -44,6 +44,12 @@ def pilot_enabled(tenant):
     return can_operate(_tenant_id(tenant))
 
 
+def counter_enabled(tenant):
+    """Clube operando E canal balcão ligado nesta loja."""
+    from .policy import channels
+    return pilot_enabled(tenant) and channels(_tenant_id(tenant))["counter"]
+
+
 def source_reference(sale):
     return f"counter:{sale.pk}"
 
@@ -131,7 +137,7 @@ def _notice_stats(tenant):
 
 
 def pilot_state(tenant):
-    from .policy import snapshot
+    from .policy import channels, snapshot
     pilot = CounterPilot.objects.filter(tenant=tenant).first()
     rule = _rule(tenant.pk)
     issued = issued_points(tenant.pk)
@@ -150,6 +156,7 @@ def pilot_state(tenant):
         "site": _site_state(tenant, pilot),
         "counter_rewards": _rewards_qs(tenant.pk).count(),
         "operation": snapshot(pilot),
+        "channels": channels(tenant),
     }
 
 
@@ -250,8 +257,8 @@ def counter_wallet(participant, *, amount_cents=0):
 
 def reserve_reward(*, sale, participant, reward_id, operator):
     """Reserva os pontos do vale na hora da venda. Chamar dentro de transação."""
-    if not pilot_enabled(sale.tenant_id):
-        raise PilotBlocked("O piloto de pontos não está ativo nesta loja.")
+    if not counter_enabled(sale.tenant_id):
+        raise PilotBlocked("O clube não está ligado no balcão desta loja.")
     if program_mode(sale.tenant_id):
         raise PilotBlocked("Esta loja usa giftback: aplique o crédito, não um vale de pontos.")
     reward = _rewards_qs(sale.tenant_id).filter(pk=reward_id).select_for_update().first()
@@ -274,8 +281,8 @@ def reserve_reward(*, sale, participant, reward_id, operator):
 
 def reserve_credit(*, sale, participant, operator):
     """Giftback: usa todo o crédito liberado da cliente nesta compra (pedido mínimo da loja)."""
-    if not pilot_enabled(sale.tenant_id):
-        raise PilotBlocked("O piloto não está ativo nesta loja.")
+    if not counter_enabled(sale.tenant_id):
+        raise PilotBlocked("O clube não está ligado no balcão desta loja.")
     gift = program_mode(sale.tenant_id)
     if gift is None:
         raise PilotBlocked("Esta loja usa pontos, não giftback.")
@@ -344,7 +351,7 @@ def settle_redemption(sale, *, approve):
 
 def grant_for_review(sale, reviewer):
     """Venda confirmada pelo lojista vira pontos pendentes. Retorna (pontos, motivo)."""
-    if not pilot_enabled(sale.tenant_id):
+    if not counter_enabled(sale.tenant_id):
         return 0, "pilot_off"
     participant = sale.participant
     if participant is None or participant.status != ProgramParticipant.Status.ACTIVE:
