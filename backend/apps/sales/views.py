@@ -321,7 +321,7 @@ class ManualSaleReviewView(APIView):
             return safe_reply({"detail": "Decisão ou justificativa inválida."}, 400)
         Tenant.objects.select_for_update().get(pk=tenant_id)
         sale = get_object_or_404(
-            SaleRecord.objects.select_for_update().select_related("participant"),
+            SaleRecord.objects.select_for_update(of=("self",)).select_related("participant"),
             pk=sale_id, tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER,
         )
         if sale.state != SaleRecord.State.AWAITING_REVIEW:
@@ -364,7 +364,7 @@ class ManualSaleBatchConfirmView(APIView):
         from .pilot import average_ticket, sale_alerts
         Tenant.objects.select_for_update().get(pk=tenant_id)
         avg = average_ticket(tenant_id)
-        sales = SaleRecord.objects.select_for_update().select_related("participant").filter(
+        sales = SaleRecord.objects.select_for_update(of=("self",)).select_related("participant").filter(
             tenant_id=tenant_id, channel=SaleRecord.Channel.COUNTER, pk__in=ids,
             state=SaleRecord.State.AWAITING_REVIEW,
         ).order_by("created_at")

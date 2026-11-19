@@ -21,6 +21,7 @@ Testes controlados continuam livres; cada item abaixo é **obrigatório antes de
 | 9 | Cupom incerto liberado após uma consulta negativa e 10 min | **Feito, com risco residual** | Libera só com cupom de 1 h+ e duas consultas negativas com 30 min de intervalo. A busca da Nuvemshop por código pode ser incompleta: se o cupom existir e for usado depois, o uso tardio debita o saldo que houver e registra a falta |
 | 10 | "Pago" na Nuvemshop não é liquidação comprovada | **Proteção de risco (não é prova)** | Comercial exige carência de 7+ dias no site; reconsulta OAuth; estorno automático em cancelado/reembolsado/anulado. Contestação depois da carência continua possível, limitada ao teto por compra (R$ 200) |
 | 11 | Concorrência real com PostgreSQL e worker caindo | **Feito (CI)** | `test_concurrency_postgres.py`: duas conexões ao mesmo tempo gerando cupom, processando o mesmo pedido pago e gastando o mesmo saldo; testes do clube também rodam em PostgreSQL no job `external_database_smoke`. Corrigido: pedido duplicado simultâneo não tenta criar o lote duas vezes |
+| 11a | **Bug real achado pelo PostgreSQL do CI**: Confirmar venda (Conferir, individual e em lote) dava erro 500 em PostgreSQL (`FOR UPDATE cannot be applied to the nullable side of an outer join`) | **Feito** | Lock só na linha da venda (`select_for_update(of=("self",))`). No SQLite o erro não aparece, por isso o CI comum passava |
 | 12 | Documentação legada contraditória | Pendente | docs/52 corrigido; consolidar 38–49 num guia único depois do teste real |
 
 ## Política de operação (item 2)
