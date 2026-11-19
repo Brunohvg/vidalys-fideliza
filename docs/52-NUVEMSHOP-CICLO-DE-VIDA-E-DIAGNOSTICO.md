@@ -3,6 +3,11 @@
 **Data:** 17/11/2026. **Estado:** implementado na branch `feature/diferenciais-clube`.
 **Efeito financeiro:** nenhum. Nenhuma flag `POINTS/LEDGER/PSP/CHECKOUT` foi ligada.
 
+> **Correção (19/11/2026):** os itens 1 e 2 abaixo (`app/uninstalled`, `orders/cancelled`,
+> `orders/voided`) **não estão no código** desta branch: o servidor só recebe
+> `/api/v1/webhooks/orders/paid/` e `/api/v1/webhooks/orders/updated/`. Cancelamento e reembolso
+> chegam pelo `order/updated`. Não cadastre os outros três no Portal de Parceiros até existirem.
+
 ## O que mudou
 
 1. **`app/uninstalled`** — `POST /api/v1/webhooks/app/uninstalled/`, HMAC

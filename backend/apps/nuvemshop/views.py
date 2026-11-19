@@ -195,6 +195,14 @@ class OAuthStartView(APIView):
         return response
 
 
+def _queue_webhooks(tenant_id):
+    try:
+        from .tasks import ensure_order_webhooks
+        ensure_order_webhooks.delay(str(tenant_id))
+    except Exception:
+        logger.warning("nuvemshop order_webhooks enqueue_failed tenant=%s", tenant_id)
+
+
 @never_cache
 @require_GET
 def oauth_callback(request):
@@ -266,6 +274,10 @@ def oauth_callback(request):
                 tenant.platform = "nuvemshop"
                 tenant.external_store_id = received["store_id"]
                 tenant.save(update_fields=["platform", "external_store_id", "updated_at"])
+            # Sem os avisos de pedido a loja nunca informa pago/cancelado: cadastra o que faltar,
+            # no worker isolado, depois de gravar a instalação. Falha aqui não desfaz a conexão.
+            if getattr(settings, "FIDELIZA_NUVEMSHOP_ORDER_WEBHOOKS_ENABLED", False):
+                transaction.on_commit(lambda: _queue_webhooks(tenant.pk))
         return _safe_result("connected", attempt.tenant_id)
     except OAuthExchangeError as exc:
         logger.warning("nuvemshop oauth exchange refused tenant=%s reason=%s", attempt.tenant_id, exc)

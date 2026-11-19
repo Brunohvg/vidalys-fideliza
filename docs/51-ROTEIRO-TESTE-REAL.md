@@ -11,6 +11,7 @@ Marque cada passo e anote a evidência (print ou saída do comando). CI verde n�
 | A2 | Mesma saída: "Versão implantada" | Igual ao último commit da branch no GitHub (se aparecer "não informada", conferir no Coolify → Deployments) | ☐ |
 | A3 | Serviços `api`, `frontend`, `worker`, `beat`, `nuvemshop-sync`, `redis` | Todos "Running" e saudáveis no Coolify | ☐ |
 | A4 | Abrir o painel e o Meu Clube público da loja | Carregam sem erro; Meu clube mostra "Modo teste" | ☐ |
+| A5 | `python manage.py nuvemshop_webhooks --tenant <slug> --ensure` (lojas conectadas antes do cadastro automático) | "✔ order/paid" e "✔ order/updated"; `club_readiness` passa a mostrar os dois avisos cadastrados | ☐ |
 
 Se A1 mostrar migração pendente: backup → `FIDELIZA_APPLY_MIGRATIONS=1` → Redeploy → voltar para 0 → repetir A1.
 

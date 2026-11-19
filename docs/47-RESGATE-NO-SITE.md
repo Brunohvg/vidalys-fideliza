@@ -53,7 +53,10 @@ desligado), pausar novos cupons (cupons já gerados continuam valendo).
 3. Permissão **Cupons** (`write_coupons`) habilitada no app do Portal de Parceiros e a loja
    reautorizada (Configurações → Canais → Atualizar conexão).
 4. `FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED=1` (API e `nuvemshop-sync`).
-5. Serviços `beat` e `nuvemshop-sync` rodando. Migrações `sales.0012_online_redemption` e `sales.0013_coupon_uncertain`.
+5. Avisos de pedido cadastrados na loja (`order/paid` e `order/updated`): **automático** ao
+   conectar ou "Atualizar conexão" (tarefa `nuvemshop.ensure_order_webhooks`, fila nuvemshop).
+   Loja conectada antes disso: `python manage.py nuvemshop_webhooks --tenant <slug> --ensure`.
+6. Serviços `beat` e `nuvemshop-sync` rodando. Migrações `sales.0012_online_redemption` e `sales.0013_coupon_uncertain`.
 
 ## Limites conhecidos / próxima fase
 - **Titularidade**: a API de cupons da Nuvemshop não vincula cupom a cliente. Quem tiver o código

@@ -35,7 +35,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--tenant", help="slug de uma loja")
-        parser.add_argument("--skip-workers", action="store_true", help="não consultar Redis/workers")
+        parser.add_argument("--skip-workers", action="store_true", help="não consultar Redis, workers nem Nuvemshop")
 
     def line(self, mark, text):
         self.stdout.write(f"  {mark} {text}")
@@ -74,7 +74,7 @@ class Command(BaseCommand):
         if not pilots.exists():
             self.stdout.write("\nNenhuma loja com clube configurado" + (f" ({opts['tenant']})" if opts["tenant"] else "") + ".")
         for pilot in pilots:
-            self.store(pilot, now)
+            self.store(pilot, now, remote=not opts["skip_workers"])
 
         self.stdout.write("\nResultado: " + ("FALHA — corrija os itens ✖" if self.failed else "OK (itens ! são avisos)"))
         if self.failed:
@@ -100,7 +100,22 @@ class Command(BaseCommand):
         self.line(OK, f"Workers ativos: {len(queues)}")
         self.line(OK if "nuvemshop" in names else FAIL, "Worker da fila nuvemshop (cupons e reconsulta)")
 
-    def store(self, pilot, now):
+    def webhooks(self, tenant):
+        """Avisos de pedido cadastrados na Nuvemshop (só leitura)."""
+        from apps.nuvemshop.webhook_setup import order_webhooks
+        try:
+            result = order_webhooks(tenant)
+        except Exception:
+            self.line(WARN, "Avisos cadastrados na Nuvemshop: não verificado (sem resposta)")
+            return
+        if "_skipped" in result:
+            self.line(WARN, f"Avisos cadastrados na Nuvemshop: não verificado ({result['_skipped']})")
+            return
+        for event, state in sorted(result.items()):
+            self.line(OK if state == "ok" else FAIL, f"Aviso {event} cadastrado na Nuvemshop" if state == "ok"
+                      else f"Aviso {event} NÃO cadastrado: python manage.py nuvemshop_webhooks --tenant {tenant.slug} --ensure")
+
+    def store(self, pilot, now, remote=True):
         from apps.nuvemshop.order_webhook_models import OrderWebhookEvent
         from apps.points.models import PointLot
         from apps.sales.models import OnlineCoupon
@@ -123,6 +138,8 @@ class Command(BaseCommand):
                       ("coupons_server", "Cupons ligados no servidor"))
             for key, label in labels:
                 self.line(OK if status[key] else WARN, label)
+            if remote:
+                self.webhooks(tenant)
             since = now - timedelta(days=7)
             events = OrderWebhookEvent.objects.filter(tenant=tenant)
             last = events.order_by("-received_at").values_list("received_at", flat=True).first()

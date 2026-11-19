@@ -78,3 +78,20 @@ def revoke_expired_nuvemshop_coupons(self):
             # No free balance on failure. Next scan or operator inspects it.
             logger.warning("Revogação automática de cupom requer revisão")
     return f"checked={len(candidates)} revoked={completed}"
+
+
+@shared_task(bind=True, name="nuvemshop.ensure_order_webhooks",
+             queue="nuvemshop", max_retries=4, retry_backoff=True,
+             retry_jitter=True, retry_backoff_max=900, acks_late=True, ignore_result=True)
+def ensure_order_webhooks(self, tenant_id: str):
+    """Depois do OAuth: cadastra os avisos de pedido que faltam. Só o UUID trafega no broker."""
+    from apps.tenants.models import Tenant
+    from .webhook_setup import order_webhooks
+    tenant = Tenant.objects.filter(pk=tenant_id, platform="nuvemshop").first()
+    if tenant is None:
+        return
+    try:
+        order_webhooks(tenant, ensure=True)
+    except Exception:
+        logger.warning("Avisos de pedido pendentes de cadastro, tentativa=%s", self.request.retries + 1)
+        raise self.retry(exc=RuntimeError("order_webhooks_pending")) from None
