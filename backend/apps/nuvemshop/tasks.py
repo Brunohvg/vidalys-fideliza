@@ -38,6 +38,14 @@ def recheck_nuvemshop_order_event(self, event_id: str):
     except (RecheckBlocked, IngestionConflict, RevocationBlocked):
         # Conflito permanente: registrar para conciliação manual; não
         # produzir loop de retries nem divulgar PII/token em logs.
+        # Fica visível no club_readiness ("conferência manual"); o clube já rodou antes.
+        from .models import NuvemshopOrderRecheck
+        from django.utils import timezone
+        NuvemshopOrderRecheck.objects.filter(event_id=event_id).exclude(status="checked").update(
+            status="needs_review", checked_at=timezone.now())
+        if not NuvemshopOrderRecheck.objects.filter(event_id=event_id).exists():
+            NuvemshopOrderRecheck.objects.create(event_id=event_id, status="needs_review",
+                                                 checked_at=timezone.now())
         logger.warning("Pedido Nuvemshop exige conciliacao manual")
         return "requires_review"
     except (OrderReadError, OAuthConfigurationError, ClubRetry):

@@ -335,6 +335,45 @@ class OnlineRedemptionTests(StoreFixture, TestCase):
             _run_club(event=event, tenant=self.tenant, order=self.nuvem_order("9900"))
         self.assertEqual(NuvemshopOrderRecheck.objects.get(event=event).status, "club_retry")
 
+    # ---------- Identidade do clube para conceder (celular só desmente) ----------
+
+    def paid_with_phone(self, order_id, phone):
+        order = {"contact_email": "ana@example.invalid", "contact_phone": phone, "coupon": []}
+        return handle_order(tenant=self.tenant, order=order, order_id=order_id,
+                            status=SaleRecord.OrderStatus.PAID, total_cents=10000)
+
+    def test_local_phone_format_does_not_block_and_matching_phone_grants(self):
+        from apps.participants.phone import phone_fields
+        digest, last4 = phone_fields(tenant_id=self.tenant.pk, raw="(31) 99999-1111")
+        ProgramParticipant.objects.filter(pk=self.ana.pk).update(phone_digest=digest, phone_last4=last4)
+        self.assertIn("granted", self.paid_with_phone("9601", "31999991111"))        # sem +55, mesmo número
+        self.assertIn("granted", self.paid_with_phone("9602", "telefone ilegível"))  # não aponta para ninguém
+
+    def test_contradictory_phone_blocks_grant_but_not_coupon_settlement(self):
+        from apps.participants.phone import phone_fields
+        digest, last4 = phone_fields(tenant_id=self.tenant.pk, raw="(31) 99999-1111")
+        ProgramParticipant.objects.filter(pk=self.ana.pk).update(phone_digest=digest, phone_last4=last4)
+        self.paid("9001", 10000)
+        with REMOTE:
+            coupon = issue_coupon(self.ana)
+        order = {"contact_email": "ana@example.invalid", "contact_phone": "(21) 98888-2222",
+                 "coupon": [{"code": coupon.code}]}
+        out = handle_order(tenant=self.tenant, order=order, order_id="9603",
+                           status=SaleRecord.OrderStatus.PAID, total_cents=12000)
+        self.assertIn("coupon_used", out)                                          # baixa sempre
+        self.assertIn("phone_conflict", out)                                       # concessão não
+        self.assertFalse(PointLot.objects.filter(source_reference="site:9603").exists())
+
+    def test_blocked_recheck_is_recorded_for_the_readiness_report(self):
+        from apps.nuvemshop.models import NuvemshopOrderRecheck
+        from apps.nuvemshop.order_recheck_service import RecheckBlocked
+        from apps.nuvemshop.tasks import recheck_nuvemshop_order_event
+        event = self.event("9604")
+        with mock.patch("apps.nuvemshop.order_recheck_service.recheck_order_event",
+                        side_effect=RecheckBlocked("Contato informado exige conferência manual")):
+            self.assertEqual(recheck_nuvemshop_order_event.apply(args=[str(event.pk)]).get(), "requires_review")
+        self.assertEqual(NuvemshopOrderRecheck.objects.get(event=event).status, "needs_review")
+
     def test_double_click_returns_same_coupon(self):
         self.paid("9001", 15776)
         with REMOTE:

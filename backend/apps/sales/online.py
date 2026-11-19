@@ -432,6 +432,32 @@ def _participant_for(tenant, order, profile):
     return match[0].participant if len(match) == 1 else None
 
 
+def club_buyer(tenant, order, participant):
+    """Regra de identidade do CLUBE para conceder saldo de um pedido do site.
+
+    A cliente é achada pelo e-mail confirmado no clube (um único cadastro, e-mails do pedido
+    iguais entre si). Celular só serve para DESMENTIR: se o pedido traz um celular brasileiro
+    válido e a cliente tem celular cadastrado diferente, não concede (contato contraditório).
+    Celular em formato estranho ou cliente sem celular não bloqueia: não aponta para outra pessoa.
+    Devolve (participante ou None, motivo).
+    """
+    if participant is None:
+        return None, "not_member"
+    from apps.participants.phone import normalize_br_phone, phone_digests
+    customer = order.get("customer") if isinstance(order.get("customer"), dict) else {}
+    if participant.phone_digest:
+        for raw in {order.get("contact_phone"), customer.get("phone")}:
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            try:
+                e164 = normalize_br_phone(raw)
+            except ValueError:
+                continue
+            if participant.phone_digest not in phone_digests(tenant_id=tenant.pk, e164=e164):
+                return None, "phone_conflict"
+    return participant, "ok"
+
+
 def _order_codes(order):
     codes = order.get("coupon")
     return {c.get("code").upper() for c in codes if isinstance(c, dict) and isinstance(c.get("code"), str)} \
@@ -473,7 +499,8 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None, 
         lot = PointLot.objects.filter(tenant=tenant, source_reference=ref).first()
         if (grant and participant and pilot.online_earning and paid and lot is None
                 and can_operate(tenant, "site_earn")):
-            result.append(_grant_site(tenant, participant, total_cents, ref, order_id))
+            buyer, why = club_buyer(tenant, order, participant)
+            result.append(_grant_site(tenant, buyer, total_cents, ref, order_id) if buyer else why)
         if status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED):
             # Pedido desfeito depois de usar o cupom: o crédito usado volta para a cliente (uma vez).
             for coupon in OnlineCoupon.objects.select_for_update().filter(

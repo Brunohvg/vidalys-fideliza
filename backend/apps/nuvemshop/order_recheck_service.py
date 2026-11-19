@@ -272,6 +272,10 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
         # An external discount may have been consumed, but ZERO loyalty
         # points/cashback are issued to either shopper or voucher issuer.
         return incident
+    # Clube no site, etapa 2: titularidade conferida -> concede com a regra de identidade do
+    # CLUBE (e-mail confirmado + celular que não desminta). Não depende da conferência estrita
+    # de contatos do motor antigo logo abaixo, que recusa telefone sem +55.
+    _run_club(event=event, tenant=tenant, order=order, grant=True)
     identity, profile = _buyer_identity(order, tenant)
     summary = summarize_order(order, order_id=event.order_id,
                               participant_verified=profile is not None)
@@ -300,8 +304,6 @@ def recheck_order_event(*, event_id, opener=None, pause=None):
     coupon_result = _paid_coupon_from_order(
         event=event, order=order, sale=result.sale, profile=profile,
     )
-    # Clube no site, etapa 2: identidade coerente e titularidade conferidas -> concede o saldo novo.
-    _run_club(event=event, tenant=tenant, order=order, grant=True, profile=profile)
     if (status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED)
             and tenant.loyalty_live_enabled
             and settings.FIDELIZA_NUVEMSHOP_COUPON_OUTBOUND_ENABLED
