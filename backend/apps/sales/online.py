@@ -546,6 +546,9 @@ def _restore_credit(coupon, order_id):
 def _grant_site(tenant, participant, total_cents, ref, order_id):
     from apps.points.services import create_pending_lot
     pilot = CounterPilot.objects.select_for_update().get(tenant=tenant)
+    # Dois avisos do mesmo pedido ao mesmo tempo: quem chegou depois do lock vê o lote do primeiro.
+    if PointLot.objects.filter(tenant=tenant, source_reference=ref).exists():
+        return "nothing"
     terms = _terms(tenant.pk)
     if terms is None:
         return "no_rule"

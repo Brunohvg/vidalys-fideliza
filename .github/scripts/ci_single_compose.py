@@ -231,8 +231,12 @@ def main():
                 "apps.nuvemshop.test_pr30_payables",
                 "apps.loyalty.test_pr29_verified_order_grant",
                 "apps.nuvemshop.test_pr29_owner_advisory",
-                "apps.tenants.test_pr28_cost_gate", "--verbosity=1",
-            ], env, label="smoke PR25 cupom único, OAuth e triggers PostgreSQL descartável",
+                "apps.tenants.test_pr28_cost_gate",
+                # Clube (balcão, site, política) com locks reais e corridas entre duas conexões.
+                "apps.sales.test_counter_pilot", "apps.sales.test_online_redemption",
+                "apps.sales.test_operation_policy", "apps.sales.test_concurrency_postgres",
+                "--verbosity=1",
+            ], env, label="smoke PR25 cupom único, OAuth, triggers e corridas do clube em PostgreSQL",
                synthetic_test_output=True)
         print("SINGLE_COMPOSE_SMOKE_OK: " + args.mode, flush=True)
     finally:
