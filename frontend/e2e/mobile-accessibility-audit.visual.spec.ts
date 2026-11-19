@@ -234,8 +234,8 @@ for(const width of [320,390,768,1440]){
         await expect(page.getByLabel("Valor da compra")).toBeVisible();
       }
       if(nav==="Resultados"){
-        await expect(page.getByRole("heading",{name:"Novos membros por mês"})).toBeVisible();
-        await expect(page.getByText("Ainda não medido")).toBeVisible();
+        await expect(page.locator(".vr-kpi")).toHaveCount(4);
+        await expect(page.getByText("não provam que o clube causou as vendas")).toBeVisible();
       }
       await assertNoHorizontalOverflow(page,nav+" "+width);
       if(width===390&&["Vendas","Resultados","Meu clube"].includes(nav)){

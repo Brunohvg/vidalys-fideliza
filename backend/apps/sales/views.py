@@ -587,3 +587,19 @@ class ProgramModeView(APIView):
         row.updated_by = request.user
         row.save()
         return safe_reply({**present_mode(tenant), "points_credited": False})
+
+
+class ClubResultsView(APIView):
+    """Resultado do clube no período (30 ou 90 dias). Leitura para a equipe da loja."""
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "head", "options"]
+
+    def get(self, request, tenant_id):
+        member = TenantMembership.objects.filter(tenant_id=tenant_id, user=request.user).select_related("tenant").first()
+        if member is None:
+            return safe_reply({"detail": "Loja não encontrada."}, 404)
+        days = request.query_params.get("days", "30")
+        if days not in ("30", "90"):
+            return safe_reply({"detail": "Período inválido."}, 400)
+        from .results import club_results
+        return safe_reply(club_results(member.tenant, days=int(days)))

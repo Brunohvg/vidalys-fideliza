@@ -117,3 +117,20 @@ class OnlineRedemptionTests(TestCase):
             issue_coupon(self.ana)
         self.assertEqual(OnlineCoupon.objects.get().state, "failed")
         self.assertEqual(wallet_balances(self.ana)[1]["reserved"], 0)
+
+    def test_results_count_purchases_return_and_discount_without_causal_claim(self):
+        from .results import club_results
+        self.paid("9001", 10000)
+        with REMOTE:
+            coupon = issue_coupon(self.ana)
+        self.paid("9002", 12000, codes=[coupon.code])                      # volta e usa o cupom
+        data = club_results(self.tenant, days=30)
+        self.assertEqual(data["purchases"], 2)
+        self.assertEqual(data["buyers"], 1)
+        self.assertEqual(data["came_back"], 1)
+        self.assertEqual(data["revenue_cents"], 22000)
+        self.assertEqual(data["discount_cents"], 1000)
+        self.assertEqual(data["pulled_revenue_cents"], 12000)
+        self.assertEqual(data["cost_bps"], 455)                             # 10,00 / 220,00
+        self.assertFalse(data["causal_claim"])
+        self.assertEqual(len(data["months"]), 6)

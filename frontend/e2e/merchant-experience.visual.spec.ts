@@ -160,7 +160,7 @@ for(const width of [390,1440]){
   await page.goto("/app/visao-geral");
   await nav(page,"Resultados",width);
   await expect(page.getByRole("heading",{name:"O que o clube trouxe"})).toBeVisible();
-  await expect(page.locator(".vf-res-kpi")).toHaveCount(3);
+  await expect(page.locator(".vr-kpi")).toHaveCount(4);
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
  });

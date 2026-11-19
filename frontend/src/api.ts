@@ -339,6 +339,10 @@ export type SiteCoupon={code:string;discount_cents:number;min_order_cents:number
 export type SiteState={connected:boolean;orders_scope:boolean;coupons_scope:boolean;webhooks:boolean;coupons_server:boolean;
   earning_ready:boolean;coupons_ready:boolean;online_earning:boolean;online_coupons:boolean;coupon_combines:boolean;
   coupons_paused:boolean;coupons_active:number;coupons_used:number};
+export type ClubResults={days:number;program:ProgramInfo;members_active:number;purchases:number;revenue_cents:number;buyers:number;
+  came_back:number;issued:number;used:number;expired:number;reversed:number;discount_cents:number;pulled_revenue_cents:number;
+  cost_bps:number|null;open:{pending:number;available:number;reserved:number};months:{month:string;issued:number;used:number}[];
+  counter:{sales:number;with_member:number;member_cents:number;other_cents:number};causal_claim:false};
 export type ProgramInfo={mode:"points"}|{mode:"giftback";percent_bps:number;cap_cents:number;min_order_cents:number;validity_days:number;hold_days:number};
 export type ProgramModeState={
   mode:"points"|"giftback";saved:boolean;giftback_bps:number;giftback_cap_cents:number;
@@ -663,6 +667,8 @@ export const merchantApi = {
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/manual/"+encodeURIComponent(saleId)+"/undo/",{}),
   counterWallet: (tenantId:string,participantId:string)=>getJson<CounterWallet>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/sales/counter/participants/"+encodeURIComponent(participantId)+"/wallet/"),
+  clubResults: (tenantId:string,days:30|90)=>getJson<ClubResults>(
+    "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/results/?days="+days),
   programMode: (tenantId:string)=>getJson<ProgramModeState>(
     "/api/v1/tenants/"+encodeURIComponent(tenantId)+"/loyalty/program-mode/"),
   saveProgramMode: (tenantId:string,data:ProgramModeInput)=>postJson<ProgramModeState>(
