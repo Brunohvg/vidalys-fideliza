@@ -18,6 +18,8 @@ from apps.tenants.models import Tenant
 from .models import CounterPilot, CounterRedemption, DiscountRewardDraft, PointRuleDraft, ProgramMode, SaleRecord
 
 RULE_PREFIX = "pilot-v"
+# Crédito devolvido por pedido cancelado depois de usar o cupom: não é compra nova nem gasta orçamento.
+RESTORE_RULE = "pilot-vr1"
 HIGH_TICKET_MULTIPLIER = 10
 FALLBACK_HIGH_CENTS = 200_000  # sem histórico: alerta acima de R$ 2.000
 MIN_HISTORY = 5
@@ -49,7 +51,7 @@ def source_reference(sale):
 def issued_points(tenant_id):
     return PointLot.objects.filter(
         tenant_id=tenant_id, rule_version__startswith=RULE_PREFIX,
-    ).aggregate(total=Sum("points_issued"))["total"] or 0
+    ).exclude(rule_version=RESTORE_RULE).aggregate(total=Sum("points_issued"))["total"] or 0
 
 
 def _rule(tenant_id):

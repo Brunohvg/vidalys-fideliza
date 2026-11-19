@@ -15,7 +15,7 @@ from apps.points.models import PointEvent, PointLot
 from apps.points.services import lot_balances
 
 from .models import CounterRedemption, OnlineCoupon, SaleRecord
-from .pilot import RULE_PREFIX, mode_payload
+from .pilot import RESTORE_RULE, RULE_PREFIX, mode_payload
 
 
 def _sum(qs, field):
@@ -26,12 +26,12 @@ def club_results(tenant, *, days=30):
     now = timezone.now()
     since = now - timedelta(days=days)
     lots = PointLot.objects.filter(tenant=tenant, rule_version__startswith=RULE_PREFIX)
-    period = lots.filter(created_at__gte=since)
+    period = lots.filter(created_at__gte=since).exclude(rule_version=RESTORE_RULE)   # devolução não é compra
 
     revenue = _sum(period, "eligible_amount_cents")
     issued = _sum(period, "points_issued")
     buyers = set(period.values_list("wallet__participant_id", flat=True))
-    first_purchase = dict(lots.values("wallet__participant_id").annotate(first=Min("created_at"))
+    first_purchase = dict(lots.exclude(rule_version=RESTORE_RULE).values("wallet__participant_id").annotate(first=Min("created_at"))
                           .values_list("wallet__participant_id", "first"))
     returning = {p for p in buyers if first_purchase.get(p) and first_purchase[p] < since}
     repeat_in_period = {row["wallet__participant_id"] for row in
@@ -62,7 +62,7 @@ def club_results(tenant, *, days=30):
 
     months = []
     start = (now.replace(day=1) - timedelta(days=150)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    issued_by = dict(lots.filter(created_at__gte=start).annotate(m=TruncMonth("created_at"))
+    issued_by = dict(lots.filter(created_at__gte=start).exclude(rule_version=RESTORE_RULE).annotate(m=TruncMonth("created_at"))
                      .values("m").annotate(t=Sum("points_issued")).values_list("m", "t"))
     used_by = dict(PointEvent.objects.filter(lot__in=lots, kind=PointEvent.Kind.REDEEM, created_at__gte=start)
                    .annotate(m=TruncMonth("created_at")).values("m").annotate(t=Sum("amount")).values_list("m", "t"))

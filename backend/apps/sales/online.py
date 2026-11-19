@@ -449,7 +449,21 @@ def handle_order(*, tenant, order, order_id, status, total_cents, profile=None):
         lot = PointLot.objects.filter(tenant=tenant, source_reference=ref).first()
         if participant and pilot.online_earning and paid and lot is None and can_operate(tenant, "site_earn"):
             result.append(_grant_site(tenant, participant, total_cents, ref, order_id))
-        elif lot is not None and status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED):
+        if status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED):
+            # Pedido desfeito depois de usar o cupom: o crédito usado volta para a cliente (uma vez).
+            for coupon in OnlineCoupon.objects.select_for_update().filter(
+                    tenant=tenant, state=OnlineCoupon.State.USED, used_order_id=str(order_id)):
+                if any(e.get("event") in ("restored", "restore_skipped") for e in coupon.audit or []):
+                    continue
+                if coupon.participant.status != ProgramParticipant.Status.ACTIVE:
+                    _audit(coupon, "restore_skipped", order=order_id, reason="participant_inactive")
+                    coupon.save(update_fields=["audit"])
+                    continue
+                _restore_credit(coupon, order_id)
+                _audit(coupon, "restored", order=order_id, amount=coupon.points)
+                coupon.save(update_fields=["audit"])
+                result.append("credit_restored")
+        if lot is not None and status in (SaleRecord.OrderStatus.CANCELLED, SaleRecord.OrderStatus.REFUNDED):
             balances = lot_balances(lot)
             if balances["pending"]:
                 transition_points(lot_id=lot.pk, kind=PointEvent.Kind.REVERSE_PENDING,
@@ -483,6 +497,25 @@ def _late_redeem(coupon, order_id):
                           external_receipt=f"site:{order_id}:{coupon.code}")
         remaining -= take
     return remaining
+
+
+def _restore_credit(coupon, order_id):
+    """Devolve o valor do cupom como crédito liberado, valendo até a validade original (mínimo 7 dias)."""
+    from apps.points.services import create_pending_lot
+    from .pilot import RESTORE_RULE
+    participant = coupon.participant
+    ref = f"site-refund:{coupon.pk}"
+    if PointLot.objects.filter(tenant=coupon.tenant, source_reference=ref).exists():
+        return
+    now = timezone.now()
+    paid_at = max(now - timedelta(minutes=1), participant.joined_at, participant.consent_at)
+    create_pending_lot(
+        participant=participant, channel=SaleRecord.Channel.NUVEMSHOP, source_reference=ref,
+        eligible_amount_cents=coupon.discount_cents, points=coupon.points, rule_version=RESTORE_RULE,
+        paid_at=paid_at, unlock_at=paid_at, expires_at=max(coupon.expires_at, now + timedelta(days=7)),
+        verification_digest=hashlib.sha256(f"refund|{coupon.pk}|{order_id}|{coupon.points}".encode()).hexdigest(),
+        restore=True,
+    )
 
 
 def _grant_site(tenant, participant, total_cents, ref, order_id):

@@ -37,6 +37,7 @@ MOVEMENTS = {
 SETTLEMENT_KINDS = frozenset({
     PointEvent.Kind.REDEEM, PointEvent.Kind.CANCEL_RESERVE, PointEvent.Kind.REVERSE_PENDING,
     PointEvent.Kind.REVERSE_AVAILABLE, PointEvent.Kind.EXPIRE_PENDING, PointEvent.Kind.EXPIRE_AVAILABLE,
+    "restore",   # devolver crédito usado num pedido que foi cancelado: dívida com a cliente, não crédito novo
 })
 
 
@@ -115,9 +116,9 @@ def _post(lot, kind, amount, key, *, external_receipt=""):
 @transaction.atomic
 def create_pending_lot(*, participant, channel, source_reference,
                        eligible_amount_cents, points, rule_version,
-                       paid_at, unlock_at, expires_at, verification_digest):
+                       paid_at, unlock_at, expires_at, verification_digest, restore=False):
     """Domínio interno; digest fornecido não é prova independente de pagamento."""
-    _enabled(getattr(participant, "tenant_id", None))
+    _enabled(getattr(participant, "tenant_id", None), "restore" if restore else None)
     if (not isinstance(participant, ProgramParticipant)
             or participant.pk is None
             or participant.status != ProgramParticipant.Status.ACTIVE):

@@ -139,13 +139,18 @@ def _ledger_snapshot(tenant, participant):
             .aggregate(total=Sum("delta"))["total"] or 0)
     if soon < 0:
         return None
-    from apps.sales.pilot import program_mode
-    labels = GIFT_HISTORY if program_mode(tenant.pk) else POINT_HISTORY
+    from apps.sales.pilot import RESTORE_RULE, program_mode
+    gift = bool(program_mode(tenant.pk))
+    labels = GIFT_HISTORY if gift else POINT_HISTORY
     history = []
     for event in (PointEvent.objects.filter(
         lot__wallet=wallet, lot__tenant=tenant,
-    ).order_by("-created_at", "-id")[:20]):
+    ).select_related("lot").order_by("-created_at", "-id")[:20]):
         desc, sign = labels.get(event.kind, ("Movimentação interna", 0))
+        if event.kind == PointEvent.Kind.ACCRUE and event.lot.rule_version == RESTORE_RULE:
+            desc = ("Crédito" if gift else "Pontos") + " de volta: pedido cancelado"
+        elif event.kind == PointEvent.Kind.REVERSE_AVAILABLE and event.external_receipt.startswith("site:"):
+            desc = "Cupom usado no site"
         history.append({
             "id":str(event.pk),"kind":event.kind,
             "points_delta":event.amount * sign,

@@ -58,5 +58,8 @@ desligado), pausar novos cupons (cupons já gerados continuam valendo).
 ## Limites conhecidos / próxima fase
 - **Titularidade**: a API de cupons da Nuvemshop não vincula cupom a cliente. Quem tiver o código
   consegue usar uma vez. Mitigação: código aleatório de 8 caracteres, uso 1, compra mínima e validade.
-- Pedido cancelado **depois** de usar o cupom: o resgate não é desfeito automaticamente.
+- Pedido cancelado/reembolsado **depois** de usar o cupom: o ganho do pedido é estornado e o
+  crédito usado volta para a cliente uma única vez (lote `site-refund:<cupom>`, regra `pilot-vr1`,
+  validade original com mínimo de 7 dias). Não conta como compra nem gasta orçamento. Cliente que
+  saiu do clube: não volta (fica `restore_skipped` na auditoria). O cupom antigo não volta a valer.
 - Fase 2: aplicar o saldo sozinho no carrinho via API de Descontos (sem digitar código).

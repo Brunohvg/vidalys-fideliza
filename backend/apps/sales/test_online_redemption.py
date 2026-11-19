@@ -222,6 +222,46 @@ class OnlineRedemptionTests(StoreFixture, TestCase):
         # Crédito antigo debitado (1000); o pedido 9200 gera 1200 novos, ainda pendentes.
         self.assertEqual(wallet_balances(self.ana)[1], {"pending": 1200, "available": 0, "reserved": 0})
 
+    # ---------- Pedido desfeito depois de usar o cupom ----------
+
+    def used_then(self, status):
+        self.paid("9001", 10000)                                            # R$ 10 de crédito
+        with REMOTE:
+            coupon = issue_coupon(self.ana)
+        self.paid("9500", 12000, codes=[coupon.code])                      # usa e ganha R$ 12 (pendente)
+        out = handle_order(tenant=self.tenant, order={}, order_id="9500", status=status, total_cents=12000)
+        coupon.refresh_from_db()
+        return coupon, out
+
+    def test_refunded_order_returns_used_credit_once_and_reverses_its_gain(self):
+        coupon, out = self.used_then(SaleRecord.OrderStatus.REFUNDED)
+        self.assertIn("credit_restored", out)
+        self.assertIn("reversed", out)                                      # o ganho do pedido 9500 sai
+        restored = PointLot.objects.get(source_reference=f"site-refund:{coupon.pk}")
+        self.assertEqual((restored.points_issued, restored.rule_version), (1000, "pilot-vr1"))
+        self.assertGreaterEqual(restored.expires_at, coupon.expires_at)
+        self.assertEqual(coupon.audit[-1]["event"], "restored")
+        again = handle_order(tenant=self.tenant, order={}, order_id="9500",
+                             status=SaleRecord.OrderStatus.CANCELLED, total_cents=12000)
+        self.assertNotIn("credit_restored", again)                          # webhook repetido / cancelado depois
+        self.assertEqual(PointLot.objects.filter(source_reference__startswith="site-refund:").count(), 1)
+        from .pilot import issued_points, release_due
+        release_due(PointLot.objects.get(pk=restored.pk).wallet)
+        self.assertEqual(wallet_balances(self.ana)[1]["available"], 1000)  # crédito de volta, liberado
+        self.assertEqual(issued_points(self.tenant.pk), 1000 + 1200)        # devolução não gasta orçamento
+
+    def test_restore_skipped_when_member_left_the_club(self):
+        self.paid("9001", 10000)
+        with REMOTE:
+            coupon = issue_coupon(self.ana)
+        self.paid("9500", 12000, codes=[coupon.code])
+        ProgramParticipant.objects.filter(pk=self.ana.pk).update(status=ProgramParticipant.Status.WITHDRAWN)
+        out = handle_order(tenant=self.tenant, order={}, order_id="9500",
+                           status=SaleRecord.OrderStatus.CANCELLED, total_cents=12000)
+        self.assertNotIn("credit_restored", out)
+        coupon.refresh_from_db()
+        self.assertEqual(coupon.audit[-1]["event"], "restore_skipped")
+
     def test_double_click_returns_same_coupon(self):
         self.paid("9001", 15776)
         with REMOTE:
