@@ -142,7 +142,7 @@ export default function MemberClub(){
       {([["home","Início",House],["rewards","Trocar",Gift],["history","Extrato",ListOrdered],["rules","Regras",CircleHelp],["profile","Perfil",UserRound]] as const)
         .map(([key,label,Icon])=><button key={key} type="button" className={"clb-tab"+(section===key?" is-on":"")}
           aria-current={section===key?"page":undefined} onClick={()=>openSection(key)}>
-          <Icon size={22} aria-hidden="true"/>{label}</button>)}
+          <Icon size={22} aria-hidden="true"/>{key==="rewards"&&club&&giftOf(club)?"Usar":label}</button>)}
     </nav>}
   </div>;
 }
@@ -422,7 +422,7 @@ function Member({slug,club,me,section,onOpen,onLogout,onChange}:{slug:string;clu
         <li><span>3</span><p>O desconto sai na mesma compra, e a compra nova já gera crédito para a próxima.</p></li>
       </ol></section></div>
       :<Redeem slug={slug} me={me} balance={balance} verified={verified}/>)}
-    {section==="history"&&<History me={me}/>}
+    {section==="history"&&<History me={me} gift={Boolean(gift)}/>}
     {section==="rules"&&<Rules slug={slug} club={club} me={me}/>}
     {section==="profile"&&<Profile slug={slug} club={club} me={me} onLogout={onLogout} onChange={onChange}/>}
 
@@ -505,14 +505,14 @@ function Redeem({slug,me,balance,verified}:{slug:string;me:MemberClubPrivate;bal
   </div>;
 }
 
-function History({me}:{me:MemberClubPrivate}){
+function History({me,gift=false}:{me:MemberClubPrivate;gift?:boolean}){
   return <div className="clb-stack">
-    <div className="clb-page-head"><h1>Extrato</h1><span>Cada ponto, de onde veio e quando entrou.</span></div>
+    <div className="clb-page-head"><h1>Extrato</h1><span>{gift?"Cada crédito, de onde veio e quando foi usado.":"Cada ponto, de onde veio e quando entrou."}</span></div>
     {me.transactions.length?<section className="clb-card is-flush"><ul className="clb-rows">
       {me.transactions.map(t=><li key={t.id}>
         <span className={"clb-row-ico "+(t.points_delta<0?"is-out":"is-in")} aria-hidden="true">{t.points_delta<0?<TicketPercent size={18}/>:<Sparkles size={18}/>}</span>
         <div><strong>{t.description}</strong><span>{new Date(t.created_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"})}</span></div>
-        <b className={t.points_delta<0?"is-out":"is-in"}>{t.points_delta>0?"+":t.points_delta<0?"−":""}{pts(Math.abs(t.points_delta))}</b>
+        <b className={t.points_delta<0?"is-out":"is-in"}>{t.points_delta>0?"+":t.points_delta<0?"−":""}{gift?money(Math.abs(t.points_delta)):pts(Math.abs(t.points_delta))}</b>
       </li>)}</ul></section>
     :<section className="clb-card clb-empty"><ListOrdered size={24} aria-hidden="true"/>
       <div><strong>Nenhuma movimentação ainda</strong><span>Suas compras e trocas aparecem aqui assim que a loja registrar.</span></div></section>}

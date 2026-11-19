@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.sales.campaign_engine import offers_for
+from apps.sales.pilot import mode_payload
 from apps.sales.models import SaleRecord
 from apps.tenants.models import TenantMembership
 from .models import ProgramParticipant
@@ -54,6 +55,7 @@ def _detail(participant):
             "state": sale.state, "order_status": sale.order_status,
         } for sale in sales],
         "offers": offers_for(tenant_id, participant.pk) if participant.status == ProgramParticipant.Status.ACTIVE else [],
+        "program": mode_payload(tenant_id),
     }
 
 

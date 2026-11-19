@@ -146,7 +146,7 @@ test("Recusar pede confirmação e não credita pontos",async({page})=>{
   await page.getByRole("tab",{name:/Conferir/}).click();
   await page.getByRole("button",{name:"Recusar venda de Ana Souza"}).click();
   await page.getByRole("button",{name:"Recusar venda",exact:true}).click();
-  await expect(page.getByText("Venda recusada. Nenhum ponto foi creditado.")).toBeVisible();
+  await expect(page.getByText("Venda recusada: nenhum ponto foi creditado.")).toBeVisible();
 });
 
 test("Sem piloto ativo, o balcão avisa que a venda não gera crédito",async({page})=>{

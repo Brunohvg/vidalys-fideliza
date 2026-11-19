@@ -19,7 +19,7 @@ async function merchant(page:Page){
 const go=async(page:Page,width:number,nav:string)=>{
   await page.goto("/app/visao-geral");
   if(width<=1020)await page.getByRole("button",{name:"Abrir menu"}).click();
-  await page.locator(".portal-nav").getByRole("button",{name:nav,exact:true}).click();
+  await page.locator(".portal-nav").getByRole("button",{name:new RegExp("^"+nav+"(\\s|$)")}).click();
 };
 
 for(const width of [390,1440]){
@@ -110,3 +110,63 @@ for(const width of [390,1440]){
     await page.screenshot({path:info.outputPath("giftback-cliente-"+width+".png"),fullPage:true});
   });
 }
+
+for(const width of [390,1440]){
+  test("Meu clube: 3 passos de ativação, ativar e pausar o piloto em "+width+"px",async({page},info)=>{
+    await page.setViewportSize({width,height:1000});await merchant(page);
+    await page.route("**/api/v1/tenants/**/loyalty/program-mode/",r=>r.fulfill(json({mode:"giftback",saved:true,giftback_bps:1000,
+      giftback_cap_cents:2000,giftback_min_order_cents:8000,giftback_validity_days:30,giftback_hold_days:7,average_ticket_cents:15776})));
+    let pilot={allowed:true,active:false,per_sale_cap_points:2000,budget_points:50000,issued_points:12400,activated_at:null as string|null,
+      paused_at:null as string|null,rule:null,counter_rewards:0,program};
+    const posts:unknown[]=[];
+    await page.route("**/api/v1/tenants/**/sales/pilot/",r=>{
+      if(r.request().method()==="POST"){const b=r.request().postDataJSON();posts.push(b);pilot={...pilot,...b};}
+      return r.fulfill(json(pilot));
+    });
+    await go(page,width,"Meu clube");
+    const steps=page.getByRole("navigation",{name:"Ativação do clube"});
+    await expect(steps).toContainText("Giftback em uso");
+    await expect(steps.locator("[aria-current=step]")).toContainText("Ative no balcão");
+    await steps.getByRole("button",{name:"Ir para a ativação"}).click();
+    const card=page.locator("#vf-pilot-card");
+    await expect(card).toContainText("R$ 124,00 de R$ 500,00");
+    await expect(card).toContainText("Giftback salvo: 10% de volta");
+    await card.getByRole("button",{name:"Ativar piloto"}).click();
+    await expect(page.getByText("Piloto ativo.",{exact:false})).toBeVisible();
+    await expect(steps).toContainText("Ativo: confirme as vendas");
+    await noOverflow(page);
+    await steps.screenshot({path:info.outputPath("passos-"+width+".png")});
+    await card.getByRole("button",{name:"Pausar agora"}).click();
+    await expect(page.getByText("Novas conferências não geram crédito",{exact:false})).toBeVisible();
+    expect(posts).toEqual([{active:true},{active:false}]);
+  });
+}
+
+test("Piloto não liberado: passo 3 avisa liberação pela equipe, sem botão",async({page})=>{
+  await merchant(page);
+  await page.route("**/api/v1/tenants/**/loyalty/program-mode/",r=>r.fulfill(json({mode:"points",saved:false,giftback_bps:1000,
+    giftback_cap_cents:2000,giftback_min_order_cents:8000,giftback_validity_days:30,giftback_hold_days:7})));
+  await page.route("**/api/v1/tenants/**/sales/pilot/",r=>r.fulfill(json({allowed:false,active:false,per_sale_cap_points:1500,
+    budget_points:50000,issued_points:0,activated_at:null,paused_at:null,rule:null,counter_rewards:0,program:{mode:"points"}})));
+  await go(page,1440,"Meu clube");
+  await expect(page.getByRole("navigation",{name:"Ativação do clube"})).toContainText("Liberação pela equipe Vidalys");
+  await expect(page.getByRole("button",{name:"Ativar piloto"})).toHaveCount(0);
+  await expect(page.getByText("Não liberado")).toBeVisible();
+});
+
+test("Conferir no giftback fala em crédito, não em pontos",async({page})=>{
+  await merchant(page);
+  const now=new Date().toISOString();
+  await page.route("**/api/v1/tenants/**/sales/manual/",r=>r.fulfill(json({mode:"pilot_points",points_credited:false,pilot_active:true,program,
+    items:[{id:"g1",channel:"counter",reference:"CUPOM-1",participant_id:"p1",participant_name:"Ana Souza",eligible_amount_cents:15776,
+      reported_paid_at:now,evidence_reference:"CUPOM-1",state:"awaiting_review",submitted_by_me:true,reviewed_by_me:false,review_mode:null,
+      review_note:null,created_at:now,reviewed_at:null,points_credited:false,cashback_credited:false,points_preview:1577,alerts:[],can_undo:false}]})));
+  await page.route("**/api/v1/tenants/**/sales/manual/g1/review/",r=>r.fulfill(json({sale:{},manual_evidence_reviewed:true,review_mode:"self_review",
+    independent_payment_proof:false,points_credited:true,points:1577,points_reason:"granted"})));
+  await go(page,1440,"Vendas");
+  await page.getByRole("tab",{name:/Conferir/}).click();
+  await expect(page.getByText("O crédito só entra depois de confirmar.",{exact:false})).toBeVisible();
+  await expect(page.getByText("≈ +R$ 15,77")).toBeVisible();
+  await page.getByRole("button",{name:"Confirmar",exact:true}).click();
+  await expect(page.getByText("Venda confirmada: +R$ 15,77 de crédito para Ana, liberado em 7 dias.")).toBeVisible();
+});

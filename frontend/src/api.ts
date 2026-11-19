@@ -382,7 +382,7 @@ export type ParticipantDetail = {
   participant:ProgramParticipant;
   profile:{email_verified:boolean;marketing_opt_in:boolean;birth_day:number|null;birth_month:number|null;terms_version:string};
   sales:{id:string;channel:string;reference:string;amount_cents:number;at:string|null;state:string;order_status:string}[];
-  offers:MemberOffer[];
+  offers:MemberOffer[];program?:ProgramInfo;
 };
 export type ProgramParticipant = {
   id: string;

@@ -8,7 +8,7 @@ import {ApiError,merchantApi,type CounterPilotState,type Store} from "./api";
 const pts=(n:number)=>n.toLocaleString("pt-BR");
 const money=(cents:number)=>(cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 
-export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:Store["role"]}){
+export default function CounterPilotCard({tenantId,role,refresh=0,onState}:{tenantId:string;role:Store["role"];refresh?:number;onState?:(s:CounterPilotState|null)=>void}){
  const owner=role==="owner";
  const [state,setState]=useState<CounterPilotState|null>(null);
  const [error,setError]=useState("");
@@ -20,15 +20,16 @@ export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:S
 
  useEffect(()=>{
   let active=true;
-  merchantApi.counterPilot(tenantId).then(s=>{if(!active)return;setState(s);
+  merchantApi.counterPilot(tenantId).then(s=>{if(!active)return;setState(s);onState?.(s);
    setCap(String(s.per_sale_cap_points/100));setBudget(String(s.budget_points/100));})
-   .catch(()=>{if(active)setHidden(true);});
+   .catch(()=>{if(active){setHidden(true);onState?.(null);}});
   return()=>{active=false};
- },[tenantId]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[tenantId,refresh]);
 
  const save=async(data:{active?:boolean;per_sale_cap_points?:number;budget_points?:number},done:string)=>{
   if(busy)return;setBusy(true);setError("");setNotice("");
-  try{const s=await merchantApi.setCounterPilot(tenantId,data);setState(s);setNotice(done);}
+  try{const s=await merchantApi.setCounterPilot(tenantId,data);setState(s);onState?.(s);setNotice(done);}
   catch(e){setError(e instanceof ApiError?e.message:"Não foi possível salvar.");}
   finally{setBusy(false);}
  };
@@ -40,11 +41,11 @@ export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:S
 
  if(hidden||!state)return null;
 
- if(!state.allowed)return <section className="vf-card ss-section" aria-labelledby="ss-pilot-title">
+ if(!state.allowed)return <section id="vf-pilot-card" className="vf-card ss-section" aria-labelledby="ss-pilot-title">
   <div className="vf-row is-top">
    <span className="vf-ico tone-rose" aria-hidden="true"><LockKeyhole size={20}/></span>
-   <div className="vf-row-main"><strong id="ss-pilot-title">Pontos no balcão</strong>
-    <span>A liberação é feita loja a loja pela equipe Vidalys. Enquanto isso, as vendas são registradas e conferidas, sem crédito de pontos.</span></div>
+   <div className="vf-row-main"><strong id="ss-pilot-title">Ativar no balcão</strong>
+    <span>A liberação é feita loja a loja pela equipe Vidalys. Enquanto isso, as vendas são registradas e conferidas, sem gerar pontos nem crédito.</span></div>
    <span className="vf-chip is-soft">Não liberado</span>
   </div>
  </section>;
@@ -52,22 +53,23 @@ export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:S
  const used=state.budget_points?Math.min(100,state.issued_points/state.budget_points*100):0;
  const gift=state.program&&state.program.mode==="giftback"?state.program:null;
  const ready=Boolean(state.rule)||Boolean(gift);
- return <section className="vf-card ss-section ss-pilot" aria-labelledby="ss-pilot-title">
-  <div className="vf-card-head"><div><h2 id="ss-pilot-title" className="vf-h2">Piloto de pontos no balcão</h2>
+ const unit=gift?"crédito":"pontos";
+ return <section id="vf-pilot-card" className="vf-card ss-section ss-pilot" aria-labelledby="ss-pilot-title">
+  <div className="vf-card-head"><div><h2 id="ss-pilot-title" className="vf-h2">{gift?"Giftback no balcão":"Pontos no balcão"}: piloto</h2>
    <span className="vf-muted vf-small">Teste controlado: só esta loja, só no ambiente de homologação.</span></div>
    <span className={"vf-chip "+(state.active?"is-ok":"is-gold")}>{state.active?"Ativo":"Pausado"}</span></div>
 
   <ol className="ss-pilot-steps">
    <li><b>Balcão registra</b> a venda com o celular da cliente.</li>
-   <li><b>Você confirma</b> em Vendas → Conferir. Só então os pontos entram, em carência.</li>
+   <li><b>Você confirma</b> em Vendas → Conferir. Só então {gift?"o crédito entra":"os pontos entram"}, em carência.</li>
    <li><b>A cliente usa no caixa:</b> o vendedor aplica {gift?"o crédito":"o vale"} e o desconto sai na mesma compra.</li>
   </ol>
 
   <div className="ss-pilot-budget">
-   <div className="ss-pilot-line"><span>{gift?"Crédito e pontos emitidos":"Pontos emitidos"}</span><strong>{pts(state.issued_points)} de {pts(state.budget_points)}</strong></div>
+   <div className="ss-pilot-line"><span>{gift?"Crédito emitido":"Pontos emitidos"}</span><strong>{gift?`${money(state.issued_points)} de ${money(state.budget_points)}`:`${pts(state.issued_points)} de ${pts(state.budget_points)}`}</strong></div>
    <div className="ss-pilot-bar" role="progressbar" aria-label="Orçamento do piloto usado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used)}>
     <i style={{width:Math.max(used,2)+"%"}}/></div>
-   <span className="vf-muted vf-small">Equivale a {money(state.issued_points)} em descontos possíveis. Ao atingir o orçamento, novas vendas são conferidas sem pontos.</span>
+   <span className="vf-muted vf-small">{gift?"":`Equivale a ${money(state.issued_points)} em descontos possíveis. `}Ao atingir o orçamento, novas vendas são conferidas sem gerar {unit}.</span>
   </div>
 
   {gift?<ul className="ss-pilot-checks" aria-label="Antes de ativar">
@@ -84,10 +86,10 @@ export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:S
 
   {owner?<>
    <div className="vf-grid2 ss-pilot-limits">
-    <label className="vf-field is-compact">Teto por venda (R$ em pontos)
+    <label className="vf-field is-compact">Teto por venda (R$)
      <input inputMode="decimal" value={cap} onChange={e=>setCap(e.target.value)} disabled={busy}/>
-     <small>Uma venda nunca gera mais que isso. Sugestão: R$ 15.</small></label>
-    <label className="vf-field is-compact">Orçamento total do piloto (R$ em pontos)
+     <small>Uma venda nunca gera mais que isso em {unit}. Sugestão: R$ 15 (ou o teto do giftback).</small></label>
+    <label className="vf-field is-compact">Orçamento total do piloto (R$)
      <input inputMode="decimal" value={budget} onChange={e=>setBudget(e.target.value)} disabled={busy}/>
      <small>Soma de tudo que o piloto pode emitir. Sugestão: R$ 500.</small></label>
    </div>
@@ -96,7 +98,7 @@ export default function CounterPilotCard({tenantId,role}:{tenantId:string;role:S
    <div className="ss-actions ss-pilot-actions">
     <button type="button" className="vf-btn" disabled={busy} onClick={saveLimits}>Salvar tetos</button>
     {state.active?<button type="button" className="vf-btn is-danger" disabled={busy}
-      onClick={()=>void save({active:false},"Piloto pausado. Novas conferências não geram pontos e vales não podem ser usados.")}>
+      onClick={()=>void save({active:false},gift?"Piloto pausado. Novas conferências não geram crédito e o crédito não pode ser usado.":"Piloto pausado. Novas conferências não geram pontos e vales não podem ser usados.")}>
       <CirclePause size={18}/> Pausar agora</button>
      :<button type="button" className="vf-btn is-primary" disabled={busy||!ready}
       onClick={()=>void save({active:true},"Piloto ativo. Confirme as próximas vendas em Vendas → Conferir.")}>

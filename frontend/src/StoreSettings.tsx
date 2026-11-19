@@ -1,5 +1,4 @@
 import {useEffect,useRef,useState,type FormEvent} from "react";
-import CounterPilotCard from "./CounterPilotCard";
 import {Check,CircleHelp,Copy,Download,ExternalLink,FileText,LockKeyhole,Mail,MessageCircle,Monitor,
  RefreshCw,ShieldCheck,ShoppingBag,TriangleAlert,X} from "lucide-react";
 import {ApiError,merchantApi,type NuvemshopConnectionStatus,type ProgramTermsStatus,
@@ -326,7 +325,14 @@ export default function StoreSettings({tenantId,role,userName,userEmail,initialS
      </div>
     </section>}
 
-    {section==="canais"&&<CounterPilotCard tenantId={tenantId} role={role}/>}
+    {section==="canais"&&<section className="vf-card ss-section" aria-labelledby="ss-pilot-link">
+     <div className="vf-row is-top">
+      <span className="vf-ico tone-rose" aria-hidden="true"><ShieldCheck size={20}/></span>
+      <div className="vf-row-main"><strong id="ss-pilot-link">Pontos e giftback no balcão</strong>
+       <span>Escolher o modo, revisar a regra e ativar o piloto ficam juntos em Meu clube → Como ganhar.</span></div>
+      <button type="button" className="vf-btn is-small" onClick={onGoToProgram}>Abrir em Meu clube</button>
+     </div>
+    </section>}
 
     {section==="pagina"&&<section className="vf-card ss-section" aria-labelledby="ss-domains-title">
      <div className="vf-card-head"><div><h2 id="ss-domains-title" className="vf-h2">Página do clube</h2>

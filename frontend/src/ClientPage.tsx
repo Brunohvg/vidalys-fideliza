@@ -53,6 +53,7 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,onBack,onRe
  const p=data.participant;const prof=data.profile;
  const paused=p.status==="paused";
  const points=p.points_status==="ledger_only"&&p.points_balance!==null?p.points_balance:null;
+ const gift=data.program?.mode==="giftback";
  const pending=data.sales.filter(s=>s.state==="awaiting_review").length;
  const clubUrl=window.location.origin+"/clube/"+encodeURIComponent(storeSlug);
 
@@ -71,7 +72,7 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,onBack,onRe
   finally{setBusy(false);}
  };
  const copyLink=async()=>{
-  try{await navigator.clipboard.writeText(clubUrl);setNotice("Link do clube copiado. Envie para o cliente acompanhar os pontos.");}
+  try{await navigator.clipboard.writeText(clubUrl);setNotice(gift?"Link do clube copiado. Envie para o cliente acompanhar o crédito.":"Link do clube copiado. Envie para o cliente acompanhar os pontos.");}
   catch{setNotice("Link do clube: "+clubUrl);}
  };
 
@@ -102,8 +103,9 @@ export default function ClientPage({tenantId,clientId,role,storeSlug,onBack,onRe
   {paused&&<div className="vf-note is-warn" role="status">Participação pausada: novas vendas não podem ser registradas para este cliente até retomar.</div>}
 
   <div className="vf-grid4 vf-client-kpis">
-   <div className="vf-kpi"><span className="vf-kpi-label">Pontos</span><strong className="vf-kpi-val">{points===null?"—":points.toLocaleString("pt-BR")}</strong>
-    <span className="vf-muted vf-small">{points===null?"Pontuação ainda não ativa":money(points)+" em descontos"}</span></div>
+   <div className="vf-kpi"><span className="vf-kpi-label">{gift?"Crédito":"Pontos"}</span>
+    <strong className="vf-kpi-val">{points===null?"—":gift?money(points):points.toLocaleString("pt-BR")}</strong>
+    <span className="vf-muted vf-small">{points===null?(gift?"Giftback ainda sem crédito":"Pontuação ainda não ativa"):gift?"liberado para usar":money(points)+" em descontos"}</span></div>
    <div className="vf-kpi"><span className="vf-kpi-label">Compras registradas</span><strong className="vf-kpi-val">{data.sales.length}</strong>
     <span className="vf-muted vf-small">{p.manual_sales_reviewed} conferidas no balcão</span></div>
    <div className="vf-kpi"><span className="vf-kpi-label">Valor informado</span><strong className="vf-kpi-val">{money(p.manual_sales_reported_cents)}</strong>

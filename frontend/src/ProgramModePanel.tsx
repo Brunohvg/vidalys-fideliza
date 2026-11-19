@@ -17,7 +17,7 @@ export const RECOMMENDED:ProgramModeInput={mode:"giftback",giftback_bps:1000,gif
 export const giftbackSentence=(g:{percent_bps:number;cap_cents:number;min_order_cents:number;validity_days:number})=>
  `A cada compra, o cliente recebe ${g.percent_bps/100}% de volta em crédito (até ${money(g.cap_cents)}), para usar em até ${g.validity_days} dias numa compra a partir de ${money(g.min_order_cents)}.`;
 
-export default function ProgramModePanel({tenantId,canEdit,onMode}:{tenantId:string;canEdit:boolean;onMode:(mode:"points"|"giftback")=>void}){
+export default function ProgramModePanel({tenantId,canEdit,onMode}:{tenantId:string;canEdit:boolean;onMode:(mode:"points"|"giftback",saved:boolean)=>void}){
  const [state,setState]=useState<ProgramModeState|null>(null);
  const [draft,setDraft]=useState<ProgramModeInput>(RECOMMENDED);
  const [busy,setBusy]=useState(false);
@@ -27,10 +27,10 @@ export default function ProgramModePanel({tenantId,canEdit,onMode}:{tenantId:str
 
  useEffect(()=>{
   let active=true;
-  merchantApi.programMode(tenantId).then(s=>{if(!active)return;setState(s);onMode(s.mode);
+  merchantApi.programMode(tenantId).then(s=>{if(!active)return;setState(s);onMode(s.mode,s.saved);
    setDraft({mode:s.mode,giftback_bps:s.giftback_bps,giftback_cap_cents:s.giftback_cap_cents,giftback_min_order_cents:s.giftback_min_order_cents,
     giftback_validity_days:s.giftback_validity_days,giftback_hold_days:s.giftback_hold_days});})
-   .catch(()=>{if(active){setHidden(true);onMode("points");}});
+   .catch(()=>{if(active){setHidden(true);onMode("points",false);}});
   return()=>{active=false};
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[tenantId]);
@@ -51,7 +51,7 @@ export default function ProgramModePanel({tenantId,canEdit,onMode}:{tenantId:str
  const minProblem=draft.giftback_min_order_cents<=draft.giftback_cap_cents?"O pedido mínimo precisa ser maior que o teto do crédito.":"";
  const save=async(next:ProgramModeInput)=>{
   if(busy||!canEdit)return;setBusy(true);setError("");setNotice("");
-  try{const s=await merchantApi.saveProgramMode(tenantId,next);setState({...s,average_ticket_cents:state.average_ticket_cents});onMode(s.mode);
+  try{const s=await merchantApi.saveProgramMode(tenantId,next);setState({...s,average_ticket_cents:state.average_ticket_cents});onMode(s.mode,true);
    setNotice(s.mode==="giftback"?"Giftback salvo. As próximas vendas confirmadas geram crédito em reais.":"Modo pontos salvo. As próximas vendas confirmadas geram pontos.");}
   catch(e){setError(e instanceof ApiError?e.message:"Não foi possível salvar o modo.");}
   finally{setBusy(false);}

@@ -97,6 +97,18 @@ POINT_HISTORY = {
     PointEvent.Kind.EXPIRE_PENDING: ("Pontos expirados em carência", -1),
     PointEvent.Kind.EXPIRE_AVAILABLE: ("Pontos expirados", -1),
 }
+# Mesmo ledger no modo giftback (1 unidade = R$ 0,01), com palavras de crédito.
+GIFT_HISTORY = {
+    PointEvent.Kind.ACCRUE: ("Crédito da compra", 1),
+    PointEvent.Kind.RELEASE: ("Crédito liberado para usar", 0),
+    PointEvent.Kind.RESERVE: ("Crédito reservado no caixa", 0),
+    PointEvent.Kind.CANCEL_RESERVE: ("Reserva devolvida", 0),
+    PointEvent.Kind.REDEEM: ("Crédito usado na loja", -1),
+    PointEvent.Kind.REVERSE_PENDING: ("Compra estornada antes da liberação", -1),
+    PointEvent.Kind.REVERSE_AVAILABLE: ("Compra estornada após liberação", -1),
+    PointEvent.Kind.EXPIRE_PENDING: ("Crédito vencido", -1),
+    PointEvent.Kind.EXPIRE_AVAILABLE: ("Crédito vencido", -1),
+}
 
 
 def _ledger_snapshot(tenant, participant):
@@ -127,11 +139,13 @@ def _ledger_snapshot(tenant, participant):
             .aggregate(total=Sum("delta"))["total"] or 0)
     if soon < 0:
         return None
+    from apps.sales.pilot import program_mode
+    labels = GIFT_HISTORY if program_mode(tenant.pk) else POINT_HISTORY
     history = []
     for event in (PointEvent.objects.filter(
         lot__wallet=wallet, lot__tenant=tenant,
     ).order_by("-created_at", "-id")[:20]):
-        desc, sign = POINT_HISTORY.get(event.kind, ("Movimentação interna", 0))
+        desc, sign = labels.get(event.kind, ("Movimentação interna", 0))
         history.append({
             "id":str(event.pk),"kind":event.kind,
             "points_delta":event.amount * sign,

@@ -223,9 +223,9 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
    setToast(result.already_recorded?"Este cupom já estava registrado. Nada foi duplicado."
     :chosen&&reward?`Venda registrada com o ${reward.title}. Os pontos do vale ficam reservados até a conferência.`
     :chosen&&creditOn?`Venda registrada com ${money(credit)} de crédito. O crédito fica reservado até a conferência.`
-    :chosen?"Venda registrada. Os pontos ficam pendentes até a conferência."
+    :chosen?(gift?"Venda registrada. O crédito fica pendente até a conferência.":"Venda registrada. Os pontos ficam pendentes até a conferência.")
     :keepPhone?"Venda guardada com o celular do cliente. Vincule quando ele entrar no clube."
-    :"Venda registrada sem cliente. Ela não gera pontos até alguém do clube ser vinculado.");
+    :`Venda registrada sem cliente. Ela não gera ${gift?"crédito":"pontos"} até alguém do clube ser vinculado.`);
    setAmount("");setReceipt("");resetClient();setCustomTime(false);setMore(false);setPaidAt(localNow());
    reload();
   }catch(e){setFormError(e instanceof ApiError?e.message:"Não foi possível registrar a venda.");}
@@ -265,7 +265,7 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
        <div className="vf-row-main"><strong>{phoneComplete(phone)&&mode==="phone"?phone+" não está no clube":"Cliente ainda não participa"}</strong>
         <span>{phoneComplete(phone)&&mode==="phone"
          ?"Confira o número. Se a pessoa já é do clube com outro celular (ou sem celular), busque pelo nome."
-         :"A venda fica registrada sem pontos."}</span>
+         :`A venda fica registrada sem ${gift?"crédito":"pontos"}.`}</span>
         {phoneComplete(phone)&&mode==="phone"&&<button type="button" className="vf-btn is-link vs-inline-link"
          onClick={()=>{setPendingPhone(phone);setChosen(undefined);setMode("name");setQuery("");setFormError("");}}>É do clube? Buscar pelo nome</button>}</div>
        <button type="button" className="vf-btn is-small" onClick={resetClient}>Trocar</button>
@@ -385,9 +385,10 @@ function Counter({shared,initialClient}:{shared:Shared;initialClient?:SaleClient
       <li>{holdDays>0?`Cerca de ${releaseDate}`:"Logo após a conferência"}: <b>{gift?`liberado para usar, por ${gift.validity_days} dias`:"liberados para troca"}</b></li>
      </ol>
      :<p className="vs-off"><TriangleAlert size={16} aria-hidden="true"/>
-      <span>Pontos ainda não estão ativos nesta loja: a venda fica registrada e conferida, sem crédito.</span></p>}
+      <span>{gift?"O giftback ainda não está ativo nesta loja: a venda fica registrada e conferida, sem gerar crédito."
+       :"Pontos ainda não estão ativos nesta loja: a venda fica registrada e conferida, sem gerar pontos."}</span></p>}
     </>
-    :<p className="vs-ticket-hint">{chosen===null?"Cliente fora do clube não ganha pontos. Convide para entrar e as próximas compras contam."
+    :<p className="vs-ticket-hint">{chosen===null?`Cliente fora do clube não ganha ${gift?"crédito":"pontos"}. Convide para entrar e as próximas compras contam.`
      :!rule&&!gift?"Defina a regra de pontos em Meu clube para ver a prévia.":gift?"Escolha o cliente e digite o valor para ver o crédito."
      :"Escolha o cliente e digite o valor para ver os pontos."}</p>}
     {!gift&&rule&&pointValue!==null&&<span className="vf-muted vf-small">Cada ponto vale {pointValueText(pointValue)}.</span>}
@@ -450,11 +451,13 @@ function Review({shared}:{shared:Shared}){
    const r=await merchantApi.reviewManualSale(tenantId,sale.id,decision,
     decision==="approve"?"Conferida pelo lojista no painel.":"Recusada pelo lojista no painel.");
    const name=sale.participant_name?firstName(sale.participant_name):"a cliente";
-   setMsg(decision==="reject"?"Venda recusada. Nenhum ponto foi creditado."+(sale.redemption?" O vale voltou para o saldo.":"")
+   const none=isGift?"nenhum crédito foi gerado":"nenhum ponto foi creditado";
+   setMsg(decision==="reject"?`Venda recusada: ${none}.`+(sale.redemption?(isGift?" O crédito usado voltou para a cliente.":" O vale voltou para o saldo."):"")
     :r.points?`Venda confirmada: +${isGift?money(r.points)+" de crédito":pts(r.points)+" pontos"} para ${name}, ${isGift&&program.mode==="giftback"?(program.hold_days===0?"liberado logo":`liberado em ${program.hold_days} dias`):hold}.`
-    :r.points_reason==="budget"?"Venda confirmada, mas o orçamento do piloto acabou: nenhum ponto foi creditado."
-    :r.points_reason==="before_join"?"Venda confirmada. Ela é anterior à entrada no clube, por isso não gera pontos."
-    :pilot?"Venda confirmada. Esta venda não gera pontos.":"Venda conferida. Nenhum ponto foi creditado: os pontos ainda não estão ativos.");
+    :r.points_reason==="budget"?`Venda confirmada, mas o orçamento do piloto acabou: ${none}.`
+    :r.points_reason==="before_join"?`Venda confirmada. Ela é anterior à entrada no clube, por isso não gera ${isGift?"crédito":"pontos"}.`
+    :pilot?`Venda confirmada. Esta venda não gera ${isGift?"crédito":"pontos"}.`
+    :`Venda conferida: ${none}, porque ${isGift?"o giftback ainda não está ativo":"os pontos ainda não estão ativos"}.`);
    setRejecting(null);reload();
   }catch(e){setError(e instanceof ApiError?e.message:"Não foi possível concluir a conferência.");}
   finally{setBusy(false);}
@@ -481,7 +484,7 @@ function Review({shared}:{shared:Shared}){
   <section className="vf-card" aria-labelledby="vs-review-title">
    <div className="vf-card-head vs-head-wrap"><div><h2 id="vs-review-title" className="vf-h2">Vendas do balcão</h2>
     <span className="vf-muted vf-small">{pending.length?`${pending.length} para conferir · ${money(total)}. Confira com o cupom antes de confirmar.`
-     :"Confira com o cupom antes de confirmar."}{pilot?" Os pontos só entram depois de confirmar.":""}</span></div>
+     :"Confira com o cupom antes de confirmar."}{pilot?(isGift?" O crédito só entra depois de confirmar.":" Os pontos só entram depois de confirmar."):""}</span></div>
     {clean.length>1&&<button type="button" className="vf-btn is-small vs-btn-outline" disabled={busy} onClick={()=>void confirmClean()}>
      <Check size={16}/> Confirmar {clean.length} sem alerta</button>}
    </div>
@@ -550,6 +553,7 @@ const SITE_STATUS=(o:PaidOrderInspection):[string,string]=>{
 function Orders({shared}:{shared:Shared}){
  const {tenantId,items,loading,listError,program,reload}=shared;
  const isGift=program.mode==="giftback";
+ const noneLabel=isGift?"sem crédito":"sem pontos";
  const [site,setSite]=useState<PaidOrderInspection[]>([]);
  const [siteState,setSiteState]=useState<"loading"|"ok"|"off">("loading");
  const [siteMsg,setSiteMsg]=useState("");
@@ -575,17 +579,17 @@ function Orders({shared}:{shared:Shared}){
    const p=s.points_issued??(s.state==="awaiting_review"?s.points_preview:null);
    return {key:"c"+s.id,channel:"counter",title:s.participant_name||"Cliente fora do clube",
     sub:when(s.reported_paid_at||s.created_at)+(s.redemption?` · ${s.redemption.title}`:"")+" · "+receiptLabel(s.evidence_reference),
-    cents:s.eligible_amount_cents-discount,points:s.participant_id&&typeof p==="number"&&p>0&&s.state!=="rejected"?(s.points_issued?"+":"≈ +")+gain(p,isGift):"sem pontos",
+    cents:s.eligible_amount_cents-discount,points:s.participant_id&&typeof p==="number"&&p>0&&s.state!=="rejected"?(s.points_issued?"+":"≈ +")+gain(p,isGift):noneLabel,
     status:COUNTER_STATE[s.state],dim:s.state==="rejected",club:Boolean(s.participant_id),
     at:new Date(s.reported_paid_at||s.created_at).getTime(),initials:s.participant_name,
     search:[s.participant_name,s.reference].join(" ").toLowerCase()};});
   const online:Row[]=site.map(o=>{const st=SITE_STATUS(o);return {key:"s"+o.order_id,channel:"site",
    title:(o.order_number?"#"+o.order_number:"Pedido "+o.order_id)+(o.participant_verified?" · cliente do clube":" · fora do clube"),
-   sub:o.paid_at?when(o.paid_at):"sem data de pagamento",cents:o.reported_total_cents,points:"sem pontos",status:st,
+   sub:o.paid_at?when(o.paid_at):"sem data de pagamento",cents:o.reported_total_cents,points:noneLabel,status:st,
    dim:st[1]==="is-danger",club:o.participant_verified,at:o.paid_at?new Date(o.paid_at).getTime():0,initials:null,
    search:[o.order_number,o.order_id].join(" ").toLowerCase()};});
   return [...counter,...online].sort((a,b)=>b.at-a.at);
- },[items,site]);
+ },[items,site,isGift,noneLabel]);
 
  const term=q.trim().toLowerCase().replace(/^#/,"");
  const shown=rows.filter(r=>(channel==="all"||r.channel===channel)&&(!clubOnly||r.club)&&(!term||r.search.includes(term))&&
@@ -617,7 +621,7 @@ function Orders({shared}:{shared:Shared}){
      :<span className="vf-avatar vs-avatar-site" aria-hidden="true"><ShoppingBag size={16}/></span>}
     <div className="vs-row-main"><strong>{r.title}</strong><span>{r.sub}</span></div>
     <span className="vs-channel">{r.channel==="counter"?<><StoreIcon size={14} aria-hidden="true"/> Balcão</>:<><ShoppingBag size={14} aria-hidden="true"/> Site</>}</span>
-    <div className="vs-val"><strong>{money(r.cents)}</strong><small className={r.points==="sem pontos"?"is-none":""}>{r.points}</small></div>
+    <div className="vs-val"><strong>{money(r.cents)}</strong><small className={r.points===noneLabel?"is-none":""}>{r.points}</small></div>
     <span className={"vf-chip "+r.status[1]}>{r.status[0]}</span>
    </li>)}</ul>}
   <details className="vf-sale-more"><summary>Consultar um pedido pelo número ou link</summary><PaidOrderCheck tenantId={tenantId}/></details>

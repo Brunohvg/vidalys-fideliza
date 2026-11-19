@@ -155,7 +155,7 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
   button:"Registrar",tone:"purple",Icon:ShoppingBag,destination:"sales"});
  const actions:Action[]=[];
  if(pending)actions.push({key:"review",title:`Conferir ${pending} venda${pending===1?"":"s"} do balcão`,
-  detail:"Os pontos só liberam depois da conferência.",button:"Conferir",tone:"purple",Icon:ClipboardCheck,destination:"sales"});
+  detail:gift?"O crédito só libera depois da conferência.":"Os pontos só liberam depois da conferência.",button:"Conferir",tone:"purple",Icon:ClipboardCheck,destination:"sales"});
  actions.push(...setup.slice(0,pending?2:3));
  if(data&&data.integration!==null)actions.push(connected
   ?{key:"nuvemshop",title:"Consultar pedidos da Nuvemshop",className:"loyalty-dashboard-connection",
@@ -216,15 +216,16 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
     <span className="loyalty-metric-sub">{weekNew?`+${weekNew} nesta semana`:"adesões confirmadas"}</span>
    </button>
    <button type="button" className="loyalty-dashboard-metric" onClick={()=>onNavigate("clients")}>
-    <span className="loyalty-metric-top"><span className="loyalty-ico tone-gold"><CircleDollarSign size={20}/></span><small>Pontos com clientes</small></span>
-    <strong>{pointsHeld===null?dash(null):dash(animPoints)}</strong>
-    <span className="loyalty-metric-sub">{pointsHeld===null?"aparece quando os pontos estiverem ativos"
+    <span className="loyalty-metric-top"><span className="loyalty-ico tone-gold"><CircleDollarSign size={20}/></span><small>{gift?"Crédito com clientes":"Pontos com clientes"}</small></span>
+    <strong>{pointsHeld===null?dash(null):gift?brl(animPoints??0):dash(animPoints)}</strong>
+    <span className="loyalty-metric-sub">{pointsHeld===null?(gift?"aparece quando o giftback estiver ativo":"aparece quando os pontos estiverem ativos")
+     :gift?"crédito liberado das clientes"
      :pointsBrl(pointsHeld)?`equivalem a ${pointsBrl(pointsHeld)}`:"saldo disponível dos participantes"}</span>
    </button>
    <button type="button" className={"loyalty-dashboard-metric"+(pending?" is-attention":"")} onClick={()=>onNavigate("sales")}>
     <span className="loyalty-metric-top"><span className="loyalty-ico tone-rose"><ClipboardCheck size={20}/></span><small>Vendas para conferir</small></span>
     <strong>{pending===null?dash(null):dash(animPending)}</strong>
-    <span className="loyalty-metric-sub">{pending?"pontos aguardando sua conferência":"no balcão, últimos 30 registros"}</span>
+    <span className="loyalty-metric-sub">{pending?(gift?"crédito aguardando sua conferência":"pontos aguardando sua conferência"):"no balcão, últimos registros"}</span>
    </button>
    <button type="button" className="loyalty-dashboard-metric" onClick={()=>onNavigate("program","rewards")}>
     <span className="loyalty-metric-top"><span className="loyalty-ico tone-green"><Gift size={20}/></span><small>Recompensas publicadas</small></span>
@@ -239,8 +240,8 @@ export default function ActionCenter({tenantId,role,platform,userName,onNavigate
    <dl className="loyalty-today-grid">
     <div><dt>Vendas registradas</dt><dd>{todaySales.length.toLocaleString("pt-BR")}</dd></div>
     <div><dt>Valor pago</dt><dd>{brl(todayCents??0)}</dd></div>
-    <div><dt>Pontos do dia</dt><dd>{(todayPoints??0).toLocaleString("pt-BR")}</dd>
-     <small>{data?.sales?.pilot_active?"confirmados e a confirmar":"previstos: pontos ainda não estão ativos"}</small></div>
+    <div><dt>{gift?"Crédito do dia":"Pontos do dia"}</dt><dd>{gift?brl(todayPoints??0):(todayPoints??0).toLocaleString("pt-BR")}</dd>
+     <small>{data?.sales?.pilot_active?"confirmados e a confirmar":gift?"previsto: giftback ainda não está ativo":"previstos: pontos ainda não estão ativos"}</small></div>
    </dl>
   </section>}
 

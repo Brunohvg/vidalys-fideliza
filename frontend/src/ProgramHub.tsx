@@ -1,10 +1,11 @@
 import {useEffect,useMemo,useState,type FormEvent} from "react";
+import CounterPilotCard from "./CounterPilotCard";
 import ProgramModePanel from "./ProgramModePanel";
 import SiteInviteCard from "./SiteInviteCard";
 import {AlertTriangle,Check,Copy,ExternalLink,FlaskConical,Link2,Pencil,Plus,ShoppingBag,Smartphone,Trash2,X} from "lucide-react";
 import EnrollmentManagement from "./EnrollmentManagement";
 import LoyaltyTrialPanel from "./LoyaltyTrialPanel";
-import {ApiError,merchantApi,type DiscountRewardDraft,type PointRuleDraft,type Store} from "./api";
+import {ApiError,merchantApi,type CounterPilotState,type DiscountRewardDraft,type PointRuleDraft,type Store} from "./api";
 import {summarizeClub} from "./club-summary";
 import "./vf-ui.css";
 import "./program-hub.css";
@@ -37,6 +38,8 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
  const canEdit=role==="owner"||role==="admin";
  const [tab,setTab]=useState<Tab>(tabFor[initialArea]);
  const [mode,setMode]=useState<"points"|"giftback">("points");
+ const [modeSaved,setModeSaved]=useState(false);
+ const [pilot,setPilot]=useState<CounterPilotState|null|undefined>(undefined);
  const [rule,setRule]=useState<PointRuleDraft|null>(null);
  const [rewards,setRewards]=useState<DiscountRewardDraft[]>([]);
  const [loading,setLoading]=useState(true);
@@ -175,7 +178,9 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
   {message&&<div className="vf-toast" role="status"><Check size={18}/>{message}</div>}
   {!canEdit&&tab!=="participar"&&<div className="vf-toast is-info">Esta conta pode consultar o clube. Um administrador altera regras e recompensas.</div>}
 
-  {tab==="ganhar"&&<ProgramModePanel tenantId={tenantId} canEdit={canEdit} onMode={setMode}/>}
+  {tab==="ganhar"&&canEdit&&<ActivationSteps mode={mode} modeSaved={modeSaved} ruleSaved={Boolean(rule)}
+    rewardsPublished={rewards.filter(r=>r.published).length} pilot={pilot}/>}
+  {tab==="ganhar"&&<ProgramModePanel tenantId={tenantId} canEdit={canEdit} onMode={(m,saved)=>{setMode(m);setModeSaved(saved);}}/>}
   {tab==="ganhar"&&canEdit&&mode==="points"&&(loading?<p className="vf-muted" role="status">Carregando a regra…</p>:<div className="vf-grid2 vf-club-tab">
    <section className="vf-card" aria-labelledby="vf-earn-title">
     <div className="vf-card-head"><div><h2 id="vf-earn-title" className="vf-h2">Quanto devolver ao cliente?</h2>
@@ -226,6 +231,7 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
    </section>
   </div>)}
 
+  {tab==="ganhar"&&canEdit&&<CounterPilotCard tenantId={tenantId} role={role} refresh={refresh} onState={setPilot}/>}
   {tab==="usar"&&mode==="giftback"&&<section className="vf-card pm-usage" aria-labelledby="pm-usage-title">
    <h2 id="pm-usage-title" className="vf-h2">No giftback, não há faixas para montar</h2>
    <p className="vf-lead">O crédito é usado inteiro na próxima compra, no caixa: o vendedor digita o celular, o sistema mostra “Crédito disponível” e aplica com um toque.
@@ -317,4 +323,29 @@ export default function ProgramHub({tenantId,role,storeSlug,tenantStatus,platfor
    <LoyaltyTrialPanel tenantId={tenantId} ruleRefresh={refresh} rewardsRefresh={refresh}/>
   </div>}
  </section>;
+}
+
+/* Ativação em 3 passos, sempre no topo de "Como ganhar": o lojista vê onde está e o que falta. */
+function ActivationSteps({mode,modeSaved,ruleSaved,rewardsPublished,pilot}:{mode:"points"|"giftback";modeSaved:boolean;
+ ruleSaved:boolean;rewardsPublished:number;pilot:CounterPilotState|null|undefined}){
+ const gift=mode==="giftback";
+ const step1=modeSaved;
+ const step2=gift?modeSaved:ruleSaved&&rewardsPublished>0;
+ const locked=pilot===null||(pilot!==undefined&&!pilot.allowed);
+ const step3=Boolean(pilot&&pilot.active);
+ const go=()=>document.getElementById("vf-pilot-card")?.scrollIntoView({behavior:"smooth",block:"start"});
+ const steps:[boolean,string,string][]=[
+  [step1,"Escolha o modo",step1?(gift?"Giftback em uso":"Pontos em uso"):"Pontos ou giftback, logo abaixo"],
+  [step2,gift?"Revise o giftback":"Regra e recompensas",step2?"Pronto":gift?"Salve os valores do giftback":
+   !ruleSaved?"Salve quanto devolver":"Publique uma recompensa em “2. Como usar”"],
+  [step3,"Ative no balcão",step3?"Ativo: confirme as vendas em Vendas → Conferir":locked?"Liberação pela equipe Vidalys":"Quando os passos 1 e 2 estiverem prontos"],
+ ];
+ const current=steps.findIndex(([done])=>!done);
+ return <nav className="vf-card pm-steps" aria-label="Ativação do clube">
+  <ol>{steps.map(([done,title,detail],i)=><li key={title} className={done?"is-done":i===current?"is-current":""} aria-current={i===current?"step":undefined}>
+   <span className="pm-step-n" aria-hidden="true">{done?<Check size={16}/>:i+1}</span>
+   <span className="pm-step-text"><strong>{title}</strong><small>{detail}</small></span>
+  </li>)}</ol>
+  {current===2&&!locked&&<button type="button" className="vf-btn is-small is-primary" onClick={go}>Ir para a ativação</button>}
+ </nav>;
 }

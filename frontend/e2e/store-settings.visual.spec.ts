@@ -273,41 +273,11 @@ test("Proprietário troca o endereço do clube por um nome curto",async ({page})
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
 });
 
-for(const width of [390,1440]){
-  test("Piloto de pontos no balcão: ativar, ver orçamento e pausar em "+width+"px",async ({page},info)=>{
-    await page.setViewportSize({width,height:1000});
-    await setup(page);
-    let state={allowed:true,active:false,per_sale_cap_points:1500,budget_points:50000,issued_points:12400,
-      activated_at:null as string|null,paused_at:null as string|null,
-      rule:{points:3,per_cents:100,hold_days:7,validity_days:90},counter_rewards:2};
-    const posts:unknown[]=[];
-    await page.route("**/api/v1/tenants/**/sales/pilot/",route=>{
-      if(route.request().method()==="POST"){
-        const body=route.request().postDataJSON();posts.push(body);state={...state,...body};
-      }
-      return route.fulfill({contentType:"application/json",body:JSON.stringify(state)});
-    });
-    await page.goto("/app/configuracoes");
-    await section(page,/Canais de venda/);
-    await expect(page.getByRole("heading",{name:"Piloto de pontos no balcão"})).toBeVisible();
-    await expect(page.getByText("12.400 de 50.000")).toBeVisible();
-    await expect(page.getByText("Regra de pontos salva: 3%",{exact:false})).toBeVisible();
-    await page.getByRole("button",{name:"Ativar piloto"}).click();
-    await expect(page.getByText("Piloto ativo.",{exact:false})).toBeVisible();
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
-    await page.locator(".ss-pilot").screenshot({path:info.outputPath("piloto-"+width+".png")});
-    await page.getByRole("button",{name:"Pausar agora"}).click();
-    await expect(page.getByText("Piloto pausado.",{exact:false})).toBeVisible();
-    expect(posts).toEqual([{active:true},{active:false}]);
-  });
-}
-
-test("Piloto não liberado aparece desligado e sem botão",async ({page})=>{
+test("Canais de venda leva a ativação para Meu clube",async ({page})=>{
   await setup(page);
-  await page.route("**/api/v1/tenants/**/sales/pilot/",route=>route.fulfill({contentType:"application/json",body:JSON.stringify({
-    allowed:false,active:false,per_sale_cap_points:1500,budget_points:50000,issued_points:0,activated_at:null,paused_at:null,rule:null,counter_rewards:0})}));
   await page.goto("/app/configuracoes");
   await section(page,/Canais de venda/);
-  await expect(page.getByText("Não liberado")).toBeVisible();
-  await expect(page.getByRole("button",{name:"Ativar piloto"})).toHaveCount(0);
+  await expect(page.getByText("Pontos e giftback no balcão")).toBeVisible();
+  await page.getByRole("button",{name:"Abrir em Meu clube"}).click();
+  await expect(page.getByRole("heading",{level:1,name:"Como seu clube funciona"})).toBeVisible();
 });
